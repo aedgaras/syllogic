@@ -27,7 +27,7 @@ const steps: Step[] = [
   {
     number: 4,
     title: "Add Transactions",
-    description: "Import your data",
+    description: "Optional import",
   },
 ];
 

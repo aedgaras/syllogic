@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { RiArrowLeftLine, RiArrowRightLine } from "@remixicon/react";
+import { RiArrowLeftLine, RiArrowRightLine, RiSkipForwardLine } from "@remixicon/react";
 import { toast } from "sonner";
 import {
   Card,
@@ -87,6 +87,10 @@ export default function StepFourImportPage() {
     router.push("/step-3");
   };
 
+  const handleSkip = () => {
+    router.push("/?tour=1");
+  };
+
   return (
     <div className="space-y-8">
       <OnboardingProgress currentStep={4} />
@@ -141,13 +145,19 @@ export default function StepFourImportPage() {
             <RiArrowLeftLine className="mr-2 h-4 w-4" />
             Back
           </Button>
-          <Button
-            onClick={handleContinue}
-            disabled={isLoading || !selectedFile || accounts.length === 0}
-          >
-            {isLoading ? "Processing..." : "Continue"}
-            <RiArrowRightLine className="ml-2 h-4 w-4" />
-          </Button>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="ghost" onClick={handleSkip} disabled={isLoading}>
+              Skip for now
+              <RiSkipForwardLine className="ml-2 h-4 w-4" />
+            </Button>
+            <Button
+              onClick={handleContinue}
+              disabled={isLoading || !selectedFile || accounts.length === 0}
+            >
+              {isLoading ? "Processing..." : "Continue"}
+              <RiArrowRightLine className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
         </CardFooter>
       </Card>
     </div>
