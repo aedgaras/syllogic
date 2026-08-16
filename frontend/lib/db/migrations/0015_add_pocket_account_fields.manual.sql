@@ -1,4 +1,4 @@
--- Pocket account IBAN fields (hand-authored; applied via `pnpm db:push`).
+-- Pocket account IBAN fields (hand-authored; applied via `node scripts/migrate.js`).
 -- Idempotent guards match the 0009 precedent so re-application is safe.
 
 ALTER TABLE "accounts"

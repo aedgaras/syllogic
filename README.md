@@ -194,7 +194,43 @@ Track brokerage and crypto holdings with portfolio summaries and history. The Sy
 
 Quick start for contributors:
 
-### Option A: Prebuilt Mode (Recommended)
+### Prerequisites
+
+- Docker Desktop or Docker Engine with Docker Compose v2 (`docker compose version`)
+- Git
+- At least 4 GB available Docker memory
+- Internet access for the first run, so Docker can pull base images and install container dependencies
+
+Node.js, pnpm, and Python are only required if you choose to run services directly on your host. The default Docker dev flow installs those dependencies inside containers.
+
+### One-Command Local Development
+
+Runs PostgreSQL, Redis, FastAPI, Celery worker/beat, database migrations, and the Next.js dev server in Docker with source mounts for local edits.
+
+```bash
+git clone https://github.com/syllogic-ai/syllogic.git
+cd syllogic
+
+# Linux/macOS
+./scripts/dev-up.sh
+
+# Windows
+.\scripts\dev-up.bat
+```
+
+Open `http://localhost:3000`.
+
+Useful commands:
+
+```bash
+docker compose logs -f frontend backend
+docker compose ps
+docker compose down
+```
+
+Optional local secrets and integrations can be provided in `deploy/compose/.env`; `dev-up` will use it when present. For day-to-day development, the script has safe local defaults for required auth secrets and database URLs.
+
+### Prebuilt Mode
 
 Everything runs in Docker using prebuilt images. Easiest setup for full-stack testing.
 
@@ -220,48 +256,45 @@ cp deploy/compose/.env.example deploy/compose/.env
 
 **3. Open http://localhost:8080**
 
-### Option B: Local Mode
+### Host-Run Mode
 
-Infrastructure runs in Docker, frontend runs on host. Best for frontend development with hot reload.
+Infrastructure runs in Docker while frontend/backend run on your host. Use this only when you specifically need host-level tooling or debuggers.
 
-**1. Clone and configure:**
+**1. Clone:**
 
 ```bash
 git clone https://github.com/syllogic-ai/syllogic.git
 cd syllogic
-cp deploy/compose/.env.example deploy/compose/.env
-# Edit deploy/compose/.env — set INTERNAL_AUTH_SECRET, BETTER_AUTH_SECRET
 ```
 
 **2. Start infrastructure:**
 
 ```bash
-# Linux/macOS
-./scripts/dev-up.sh --local
-
-# Windows
-.\scripts\dev-up.bat local
+docker compose up -d db redis
 ```
 
-This starts PostgreSQL, Redis, and Celery workers, installs dependencies, runs migrations, and creates `frontend/.env.local` with the required environment variables.
-
-**3. Start the Next.js dev server:**
+**3. Configure host env files, install dependencies, run migrations, and start services:**
 
 ```bash
 cd frontend
+cp .env.example .env.local
+# Edit .env.local: set BETTER_AUTH_SECRET and INTERNAL_AUTH_SECRET
+pnpm install
+pnpm db:migrate
 pnpm dev
 ```
 
-**4. (Optional) Start the backend** (required for CSV import and other backend features):
-
 ```bash
 cd backend
+cp .env.example .env
+# Edit .env: set the same INTERNAL_AUTH_SECRET used by frontend/.env.local
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-**5. Open http://localhost:3000**
-
-> **Note:** Local mode runs only infrastructure. CSV import and other backend features require starting the backend (step 4) or using prebuilt mode.
+**4. Open http://localhost:3000**
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full setup instructions and code style guidelines.
 

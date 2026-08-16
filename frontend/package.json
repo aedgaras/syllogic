@@ -10,7 +10,8 @@
     "lint": "eslint",
     "test:smoke:mobile": "playwright test",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "node scripts/migrate.js",
+    "db:migrate:drizzle": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },

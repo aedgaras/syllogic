@@ -158,7 +158,7 @@ python postgres_migration/run_encryption_upgrade.py --batch-size 500 --clear-pla
 
 From repository root:
 
-- Local infra + migrations for source development: `./scripts/dev-up.sh --local`
+- Full Docker local development stack: `./scripts/dev-up.sh --local`
 - Full prebuilt self-host stack: `./scripts/prod-up.sh`
 - Local source-compose smoke validation: `./scripts/local-smoke.sh`
 - VPS post-install verification: `deploy/install/post-install-check.sh /opt/syllogic`

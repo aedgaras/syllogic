@@ -4,23 +4,50 @@ Thanks for your interest in contributing. This guide covers how to set up a deve
 
 ## Prerequisites
 
-- Docker and Docker Compose
-- Node.js 18+ and pnpm
-- Python 3.11+
+- Git
+- Docker Desktop or Docker Engine
+- Docker Compose v2 (`docker compose version`)
+- At least 4 GB available Docker memory
+- Internet access on first run, so Docker can pull images and install container dependencies
+
+Node.js, pnpm, and Python 3.11+ are optional for the default workflow. You only need them when running frontend or backend services directly on your host.
 
 ## Development Setup
 
-### 1. Start Infrastructure
+### One-Command Docker Setup
 
 The quickest way to get a development environment running:
 
 ```bash
-./scripts/dev-up.sh --local
+# Linux/macOS
+./scripts/dev-up.sh
+
+# Windows
+.\scripts\dev-up.bat
 ```
 
-This starts PostgreSQL (port 5433) and Redis (port 6379) in Docker and runs database migrations.
+This starts the full local stack in Docker:
 
-### 2. Backend
+- PostgreSQL at `localhost:5433`
+- Redis at `localhost:6379`
+- FastAPI backend at `http://localhost:8000`
+- Next.js dev server at `http://localhost:3000`
+- Celery worker and beat
+- A one-shot database migration job
+
+Source files are mounted into the containers, so frontend and backend edits are picked up without rebuilding in normal development.
+
+Useful commands:
+
+```bash
+docker compose ps
+docker compose logs -f frontend backend
+docker compose down
+```
+
+Optional local secrets and integration keys can go in `deploy/compose/.env`; `dev-up` automatically uses that file when it exists. The Docker dev stack has local defaults for required auth secrets, database URLs, and Redis URLs.
+
+### Host-Run Backend
 
 ```bash
 cd backend
@@ -28,7 +55,7 @@ python -m venv venv
 source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
-# Edit .env with your configuration
+# Edit .env: set INTERNAL_AUTH_SECRET
 ```
 
 Start the API server:
@@ -44,21 +71,21 @@ celery -A celery_app worker --loglevel=info
 celery -A celery_app beat --loglevel=info
 ```
 
-### 3. Frontend
+### Host-Run Frontend
 
 ```bash
 cd frontend
 pnpm install
 cp .env.example .env.local
-# Edit .env.local with your configuration
+# Edit .env.local: set BETTER_AUTH_SECRET and the same INTERNAL_AUTH_SECRET
 pnpm dev
 ```
 
 App available at http://localhost:3000.
 
-### Local Full-Stack Docker
+### Production Compose QA
 
-To test the full containerized stack with your local code:
+Use this when you need to test the production Compose bundle with images built from your local checkout. For normal source development, use `./scripts/dev-up.sh` instead.
 
 ```bash
 cp deploy/compose/.env.example deploy/compose/.env
