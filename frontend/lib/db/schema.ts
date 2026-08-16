@@ -647,6 +647,7 @@ export const holdings = pgTable("holdings", {
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
   symbol: text("symbol").notNull(),
+  providerSymbol: text("provider_symbol"),
   name: text("name"),
   currency: text("currency").notNull(),
   instrumentType: text("instrument_type").notNull(),
