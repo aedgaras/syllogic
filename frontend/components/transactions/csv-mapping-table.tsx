@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import type { ColumnMapping } from "@/lib/actions/csv-import";
+import { DATE_FORMAT_OPTIONS, type ImportDateFormat } from "@/lib/import/dates";
 
 interface CsvMappingTableProps {
   headers: string[];
@@ -125,14 +126,17 @@ export function CsvMappingTable({
             </div>
             <Select
               value={mapping.typeConfig?.dateFormat ?? "DD-MM-YYYY"}
-              onValueChange={(value) => updateTypeConfig("dateFormat", value as "DD-MM-YYYY" | "MM-DD-YYYY")}
+              onValueChange={(value) => updateTypeConfig("dateFormat", value as ImportDateFormat)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select date format" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="DD-MM-YYYY">DD-MM-YYYY (European)</SelectItem>
-                <SelectItem value="MM-DD-YYYY">MM-DD-YYYY (US)</SelectItem>
+                {DATE_FORMAT_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label} (e.g., {option.example})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
