@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
-import { getCurrentUserProfile } from "@/lib/actions/settings";
+import { getCurrentUserProfile, getOpenAiSettings } from "@/lib/actions/settings";
 import { getCategories } from "@/lib/actions/categories";
 import { listApiKeys } from "@/lib/actions/api-keys";
 import { getCsvImportHistory } from "@/lib/actions/csv-import";
@@ -22,13 +22,22 @@ export default async function SettingsPage({
     redirect("/login");
   }
 
-  const [categories, apiKeysResult, csvImports, bankConnections, peopleRows, resolvedSearchParams] =
+  const [
+    categories,
+    apiKeysResult,
+    csvImports,
+    bankConnections,
+    peopleRows,
+    openAiSettings,
+    resolvedSearchParams,
+  ] =
     await Promise.all([
       getCategories(),
       listApiKeys(),
       getCsvImportHistory(),
       getBankConnections(),
       getPeople(user.id),
+      getOpenAiSettings(),
       searchParams,
     ]);
 
@@ -66,6 +75,7 @@ export default async function SettingsPage({
           csvImports={csvImports}
           bankConnections={bankConnections}
           people={people}
+          openAiSettings={openAiSettings}
         />
       </div>
     </>

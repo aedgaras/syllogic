@@ -15,6 +15,11 @@ from dataclasses import dataclass
 
 from app.models import Category, Transaction
 from app.db_helpers import get_user_id
+from app.services.app_settings import (
+    AppSettingDecryptError,
+    AppSettingEncryptionMissing,
+    get_openai_api_key,
+)
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -61,9 +66,10 @@ class CategoryMatcher:
     - Comprehensive logging for debugging
 
     Environment Variables:
-    - OPENAI_API_KEY: OpenAI API key for LLM categorization (optional)
+    - OPENAI_API_KEY: fallback OpenAI API key for LLM categorization (optional);
+        a key saved in Settings takes precedence.
     - CATEGORIZATION_MIN_CONFIDENCE: Minimum confidence % for deterministic matching.
-        Defaults to 999.0 (disabled) when OPENAI_API_KEY is set, or 70.0 when not set.
+        Defaults to 999.0 (disabled) when an OpenAI key is configured, or 70.0 when not set.
     - CATEGORIZATION_LLM_MODEL: LLM model to use (default: gpt-4o-mini)
     - CATEGORIZATION_LLM_TEMPERATURE: Temperature for LLM (default: 0.1)
     - CATEGORIZATION_LLM_MAX_TOKENS: Max tokens for LLM response (default: 50)
@@ -86,12 +92,7 @@ class CategoryMatcher:
     # Can be overridden via CATEGORIZATION_MIN_CONFIDENCE environment variable.
     _DEFAULT_CONFIDENCE_WITH_LLM = 999.0  # Effectively disables deterministic matching
     _DEFAULT_CONFIDENCE_WITHOUT_LLM = 70.0  # Enables keyword matching as fallback
-    MIN_CONFIDENCE_THRESHOLD = float(
-        os.getenv(
-            "CATEGORIZATION_MIN_CONFIDENCE",
-            str(_DEFAULT_CONFIDENCE_WITH_LLM if os.getenv("OPENAI_API_KEY") else _DEFAULT_CONFIDENCE_WITHOUT_LLM)
-        )
-    )  # Minimum % confidence to accept a deterministic match
+    MIN_CONFIDENCE_THRESHOLD_OVERRIDE = os.getenv("CATEGORIZATION_MIN_CONFIDENCE")
 
     # LLM Configuration (can be overridden via environment variables)
     LLM_MODEL = os.getenv("CATEGORIZATION_LLM_MODEL", "gpt-4o-mini")
@@ -136,6 +137,7 @@ class CategoryMatcher:
         self._category_cache: Optional[Dict[str, Category]] = None
         self._keyword_rules: Optional[Dict[str, List[str]]] = None
         self._openai_client = None
+        self._openai_api_key: Optional[str] = None
         self._category_instructions_cache: Optional[List[str]] = None
         self._account_cache: Optional[list] = None
 
@@ -179,6 +181,22 @@ class CategoryMatcher:
 
         except Exception as e:
             logger.warning(f"Failed to auto-load instructions from database: {e}")
+
+    def _get_openai_api_key(self) -> Optional[str]:
+        if self._openai_api_key is None:
+            try:
+                self._openai_api_key = get_openai_api_key(self.db) or ""
+            except (AppSettingDecryptError, AppSettingEncryptionMissing) as exc:
+                logger.warning("Saved OpenAI API key is unavailable: %s", exc)
+                self._openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        return self._openai_api_key or None
+
+    def _min_confidence_threshold(self) -> float:
+        if self.MIN_CONFIDENCE_THRESHOLD_OVERRIDE is not None:
+            return float(self.MIN_CONFIDENCE_THRESHOLD_OVERRIDE)
+        if self._get_openai_api_key():
+            return self._DEFAULT_CONFIDENCE_WITH_LLM
+        return self._DEFAULT_CONFIDENCE_WITHOUT_LLM
 
     def _get_category_instructions_from_db(self) -> List[str]:
         """
@@ -446,9 +464,9 @@ class CategoryMatcher:
         if self._openai_client is None:
             try:
                 from openai import OpenAI
-                api_key = os.getenv("OPENAI_API_KEY")
+                api_key = self._get_openai_api_key()
                 if not api_key:
-                    logger.warning("OPENAI_API_KEY not set, LLM categorization will be unavailable")
+                    logger.warning("OpenAI API key not configured, LLM categorization will be unavailable")
                     return None
                 self._openai_client = OpenAI(api_key=api_key)
                 logger.info("OpenAI client initialized successfully")
@@ -767,7 +785,8 @@ class CategoryMatcher:
                     matched_keywords = category_matched_keywords
 
         # Return if we have at least one keyword match AND confidence meets threshold
-        if best_match and matched_keywords and best_confidence >= self.MIN_CONFIDENCE_THRESHOLD:
+        min_confidence_threshold = self._min_confidence_threshold()
+        if best_match and matched_keywords and best_confidence >= min_confidence_threshold:
             logger.info(
                 f"Matched transaction to category '{best_match.name}' "
                 f"with confidence {best_confidence:.1f}% (keywords: {', '.join(matched_keywords[:3])})"
@@ -777,7 +796,7 @@ class CategoryMatcher:
         if best_match and matched_keywords:
             logger.debug(
                 f"Deterministic match found but confidence {best_confidence:.1f}% "
-                f"below threshold {self.MIN_CONFIDENCE_THRESHOLD}%"
+                f"below threshold {min_confidence_threshold}%"
             )
 
         logger.debug(f"No deterministic match found for transaction: '{search_text}'")
@@ -1340,7 +1359,8 @@ Category name:"""
                     matched_keywords = category_matched_keywords
 
         # Return if we have at least one keyword match AND confidence meets threshold
-        if best_match and matched_keywords and best_confidence >= self.MIN_CONFIDENCE_THRESHOLD:
+        min_confidence_threshold = self._min_confidence_threshold()
+        if best_match and matched_keywords and best_confidence >= min_confidence_threshold:
             logger.info(
                 f"Matched transaction to category '{best_match.name}' "
                 f"with confidence {best_confidence:.1f}% (keywords: {', '.join(matched_keywords[:3])})"
@@ -1355,7 +1375,7 @@ Category name:"""
         if best_match and matched_keywords:
             logger.debug(
                 f"Deterministic match found but confidence {best_confidence:.1f}% "
-                f"below threshold {self.MIN_CONFIDENCE_THRESHOLD}%"
+                f"below threshold {min_confidence_threshold}%"
             )
 
         logger.debug(f"No deterministic match found for transaction: '{search_text}'")
@@ -1669,4 +1689,3 @@ Response:"""
 
         logger.info(f"[BATCH LLM] Completed. Total results: {len(results)}, tokens: {total_tokens}, cost: ${total_cost:.6f}")
         return results, total_tokens, total_cost
-

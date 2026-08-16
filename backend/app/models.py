@@ -751,6 +751,20 @@ class ApiKey(Base):
     )
 
 
+class AppSetting(Base):
+    """
+    Global application setting.
+    Secret values are stored encrypted in value_encrypted.
+    """
+    __tablename__ = "app_settings"
+
+    key = Column(String(255), primary_key=True)
+    value_encrypted = Column(Text, nullable=True)
+    updated_by_user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class BrokerConnection(Base):
     __tablename__ = "broker_connections"
 

@@ -19,6 +19,7 @@ import { HouseholdTab } from "./household-tab";
 import { PreferencesTab } from "./preferences-tab";
 import type { User, Category } from "@/lib/db/schema";
 import type { CsvImportWithStats } from "@/lib/actions/csv-import";
+import type { OpenAiSettings } from "@/lib/actions/settings";
 
 type Person = {
   id: string;
@@ -56,6 +57,7 @@ interface SettingsTabsProps {
     createdAt: Date | null;
   }>;
   people: Person[];
+  openAiSettings: OpenAiSettings & { error?: string };
 }
 
 export function SettingsTabs({
@@ -70,6 +72,7 @@ export function SettingsTabs({
   csvImports,
   bankConnections,
   people,
+  openAiSettings,
 }: SettingsTabsProps) {
   return (
     <Tabs defaultValue={defaultTab} className="flex-1">
@@ -137,7 +140,7 @@ export function SettingsTabs({
       </TabsContent>
 
       <TabsContent value="preferences">
-        <PreferencesTab />
+        <PreferencesTab initialOpenAiSettings={openAiSettings} />
       </TabsContent>
     </Tabs>
   );

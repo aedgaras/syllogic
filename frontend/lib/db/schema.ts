@@ -200,6 +200,14 @@ export const apiKeys = pgTable(
   ]
 );
 
+export const appSettings = pgTable("app_settings", {
+  key: varchar("key", { length: 255 }).primaryKey(),
+  valueEncrypted: text("value_encrypted"),
+  updatedByUserId: text("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // ============================================================================
 // Application Tables
 // ============================================================================
