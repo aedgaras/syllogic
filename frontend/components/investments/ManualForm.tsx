@@ -273,7 +273,7 @@ function HoldingRow({
 
   return (
     <div className="rounded border border-border p-3 space-y-3 relative">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
           #{index + 1}
         </div>
@@ -289,7 +289,7 @@ function HoldingRow({
           </Button>
         )}
       </div>
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <Field label={symbolLabel} className="flex-[2_1_0%]">
           <SymbolSearchInput
             value={row.symbol}
@@ -307,7 +307,7 @@ function HoldingRow({
           />
         </Field>
       </div>
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <Field label="Quantity" className="flex-1">
           <Input
             type="number"

@@ -3,7 +3,8 @@
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getReport, listReportRuns } from "@/lib/reports/api";
-import { RunStatusBadge } from "@/components/reports/RunStatusBadge";
+import { Header } from "@/components/layout/header";
+import { ReportRunsTable } from "@/components/reports/ReportRunsTable";
 
 export default function ReportRunsPage() {
   const params = useParams<{ id: string }>();
@@ -19,50 +20,25 @@ export default function ReportRunsPage() {
   });
 
   return (
-    <div className="p-6 text-foreground">
-      <h1 className="text-xl font-semibold mb-1">{report ? `${report.name} — Runs` : "Runs"}</h1>
-      <p className="text-sm text-muted-foreground mb-4">Scheduled and executed sends for this report.</p>
+    <>
+      <Header title={report ? `${report.name} - Runs` : "Runs"} />
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0 text-foreground">
+        <p className="text-sm text-muted-foreground">Scheduled and executed sends for this report.</p>
 
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : isError && !(runs && runs.length > 0) ? (
-        // Only show the error state when there's no cached data to fall
-        // back on — with refetchInterval polling, a single transient
-        // background refetch failure would otherwise hide a previously
-        // loaded, still-valid run history behind an error message.
-        <p className="text-sm text-destructive">Failed to load runs. Please try again.</p>
-      ) : runs && runs.length > 0 ? (
-        <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
-          <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="px-4 py-2">Scheduled for</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2">Finished</th>
-              <th className="px-4 py-2">Error</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {runs.map((run) => (
-              <tr key={run.id}>
-                <td className="px-4 py-2">
-                  {run.is_test
-                    ? "Test send"
-                    : run.scheduled_for
-                    ? new Date(run.scheduled_for).toLocaleString()
-                    : "—"}
-                </td>
-                <td className="px-4 py-2">
-                  <RunStatusBadge status={run.status} />
-                </td>
-                <td className="px-4 py-2">{run.finished_at ? new Date(run.finished_at).toLocaleString() : "—"}</td>
-                <td className="px-4 py-2 text-destructive">{run.error_message ?? ""}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <p className="text-sm text-muted-foreground">No runs yet.</p>
-      )}
-    </div>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : isError && !(runs && runs.length > 0) ? (
+          // Only show the error state when there's no cached data to fall
+          // back on — with refetchInterval polling, a single transient
+          // background refetch failure would otherwise hide a previously
+          // loaded, still-valid run history behind an error message.
+          <p className="text-sm text-destructive">Failed to load runs. Please try again.</p>
+        ) : runs && runs.length > 0 ? (
+          <ReportRunsTable runs={runs} />
+        ) : (
+          <p className="text-sm text-muted-foreground">No runs yet.</p>
+        )}
+      </div>
+    </>
   );
 }

@@ -168,6 +168,7 @@ export function AccountTransactions({
         }}
         wrapperClassName="flex flex-col min-h-0 flex-1"
         tableContainerClassName="flex-1 min-h-0 overflow-y-auto"
+        mobileCards
       />
 
       <TransactionSheet

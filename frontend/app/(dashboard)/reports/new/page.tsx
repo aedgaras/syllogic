@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { listAccounts } from "@/lib/reports/api";
+import { Header } from "@/components/layout/header";
 import { ReportForm } from "@/components/reports/ReportForm";
 
 export default function NewReportPage() {
@@ -12,13 +13,15 @@ export default function NewReportPage() {
   } = useQuery({ queryKey: ["accounts"], queryFn: listAccounts });
 
   return (
-    <div className="p-6 text-foreground">
-      <h1 className="text-xl font-semibold mb-4">New report</h1>
-      <ReportForm
-        availableAccounts={accounts ?? []}
-        accountsLoading={accountsLoading}
-        accountsError={accountsError}
-      />
-    </div>
+    <>
+      <Header title="New report" />
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0 text-foreground">
+        <ReportForm
+          availableAccounts={accounts ?? []}
+          accountsLoading={accountsLoading}
+          accountsError={accountsError}
+        />
+      </div>
+    </>
   );
 }

@@ -89,6 +89,10 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
     enableSorting: false,
     enableHiding: false,
     enableResizing: false,
+    meta: {
+      mobilePriority: "primary",
+      mobileClassName: "shrink-0 pt-0.5",
+    },
   },
   {
     accessorKey: "bookedAt",
@@ -114,6 +118,10 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
       </span>
     ),
     size: 120,
+    meta: {
+      mobileLabel: "Date",
+      mobilePriority: "secondary",
+    },
     sortingFn: "datetime",
     filterFn: (row, id, filterValue) => {
       if (!filterValue || !filterValue.from) return true;
@@ -141,6 +149,10 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
       );
     },
     size: 300,
+    meta: {
+      mobilePriority: "primary",
+      mobileClassName: "flex-1",
+    },
     filterFn: "includesString",
   },
   {
@@ -162,6 +174,10 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
       );
     },
     size: 150,
+    meta: {
+      mobileLabel: "Merchant",
+      mobilePriority: "secondary",
+    },
   },
   {
     accessorKey: "category",
@@ -176,6 +192,10 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
       );
     },
     size: 140,
+    meta: {
+      mobileLabel: "Category",
+      mobilePriority: "secondary",
+    },
     filterFn: (row, id, filterValue) => {
       if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
       if (filterValue.includes("uncategorized") && !row.original.category) return true;
@@ -196,6 +216,10 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
       );
     },
     size: 100,
+    meta: {
+      mobileLabel: "Type",
+      mobilePriority: "secondary",
+    },
   },
   {
     accessorKey: "amount",
@@ -227,6 +251,10 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
       );
     },
     size: 120,
+    meta: {
+      mobilePriority: "primary",
+      mobileClassName: "shrink-0 text-right",
+    },
     filterFn: (row, id, filterValue) => {
       if (!filterValue || (!filterValue.min && !filterValue.max)) return true;
       const amount = Math.abs(row.getValue("amount") as number);
@@ -250,6 +278,9 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
       );
     },
     size: 60,
+    meta: {
+      mobilePriority: "hidden",
+    },
     filterFn: (row, id, filterValue) => {
       if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
       if (filterValue.includes("no_subscription") && !row.original.recurringTransaction) return true;
@@ -269,6 +300,10 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
       ) : null;
     },
     size: 80,
+    meta: {
+      mobileLabel: "Status",
+      mobilePriority: "secondary",
+    },
     filterFn: (row, id, filterValue) => {
       if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
       if (filterValue.includes("pending") && row.original.pending) return true;

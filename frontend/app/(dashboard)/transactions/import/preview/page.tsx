@@ -151,7 +151,7 @@ function PreviewPageContent() {
   return (
     <>
       <Header title="Preview Import" />
-      <div className="flex h-[calc(100vh-4rem)] flex-col p-4 pt-0">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 pt-0 lg:h-[calc(100vh-4rem)] lg:overflow-hidden">
         {/* Balance Verification Card */}
         {balanceVerification?.hasBalanceData && (
           <div
@@ -180,9 +180,9 @@ function PreviewPageContent() {
                     : "Balance Discrepancy Detected"}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+            <div className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
               {balanceVerification.fileStartingBalance !== null && (
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">Starting Balance:</span>
                   <span className="font-mono">
                     {balanceVerification.fileStartingBalance.toFixed(2)}
@@ -190,7 +190,7 @@ function PreviewPageContent() {
                 </div>
               )}
               {balanceVerification.fileEndingBalance !== null && (
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">Ending Balance (file):</span>
                   <span className="font-mono">
                     {balanceVerification.fileEndingBalance.toFixed(2)}
@@ -198,7 +198,7 @@ function PreviewPageContent() {
                 </div>
               )}
               {balanceVerification.calculatedEndingBalance !== null && (
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">Calculated Ending:</span>
                   <span className="font-mono">
                     {balanceVerification.calculatedEndingBalance.toFixed(2)}
@@ -208,7 +208,7 @@ function PreviewPageContent() {
               {balanceVerification.canVerify &&
                 !balanceVerification.isVerified &&
                 balanceVerification.discrepancy !== null && (
-                  <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                  <div className="flex justify-between gap-3 text-amber-600 dark:text-amber-400">
                     <span>Discrepancy:</span>
                     <span className="font-mono font-medium">
                       {balanceVerification.discrepancy.toFixed(2)}
@@ -231,7 +231,7 @@ function PreviewPageContent() {
 
         <Tabs defaultValue="to-import" className="flex min-h-0 flex-1 flex-col">
           {/* Tabs outside container */}
-          <TabsList className="mb-2 w-fit">
+          <TabsList className="mb-2 w-full sm:w-fit">
             <TabsTrigger value="to-import" className="gap-2">
               To Import
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium">
@@ -273,7 +273,7 @@ function PreviewPageContent() {
         </Tabs>
 
         {/* Footer Actions - always visible */}
-        <div className="mt-4 flex shrink-0 items-center justify-between border-t pt-4">
+        <div className="mt-4 flex shrink-0 flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
           <Button
             type="button"
             variant="outline"

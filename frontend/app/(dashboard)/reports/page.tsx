@@ -4,7 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { deleteReport, listReports } from "@/lib/reports/api";
+import { Header } from "@/components/layout/header";
 import { buttonVariants } from "@/components/ui/button";
+import { ReportList } from "@/components/reports/ReportList";
 
 export default function ReportsPage() {
   const queryClient = useQueryClient();
@@ -28,15 +30,19 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="p-6 text-foreground">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold">Reports</h1>
+    <>
+      <Header
+        title="Reports"
+        action={
         <Link href="/reports/new" className={buttonVariants({ size: "sm" })}>
           New report
         </Link>
-      </div>
+        }
+      />
 
-      {deleteError && <p className="text-sm text-destructive mb-4">{deleteError}</p>}
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0 text-foreground">
+
+      {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
@@ -48,33 +54,11 @@ export default function ReportsPage() {
           </button>
         </div>
       ) : reports && reports.length > 0 ? (
-        <ul className="divide-y divide-border border border-border rounded-lg">
-          {reports.map((report) => (
-            <li key={report.id} className="flex items-center justify-between px-4 py-3">
-              <div>
-                <Link href={`/reports/${report.id}`} className="font-medium text-foreground hover:underline">
-                  {report.name}
-                </Link>
-                <p className="text-xs text-muted-foreground">
-                  {report.frequency.toLowerCase()} · next run{" "}
-                  {report.next_run_at ? new Date(report.next_run_at).toLocaleString() : "—"} ·{" "}
-                  {report.is_active ? "active" : "paused"}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Link href={`/reports/${report.id}/runs`} className="text-sm text-muted-foreground hover:text-foreground">
-                  Runs
-                </Link>
-                <button onClick={() => handleDelete(report.id)} className="text-sm text-destructive hover:underline">
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <ReportList reports={reports} onDelete={handleDelete} />
       ) : (
         <p className="text-sm text-muted-foreground">No reports yet. Create one to get started.</p>
       )}
-    </div>
+      </div>
+    </>
   );
 }

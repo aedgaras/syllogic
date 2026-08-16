@@ -146,11 +146,11 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
   );
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
       <Popover open={accountsOpen} onOpenChange={setAccountsOpen}>
         <PopoverTrigger
           className={cn(
-            "flex !h-9 w-[190px] items-center justify-between border border-input bg-transparent px-2.5 text-xs transition-colors hover:bg-muted"
+            "flex !h-9 min-w-0 flex-1 items-center justify-between border border-input bg-transparent px-2.5 text-xs transition-colors hover:bg-muted sm:w-[190px] sm:flex-none"
           )}
         >
           <span className="flex items-center gap-2 truncate">
@@ -199,23 +199,23 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
         </PopoverContent>
       </Popover>
 
-      <div className={cn("flex items-center", shouldCollapseGap ? "gap-0" : "gap-2")}>
+      <div className={cn("flex min-w-0 flex-1 items-center sm:flex-none", shouldCollapseGap ? "gap-0" : "gap-2")}>
         <DateRangePicker
           value={dateRange}
           onChange={updateDateRange}
-          className="!h-9 w-fit"
+          className="!h-9 min-w-0 flex-1 sm:w-fit sm:flex-none"
           placeholder="Date"
           showSelectedText={false}
           active={isDateRangeActive}
         />
 
-        <div className="flex items-center !h-9 border border-input box-border divide-x divide-border">
+        <div className="flex !h-9 shrink-0 items-center border border-input box-border divide-x divide-border">
           {HORIZON_OPTIONS.map((option) => (
             <button
               key={option.value}
               type="button"
               className={cn(
-                "h-full px-3 text-xs font-medium transition-colors",
+                "h-full px-2.5 text-xs font-medium transition-colors sm:px-3",
                 effectiveHorizon === option.value
                   ? "bg-primary text-primary-foreground"
                   : "bg-transparent text-foreground hover:bg-muted"

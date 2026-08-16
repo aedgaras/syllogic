@@ -81,7 +81,7 @@ export function OnboardingProgress({ currentStep }: OnboardingProgressProps) {
             {index < steps.length - 1 && (
               <div
                 className={cn(
-                  "mx-4 h-0.5 flex-1 min-w-[60px]",
+                  "mx-2 h-0.5 min-w-4 flex-1 sm:mx-4 sm:min-w-[60px]",
                   currentStep > step.number ? "bg-primary" : "bg-muted-foreground/30"
                 )}
               />

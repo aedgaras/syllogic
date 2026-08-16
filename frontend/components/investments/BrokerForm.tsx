@@ -97,7 +97,7 @@ export function BrokerForm({ onCancel }: { onCancel: () => void }) {
             </a>
           </div>
           <div className="space-y-3.5">
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <Field label="Account name" className="flex-[2_1_0%]">
                 <Input
                   value={accountName}
@@ -158,7 +158,7 @@ export function BrokerForm({ onCancel }: { onCancel: () => void }) {
               </Field>
             </div>
             {err && <div className="text-destructive text-xs">{err}</div>}
-            <div className="flex justify-between items-center pt-1">
+            <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
               <Button type="button" variant="outline" onClick={onCancel}>
                 Cancel
               </Button>
@@ -171,11 +171,11 @@ export function BrokerForm({ onCancel }: { onCancel: () => void }) {
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2.5">
               More brokers — coming soon
             </div>
-            <div className="flex gap-2.5">
+            <div className="grid gap-2.5 sm:grid-cols-3">
               {["Trading 212", "Degiro", "Schwab"].map((b) => (
                 <div
                   key={b}
-                  className="flex-1 px-3.5 py-2.5 border border-border flex items-center gap-2 opacity-45"
+                  className="flex items-center gap-2 border border-border px-3.5 py-2.5 opacity-45"
                 >
                   <RiBankLine size={14} className="text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">{b}</span>

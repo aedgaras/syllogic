@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { buildTransactionsDrilldownQuery } from "@/lib/dashboard/drilldown-query";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SankeyNode {
   name: string;
@@ -48,12 +49,12 @@ const EXPENSE_HIGHLIGHT = "#EF4444";
 
 function SankeyFlowChartSkeleton() {
   return (
-    <Card className="col-span-full">
+    <Card>
       <CardHeader>
         <Skeleton className="h-5 w-32" />
       </CardHeader>
       <CardContent>
-        <Skeleton className="h-[400px] w-full" />
+        <Skeleton className="h-[320px] w-full sm:h-[400px]" />
       </CardContent>
     </Card>
   );
@@ -102,6 +103,8 @@ function CustomNode(props: CustomNodeProps) {
     fillColor = selectedCategory?.type === "income" ? INCOME_HIGHLIGHT : EXPENSE_HIGHLIGHT;
   }
 
+  const fontSize = selectedCategory ? 11 : 12;
+
   return (
     <g key={`node-${index}`} style={{ cursor: isClickable ? "pointer" : "default" }}>
       <Rectangle
@@ -118,7 +121,7 @@ function CustomNode(props: CustomNodeProps) {
         textAnchor={isLeftSide ? "end" : "start"}
         dominantBaseline="middle"
         fill="#e7e5e4"
-        fontSize={12}
+        fontSize={fontSize}
         fontWeight={500}
         style={{ fontFamily: "var(--font-mono, monospace)" }}
       >
@@ -265,6 +268,7 @@ export function SankeyFlowChart({
   horizon,
 }: SankeyFlowChartProps) {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [selectedCategory, setSelectedCategory] = React.useState<SelectedCategory | null>(null);
 
   const navigateToTransactions = React.useCallback(
@@ -348,14 +352,14 @@ export function SankeyFlowChart({
 
   if (!data.nodes.length || !data.links.length) {
     return (
-      <Card className="col-span-full">
+      <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Cash Flow</CardTitle>
           {subtitle && (
             <p className="text-xs text-muted-foreground">{subtitle}</p>
           )}
         </CardHeader>
-        <CardContent className="flex h-[400px] items-center justify-center">
+        <CardContent className="flex h-[320px] items-center justify-center sm:h-[400px]">
           <p className="text-muted-foreground text-sm">
             No transaction data available for cash flow visualization
           </p>
@@ -365,32 +369,36 @@ export function SankeyFlowChart({
   }
 
   return (
-    <Card className="col-span-full">
+    <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">Cash Flow</CardTitle>
         {subtitle && (
           <p className="text-xs text-muted-foreground">{subtitle}</p>
         )}
         {selectedNode && selectedTotal !== null && (
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <span className="font-medium text-foreground">
               {selectedNode.name || "Unknown"}
             </span>
-            <span className="ml-2 font-mono">
+            <span className="font-mono">
               {formatCurrency(selectedTotal, currency)}
             </span>
-            <span className="ml-2">Click again to view transactions</span>
+            <span>Click again to view transactions</span>
           </p>
         )}
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="h-[400px] w-full">
+        <div className="h-[320px] w-full sm:h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
             <Sankey
               data={data}
-              nodePadding={24}
-              nodeWidth={8}
-              margin={{ top: 24, right: 180, bottom: 24, left: 180 }}
+              nodePadding={isMobile ? 14 : 24}
+              nodeWidth={isMobile ? 6 : 8}
+              margin={
+                isMobile
+                  ? { top: 20, right: 72, bottom: 20, left: 72 }
+                  : { top: 24, right: 180, bottom: 24, left: 180 }
+              }
               iterations={64}
               node={<CustomNode selectedCategory={selectedCategory} />}
               link={<CustomLink selectedCategory={selectedCategory} />}

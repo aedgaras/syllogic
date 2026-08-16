@@ -275,22 +275,22 @@ export function ApiKeysManager({
                 {keys.map((key) => (
                   <div
                     key={key.id}
-                    className="flex items-center justify-between rounded border p-3"
+                    className="flex flex-col gap-3 rounded border p-3 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
                         <RiKeyLine className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium">{key.name}</p>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="break-words text-sm font-medium">{key.name}</p>
                           {isExpired(key.expiresAt) && (
                             <span className="text-xs text-destructive">
                               Expired
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <code className="rounded bg-muted px-1">
                             {key.keyPrefix}...
                           </code>
@@ -312,6 +312,7 @@ export function ApiKeysManager({
                     <Button
                       variant="ghost"
                       size="icon-sm"
+                      className="self-end sm:self-auto"
                       onClick={() => {
                         setDeletingKey(key);
                         setDeleteDialogOpen(true);

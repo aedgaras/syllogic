@@ -114,7 +114,7 @@ export function ReportForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-lg space-y-5 text-foreground">
+    <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-5 text-foreground">
       <div>
         <label className="block text-sm font-medium mb-1">Name</label>
         <input
@@ -135,7 +135,7 @@ export function ReportForm({
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
           <label className="block text-sm font-medium mb-1">Mode</label>
           <select
@@ -172,7 +172,7 @@ export function ReportForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="block text-sm font-medium mb-1">Frequency</label>
           <select
@@ -233,14 +233,14 @@ export function ReportForm({
 
       <div>
         <label className="block text-sm font-medium mb-1">Recipients</label>
-        <div className="flex gap-2 mb-2">
+        <div className="mb-2 flex flex-col gap-2 sm:flex-row">
           <input
             value={recipientDraft}
             onChange={(e) => setRecipientDraft(e.target.value)}
             placeholder="name@example.com"
-            className="flex-1 border border-border bg-background text-foreground rounded px-3 py-2 text-sm placeholder:text-muted-foreground"
+            className="min-w-0 flex-1 border border-border bg-background text-foreground rounded px-3 py-2 text-sm placeholder:text-muted-foreground"
           />
-          <Button type="button" variant="outline" onClick={addRecipient}>
+          <Button type="button" variant="outline" className="sm:w-auto" onClick={addRecipient}>
             Add
           </Button>
         </div>
@@ -248,12 +248,12 @@ export function ReportForm({
           {recipients.map((email) => (
             <span
               key={email}
-              className="bg-muted text-foreground rounded-full px-3 py-1 text-xs flex items-center gap-1"
+              className="bg-muted text-foreground rounded-full px-3 py-1 text-xs flex min-w-0 items-center gap-1"
             >
-              {email}
+              <span className="truncate">{email}</span>
               <button
                 type="button"
-                className="text-muted-foreground hover:text-foreground"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
                 onClick={() =>
                   setValue(
                     "recipient_emails",
@@ -279,7 +279,7 @@ export function ReportForm({
         </label>
       </div>
 
-      <div className="flex items-center gap-3 pt-2">
+      <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:gap-3">
         <Button type="submit" disabled={isSubmitting || accountsLoading || accountsError}>
           {report ? "Save changes" : "Create report"}
         </Button>

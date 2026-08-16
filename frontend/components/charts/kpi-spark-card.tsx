@@ -29,7 +29,7 @@ interface KpiSparkCardProps {
 function KpiSparkCardSkeleton() {
   return (
     <Card>
-      <CardContent className="flex items-center justify-between p-6">
+      <CardContent className="flex items-center justify-between gap-3 p-4 sm:p-6">
         <div className="space-y-2">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-8 w-32" />
@@ -63,21 +63,21 @@ export function KpiSparkCard({
 
   return (
     <Card>
-      <CardContent className="flex items-center justify-between p-6">
-        <div className="space-y-1">
+      <CardContent className="flex items-center justify-between gap-3 p-4 sm:p-6">
+        <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-2">
             {icon && (
               <span className="text-muted-foreground">{icon}</span>
             )}
-            <p className="text-xs font-medium text-muted-foreground">
+            <p className="truncate text-xs font-medium text-muted-foreground">
               {title}
             </p>
           </div>
-          <p className="font-mono text-2xl font-semibold tracking-tight">
+          <p className="break-words font-mono text-xl font-semibold tracking-tight sm:text-2xl">
             {formattedValue}
           </p>
-          <div className="flex items-center gap-2">
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="min-w-0 truncate text-xs text-muted-foreground">{subtitle}</p>
             {trend && (
               <span
                 className={cn(
@@ -92,7 +92,7 @@ export function KpiSparkCard({
           </div>
         </div>
         {sparkData.length > 0 && (
-          <div className="h-12 w-24 text-foreground">
+          <div className="hidden h-12 w-20 shrink-0 text-foreground min-[420px]:block sm:w-24">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={sparkData}

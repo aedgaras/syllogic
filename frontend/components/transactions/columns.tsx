@@ -149,6 +149,10 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
     enableSorting: false,
     enableHiding: false,
     enableResizing: false,
+    meta: {
+      mobilePriority: "primary",
+      mobileClassName: "shrink-0 pt-0.5",
+    },
   },
   {
     accessorKey: "bookedAt",
@@ -174,6 +178,10 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       </span>
     ),
     size: 120,
+    meta: {
+      mobileLabel: "Date",
+      mobilePriority: "secondary",
+    },
     sortingFn: "datetime",
     filterFn: (row, id, filterValue) => {
       if (!filterValue || !filterValue.from) return true;
@@ -214,6 +222,10 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       );
     },
     size: 280,
+    meta: {
+      mobilePriority: "primary",
+      mobileClassName: "flex-1",
+    },
     filterFn: "includesString",
   },
   {
@@ -235,6 +247,10 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       );
     },
     size: 150,
+    meta: {
+      mobileLabel: "Merchant",
+      mobilePriority: "secondary",
+    },
   },
   {
     accessorKey: "category",
@@ -249,6 +265,10 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       );
     },
     size: 140,
+    meta: {
+      mobileLabel: "Category",
+      mobilePriority: "secondary",
+    },
     filterFn: (row, id, filterValue) => {
       if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
       if (filterValue.includes("uncategorized") && !row.original.category) return true;
@@ -285,6 +305,10 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       );
     },
     size: 110,
+    meta: {
+      mobilePriority: "primary",
+      mobileClassName: "shrink-0 text-right",
+    },
     filterFn: (row, id, filterValue) => {
       if (!filterValue || (!filterValue.min && !filterValue.max)) return true;
       const amount = Math.abs(row.getValue("amount") as number);
@@ -314,6 +338,10 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       );
     },
     size: 140,
+    meta: {
+      mobileLabel: "Account",
+      mobilePriority: "secondary",
+    },
     filterFn: (row, id, filterValue) => {
       if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
       const account = row.original.account;
@@ -338,6 +366,9 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       );
     },
     size: 60,
+    meta: {
+      mobilePriority: "hidden",
+    },
     filterFn: (row, id, filterValue) => {
       if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
       if (filterValue.includes("no_subscription") && !row.original.recurringTransaction) return true;
@@ -370,6 +401,9 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       );
     },
     size: 60,
+    meta: {
+      mobilePriority: "hidden",
+    },
     filterFn: (row, id, filterValue) => {
       if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
       if (filterValue.includes("not_linked") && !row.original.transactionLink) return true;
@@ -387,6 +421,10 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       ) : null;
     },
     size: 80,
+    meta: {
+      mobileLabel: "Status",
+      mobilePriority: "secondary",
+    },
     filterFn: (row, id, filterValue) => {
       if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
       if (filterValue.includes("pending") && row.original.pending) return true;
@@ -400,6 +438,9 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
     cell: () => null, // Hidden column used for filtering only
     size: 0,
     enableHiding: true,
+    meta: {
+      mobilePriority: "hidden",
+    },
     filterFn: (row, id, filterValue) => {
       if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
       const includeInAnalytics = row.original.includeInAnalytics ?? true;

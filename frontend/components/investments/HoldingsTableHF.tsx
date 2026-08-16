@@ -187,7 +187,143 @@ export function HoldingsTableHF({
         )}
       </CardHeader>
       <CardContent className="p-0">
-        <Table>
+        <div className="divide-y md:hidden">
+          {(["etf", "equity", "cash"] as const).map((groupType) => {
+            const groupRows = rows.filter((r) => r.instrument_type === groupType);
+            if (groupRows.length === 0) return null;
+            const groupTotal = groupRows.reduce((s, r) => s + r._value, 0);
+            const groupLabel =
+              groupType === "etf" ? "ETF" : groupType === "equity" ? "Equity" : "Cash";
+
+            return (
+              <section key={groupType}>
+                <div className="flex items-center justify-between gap-3 bg-muted/40 px-4 py-2 text-xs font-semibold uppercase text-muted-foreground">
+                  <span>{groupLabel} · {groupRows.length}</span>
+                  <span className="shrink-0 tabular-nums">
+                    {portfolioCurrencySymbol} {groupTotal.toLocaleString("en", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+                <div className="divide-y">
+                  {groupRows.map((h) => {
+                    const sym = currencySymbol(h.currency);
+                    return (
+                      <article
+                        key={h.id}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View details for ${h.symbol}`}
+                        onClick={() => router.push(`/investments/${h.id}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            router.push(`/investments/${h.id}`);
+                          }
+                        }}
+                        className={`cursor-pointer p-4 ${h.is_stale ? "bg-amber-50 dark:bg-amber-950/30" : ""}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-bold">{h.symbol}</span>
+                              <TypeBadge type={h.instrument_type} />
+                              {h.is_stale && (
+                                <span
+                                  title="Price may be stale"
+                                  className="size-1.5 rounded-full bg-amber-500"
+                                />
+                              )}
+                              <OwnerBadges entityType="account" entityId={h.account_id} size={16} />
+                            </div>
+                            <div className="break-words text-[10px] text-muted-foreground">
+                              {h.name ?? ""}
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <div className="tabular-nums text-sm font-semibold">
+                              {portfolioCurrencySymbol} {h._value.toLocaleString("en", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {h.current_price ? `${sym} ${h._price.toFixed(2)}` : "—"}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <div className="text-muted-foreground">Account</div>
+                            <Badge variant="outline">{h._acct}</Badge>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-muted-foreground">Qty</div>
+                            <div className="tabular-nums">{h._qty.toLocaleString()}</div>
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground">P&L</div>
+                            <div
+                              className={`tabular-nums ${
+                                h._pnl == null
+                                  ? "text-muted-foreground"
+                                  : h._pnl >= 0
+                                    ? "text-emerald-600 dark:text-emerald-400"
+                                    : "text-destructive"
+                              }`}
+                            >
+                              {h._pnl == null
+                                ? "—"
+                                : `${h._pnl >= 0 ? "+" : ""}${portfolioCurrencySymbol} ${h._pnl.toLocaleString("en", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}`}
+                            </div>
+                          </div>
+                          {!readOnly && h.source === "manual" && (
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingId(h.id);
+                                }}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingId(h.id);
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+          <div className="flex items-center justify-between gap-3 bg-muted/40 px-4 py-3 text-sm font-semibold">
+            <span>Total</span>
+            <span className="tabular-nums">
+              {portfolioCurrencySymbol} {totalValue.toLocaleString("en", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </span>
+          </div>
+        </div>
+        <Table className="hidden md:table">
           <TableHeader>
             <TableRow>
               {(

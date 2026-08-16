@@ -268,7 +268,7 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold">Bank Connections</h2>
           <p className="text-sm text-muted-foreground">
@@ -298,17 +298,17 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
               key={connection.id}
               className="rounded-lg border p-4"
             >
-              <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
                   <RiBankLine className="h-5 w-5" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{connection.aspspName}</span>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="break-words font-medium">{connection.aspspName}</span>
                     {getStatusBadge(connection)}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span>{connection.aspspCountry}</span>
                     {connection.lastSyncedAt && (
                       <>
@@ -355,7 +355,7 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {connection.status === "active" && (
                   <Button
                     variant="outline"
@@ -422,7 +422,7 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
               </div>
               {syncingIds.has(connection.id) && (
                 <div className="mt-3 space-y-1.5">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                     <span>
                       {(() => {
                         const progress = syncProgress.get(connection.id);

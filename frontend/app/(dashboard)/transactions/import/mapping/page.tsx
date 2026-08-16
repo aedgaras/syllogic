@@ -170,7 +170,7 @@ function MappingPageContent() {
   return (
     <>
       <Header title="Map Columns" />
-      <div className="flex h-[calc(100vh-4rem)] flex-col p-4 pt-0">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 pt-0 lg:h-[calc(100vh-4rem)] lg:overflow-hidden">
         {/* AI Mapping Status Banner */}
         {isAiMapping && (
           <div className="mb-4 flex items-center gap-2 rounded-lg border bg-muted/50 px-4 py-3">
@@ -180,10 +180,10 @@ function MappingPageContent() {
         )}
 
         {/* Main Container with 2-Column Layout */}
-        <div className="flex-1 min-h-0 overflow-hidden rounded-lg border bg-card">
-          <div className="grid h-full min-h-0 lg:grid-cols-2 lg:divide-x">
+        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border bg-card">
+          <div className="grid min-h-0 lg:h-full lg:grid-cols-2 lg:divide-x">
             {/* Left Column - Field Mapping */}
-            <div className="flex min-h-0 flex-col p-6">
+            <div className="flex min-h-[360px] flex-col p-4 sm:p-6 lg:min-h-0">
               <div className="mb-4">
                 <h2 className="text-lg font-semibold">Field Mapping</h2>
                 <p className="text-sm text-muted-foreground">
@@ -200,7 +200,7 @@ function MappingPageContent() {
             </div>
 
             {/* Right Column - Dynamic Sample Preview */}
-            <div className="flex min-h-0 flex-col border-t p-6 lg:border-t-0">
+            <div className="flex min-h-[360px] flex-col border-t p-4 sm:p-6 lg:min-h-0 lg:border-t-0">
               <CsvSamplePreview
                 headers={csvData.headers}
                 sampleRows={csvData.sampleRows}
@@ -211,7 +211,7 @@ function MappingPageContent() {
         </div>
 
         {/* Footer Actions */}
-        <div className="mt-6 flex items-center justify-between border-t pt-4">
+        <div className="mt-6 flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
           <Button
             type="button"
             variant="outline"

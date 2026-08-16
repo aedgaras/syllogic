@@ -10,9 +10,9 @@ export function DashboardSkeleton() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       {/* Filters row */}
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-9 w-64" />
-        <Skeleton className="h-9 w-28" />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <Skeleton className="h-9 w-full sm:w-64" />
+        <Skeleton className="h-9 w-full sm:w-28" />
       </div>
 
       {/* Row 1: KPI cards */}
@@ -24,8 +24,8 @@ export function DashboardSkeleton() {
 
       {/* Row 2: charts */}
       <div className="grid gap-4 md:grid-cols-5">
-        <Skeleton className="col-span-3 h-80 w-full" />
-        <Skeleton className="col-span-2 h-80 w-full" />
+        <Skeleton className="h-80 w-full md:col-span-3" />
+        <Skeleton className="h-80 w-full md:col-span-2" />
       </div>
 
       {/* Row 3: cash flow sankey */}

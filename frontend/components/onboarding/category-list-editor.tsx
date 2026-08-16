@@ -79,7 +79,7 @@ export function CategoryListEditor({
         <div className="space-y-6">
         {visibleGroups.map((group) => (
           <div key={group.type}>
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="text-sm font-medium text-muted-foreground">
                 {group.label} ({group.categories.length})
               </h3>

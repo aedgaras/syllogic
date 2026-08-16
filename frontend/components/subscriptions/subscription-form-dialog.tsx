@@ -568,7 +568,7 @@ export function SubscriptionFormDialog({
             </div>
           </div>
 
-          <DialogFooter className="mt-4">
+          <DialogFooter className="mt-4 flex-col-reverse gap-2 sm:flex-row">
             <Button
               type="button"
               variant="outline"

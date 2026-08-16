@@ -103,7 +103,7 @@ export default function OnboardingStep3Page() {
                   {accounts.map((account) => (
                     <div
                       key={account.id}
-                      className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+                      className="flex flex-col gap-2 rounded-md border px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
                     >
                       <span className="font-medium">{account.name}</span>
                       <span className="text-muted-foreground">
@@ -133,7 +133,7 @@ export default function OnboardingStep3Page() {
             </Button>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <Button variant="outline" onClick={handleBack}>
             <RiArrowLeftLine className="mr-2 h-4 w-4" />
             Back

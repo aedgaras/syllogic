@@ -136,7 +136,7 @@ export default function StepFourImportPage() {
             <CsvUploadDropzone onFileSelect={handleFileSelect} isUploading={isLoading} />
           </div>
         </CardContent>
-        <CardFooter className="justify-between">
+        <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <Button type="button" variant="outline" onClick={handleBack}>
             <RiArrowLeftLine className="mr-2 h-4 w-4" />
             Back

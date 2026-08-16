@@ -64,7 +64,7 @@ export function SettingsTabs({
 }: SettingsTabsProps) {
   return (
     <Tabs defaultValue={defaultTab} className="flex-1">
-      <TabsList variant="line" className="mb-6">
+      <TabsList variant="line" className="mb-6 w-full">
         <TabsTrigger value="profile" data-walkthrough="walkthrough-profile">
           <RiUserLine className="mr-1.5 h-4 w-4" />
           Profile

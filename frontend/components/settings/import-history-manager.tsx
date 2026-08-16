@@ -81,11 +81,11 @@ export function ImportHistoryManager({ initialImports, canDelete = true }: Impor
                 return (
                   <div
                     key={imp.id}
-                    className="flex items-center justify-between gap-4 py-3"
+                    className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                   >
                     {/* Left: file info */}
                     <div className="min-w-0 flex-1 space-y-0.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <span className="truncate text-xs font-medium font-mono">
                           {imp.fileName}
                         </span>
@@ -100,7 +100,7 @@ export function ImportHistoryManager({ initialImports, canDelete = true }: Impor
                           </Tooltip>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         {imp.account && <span>{imp.account.name}</span>}
                         {imp.account && imp.createdAt && <span>·</span>}
                         {imp.createdAt && (
@@ -116,7 +116,7 @@ export function ImportHistoryManager({ initialImports, canDelete = true }: Impor
                     </div>
 
                     {/* Right: status + action */}
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">
                       <Badge variant={statusBadgeVariant(imp.status)} className="text-xs capitalize">
                         {imp.status ?? "unknown"}
                       </Badge>

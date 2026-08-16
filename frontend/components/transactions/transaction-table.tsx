@@ -331,6 +331,7 @@ export function TransactionTable({
         }}
         wrapperClassName="flex min-h-0 flex-1 flex-col"
         tableContainerClassName="min-h-0 flex-1 overflow-y-auto"
+        mobileCards
         tableContainerProps={
           { "data-walkthrough": "walkthrough-table" } as React.HTMLAttributes<HTMLDivElement>
         }

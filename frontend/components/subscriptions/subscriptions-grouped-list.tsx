@@ -187,7 +187,7 @@ export function SubscriptionsGroupedList({
     return (
       <div
         className={cn(
-          "flex items-center justify-between px-4 py-2 bg-muted/40 text-xs font-semibold uppercase text-muted-foreground",
+          "flex flex-col gap-2 px-4 py-2 bg-muted/40 text-xs font-semibold uppercase text-muted-foreground sm:flex-row sm:items-center sm:justify-between",
           muted && "opacity-60"
         )}
       >
@@ -200,7 +200,7 @@ export function SubscriptionsGroupedList({
             {group.name}
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <WeightBarVisualizer percentage={group.percentage} color={group.color} />
             <span className="text-xs font-medium">
@@ -249,7 +249,7 @@ export function SubscriptionsGroupedList({
       <div
         key={item.id}
         className={cn(
-          "flex items-center gap-4 px-4 py-3 hover:bg-muted/40",
+          "flex flex-col gap-3 px-4 py-3 hover:bg-muted/40 sm:flex-row sm:items-center sm:gap-4",
           !item.isSuggestion && "cursor-pointer",
           muted && "opacity-60"
         )}
@@ -290,7 +290,7 @@ export function SubscriptionsGroupedList({
           {!item.isSuggestion && renderImportance(item.importance, muted)}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
           <span className="whitespace-nowrap font-mono text-sm">
             {amount.toFixed(2)} {currency}
           </span>
@@ -309,7 +309,7 @@ export function SubscriptionsGroupedList({
           )}
           <div onClick={(event) => event.stopPropagation()}>
             {item.isSuggestion ? (
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1">
                 <Button size="sm" variant="default" onClick={() => onVerify(item)}>
                   <RiCheckLine className="mr-1 h-3 w-3" />
                   Verify
@@ -362,8 +362,8 @@ export function SubscriptionsGroupedList({
 
   return (
     <>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-semibold">Subscriptions</h2>
           <span className="text-sm text-muted-foreground">
             ({subscriptionCount})

@@ -156,7 +156,7 @@ export default function OnboardingStep2Page() {
 
       <Card className="min-h-[640px] h-[640px] flex flex-col">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Set up your categories</CardTitle>
               <CardDescription>
@@ -186,7 +186,7 @@ export default function OnboardingStep2Page() {
             activeType={activeSubstep}
           />
         </CardContent>
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <Button variant="outline" onClick={handleBack}>
             <RiArrowLeftLine className="mr-2 h-4 w-4" />
             Back

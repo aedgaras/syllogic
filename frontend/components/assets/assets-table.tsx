@@ -38,7 +38,7 @@ function AccountRow({
 
   return (
     <div
-      className={`flex items-center py-2 pl-8 pr-4 border-t border-border/50 ${isLinkable ? "hover:bg-muted/50 cursor-pointer transition-colors" : ""}`}
+      className={`flex flex-col gap-2 border-t border-border/50 py-2 pl-4 pr-4 sm:flex-row sm:items-center sm:pl-8 ${isLinkable ? "hover:bg-muted/50 cursor-pointer transition-colors" : ""}`}
       onClick={handleClick}
     >
       <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -55,14 +55,14 @@ function AccountRow({
           )}
         </div>
       </div>
-      <div className="flex items-center gap-4 shrink-0">
-        <div className="flex items-center gap-2 w-36">
+      <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto sm:gap-4 sm:shrink-0">
+        <div className="flex min-w-36 flex-1 items-center gap-2 sm:w-36 sm:flex-none">
           <WeightBarVisualizer percentage={account.percentage} color={color} />
           <span className="text-sm text-muted-foreground w-12 text-right">
             {account.percentage.toFixed(0)}%
           </span>
         </div>
-        <span className="text-sm font-medium w-24 text-right">
+        <span className="ml-auto text-sm font-medium sm:w-24 sm:text-right">
           {formatCurrency(account.value, currency)}
         </span>
       </div>
@@ -84,14 +84,14 @@ function CategoryRow({
 
   if (!category.isActive) {
     return (
-      <div className="flex items-center py-3 px-4 border-t">
-        <div className="flex items-center gap-2 flex-1">
+      <div className="flex flex-col gap-2 border-t px-4 py-3 sm:flex-row sm:items-center">
+        <div className="flex flex-1 items-center gap-2">
           <div className="w-4 h-4" /> {/* Spacer for alignment */}
           <span className="text-sm text-muted-foreground">{category.label}</span>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground w-36 text-center">-</span>
-          <span className="text-sm text-muted-foreground w-24 text-right">
+        <div className="flex w-full items-center gap-4 sm:w-auto">
+          <span className="min-w-36 flex-1 text-sm text-muted-foreground sm:w-36 sm:flex-none sm:text-center">-</span>
+          <span className="text-sm text-muted-foreground sm:w-24 sm:text-right">
             {formatCurrency(0, currency)}
           </span>
         </div>
@@ -102,10 +102,10 @@ function CategoryRow({
   return (
     <div>
       <div
-        className="flex items-center py-3 px-4 border-t cursor-pointer hover:bg-muted/50 transition-colors"
+        className="flex cursor-pointer flex-col gap-2 border-t px-4 py-3 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center"
         onClick={() => hasAccounts && setIsOpen(!isOpen)}
       >
-        <div className="flex items-center gap-2 flex-1">
+        <div className="flex flex-1 items-center gap-2">
           {hasAccounts ? (
             isOpen ? (
               <RiArrowDownSLine className="h-4 w-4 text-muted-foreground" />
@@ -117,8 +117,8 @@ function CategoryRow({
           )}
           <span className="text-sm font-medium">{category.label}</span>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 w-36">
+        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto sm:gap-4">
+          <div className="flex min-w-36 flex-1 items-center gap-2 sm:w-36 sm:flex-none">
             <WeightBarVisualizer
               percentage={category.percentage}
               color={category.color}
@@ -127,7 +127,7 @@ function CategoryRow({
               {category.percentage.toFixed(0)}%
             </span>
           </div>
-          <span className="text-sm font-medium w-24 text-right">
+          <span className="ml-auto text-sm font-medium sm:w-24 sm:text-right">
             {formatCurrency(category.value, currency)}
           </span>
         </div>
@@ -154,7 +154,7 @@ export function AssetsTable({ categories, currency }: AssetsTableProps) {
   return (
     <div className="rounded-md border">
       {/* Header */}
-      <div className="flex items-center py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <div className="hidden items-center px-4 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground sm:flex">
         <div className="flex-1">Name</div>
         <div className="w-36 text-center">Weight</div>
         <div className="w-24 text-right">Value</div>

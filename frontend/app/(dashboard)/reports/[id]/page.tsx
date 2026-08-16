@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getReport, listAccounts } from "@/lib/reports/api";
+import { Header } from "@/components/layout/header";
 import { ReportForm } from "@/components/reports/ReportForm";
 
 export default function EditReportPage() {
@@ -19,28 +20,40 @@ export default function EditReportPage() {
     isError: accountsError,
   } = useQuery({ queryKey: ["accounts"], queryFn: listAccounts });
 
-  if (reportLoading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
+  if (reportLoading) {
+    return (
+      <>
+        <Header title="Edit report" />
+        <div className="p-4 pt-0 text-sm text-muted-foreground">Loading…</div>
+      </>
+    );
+  }
 
   if (reportError || !report) {
     return (
-      <div className="p-6 text-sm text-muted-foreground">
-        Report not found or failed to load.{" "}
-        <Link href="/reports" className="text-foreground underline underline-offset-4">
-          Back to reports
-        </Link>
-      </div>
+      <>
+        <Header title="Edit report" />
+        <div className="p-4 pt-0 text-sm text-muted-foreground">
+          Report not found or failed to load.{" "}
+          <Link href="/reports" className="text-foreground underline underline-offset-4">
+            Back to reports
+          </Link>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="p-6 text-foreground">
-      <h1 className="text-xl font-semibold mb-4">Edit report</h1>
-      <ReportForm
-        report={report}
-        availableAccounts={accounts ?? []}
-        accountsLoading={accountsLoading}
-        accountsError={accountsError}
-      />
-    </div>
+    <>
+      <Header title="Edit report" />
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0 text-foreground">
+        <ReportForm
+          report={report}
+          availableAccounts={accounts ?? []}
+          accountsLoading={accountsLoading}
+          accountsError={accountsError}
+        />
+      </div>
+    </>
   );
 }

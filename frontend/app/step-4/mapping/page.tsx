@@ -164,14 +164,14 @@ function MappingPageContent() {
   return (
     <div className="space-y-8">
       <OnboardingProgress currentStep={4} />
-      <Card className="min-h-[640px] h-[640px] flex flex-col">
+      <Card className="flex min-h-[640px] flex-col sm:h-[640px]">
         <CardHeader>
           <CardTitle>Map your columns</CardTitle>
           <CardDescription>
             Match each CSV column to the corresponding transaction field.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <CardContent className="flex min-h-0 flex-1 flex-col overflow-y-auto sm:overflow-hidden">
           {isAiMapping && (
             <div className="mb-4 flex items-center gap-2 rounded-lg border bg-muted/50 px-4 py-3">
               <RiSparklingLine className="h-4 w-4 animate-pulse text-primary" />
@@ -179,9 +179,9 @@ function MappingPageContent() {
             </div>
           )}
 
-          <div className="flex-1 min-h-0 rounded-lg border bg-card overflow-hidden">
-            <div className="grid h-full lg:grid-cols-2 lg:divide-x">
-              <div className="flex flex-col p-6 min-h-0">
+          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border bg-card">
+            <div className="grid min-h-0 sm:h-full lg:grid-cols-2 lg:divide-x">
+              <div className="flex min-h-[320px] flex-col p-4 sm:min-h-0 sm:p-6">
                 <div className="mb-4">
                   <h2 className="text-lg font-semibold">Field Mapping</h2>
                   <p className="text-sm text-muted-foreground">
@@ -197,7 +197,7 @@ function MappingPageContent() {
                 </div>
               </div>
 
-              <div className="flex flex-col border-t p-6 lg:border-t-0 min-h-0">
+              <div className="flex min-h-[320px] flex-col border-t p-4 sm:min-h-0 sm:p-6 lg:border-t-0">
                 <CsvSamplePreview
                   headers={csvData.headers}
                   sampleRows={csvData.sampleRows}
@@ -207,7 +207,7 @@ function MappingPageContent() {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <Button
             type="button"
             variant="outline"

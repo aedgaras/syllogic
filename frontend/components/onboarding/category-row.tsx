@@ -14,7 +14,7 @@ export function CategoryRow({ category, onEdit, onDelete }: CategoryRowProps) {
   const isSystem = category.isSystem ?? false;
 
   return (
-    <div className="flex items-center gap-3 py-2 px-1 hover:bg-muted/50 rounded">
+    <div className="flex flex-col gap-2 rounded px-1 py-2 hover:bg-muted/50 sm:flex-row sm:items-center sm:gap-3">
       {/* Color dot */}
       <div
         className="h-4 w-4 rounded-full shrink-0"
@@ -39,7 +39,7 @@ export function CategoryRow({ category, onEdit, onDelete }: CategoryRowProps) {
       </div>
 
       {/* Action buttons */}
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
         <Button
           type="button"
           variant="ghost"

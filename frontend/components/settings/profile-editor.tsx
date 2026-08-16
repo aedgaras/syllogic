@@ -85,7 +85,7 @@ export function ProfileEditor({ user }: ProfileEditorProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your name"
-              className="w-fit min-w-[200px]"
+              className="w-full sm:max-w-xs"
             />
           </div>
 
@@ -95,7 +95,7 @@ export function ProfileEditor({ user }: ProfileEditorProps) {
               id="email"
               value={user.email}
               disabled
-              className="w-fit min-w-[200px] bg-muted"
+              className="w-full bg-muted sm:max-w-xs"
             />
             <p className="text-xs text-muted-foreground">
               Email cannot be changed.
@@ -108,7 +108,7 @@ export function ProfileEditor({ user }: ProfileEditorProps) {
               id="currency"
               value={user.functionalCurrency || "EUR"}
               disabled
-              className="w-fit min-w-[80px] bg-muted"
+              className="w-full bg-muted sm:max-w-24"
             />
             <p className="text-xs text-muted-foreground">
               Functional currency is set during onboarding and cannot be changed.

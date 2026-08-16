@@ -53,6 +53,7 @@ interface DataTableProps<TData, TValue> {
   wrapperClassName?: string;
   tableContainerClassName?: string;
   tableContainerProps?: React.HTMLAttributes<HTMLDivElement>;
+  mobileCards?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -80,6 +81,7 @@ export function DataTable<TData, TValue>({
   wrapperClassName,
   tableContainerClassName,
   tableContainerProps,
+  mobileCards = false,
 }: DataTableProps<TData, TValue>) {
   const [uncontrolledSorting, setUncontrolledSorting] = React.useState<SortingState>([]);
   const resolvedSorting = sortingState ?? uncontrolledSorting;
@@ -149,21 +151,112 @@ export function DataTable<TData, TValue>({
     },
   });
 
+  const tableContainerRest = { ...tableContainerProps };
+  delete tableContainerRest.className;
+
+  const handleMobileCardKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>,
+    row: TData
+  ) => {
+    if (!onRowClick || (event.key !== "Enter" && event.key !== " ")) {
+      return;
+    }
+
+    event.preventDefault();
+    onRowClick(row);
+  };
+
   return (
     <div className={cn("w-full", wrapperClassName)}>
       {toolbar && <div className="shrink-0 mb-4">{toolbar(table)}</div>}
+      {mobileCards && (
+        <div
+          className={cn(
+            "space-y-2 md:hidden",
+            tableContainerClassName,
+            tableContainerProps?.className
+          )}
+          {...tableContainerRest}
+        >
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map((row) => {
+              const mobileCells = row
+                .getVisibleCells()
+                .filter((cell) => cell.column.columnDef.meta?.mobilePriority !== "hidden");
+              const primaryCells = mobileCells.filter(
+                (cell) => cell.column.columnDef.meta?.mobilePriority === "primary"
+              );
+              const secondaryCells = mobileCells.filter(
+                (cell) => cell.column.columnDef.meta?.mobilePriority !== "primary"
+              );
+
+              return (
+                <div
+                  key={row.id}
+                  role={onRowClick ? "button" : undefined}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  data-state={row.getIsSelected() && "selected"}
+                  onClick={() => onRowClick?.(row.original)}
+                  onKeyDown={(event) => handleMobileCardKeyDown(event, row.original)}
+                  className={cn(
+                    "border border-border bg-background p-3 text-xs shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                    onRowClick && "cursor-pointer"
+                  )}
+                >
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    {primaryCells.map((cell) => (
+                      <div
+                        key={cell.id}
+                        className={cn(
+                          "min-w-0",
+                          cell.column.columnDef.meta?.mobileClassName
+                        )}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </div>
+                    ))}
+                  </div>
+                  {secondaryCells.length > 0 && (
+                    <dl className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                      {secondaryCells.map((cell) => {
+                        const meta = cell.column.columnDef.meta;
+                        const label =
+                          meta?.mobileLabel ??
+                          (typeof cell.column.columnDef.header === "string"
+                            ? cell.column.columnDef.header
+                            : cell.column.id);
+
+                        return (
+                          <div key={cell.id} className="min-w-0">
+                            <dt className="text-[10px] uppercase text-muted-foreground">
+                              {label}
+                            </dt>
+                            <dd className={cn("mt-0.5 min-w-0", meta?.mobileClassName)}>
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </dd>
+                          </div>
+                        );
+                      })}
+                    </dl>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <div className="border border-border p-6 text-center text-xs text-muted-foreground">
+              No results.
+            </div>
+          )}
+        </div>
+      )}
       <div
         className={cn(
           "overflow-auto rounded-md border relative",
+          mobileCards && "hidden md:block",
           tableContainerClassName,
           tableContainerProps?.className
         )}
-        {...(tableContainerProps
-          ? (() => {
-              const { className, ...rest } = tableContainerProps;
-              return rest;
-            })()
-          : {})}
+        {...tableContainerRest}
       >
         <table className="w-full table-fixed caption-bottom text-xs">
           <TableHeader className="bg-muted sticky top-0 z-20 shadow-sm">

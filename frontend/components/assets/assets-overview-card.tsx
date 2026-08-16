@@ -22,12 +22,12 @@ export function AssetsOverviewCard({ data }: AssetsOverviewCardProps) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <CardTitle>Assets Overview</CardTitle>
             <AddAssetDialog onAssetAdded={handleAssetAdded} />
           </div>
-          <span className="text-2xl font-bold">
+          <span className="break-words text-xl font-bold sm:text-2xl">
             {formatCurrency(data.total, data.currency)}
           </span>
         </div>

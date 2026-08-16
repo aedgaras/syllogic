@@ -9,7 +9,54 @@ export function HoldingsTable({
   onDelete?: (id: string) => void;
 }) {
   return (
-    <table className="w-full text-sm">
+    <>
+    <div className="space-y-2 md:hidden">
+      {holdings.map((h) => (
+        <article key={h.id} className="rounded border p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="font-medium">{h.symbol}</div>
+              <div className="break-words text-xs text-muted-foreground">
+                {h.name}
+              </div>
+            </div>
+            <div
+              className={`shrink-0 text-right text-sm font-medium ${h.is_stale ? "text-amber-600" : ""}`}
+            >
+              {h.current_value_user_currency ?? "—"}
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <div className="text-muted-foreground">Type</div>
+              <div className="capitalize">{h.instrument_type}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-muted-foreground">Qty</div>
+              <div>{h.quantity}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Price</div>
+              <div>
+                {h.current_price ?? "—"} {h.currency}
+              </div>
+            </div>
+            <div className="text-right">
+              {onDelete && h.source === "manual" && (
+                <button
+                  type="button"
+                  className="text-xs text-red-600"
+                  onClick={() => onDelete(h.id)}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+    <table className="hidden w-full text-sm md:table">
       <thead className="text-left text-muted-foreground">
         <tr>
           <th>Symbol</th>
@@ -52,5 +99,6 @@ export function HoldingsTable({
         ))}
       </tbody>
     </table>
+    </>
   );
 }

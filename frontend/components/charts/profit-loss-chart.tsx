@@ -60,7 +60,7 @@ const chartConfig = {
 
 function ProfitLossChartSkeleton() {
   return (
-    <Card className="col-span-3">
+    <Card>
       <CardHeader>
         <Skeleton className="h-5 w-32" />
       </CardHeader>
@@ -150,15 +150,15 @@ export function ProfitLossChart({
   }
 
   return (
-    <Card className="col-span-3">
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium">Income vs Expenses</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        <ChartContainer config={chartConfig} className="h-[300px] w-full">
+        <ChartContainer config={chartConfig} className="h-[260px] w-full sm:h-[300px]">
           <ComposedChart
             data={data}
-            margin={{ top: 20, right: 20, left: 0, bottom: 24 }}
+            margin={{ top: 20, right: 8, left: -8, bottom: 20 }}
             barCategoryGap="20%"
           >
             <CartesianGrid
@@ -189,7 +189,7 @@ export function ProfitLossChart({
                 );
               }}
               tickMargin={10}
-              minTickGap={20}
+              minTickGap={16}
             />
             <YAxis
               axisLine={false}
@@ -197,7 +197,7 @@ export function ProfitLossChart({
               tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
               tickFormatter={(value) => formatCompactNumber(value)}
               tickMargin={8}
-              width={50}
+              width={42}
             />
             <ChartTooltip
               content={<CustomTooltip currency={currency} />}

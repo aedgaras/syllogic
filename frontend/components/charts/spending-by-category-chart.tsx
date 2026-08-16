@@ -34,8 +34,8 @@ const OPACITY_LEVELS = [1, 0.8, 0.6, 0.45, 0.3];
 
 function SpendingByCategoryChartSkeleton() {
   return (
-    <Card className="col-span-2">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-3 pb-2">
         <Skeleton className="h-5 w-32" />
         <Skeleton className="h-8 w-24" />
       </CardHeader>
@@ -101,11 +101,11 @@ export function SpendingByCategoryChart({
   const maxAmount = Math.max(...displayData.map((d) => d.amount), 1);
 
   return (
-    <Card className="col-span-2">
+    <Card>
       <CardHeader className="pb-4">
-        <div className="flex flex-row items-center justify-between">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-sm font-medium">{periodTitle} Expenses</CardTitle>
-          <span className="font-mono text-2xl font-semibold tracking-tight">
+          <span className="break-words font-mono text-xl font-semibold tracking-tight sm:text-2xl">
             {formatCurrency(total, currency)}
           </span>
         </div>
@@ -129,9 +129,9 @@ export function SpendingByCategoryChart({
                   navigateToCategorySpending(categoryKey);
                 }}
               >
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
                   <span className="truncate font-medium">{category.name || "Unknown"}</span>
-                  <span className="font-mono text-muted-foreground">
+                  <span className="shrink-0 font-mono text-muted-foreground">
                     {formatCurrency(category.amount, currency)}
                   </span>
                 </div>
@@ -149,12 +149,12 @@ export function SpendingByCategoryChart({
           })
         )}
       </CardContent>
-      <div className="px-6 pb-4">
+      <div className="px-4 pb-4">
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-7 border-white/70 bg-transparent px-2 text-xs text-white hover:bg-white/10 hover:text-white"
+          className="h-7 bg-transparent px-2 text-xs"
           onClick={navigateToCategorySpendingAll}
         >
           View All

@@ -21,7 +21,7 @@ export function SubscriptionsSummaryRow({
   const currency = getCurrencyFallback(data);
 
   return (
-    <div className="border-t bg-muted/30 px-4 py-3 flex items-center justify-between">
+    <div className="flex flex-col gap-2 border-t bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <span className="text-sm font-medium text-muted-foreground">
         Monthly Total
       </span>

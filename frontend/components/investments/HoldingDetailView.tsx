@@ -177,7 +177,7 @@ export function HoldingDetailView({
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-5">
         {stats.map(({ label, value, tone }) => (
           <Card key={label}>
             <CardContent className="flex flex-col gap-1 p-3">
@@ -225,7 +225,7 @@ export function HoldingDetailView({
       </Card>
 
       <Tabs defaultValue="overview">
-        <TabsList>
+        <TabsList className="w-full sm:w-fit">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="about">About</TabsTrigger>
@@ -240,8 +240,52 @@ export function HoldingDetailView({
                     : "Position metadata, cost-basis breakdown and lots will appear here once trades are imported."}
                 </p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                <>
+                  <div className="space-y-2 md:hidden">
+                    {lots.map((lot, idx) => {
+                      const qty = Number(lot.quantity_remaining);
+                      const cps = Number(lot.cost_per_share_native);
+                      const px = Number(holding.current_price ?? 0);
+                      const lotValue = px > 0 ? qty * px : NaN;
+                      return (
+                        <article
+                          key={`${lot.open_date}-${lot.cost_per_share_native}-${idx}`}
+                          className="rounded border p-3 text-sm"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="text-xs text-muted-foreground">Open date</div>
+                              <div className="tabular-nums">{lot.open_date}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-muted-foreground">Lot value</div>
+                              <div className="tabular-nums font-medium">
+                                {Number.isFinite(lotValue)
+                                  ? `${holdingCurrSym} ${fmt(lotValue)}`
+                                  : "—"}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                            <div>
+                              <div className="text-muted-foreground">Qty</div>
+                              <div className="tabular-nums">{fmt(qty, qty < 1 ? 4 : 2)}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Cost / share</div>
+                              <div className="tabular-nums">{fmt(cps, 4)}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-muted-foreground">Age</div>
+                              <div className="tabular-nums">{lot.age_days}d</div>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                  <div className="hidden overflow-x-auto md:block">
+                    <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
                         <th className="py-2 pr-4">Open date</th>
@@ -287,8 +331,9 @@ export function HoldingDetailView({
                         );
                       })}
                     </tbody>
-                  </table>
-                </div>
+                    </table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -301,8 +346,61 @@ export function HoldingDetailView({
                   No trades recorded for this holding yet.
                 </p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                <>
+                  <div className="space-y-2 md:hidden">
+                    {trades.map((t) => {
+                      const total =
+                        t.side === "buy"
+                          ? Number(t.cost_native ?? 0)
+                          : Number(t.proceeds_native ?? 0);
+                      return (
+                        <article key={t.id} className="rounded border p-3 text-sm">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="text-xs text-muted-foreground">Date</div>
+                              <div className="tabular-nums">{t.trade_date}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-muted-foreground">Total</div>
+                              <div className="tabular-nums font-medium">
+                                {holdingCurrSym} {fmt(total)}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs min-[420px]:grid-cols-4">
+                            <div>
+                              <div className="text-muted-foreground">Side</div>
+                              <div
+                                className={
+                                  t.side === "buy"
+                                    ? "capitalize text-emerald-600 dark:text-emerald-400"
+                                    : "capitalize text-destructive"
+                                }
+                              >
+                                {t.side}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Qty</div>
+                              <div className="tabular-nums">{fmt(Number(t.quantity), 4)}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Price</div>
+                              <div className="tabular-nums">{fmt(Number(t.price), 4)}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Fees</div>
+                              <div className="tabular-nums">
+                                {Number(t.fees) > 0 ? fmt(Number(t.fees), 2) : "—"}
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                  <div className="hidden overflow-x-auto md:block">
+                    <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
                         <th className="py-2 pr-4">Date</th>
@@ -353,8 +451,9 @@ export function HoldingDetailView({
                         );
                       })}
                     </tbody>
-                  </table>
-                </div>
+                    </table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -362,17 +461,17 @@ export function HoldingDetailView({
         <TabsContent value="about">
           <Card>
             <CardContent className="p-4 text-sm">
-              <dl className="grid grid-cols-2 gap-y-2 gap-x-6">
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
                 <dt className="text-muted-foreground">Symbol</dt>
-                <dd>{holding.symbol}</dd>
+                <dd className="break-words">{holding.symbol}</dd>
                 <dt className="text-muted-foreground">Instrument type</dt>
                 <dd className="capitalize">{holding.instrument_type}</dd>
                 <dt className="text-muted-foreground">Currency</dt>
-                <dd>{holding.currency}</dd>
+                <dd className="break-words">{holding.currency}</dd>
                 <dt className="text-muted-foreground">Source</dt>
                 <dd className="capitalize">{holding.source}</dd>
                 <dt className="text-muted-foreground">Account</dt>
-                <dd>{accountName}</dd>
+                <dd className="break-words">{accountName}</dd>
               </dl>
             </CardContent>
           </Card>
