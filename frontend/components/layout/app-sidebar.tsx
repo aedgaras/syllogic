@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   RiHomeLine,
   RiExchangeLine,
@@ -41,7 +41,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   GLOBAL_FILTER_STORAGE_KEY,
-  resolveGlobalFilterQueryString,
+  normalizeGlobalFilterQueryString,
 } from "@/lib/filters/global-filters";
 
 type SidebarUser = {
@@ -93,13 +93,38 @@ const navItems = [
   },
 ];
 
+function subscribeToGlobalFilterStorage(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  return () => window.removeEventListener("storage", onStoreChange);
+}
+
+function getStoredGlobalFilterQueryString() {
+  try {
+    return normalizeGlobalFilterQueryString(
+      localStorage.getItem(GLOBAL_FILTER_STORAGE_KEY)
+    );
+  } catch {
+    return "";
+  }
+}
+
+function getServerGlobalFilterQueryString() {
+  return "";
+}
+
 export function AppSidebar({ initialUser }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
   const { isMobile, state, setOpen, setOpenMobile } = useSidebar();
   const [hasMarkError, setHasMarkError] = useState(false);
   const [avatarLoadError, setAvatarLoadError] = useState(false);
+  const storedFilterQueryString = useSyncExternalStore(
+    subscribeToGlobalFilterStorage,
+    getStoredGlobalFilterQueryString,
+    getServerGlobalFilterQueryString
+  );
   const isCollapsed = !isMobile && state === "collapsed";
   const brandImageSrc =
     isCollapsed && !hasMarkError
@@ -111,30 +136,19 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
     resolvedUser?.profilePhotoPath ?? resolvedUser?.image ?? undefined;
   const showAvatarFallback = !avatarSrc || avatarLoadError;
 
-  const getSharedFilterQueryString = () => {
-    if (typeof window === "undefined") {
-      return "";
-    }
+  const currentFilterQueryString = useMemo(
+    () => normalizeGlobalFilterQueryString(searchParams.toString()),
+    [searchParams]
+  );
 
-    let storedQuery: string | null = null;
-    try {
-      storedQuery = localStorage.getItem(GLOBAL_FILTER_STORAGE_KEY);
-    } catch {
-      storedQuery = null;
-    }
-
-    return resolveGlobalFilterQueryString(window.location.search, storedQuery);
-  };
-
-  const getHomePathWithFilters = () => {
-    const queryString = getSharedFilterQueryString();
-    return queryString ? `/?${queryString}` : "/";
-  };
-
-  const getTransactionsPathWithFilters = () => {
-    const queryString = getSharedFilterQueryString();
-    return queryString ? `/transactions?${queryString}` : "/transactions";
-  };
+  const sharedFilterQueryString =
+    currentFilterQueryString || storedFilterQueryString;
+  const homePathWithFilters = sharedFilterQueryString
+    ? `/?${sharedFilterQueryString}`
+    : "/";
+  const transactionsPathWithFilters = sharedFilterQueryString
+    ? `/transactions?${sharedFilterQueryString}`
+    : "/transactions";
 
   const handleSignOut = async () => {
     await signOut();
@@ -159,7 +173,7 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
             <div className="flex items-center gap-1">
               <SidebarMenuButton
                 size="lg"
-                onClick={() => router.push(getHomePathWithFilters())}
+                onClick={() => router.push(homePathWithFilters)}
                 className={isCollapsed ? "justify-center" : "w-full"}
               >
                 <div className="bg-sidebar-accent border-sidebar-border flex aspect-square size-8 items-center justify-center overflow-hidden border shrink-0">
@@ -212,9 +226,9 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
                       <Link
                         href={
                           item.href === "/"
-                            ? getHomePathWithFilters()
+                            ? homePathWithFilters
                             : item.href === "/transactions"
-                            ? getTransactionsPathWithFilters()
+                            ? transactionsPathWithFilters
                             : item.href
                         }
                         prefetch
