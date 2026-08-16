@@ -16,7 +16,8 @@ export function WalkthroughAutoStart() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: session } = useSession();
-  const { startWalkthrough, hasCompletedPage, syncWithUser } = useWalkthroughStore();
+  const { tutorialsEnabled, startWalkthrough, hasCompletedPage, syncWithUser } =
+    useWalkthroughStore();
   const hasAutoStartedForPage = useRef<string | null>(null);
 
   // Sync completed state with current user (clears when user changes)
@@ -29,6 +30,7 @@ export function WalkthroughAutoStart() {
   useEffect(() => {
     const config = getPageConfig(pathname);
     if (!config) return;
+    if (!tutorialsEnabled) return;
 
     const tourParam = searchParams.get("tour");
 
@@ -45,7 +47,7 @@ export function WalkthroughAutoStart() {
       }, 100);
       return () => clearTimeout(t);
     }
-  }, [pathname, searchParams, startWalkthrough, hasCompletedPage]);
+  }, [pathname, searchParams, router, tutorialsEnabled, startWalkthrough, hasCompletedPage]);
 
   return null;
 }

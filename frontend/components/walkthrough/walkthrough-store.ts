@@ -20,6 +20,7 @@ export interface PageConfig {
 
 export interface WalkthroughState {
   isActive: boolean;
+  tutorialsEnabled: boolean;
   currentPage: string | null;
   currentStepIndex: number;
   showOverview: boolean;
@@ -33,6 +34,7 @@ export interface WalkthroughState {
   closeOverview: () => void;
   openOverview: (page: string) => void;
   hasCompletedPage: (page: string) => boolean;
+  setTutorialsEnabled: (enabled: boolean) => void;
   /** Sync completed state with current user; clears if user changed */
   syncWithUser: (userId: string) => void;
 }
@@ -41,6 +43,7 @@ export const useWalkthroughStore = create<WalkthroughState>()(
   persist(
     (set, get) => ({
       isActive: false,
+      tutorialsEnabled: true,
       currentPage: null,
       currentStepIndex: 0,
       showOverview: false,
@@ -48,6 +51,7 @@ export const useWalkthroughStore = create<WalkthroughState>()(
       userId: null,
 
       startWalkthrough: (page: string) => {
+        if (!get().tutorialsEnabled) return;
         set({
           isActive: true,
           currentPage: page,
@@ -100,6 +104,7 @@ export const useWalkthroughStore = create<WalkthroughState>()(
       },
 
       openOverview: (page: string) => {
+        if (!get().tutorialsEnabled) return;
         set({
           showOverview: true,
           currentPage: page,
@@ -108,6 +113,20 @@ export const useWalkthroughStore = create<WalkthroughState>()(
 
       hasCompletedPage: (page: string) => {
         return get().completedPages.includes(page);
+      },
+
+      setTutorialsEnabled: (enabled: boolean) => {
+        set({
+          tutorialsEnabled: enabled,
+          ...(enabled
+            ? {}
+            : {
+                isActive: false,
+                currentPage: null,
+                currentStepIndex: 0,
+                showOverview: false,
+              }),
+        });
       },
 
       syncWithUser: (userId: string) => {
@@ -119,7 +138,11 @@ export const useWalkthroughStore = create<WalkthroughState>()(
     }),
     {
       name: STORAGE_KEY,
-      partialize: (state) => ({ completedPages: state.completedPages, userId: state.userId }),
+      partialize: (state) => ({
+        completedPages: state.completedPages,
+        tutorialsEnabled: state.tutorialsEnabled,
+        userId: state.userId,
+      }),
     }
   )
 );

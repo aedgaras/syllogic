@@ -19,10 +19,10 @@ export function HelpButton() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const config = getPageConfig(pathname);
-  const { openOverview, startWalkthrough, closeOverview, showOverview, currentPage } =
+  const { tutorialsEnabled, openOverview, startWalkthrough, closeOverview, showOverview, currentPage } =
     useWalkthroughStore();
 
-  if (!config) return null;
+  if (!config || !tutorialsEnabled) return null;
 
   const handleStartTour = () => {
     closeOverview();

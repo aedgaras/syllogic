@@ -1,13 +1,22 @@
 "use client";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { RiUserLine, RiFolderLine, RiKeyLine, RiUploadLine, RiBankLine, RiGroupLine } from "@remixicon/react";
+import {
+  RiUserLine,
+  RiFolderLine,
+  RiKeyLine,
+  RiUploadLine,
+  RiBankLine,
+  RiGroupLine,
+  RiSettings4Line,
+} from "@remixicon/react";
 import { ProfileEditor } from "./profile-editor";
 import { CategoryManager } from "./category-manager";
 import { ApiKeysManager } from "./api-keys-manager";
 import { ImportHistoryManager } from "./import-history-manager";
 import { BankConnectionsManager } from "./bank-connections-manager";
 import { HouseholdTab } from "./household-tab";
+import { PreferencesTab } from "./preferences-tab";
 import type { User, Category } from "@/lib/db/schema";
 import type { CsvImportWithStats } from "@/lib/actions/csv-import";
 
@@ -91,6 +100,10 @@ export function SettingsTabs({
           <RiGroupLine className="mr-1.5 h-4 w-4" />
           Household
         </TabsTrigger>
+        <TabsTrigger value="preferences">
+          <RiSettings4Line className="mr-1.5 h-4 w-4" />
+          Preferences
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="profile">
@@ -121,6 +134,10 @@ export function SettingsTabs({
 
       <TabsContent value="household">
         <HouseholdTab people={people} />
+      </TabsContent>
+
+      <TabsContent value="preferences">
+        <PreferencesTab />
       </TabsContent>
     </Tabs>
   );
