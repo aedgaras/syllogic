@@ -15,9 +15,11 @@ import {
   RiFileTextLine,
   RiArrowRightSLine,
   RiArrowLeftSLine,
+  RiCloseLine,
 } from "@remixicon/react";
 import { HelpButton } from "@/components/walkthrough/help-button";
 import { signOut, useSession } from "@/lib/auth-client";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -95,10 +97,10 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
-  const { isMobile, state, setOpen } = useSidebar();
+  const { isMobile, state, setOpen, setOpenMobile } = useSidebar();
   const [hasMarkError, setHasMarkError] = useState(false);
   const [avatarLoadError, setAvatarLoadError] = useState(false);
-  const isCollapsed = state === "collapsed";
+  const isCollapsed = !isMobile && state === "collapsed";
   const brandImageSrc =
     isCollapsed && !hasMarkError
       ? "/brand/syllogic-mark.png"
@@ -178,6 +180,18 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
                   </div>
                 )}
               </SidebarMenuButton>
+              {isMobile && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Close sidebar"
+                  className="shrink-0"
+                  onClick={() => setOpenMobile(false)}
+                >
+                  <RiCloseLine className="size-4" />
+                </Button>
+              )}
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -204,6 +218,11 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
                             : item.href
                         }
                         prefetch
+                        onClick={() => {
+                          if (isMobile) {
+                            setOpenMobile(false);
+                          }
+                        }}
                         title={isCollapsed ? item.title : undefined}
                       />
                     }
