@@ -15,12 +15,16 @@ if (!connectionString) {
 assertProductionDatabaseTls(connectionString, "db");
 
 const sslRequired = databaseUrlRequiresTls(connectionString);
+const configuredPoolSize = Number.parseInt(process.env.DB_POOL_SIZE ?? "10", 10);
+const dbPoolSize = Number.isFinite(configuredPoolSize)
+  ? Math.min(100, Math.max(1, configuredPoolSize))
+  : 10;
 
 // Configure connection pooling to prevent "too many clients" errors
 // In Next.js serverless functions, we need to limit connections and reuse them
 const client = postgres(connectionString, {
   // Connection pool settings
-  max: 10, // Maximum number of connections in the pool (default is 10)
+  max: dbPoolSize,
   idle_timeout: 20, // Close idle connections after 20 seconds
   max_lifetime: 60 * 30, // Close connections after 30 minutes
   

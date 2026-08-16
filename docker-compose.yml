@@ -106,7 +106,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.dev
     container_name: finance_celery_worker
-    command: celery -A celery_app worker --loglevel=info --concurrency=4
+    command: celery -A celery_app worker --loglevel=info --concurrency=${CELERY_CONCURRENCY:-2}
     volumes:
       - ./backend:/app
       - ./frontend:/frontend:ro
@@ -183,8 +183,8 @@ services:
       - PATH=/pnpm:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       - NODE_ENV=development
       - NEXT_TELEMETRY_DISABLED=1
+      - NODE_OPTIONS=--max-old-space-size=${FRONTEND_NODE_MEMORY_MB:-2048}
       - WATCHPACK_POLLING=true
-      - CHOKIDAR_USEPOLLING=true
       - DATABASE_URL=postgresql://financeuser:financepass@db:5432/finance_db
       - APP_URL=http://localhost:3000
       - BETTER_AUTH_URL=http://localhost:3000

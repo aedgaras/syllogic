@@ -25,7 +25,19 @@ This directory contains the production-grade Docker Compose bundle:
 3. Start:
 
 ```bash
-docker compose --env-file deploy/compose/.env -f deploy/compose/docker-compose.yml up -d
+./scripts/prod-up.sh
+```
+
+For a Raspberry Pi or a small VPS, use lite mode instead:
+
+```bash
+./scripts/prod-up.sh --lite
+```
+
+Windows PowerShell/CMD:
+
+```powershell
+.\scripts\prod-up.bat -Lite
 ```
 
 4. Verify all services are running:
@@ -35,6 +47,40 @@ docker compose --env-file deploy/compose/.env -f deploy/compose/docker-compose.y
 ```
 
 All containers should show `Up` status. The `migrate` container will exit after completing database migrations (this is expected).
+
+## Lightweight / Raspberry Pi Mode
+
+Lite mode layers `docker-compose.lite.yml` over the production stack and runs
+only PostgreSQL, Redis, migrations, FastAPI, one Celery worker, Next.js, and
+Caddy. The worker embeds Celery Beat, so scheduled jobs continue to work while
+the separate Beat process is removed. MCP is not started.
+
+The override also:
+
+- runs one API worker and one `solo` Celery worker;
+- reduces frontend and backend database pools to two connections;
+- gives PostgreSQL small-host memory/WAL settings;
+- runs Redis without AOF to reduce SD-card writes;
+- increases health-check intervals to 30 seconds;
+- applies configurable memory limits suitable for a 2 GB ARM64 host.
+
+Use a 64-bit Raspberry Pi OS. Published release images include `linux/arm64`.
+Building the images on the Pi is not recommended; pull the prebuilt release
+images. Pin `APP_VERSION` to a release containing lite-mode support.
+
+Redis queues are ephemeral in lite mode. If the host restarts with work queued,
+retry that import or sync from the UI. Persistent application and PostgreSQL
+data are unaffected.
+
+To inspect the effective configuration:
+
+```bash
+docker compose \
+  --env-file deploy/compose/.env \
+  -f deploy/compose/docker-compose.yml \
+  -f deploy/compose/docker-compose.lite.yml \
+  config
+```
 
 ## Accessing the Application
 
@@ -62,6 +108,18 @@ docker compose \
 ```
 
 This is the recommended flow when validating recent code changes.
+
+To build the lite stack from the current checkout, layer the local-build and
+lite overrides and name the services explicitly:
+
+```bash
+docker compose \
+  --env-file deploy/compose/.env \
+  -f deploy/compose/docker-compose.yml \
+  -f deploy/compose/docker-compose.local.yml \
+  -f deploy/compose/docker-compose.lite.yml \
+  up -d --build postgres redis uploads-init migrate backend worker app caddy
+```
 
 ## Reusing Existing Dev `.env` Files (Optional)
 
@@ -96,9 +154,10 @@ docker compose \
 - We set explicit `container_name` values to avoid the `*-1` suffix. This makes container names stable, but it also means you **cannot** scale services with `--scale`, and you shouldn't run multiple Syllogic stacks on the same Docker host without changing names.
 - See [`docs/deployment-matrix.md`](../../docs/deployment-matrix.md) for the cross-environment contract (local/self-host/Railway v1+v2).
 
-## MCP Server (Enabled By Default)
+## MCP Server (Full Mode)
 
 This bundle includes an **MCP HTTP server** (FastMCP) and starts it by default.
+It is intentionally omitted by `prod-up.sh --lite`.
 
 1. Generate an API key in the app UI (Settings -> API Keys).
 2. Configure your MCP client to send `Authorization: Bearer pf_...`.
@@ -160,6 +219,7 @@ From repository root:
 
 - Full Docker local development stack: `./scripts/dev-up.sh --local`
 - Full prebuilt self-host stack: `./scripts/prod-up.sh`
+- Lightweight ARM64/small-server stack: `./scripts/prod-up.sh --lite`
 - Local source-compose smoke validation: `./scripts/local-smoke.sh`
 - VPS post-install verification: `deploy/install/post-install-check.sh /opt/syllogic`
 

@@ -65,6 +65,8 @@ services:
       DATA_ENCRYPTION_KEY_ID: ${DATA_ENCRYPTION_KEY_ID:-k1}
       # Optional integrations / features
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
     depends_on:
       postgres:
         condition: service_healthy
@@ -100,6 +102,8 @@ services:
       DATA_ENCRYPTION_KEY_ID: ${DATA_ENCRYPTION_KEY_ID:-k1}
       # Optional integrations / features
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
     depends_on:
       postgres:
         condition: service_healthy
@@ -112,7 +116,7 @@ services:
   worker:
     image: ghcr.io/syllogic-ai/syllogic-backend:${APP_VERSION:-edge}
     container_name: syllogic-worker
-    command: celery -A celery_app worker --loglevel=info --concurrency=4
+    command: celery -A celery_app worker --loglevel=info --concurrency=${CELERY_CONCURRENCY:-4} --pool=${CELERY_POOL:-prefork}
     environment:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
@@ -124,6 +128,8 @@ services:
       DATA_ENCRYPTION_KEY_ID: ${DATA_ENCRYPTION_KEY_ID:-k1}
       # Optional integrations / features
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
     depends_on:
       postgres:
         condition: service_healthy
@@ -148,6 +154,8 @@ services:
       DATA_ENCRYPTION_KEY_ID: ${DATA_ENCRYPTION_KEY_ID:-k1}
       # Optional integrations / features
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
     depends_on:
       postgres:
         condition: service_healthy
@@ -180,6 +188,7 @@ services:
       # Optional features
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       LOGO_DEV_API_KEY: ${LOGO_DEV_API_KEY:-}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
     volumes:
       - uploads_data:/data/uploads
     depends_on:

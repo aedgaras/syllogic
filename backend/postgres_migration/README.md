@@ -4,7 +4,8 @@ This directory contains database administration and migration tools for PostgreS
 
 ## Files
 
-- **`monitor_db.py`** - Streamlit app for monitoring and inspecting the database
+- **`monitor_db.py`** - Optional Streamlit app for monitoring and inspecting the database
+  - Install with: `pip install -r requirements-monitor.txt`
   - Run with: `streamlit run postgres_migration/monitor_db.py` (from the `backend` directory)
   - Provides a web UI to view all tables, filter data, and monitor database updates
 

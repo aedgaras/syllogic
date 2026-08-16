@@ -12,18 +12,20 @@
 #>
 
 param(
-    [switch]$Help
+    [switch]$Help,
+    [switch]$Lite
 )
 
 $ErrorActionPreference = "Stop"
 
 function Show-Usage {
-    Write-Host "Usage: prod-up.ps1"
+    Write-Host "Usage: prod-up.ps1 [-Lite]"
     Write-Host ""
     Write-Host "Starts the production stack using prebuilt Docker images from GHCR."
     Write-Host ""
     Write-Host "Options:"
     Write-Host "  -Help    Show this help message"
+    Write-Host "  -Lite    Use one worker/scheduler and omit the MCP container"
 }
 
 if ($Help) {
@@ -35,6 +37,7 @@ if ($Help) {
 $RootDir = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $EnvFile = Join-Path $RootDir "deploy\compose\.env"
 $ComposeFile = Join-Path $RootDir "deploy\compose\docker-compose.yml"
+$LiteComposeFile = Join-Path $RootDir "deploy\compose\docker-compose.lite.yml"
 
 # Check for .env file
 if (-not (Test-Path $EnvFile)) {
@@ -70,17 +73,37 @@ if ($AppVersion -eq "edge") {
     Write-Host ""
 }
 
+# Build Compose arguments. Lite mode names services explicitly so the separate
+# Beat and MCP services are not started.
+$ComposeArgs = @("compose", "--env-file", $EnvFile, "-f", $ComposeFile)
+$Services = @()
+$ModeName = "full"
+if ($Lite) {
+    $ComposeArgs += @("-f", $LiteComposeFile)
+    $Services = @("postgres", "redis", "uploads-init", "migrate", "backend", "worker", "app", "caddy")
+    $ModeName = "lite"
+}
+
 # Pull images
-Write-Host "Pulling prebuilt images (GHCR)..." -ForegroundColor Cyan
-docker compose --env-file $EnvFile -f $ComposeFile pull
+Write-Host "Pulling prebuilt images (GHCR) for $ModeName mode..." -ForegroundColor Cyan
+& docker @ComposeArgs pull @Services
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Failed to pull images." -ForegroundColor Red
     exit 1
 }
 
+if ($Lite) {
+    # Avoid duplicate schedules when switching an existing full stack to lite.
+    & docker compose --env-file $EnvFile -f $ComposeFile rm -s -f beat mcp
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Failed to remove full-mode Beat/MCP containers." -ForegroundColor Red
+        exit 1
+    }
+}
+
 # Start stack
-Write-Host "Starting production stack..." -ForegroundColor Cyan
-docker compose --env-file $EnvFile -f $ComposeFile up -d
+Write-Host "Starting production stack in $ModeName mode..." -ForegroundColor Cyan
+& docker @ComposeArgs up -d @Services
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Failed to start stack." -ForegroundColor Red
     exit 1

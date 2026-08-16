@@ -6,19 +6,29 @@ ENV_FILE="$ROOT_DIR/deploy/compose/.env"
 
 usage() {
   cat <<'EOF'
-Usage: prod-up.sh
+Usage: prod-up.sh [--lite]
+
+Options:
+  --lite  Use the resource-constrained single-host stack (no separate Beat or MCP)
 EOF
 }
+
+MODE="full"
 
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
   usage
   exit 0
 fi
 
+if [ "${1:-}" = "--lite" ]; then
+  MODE="lite"
+  shift
+fi
+
 if [ "$#" -gt 0 ]; then
-  echo "Unknown option: $1"
-  usage
-  exit 1
+    echo "Unknown option: $1"
+    usage
+    exit 1
 fi
 
 if [ ! -f "$ENV_FILE" ]; then
@@ -33,10 +43,26 @@ if [ "${APP_VERSION_VALUE:-edge}" = "edge" ]; then
   echo "For production, pin APP_VERSION to a release tag (for example vX.Y.Z)."
 fi
 
-echo "Pulling prebuilt images (GHCR)..."
-docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/deploy/compose/docker-compose.yml" pull
+COMPOSE_ARGS=(
+  --env-file "$ENV_FILE"
+  -f "$ROOT_DIR/deploy/compose/docker-compose.yml"
+)
+SERVICES=()
+if [ "$MODE" = "lite" ]; then
+  COMPOSE_ARGS+=(-f "$ROOT_DIR/deploy/compose/docker-compose.lite.yml")
+  SERVICES=(postgres redis uploads-init migrate backend worker app caddy)
+fi
 
-echo "Starting production stack..."
-docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/deploy/compose/docker-compose.yml" up -d
+echo "Pulling prebuilt images (GHCR) for $MODE mode..."
+docker compose "${COMPOSE_ARGS[@]}" pull "${SERVICES[@]}"
+
+if [ "$MODE" = "lite" ]; then
+  # Prevent duplicate schedules and retain the lite memory target when
+  # switching an existing full installation to lite mode.
+  docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/deploy/compose/docker-compose.yml" rm -s -f beat mcp
+fi
+
+echo "Starting production stack in $MODE mode..."
+docker compose "${COMPOSE_ARGS[@]}" up -d "${SERVICES[@]}"
 
 echo "Done."

@@ -1,0 +1,5 @@
+-r requirements.txt
+
+# Optional database monitor. Kept out of production images because Streamlit
+# pulls in PyArrow and other large visualization dependencies.
+streamlit>=1.28.0

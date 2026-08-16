@@ -29,15 +29,8 @@ RUN pip install --upgrade pip \
 
 
 ##
-# Frontend render-script dependencies.
-# - `send_report_run` (backend/tasks/report_tasks.py) shells out to
-#   `npx tsx frontend/emails/render-report.ts` to render the newsletter
-#   HTML/text via React Email. That script lives in the frontend/ package
-#   and needs its node_modules (@react-email/*, react, react-dom, tsx, ...)
-#   resolvable at runtime.
-# - This stage runs `pnpm install` against the frontend workspace so the
-#   resulting node_modules can be baked into the runner image below,
-#   independent of whatever's on the host.
+# Compile the React Email report renderer into one self-contained script so
+# every backend container does not carry the frontend dependency tree.
 # - This backend Dockerfile's primary build context stays `./backend`
 #   (unchanged, so existing Railway/CI/compose configs that build with
 #   context=./backend keep working). frontend/ is supplied as a separate
@@ -48,7 +41,7 @@ RUN pip install --upgrade pip \
 #   `docker build ./backend` or an unmodified Railway service) will fail this
 #   stage -- see final-review-fix-report.md for what's covered vs. not.
 ##
-FROM node:20-bookworm-slim AS frontend-deps
+FROM node:20-bookworm-slim AS report-builder
 
 WORKDIR /frontend
 
@@ -61,6 +54,17 @@ COPY --from=frontend xlsx-0.20.3.tgz ./xlsx-0.20.3.tgz
 
 RUN pnpm install --frozen-lockfile
 
+COPY --from=frontend emails ./emails
+
+RUN ESBUILD_BIN="$(find node_modules/.pnpm -path '*/node_modules/esbuild/bin/esbuild' -type f -print -quit)" \
+  && test -n "$ESBUILD_BIN" \
+  && node "$ESBUILD_BIN" emails/render-report.ts \
+    --bundle \
+    --platform=node \
+    --format=cjs \
+    --jsx=automatic \
+    --outfile=/render-report.cjs
+
 
 FROM python:3.11-slim AS runner
 
@@ -71,31 +75,21 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 ENV PATH="/opt/venv/bin:$PATH"
 ENV PROCESS_TYPE=api
-# Sibling directory the render subprocess uses to find render-report.ts and
-# its node_modules. Locally (outside Docker) report_tasks.py computes this
-# from __file__ since backend/ and frontend/ are checkout siblings; inside
-# the container we bake/copy frontend's render assets to this fixed path
-# and point the task at it explicitly.
+# Location of the bundled report renderer.
 ENV FRONTEND_EMAILS_DIR=/frontend/emails
 
-# Runtime deps: libpq for Postgres connectivity, Node.js/npm for the
-# render-report.ts subprocess invoked by tasks/report_tasks.py.
+# Runtime deps: libpq for Postgres connectivity and Node.js for the bundled
+# report renderer. npm is not required.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     nodejs \
-    npm \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/venv /opt/venv
 COPY . .
 
-# Render script + its dependencies (see frontend-deps stage above). Only
-# frontend/emails/** is needed at runtime -- render-report.ts and everything
-# it imports (report-newsletter.tsx + emails/components/*) is self-contained
-# there and only reaches into @react-email/components from node_modules.
-COPY --from=frontend-deps /frontend/node_modules /frontend/node_modules
-COPY --from=frontend emails /frontend/emails
-COPY --from=frontend tsconfig.json package.json /frontend/
+# Self-contained report renderer compiled in the report-builder stage.
+COPY --from=report-builder /render-report.cjs /frontend/emails/render-report.cjs
 
 # Non-root user for production hardening
 RUN useradd --create-home --uid 10001 app \
@@ -105,4 +99,4 @@ USER app
 EXPOSE 8000
 
 # Use PROCESS_TYPE to run API, MCP, Celery worker, or Celery beat from the same image.
-CMD ["sh", "-c", "if [ \"$PROCESS_TYPE\" = \"worker\" ]; then exec celery -A celery_app worker --loglevel=info --concurrency=4; elif [ \"$PROCESS_TYPE\" = \"beat\" ]; then exec celery -A celery_app beat --loglevel=info; elif [ \"$PROCESS_TYPE\" = \"mcp\" ]; then exec uvicorn mcp_server:app --host 0.0.0.0 --port ${PORT:-8001}; else exec gunicorn -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120; fi"]
+CMD ["sh", "-c", "if [ \"$PROCESS_TYPE\" = \"worker\" ]; then exec celery -A celery_app worker --loglevel=info --concurrency=${CELERY_CONCURRENCY:-4} --pool=${CELERY_POOL:-prefork}; elif [ \"$PROCESS_TYPE\" = \"beat\" ]; then exec celery -A celery_app beat --loglevel=info; elif [ \"$PROCESS_TYPE\" = \"mcp\" ]; then exec uvicorn mcp_server:app --host 0.0.0.0 --port ${PORT:-8001}; else exec gunicorn -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-2} --timeout 120; fi"]

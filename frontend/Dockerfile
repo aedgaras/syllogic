@@ -3,7 +3,7 @@
 ##
 # Frontend (Next.js) production image.
 # - Multi-stage build
-# - Production deps in runtime image (reliable for DB + migrations)
+# - Traced standalone runtime plus minimal DB migration dependencies
 # - Includes DB migrations runner + SQL migrations
 ##
 
@@ -25,6 +25,14 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS prod-deps
 # Drop devDependencies for the runtime image.
 RUN pnpm prune --prod
+
+# The standalone server contains only dependencies traced from the app. The
+# migration script is not part of that trace, so stage its two small packages
+# separately for the runtime image.
+FROM prod-deps AS migration-deps
+RUN mkdir -p /migration-node_modules \
+  && cp -LR node_modules/drizzle-orm /migration-node_modules/drizzle-orm \
+  && cp -LR node_modules/postgres /migration-node_modules/postgres
 
 
 FROM node:20-bookworm-slim AS builder
@@ -66,11 +74,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Production dependencies + build output
-COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
-COPY --from=builder --chown=node:node /app/package.json ./package.json
-COPY --from=builder --chown=node:node /app/.next ./.next
+# Use Next.js' traced standalone server instead of the complete production
+# dependency tree.
+COPY --from=builder --chown=node:node /app/.next/standalone ./
+COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 COPY --from=builder --chown=node:node /app/public ./public
+
+# Minimal dependencies used only by scripts/migrate.js.
+COPY --from=migration-deps --chown=node:node /migration-node_modules/drizzle-orm ./node_modules/drizzle-orm
+COPY --from=migration-deps --chown=node:node /migration-node_modules/postgres ./node_modules/postgres
 
 # Migration runner + SQL migrations (used by docker-compose one-shot "migrate" service)
 COPY --from=builder --chown=node:node /app/scripts/migrate.js ./scripts/migrate.js
@@ -84,4 +96,4 @@ COPY --from=builder --chown=node:node /app/lib/db/migrations ./lib/db/migrations
 USER node
 
 EXPOSE 3000
-CMD ["sh", "-c", "node scripts/migrate.js && exec node_modules/.bin/next start -p 3000 -H 0.0.0.0"]
+CMD ["sh", "-c", "node scripts/migrate.js && exec node server.js"]

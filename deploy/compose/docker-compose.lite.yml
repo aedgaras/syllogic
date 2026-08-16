@@ -1,0 +1,75 @@
+# Resource-constrained single-host override (Raspberry Pi / small VPS).
+# Use through scripts/prod-up.sh --lite so worker and beat are consolidated.
+
+services:
+  postgres:
+    command:
+      - postgres
+      - -c
+      - max_connections=30
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - effective_cache_size=256MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - work_mem=2MB
+      - -c
+      - min_wal_size=80MB
+      - -c
+      - max_wal_size=512MB
+    mem_limit: ${POSTGRES_MEMORY_LIMIT:-256m}
+    healthcheck:
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    # Celery messages are recoverable from the source database. Avoid constant
+    # AOF writes on SD cards; queued work may need to be retried after restart.
+    command: redis-server --appendonly no
+    mem_limit: ${REDIS_MEMORY_LIMIT:-64m}
+    healthcheck:
+      interval: 30s
+      timeout: 3s
+      retries: 5
+
+  uploads-init:
+    mem_limit: 32m
+
+  migrate:
+    mem_limit: ${MIGRATE_MEMORY_LIMIT:-256m}
+
+  backend:
+    environment:
+      WEB_CONCURRENCY: "1"
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-2}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-2}
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-384m}
+    healthcheck:
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    # -B embeds the scheduler in the only worker. This is appropriate for a
+    # single-host deployment and removes the separate Celery Beat container.
+    command: celery -A celery_app worker --loglevel=info --pool=solo --concurrency=1 -B
+    environment:
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-2}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-2}
+    mem_limit: ${WORKER_MEMORY_LIMIT:-512m}
+
+  app:
+    environment:
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-2}
+      NODE_OPTIONS: ${NODE_OPTIONS:---max-old-space-size=256}
+    mem_limit: ${APP_MEMORY_LIMIT:-384m}
+    healthcheck:
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  caddy:
+    mem_limit: ${CADDY_MEMORY_LIMIT:-64m}

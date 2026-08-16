@@ -63,6 +63,14 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+
+def _bounded_env_int(name: str, default: int, minimum: int = 0, maximum: int = 100) -> int:
+    try:
+        value = int(os.getenv(name, str(default)))
+    except ValueError:
+        value = default
+    return max(minimum, min(maximum, value))
+
 # Configure database URL - ensure PostgreSQL format
 db_url = settings.database_url
 if db_url.startswith("postgresql://"):
@@ -86,8 +94,8 @@ if _is_production_environment() and _should_enforce_database_ssl(db_url) and not
 engine = create_engine(
     db_url,
     pool_pre_ping=True,  # Verify connections before using
-    pool_size=10,
-    max_overflow=20,
+    pool_size=_bounded_env_int("DB_POOL_SIZE", 10, minimum=1),
+    max_overflow=_bounded_env_int("DB_MAX_OVERFLOW", 20),
     echo=False  # Set to True for SQL query logging
 )
 

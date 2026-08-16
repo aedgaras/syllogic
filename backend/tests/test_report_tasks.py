@@ -30,6 +30,29 @@ from app.models import Report, ReportRun, User  # noqa: E402
 from tasks import report_tasks  # noqa: E402
 
 
+def test_report_renderer_command_prefers_compiled_bundle(tmp_path):
+    bundle = tmp_path / "render-report.cjs"
+    bundle.write_text("", encoding="utf-8")
+
+    with patch.object(report_tasks, "_COMPILED_RENDER_SCRIPT", bundle):
+        command, cwd = report_tasks._report_renderer_command()
+
+    assert command == ["node", str(bundle)]
+    assert cwd == tmp_path
+
+
+def test_report_renderer_command_falls_back_to_typescript_source(tmp_path):
+    source = tmp_path / "emails" / "render-report.ts"
+    source.parent.mkdir()
+
+    with patch.object(report_tasks, "_COMPILED_RENDER_SCRIPT", tmp_path / "missing.cjs"), \
+         patch.object(report_tasks, "_RENDER_SCRIPT", source):
+        command, cwd = report_tasks._report_renderer_command()
+
+    assert command == ["npx", "tsx", str(source)]
+    assert cwd == tmp_path
+
+
 def _seed_due_report(db) -> Report:
     user = User(id=f"test-user-{uuid.uuid4()}", email=f"{uuid.uuid4()}@example.com", name="Test")
     db.add(user)

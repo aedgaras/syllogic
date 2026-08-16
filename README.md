@@ -99,6 +99,12 @@ curl -fsSL https://github.com/syllogic-ai/syllogic/releases/latest/download/inst
    .\scripts\prod-up.bat
    ```
 
+   On a Raspberry Pi or memory-constrained server, start the ARM64 lite stack:
+
+   ```bash
+   ./scripts/prod-up.sh --lite
+   ```
+
 3. Open `http://localhost:8080` and create your account.
 
 For advanced configuration (TLS, custom domains, MCP server), see [`deploy/compose/README.md`](deploy/compose/README.md).
