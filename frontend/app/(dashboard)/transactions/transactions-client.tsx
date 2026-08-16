@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { RiLoader4Line } from "@remixicon/react";
 import { Progress } from "@/components/ui/progress";
 import { TransactionTable } from "@/components/transactions/transaction-table";
@@ -14,6 +15,7 @@ import {
   getPendingImport,
   clearPendingImport,
 } from "@/lib/hooks/use-import-status";
+import { fetchCsvImportStatus } from "@/lib/import/client";
 import { useSession } from "@/lib/auth-client";
 import type {
   FilteredTransactionTotals,
@@ -44,6 +46,7 @@ export function TransactionsClient({
   canDelete = true,
 }: TransactionsClientProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const [transactions, setTransactions] = useState(initialTransactions);
@@ -115,8 +118,12 @@ export function TransactionsClient({
     }
 
     try {
-      const response = await fetch(`/api/csv-import/status/${pendingImport.importId}`);
-      if (response.status === 404 || response.status === 403) {
+      const { statusCode, body: status } = await queryClient.fetchQuery({
+        queryKey: ["csv-import", "status", pendingImport.importId],
+        queryFn: () => fetchCsvImportStatus(pendingImport.importId),
+        staleTime: 0,
+      });
+      if (statusCode === 404 || statusCode === 403) {
         clearPendingImport();
         setPendingImportState(null);
         setImportStatus(null);
@@ -125,9 +132,8 @@ export function TransactionsClient({
         }
         return;
       }
-      if (!response.ok) return;
+      if (!status) return;
 
-      const status = await response.json();
       const importStatusValue = status?.status as
         | "pending"
         | "mapping"
@@ -185,7 +191,7 @@ export function TransactionsClient({
     } catch {
       // Status check failed; rely on SSE updates
     }
-  }, [pendingImport?.importId, pendingImport?.userId, importingId, router, clearImportingParam]);
+  }, [pendingImport?.importId, pendingImport?.userId, importingId, router, clearImportingParam, queryClient]);
 
   useEffect(() => {
     checkImportStatus();

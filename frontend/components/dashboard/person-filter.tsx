@@ -1,22 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PersonAvatar } from "@/components/household/person-avatar";
-
-type Person = { id: string; name: string; color?: string | null; avatarUrl?: string | null };
+import { usePeopleQuery } from "@/lib/people/client";
 
 export function PersonFilter(props: {
   value: string[];
   onChange: (next: string[]) => void;
 }) {
-  const [people, setPeople] = useState<Person[]>([]);
-
-  useEffect(() => {
-    fetch("/api/people")
-      .then((r) => r.json())
-      .then((j) => setPeople(j.people ?? []));
-  }, []);
+  const { data: people = [] } = usePeopleQuery();
 
   if (people.length < 2) return null; // single-person households: hide.
 

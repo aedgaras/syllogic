@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { triggerSync, disconnectBank, triggerRecategorize } from "@/lib/actions/bank-connections";
+import { fetchBankConnectionStatus } from "@/lib/bank-connections/client";
 type BankConnectionItem = {
   id: string;
   aspspName: string;
@@ -52,6 +54,7 @@ type SyncProgress = {
 
 export function BankConnectionsManager({ connections }: BankConnectionsManagerProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
   const [recategorizingIds, setRecategorizingIds] = useState<Set<string>>(new Set());
   const [disconnectingIds, setDisconnectingIds] = useState<Set<string>>(new Set());
@@ -130,12 +133,15 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
         }
 
         try {
-          const resp = await fetch(`/api/enable-banking/status/${connectionId}`);
-          if (!resp.ok) throw new Error(`Status ${resp.status}`);
-          const data = await resp.json();
+          const data = await queryClient.fetchQuery({
+            queryKey: ["enable-banking", "status", connectionId],
+            queryFn: () => fetchBankConnectionStatus(connectionId),
+            staleTime: 0,
+          });
 
-          if (data.sync_progress) {
-            setSyncProgress((prev) => new Map(prev).set(connectionId, data.sync_progress));
+          const syncProgressValue = data.sync_progress;
+          if (syncProgressValue) {
+            setSyncProgress((prev) => new Map(prev).set(connectionId, syncProgressValue));
           }
 
           const startedAt = initialSyncTimes.current.get(connectionId);
@@ -161,7 +167,7 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
       const timer = setTimeout(poll, 3000);
       pollingTimers.current.set(connectionId, timer);
     },
-    [router, stopPolling]
+    [queryClient, router, stopPolling]
   );
 
   // Auto-detect connections that are active but have never synced (initial sync after wizard)

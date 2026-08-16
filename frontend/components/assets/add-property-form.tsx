@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +17,7 @@ import { CURRENCIES } from "@/lib/constants/currencies";
 import { createProperty } from "@/lib/actions/properties";
 import { PROPERTY_TYPES } from "./types";
 import { OwnersField, type OwnerValue } from "@/components/household/owners-field";
-
-type Person = { id: string; name: string; kind: string; color?: string | null; avatarUrl?: string | null };
+import { saveOwners, usePeopleQuery, type ClientPerson } from "@/lib/people/client";
 
 interface AddPropertyFormProps {
   onSuccess?: () => void;
@@ -35,26 +35,21 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
   const [currency, setCurrency] = useState("EUR");
 
   // Ownership state
-  const [people, setPeople] = useState<Person[]>([]);
-  const [peopleLoaded, setPeopleLoaded] = useState(false);
+  const { data: people = [], isFetched, isError } = usePeopleQuery();
+  const peopleLoaded = isFetched || isError;
   const [owners, setOwners] = useState<OwnerValue[]>([]);
   const [ownersError, setOwnersError] = useState<string | null>(null);
+  const savePropertyOwnersMutation = useMutation({
+    mutationFn: ({ entityId, owners }: { entityId: string; owners: OwnerValue[] }) =>
+      saveOwners("property", entityId, owners),
+  });
 
   useEffect(() => {
-    fetch("/api/people")
-      .then((r) => r.json())
-      .then((data: { people: Person[] }) => {
-        setPeople(data.people);
-        const self = data.people.find((p) => p.kind === "self");
-        if (self) {
-          setOwners([{ personId: self.id, share: null }]);
-        }
-      })
-      .catch(() => {
-        // Non-fatal: owners field will be empty; submit is still blocked until peopleLoaded.
-      })
-      .finally(() => setPeopleLoaded(true));
-  }, []);
+    const self = people.find((p: ClientPerson) => p.kind === "self");
+    if (self && owners.length === 0) {
+      setOwners([{ personId: self.id, share: null }]);
+    }
+  }, [owners.length, people]);
 
   const validateOwners = (): boolean => {
     if (owners.length === 0) {
@@ -80,15 +75,7 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
 
   const putOwners = async (entityId: string) => {
     try {
-      const r = await fetch(`/api/owners/property/${entityId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ owners }),
-      });
-      if (!r.ok) {
-        const text = await r.text().catch(() => "request failed");
-        throw new Error(`Failed to save owners: ${text.slice(0, 200)}`);
-      }
+      await savePropertyOwnersMutation.mutateAsync({ entityId, owners });
     } catch (err) {
       toast.error((err as Error).message || "Property created, but failed to save ownership. You can update it later.");
     }

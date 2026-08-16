@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   RiDeleteBinLine,
@@ -58,8 +59,13 @@ import { AccountLogo } from "@/components/ui/account-logo";
 import { OwnersField, type OwnerValue } from "@/components/household/owners-field";
 import { OwnerBadges } from "@/components/household/owner-badges";
 import type { Account } from "@/lib/db/schema";
-
-type Person = { id: string; name: string; kind: string; color?: string | null; avatarUrl?: string | null };
+import {
+  fetchOwners,
+  ownersQueryKey,
+  saveOwners,
+  usePeopleQuery,
+  type ClientPerson,
+} from "@/lib/people/client";
 
 const ACCOUNT_TYPES = [
   { value: "checking", label: "Checking Account" },
@@ -89,6 +95,7 @@ interface AccountListProps {
 }
 
 export function AccountList({ accounts, onAccountUpdated }: AccountListProps) {
+  const queryClient = useQueryClient();
   const [editingAccount, setEditingAccount] = useState<AccountWithLogo | null>(null);
   const [deletingAccount, setDeletingAccount] = useState<AccountWithLogo | null>(null);
   const [updateBalanceAccount, setUpdateBalanceAccount] = useState<AccountWithLogo | null>(null);
@@ -102,17 +109,21 @@ export function AccountList({ accounts, onAccountUpdated }: AccountListProps) {
   const [editBalance, setEditBalance] = useState("");
 
   // Ownership state
-  const [people, setPeople] = useState<Person[]>([]);
+  const { data: people = [] } = usePeopleQuery();
   const [editOwners, setEditOwners] = useState<OwnerValue[]>([]);
+  const saveAccountOwnersMutation = useMutation({
+    mutationFn: ({ accountId, owners }: { accountId: string; owners: OwnerValue[] }) =>
+      saveOwners("account", accountId, owners),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ownersQueryKey("account", variables.accountId) });
+    },
+  });
 
   useEffect(() => {
-    fetch("/api/people")
-      .then((r) => r.json())
-      .then((data: { people: Person[] }) => setPeople(data.people))
-      .catch(() => {});
-  }, []);
+    queryClient.invalidateQueries({ queryKey: ["owners"] });
+  }, [accounts, queryClient]);
 
-  const openEditDialog = (account: AccountWithLogo) => {
+  const openEditDialog = async (account: AccountWithLogo) => {
     setEditingAccount(account);
     setEditName(account.name);
     setEditAccountType(account.accountType);
@@ -121,14 +132,16 @@ export function AccountList({ accounts, onAccountUpdated }: AccountListProps) {
     setEditBalance(account.startingBalance || "0");
     // Reset owners immediately to prevent stale state during fetch
     setEditOwners([]);
-    // Fetch current owners for this account
-    fetch(`/api/owners/account/${account.id}`)
-      .then((r) => r.json())
-      .then((data: { owners: OwnerValue[] }) => setEditOwners(data.owners ?? []))
-      .catch(() => {
-        const self = people.find((p) => p.kind === "self");
-        setEditOwners(self ? [{ personId: self.id, share: null }] : []);
+    try {
+      const owners = await queryClient.fetchQuery({
+        queryKey: ownersQueryKey("account", account.id),
+        queryFn: () => fetchOwners("account", account.id),
       });
+      setEditOwners(owners);
+    } catch {
+      const self = people.find((p: ClientPerson) => p.kind === "self");
+      setEditOwners(self ? [{ personId: self.id, share: null }] : []);
+    }
   };
 
   const handleEdit = async (e: React.FormEvent) => {
@@ -160,15 +173,10 @@ export function AccountList({ accounts, onAccountUpdated }: AccountListProps) {
           return;
         }
         try {
-          const ownersResp = await fetch(`/api/owners/account/${editingAccount.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ owners: editOwners }),
+          await saveAccountOwnersMutation.mutateAsync({
+            accountId: editingAccount.id,
+            owners: editOwners,
           });
-          if (!ownersResp.ok) {
-            const text = await ownersResp.text().catch(() => "request failed");
-            throw new Error(`Failed to save owners: ${text.slice(0, 200)}`);
-          }
         } catch (ownersErr) {
           toast.error((ownersErr as Error).message || "Account updated, but failed to save ownership.");
           setIsLoading(false);

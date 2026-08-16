@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { groupAccounts, type PickerAccount } from "@/lib/reports/account-groups";
 import { listOwners, listPeople } from "@/lib/reports/api";
 
@@ -17,38 +18,27 @@ export function AccountPicker({
   loading: boolean;
   error: boolean;
 }) {
-  const [ownerNames, setOwnerNames] = useState<Record<string, string[]>>({});
-
-  useEffect(() => {
-    if (accounts.length === 0) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const [people, owners] = await Promise.all([
-          listPeople(),
-          listOwners(accounts.map((a) => a.id)),
-        ]);
-        if (cancelled) return;
-        const nameById = new Map(people.map((p) => [p.id, p.name]));
-        const next: Record<string, string[]> = {};
-        for (const [accountId, rows] of Object.entries(owners)) {
-          const names = rows
-            .map((r) => nameById.get(r.personId))
-            .filter((n): n is string => Boolean(n));
-          if (names.length > 0) next[accountId] = names;
-        }
-        setOwnerNames(next);
-      } catch {
-        // Ownership is decoration, not function: leave the picker usable.
-        if (!cancelled) setOwnerNames({});
+  const accountIds = useMemo(() => accounts.map((a) => a.id), [accounts]);
+  const { data: ownerNames = {} } = useQuery({
+    queryKey: ["reports", "account-owner-names", accountIds],
+    queryFn: async () => {
+      const [people, owners] = await Promise.all([
+        listPeople(),
+        listOwners(accountIds),
+      ]);
+      const nameById = new Map(people.map((p) => [p.id, p.name]));
+      const next: Record<string, string[]> = {};
+      for (const [accountId, rows] of Object.entries(owners)) {
+        const names = rows
+          .map((r) => nameById.get(r.personId))
+          .filter((n): n is string => Boolean(n));
+        if (names.length > 0) next[accountId] = names;
       }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [accounts]);
+      return next;
+    },
+    enabled: accountIds.length > 0,
+    retry: false,
+  });
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading accounts…</p>;
   if (error) {

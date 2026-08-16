@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { PersonForm, type PersonFormValues } from "./person-form";
 import { PersonAvatar } from "./person-avatar";
-import { clearOwnerBadgesCache } from "./owner-badges";
-
-type Person = {
-  id: string;
-  name: string;
-  kind: string;
-  color?: string | null;
-  avatarUrl?: string | null;
-};
+import {
+  fetchPeople,
+  createPersonRequest,
+  deletePersonRequest,
+  invalidateHouseholdQueries,
+  peopleQueryKey,
+  updatePersonRequest,
+  usePeopleQuery,
+  type ClientPerson,
+} from "@/lib/people/client";
 
 function buildFormData(values: PersonFormValues): FormData {
   const fd = new FormData();
@@ -23,42 +25,61 @@ function buildFormData(values: PersonFormValues): FormData {
   return fd;
 }
 
-export function PeopleList(props: { initialPeople: Person[] }) {
-  const [people, setPeople] = useState(props.initialPeople);
+export function PeopleList(props: { initialPeople: ClientPerson[] }) {
+  const queryClient = useQueryClient();
+  const { data: people = [] } = usePeopleQuery(props.initialPeople);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  async function refresh() {
-    const r = await fetch("/api/people");
-    const j = await r.json();
-    setPeople(j.people);
-  }
+  const refresh = () =>
+    queryClient.fetchQuery({ queryKey: peopleQueryKey, queryFn: fetchPeople });
+
+  const createMutation = useMutation({
+    mutationFn: (values: PersonFormValues) =>
+      createPersonRequest(buildFormData(values)),
+    onSuccess: async () => {
+      invalidateHouseholdQueries(queryClient);
+      await refresh();
+      setAdding(false);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, values }: { id: string; values: PersonFormValues }) =>
+      updatePersonRequest(id, buildFormData(values)),
+    onSuccess: async () => {
+      invalidateHouseholdQueries(queryClient);
+      await refresh();
+      setEditingId(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deletePersonRequest,
+    onSuccess: async () => {
+      invalidateHouseholdQueries(queryClient);
+      await refresh();
+    },
+  });
 
   async function create(values: PersonFormValues) {
-    await fetch("/api/people", { method: "POST", body: buildFormData(values) });
-    clearOwnerBadgesCache();
-    await refresh();
-    setAdding(false);
+    await createMutation.mutateAsync(values);
   }
 
   async function update(id: string, values: PersonFormValues) {
-    await fetch(`/api/people/${id}`, { method: "PATCH", body: buildFormData(values) });
-    clearOwnerBadgesCache();
-    await refresh();
-    setEditingId(null);
+    await updateMutation.mutateAsync({ id, values });
   }
 
   async function remove(id: string) {
-    const r = await fetch(`/api/people/${id}`, { method: "DELETE" });
-    if (r.status === 409) {
-      const j = await r.json();
+    try {
+      await deleteMutation.mutateAsync(id);
+    } catch (err) {
+      const blockers = (err as { blockers?: unknown[] }).blockers;
+      if (!blockers) throw err;
       alert(
-        `Cannot delete: this person is the sole owner of ${j.blockers.length} item(s). Reassign first.`
+        `Cannot delete: this person is the sole owner of ${blockers.length} item(s). Reassign first.`
       );
-      return;
     }
-    clearOwnerBadgesCache();
-    await refresh();
   }
 
   return (

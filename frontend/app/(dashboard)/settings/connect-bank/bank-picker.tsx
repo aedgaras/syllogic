@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -20,6 +21,7 @@ import {
 } from "@remixicon/react";
 import Link from "next/link";
 import { initiateAuth } from "@/lib/actions/bank-connections";
+import { fetchAspsps, type Aspsp } from "@/lib/bank-connections/client";
 
 // European countries with Enable Banking support
 const COUNTRIES = [
@@ -43,13 +45,6 @@ const COUNTRIES = [
   { code: "LT", name: "Lithuania" },
 ];
 
-interface Aspsp {
-  name: string;
-  country: string;
-  logo?: string;
-  beta?: boolean;
-}
-
 export function BankPicker() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -57,37 +52,22 @@ export function BankPicker() {
 
   const [country, setCountry] = useState("NL");
   const [search, setSearch] = useState("");
-  const [aspsps, setAspsps] = useState<Aspsp[]>([]);
-  const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [connectingBank, setConnectingBank] = useState<string | null>(null);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    async function fetchAspsps() {
-      setLoading(true);
+  const {
+    data: aspsps = [],
+    isLoading: loading,
+    isError,
+  } = useQuery({
+    queryKey: ["enable-banking", "aspsps", country],
+    queryFn: ({ signal }) => {
       setFetchError(null);
-      try {
-        const resp = await fetch(`/api/enable-banking/aspsps?country=${country}`, {
-          signal: controller.signal,
-        });
-        if (!resp.ok) throw new Error("Failed to load banks");
-        const data = await resp.json();
-        const list = Array.isArray(data) ? data : data.aspsps || [];
-        setAspsps(list);
-      } catch (e) {
-        if (e instanceof DOMException && e.name === "AbortError") return;
-        setFetchError("Failed to load available banks. Please try again.");
-        setAspsps([]);
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      }
-    }
-    fetchAspsps();
-    return () => controller.abort();
-  }, [country]);
+      return fetchAspsps(country, signal);
+    },
+  });
+
+  const loadError = fetchError ?? (isError ? "Failed to load available banks. Please try again." : null);
 
   const filtered = useMemo(() => {
     if (!search) return aspsps;
@@ -100,7 +80,7 @@ export function BankPicker() {
     try {
       const result = await initiateAuth(aspsp.name, aspsp.country || country);
       if (result.success && result.url) {
-        window.location.href = result.url;
+        router.push(result.url);
       } else {
         setFetchError(result.error || "Failed to initiate connection");
         setConnectingBank(null);
@@ -169,9 +149,9 @@ export function BankPicker() {
         <div className="flex items-center justify-center py-12">
           <RiLoader4Line className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      ) : fetchError ? (
+      ) : loadError ? (
         <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-center text-sm text-destructive">
-          {fetchError}
+          {loadError}
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">

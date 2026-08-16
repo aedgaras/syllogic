@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useRegisterCommandPaletteCallbacks } from "@/components/command-palette-context";
 import {
@@ -70,8 +71,13 @@ import { AccountLogo } from "@/components/ui/account-logo";
 import { OwnersField, type OwnerValue } from "@/components/household/owners-field";
 import { OwnerBadges } from "@/components/household/owner-badges";
 import type { Account, Property, Vehicle } from "@/lib/db/schema";
-
-type Person = { id: string; name: string; kind: string; color?: string | null; avatarUrl?: string | null };
+import {
+  fetchOwners,
+  ownersQueryKey,
+  saveOwners,
+  usePeopleQuery,
+  type ClientPerson,
+} from "@/lib/people/client";
 
 const ACCOUNT_TYPES = [
   { value: "checking", label: "Checking Account" },
@@ -108,7 +114,7 @@ interface AssetManagementProps {
   initialAccounts: AccountWithLogo[];
   initialProperties: Property[];
   initialVehicles: Vehicle[];
-  initialPeople?: Person[];
+  initialPeople?: ClientPerson[];
   initialAccountOwnerIds?: Record<string, string[]>;
   initialPropertyOwnerIds?: Record<string, string[]>;
   initialVehicleOwnerIds?: Record<string, string[]>;
@@ -132,6 +138,7 @@ export function AssetManagement({
   initialVehicleOwnerIds,
 }: AssetManagementProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [isAddAssetDialogOpen, setIsAddAssetDialogOpen] = useState(false);
 
@@ -190,22 +197,31 @@ export function AssetManagement({
   // Shared ownership state for edit dialogs.
   // People are preloaded server-side so the OwnersField gate is correct on
   // first render — no client fetch race, no silent failures.
-  const [people, setPeople] = useState<Person[]>(initialPeople ?? []);
+  const { data: people = [] } = usePeopleQuery(initialPeople);
   const [editAccountOwners, setEditAccountOwners] = useState<OwnerValue[]>([]);
   const [editPropertyOwners, setEditPropertyOwners] = useState<OwnerValue[]>([]);
   const [editVehicleOwners, setEditVehicleOwners] = useState<OwnerValue[]>([]);
-
-  // Refresh client-side too, in case the household was edited in another tab
-  // since the server render. Only runs if the server didn't pass anything.
-  useEffect(() => {
-    if (initialPeople && initialPeople.length > 0) return;
-    fetch("/api/people")
-      .then((r) => r.json())
-      .then((data: { people: Person[] }) => {
-        if (Array.isArray(data?.people)) setPeople(data.people);
-      })
-      .catch(() => {});
-  }, [initialPeople]);
+  const saveAccountOwnersMutation = useMutation({
+    mutationFn: ({ entityId, owners }: { entityId: string; owners: OwnerValue[] }) =>
+      saveOwners("account", entityId, owners),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ownersQueryKey("account", variables.entityId) });
+    },
+  });
+  const savePropertyOwnersMutation = useMutation({
+    mutationFn: ({ entityId, owners }: { entityId: string; owners: OwnerValue[] }) =>
+      saveOwners("property", entityId, owners),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ownersQueryKey("property", variables.entityId) });
+    },
+  });
+  const saveVehicleOwnersMutation = useMutation({
+    mutationFn: ({ entityId, owners }: { entityId: string; owners: OwnerValue[] }) =>
+      saveOwners("vehicle", entityId, owners),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ownersQueryKey("vehicle", variables.entityId) });
+    },
+  });
 
   const handleRefresh = () => {
     router.refresh();
@@ -216,7 +232,7 @@ export function AssetManagement({
   }, []);
 
   // Account handlers
-  const openEditAccountDialog = (account: AccountWithLogo) => {
+  const openEditAccountDialog = async (account: AccountWithLogo) => {
     setEditingAccount(account);
     setEditAccountName(account.name);
     setEditAccountType(account.accountType);
@@ -227,14 +243,16 @@ export function AssetManagement({
     setEditLogoUrl(account.logo?.logoUrl || null);
     setEditLogoUpdatedAt(account.logo?.updatedAt || null);
     setLogoSearch("");
-    // Fetch current owners for this account
-    fetch(`/api/owners/account/${account.id}`)
-      .then((r) => r.json())
-      .then((data: { owners: OwnerValue[] }) => setEditAccountOwners(data.owners))
-      .catch(() => {
-        const self = people.find((p) => p.kind === "self");
-        setEditAccountOwners(self ? [{ personId: self.id, share: null }] : []);
+    try {
+      const owners = await queryClient.fetchQuery({
+        queryKey: ownersQueryKey("account", account.id),
+        queryFn: () => fetchOwners("account", account.id),
       });
+      setEditAccountOwners(owners);
+    } catch {
+      const self = people.find((p: ClientPerson) => p.kind === "self");
+      setEditAccountOwners(self ? [{ personId: self.id, share: null }] : []);
+    }
   };
 
   const handleAccountLogoSearch = useCallback(async (query: string) => {
@@ -294,15 +312,10 @@ export function AssetManagement({
           return;
         }
         try {
-          const ownersResp = await fetch(`/api/owners/account/${editingAccount.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ owners: editAccountOwners }),
+          await saveAccountOwnersMutation.mutateAsync({
+            entityId: editingAccount.id,
+            owners: editAccountOwners,
           });
-          if (!ownersResp.ok) {
-            const text = await ownersResp.text().catch(() => "request failed");
-            throw new Error(`Failed to save owners: ${text.slice(0, 200)}`);
-          }
         } catch (ownersErr) {
           toast.error((ownersErr as Error).message || "Account updated, but failed to save ownership.");
           setIsLoading(false);
@@ -362,21 +375,23 @@ export function AssetManagement({
   };
 
   // Property handlers
-  const openEditPropertyDialog = (property: Property) => {
+  const openEditPropertyDialog = async (property: Property) => {
     setEditingProperty(property);
     setEditPropertyName(property.name);
     setEditPropertyType(property.propertyType);
     setEditPropertyAddress(property.address || "");
     setEditPropertyValue(property.currentValue || "0");
     setEditPropertyCurrency(property.currency || "EUR");
-    // Fetch current owners for this property
-    fetch(`/api/owners/property/${property.id}`)
-      .then((r) => r.json())
-      .then((data: { owners: OwnerValue[] }) => setEditPropertyOwners(data.owners))
-      .catch(() => {
-        const self = people.find((p) => p.kind === "self");
-        setEditPropertyOwners(self ? [{ personId: self.id, share: null }] : []);
+    try {
+      const owners = await queryClient.fetchQuery({
+        queryKey: ownersQueryKey("property", property.id),
+        queryFn: () => fetchOwners("property", property.id),
       });
+      setEditPropertyOwners(owners);
+    } catch {
+      const self = people.find((p: ClientPerson) => p.kind === "self");
+      setEditPropertyOwners(self ? [{ personId: self.id, share: null }] : []);
+    }
   };
 
   const handleEditProperty = async (e: React.FormEvent) => {
@@ -402,15 +417,10 @@ export function AssetManagement({
           return;
         }
         try {
-          const ownersResp = await fetch(`/api/owners/property/${editingProperty.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ owners: editPropertyOwners }),
+          await savePropertyOwnersMutation.mutateAsync({
+            entityId: editingProperty.id,
+            owners: editPropertyOwners,
           });
-          if (!ownersResp.ok) {
-            const text = await ownersResp.text().catch(() => "request failed");
-            throw new Error(`Failed to save owners: ${text.slice(0, 200)}`);
-          }
         } catch (ownersErr) {
           toast.error((ownersErr as Error).message || "Property updated, but failed to save ownership.");
           setIsLoading(false);
@@ -449,7 +459,7 @@ export function AssetManagement({
   };
 
   // Vehicle handlers
-  const openEditVehicleDialog = (vehicle: Vehicle) => {
+  const openEditVehicleDialog = async (vehicle: Vehicle) => {
     setEditingVehicle(vehicle);
     setEditVehicleName(vehicle.name);
     setEditVehicleType(vehicle.vehicleType);
@@ -458,14 +468,16 @@ export function AssetManagement({
     setEditVehicleYear(vehicle.year?.toString() || "");
     setEditVehicleValue(vehicle.currentValue || "0");
     setEditVehicleCurrency(vehicle.currency || "EUR");
-    // Fetch current owners for this vehicle
-    fetch(`/api/owners/vehicle/${vehicle.id}`)
-      .then((r) => r.json())
-      .then((data: { owners: OwnerValue[] }) => setEditVehicleOwners(data.owners))
-      .catch(() => {
-        const self = people.find((p) => p.kind === "self");
-        setEditVehicleOwners(self ? [{ personId: self.id, share: null }] : []);
+    try {
+      const owners = await queryClient.fetchQuery({
+        queryKey: ownersQueryKey("vehicle", vehicle.id),
+        queryFn: () => fetchOwners("vehicle", vehicle.id),
       });
+      setEditVehicleOwners(owners);
+    } catch {
+      const self = people.find((p: ClientPerson) => p.kind === "self");
+      setEditVehicleOwners(self ? [{ personId: self.id, share: null }] : []);
+    }
   };
 
   const handleEditVehicle = async (e: React.FormEvent) => {
@@ -494,15 +506,10 @@ export function AssetManagement({
           return;
         }
         try {
-          const ownersResp = await fetch(`/api/owners/vehicle/${editingVehicle.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ owners: editVehicleOwners }),
+          await saveVehicleOwnersMutation.mutateAsync({
+            entityId: editingVehicle.id,
+            owners: editVehicleOwners,
           });
-          if (!ownersResp.ok) {
-            const text = await ownersResp.text().catch(() => "request failed");
-            throw new Error(`Failed to save owners: ${text.slice(0, 200)}`);
-          }
         } catch (ownersErr) {
           toast.error((ownersErr as Error).message || "Vehicle updated, but failed to save ownership.");
           setIsLoading(false);

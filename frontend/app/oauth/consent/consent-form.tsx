@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { submitOAuthConsent } from "@/lib/oauth/client";
 
 type Props = {
   params: Record<string, string | string[] | undefined>;
@@ -10,6 +12,9 @@ type Props = {
 export function ConsentForm({ params }: Props) {
   const [pending, setPending] = useState<"allow" | "deny" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const consentMutation = useMutation({
+    mutationFn: submitOAuthConsent,
+  });
 
   async function submit(decision: "allow" | "deny") {
     setPending(decision);
@@ -21,17 +26,11 @@ export function ConsentForm({ params }: Props) {
         )
       ).toString();
       const scope = typeof params.scope === "string" ? params.scope : undefined;
-      const res = await fetch("/api/auth/oauth2/consent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accept: decision === "allow",
-          ...(scope ? { scope } : {}),
-          oauth_query: oauthQuery,
-        }),
-        redirect: "manual",
+      const { response, body } = await consentMutation.mutateAsync({
+        accept: decision === "allow",
+        scope,
+        oauthQuery,
       });
-      const body = await res.json().catch(() => ({}));
       const target =
         typeof body?.url === "string"
           ? body.url
@@ -42,8 +41,8 @@ export function ConsentForm({ params }: Props) {
         window.location.assign(target);
         return;
       }
-      if (!res.ok) {
-        throw new Error(body?.error ?? `Request failed (${res.status})`);
+      if (!response.ok) {
+        throw new Error(body?.error ?? `Request failed (${response.status})`);
       }
     } catch (err) {
       setError(
