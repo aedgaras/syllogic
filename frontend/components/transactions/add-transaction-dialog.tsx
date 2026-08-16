@@ -140,6 +140,7 @@ export function AddTransactionDialog({ open, onOpenChange, categories: propCateg
 
   // Filter categories based on transaction type
   const filteredCategories = getCategoriesForTransactionType(categories, transactionType);
+  const selectedAccount = accounts.find((account) => account.id === accountId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -183,13 +184,17 @@ export function AddTransactionDialog({ open, onOpenChange, categories: propCateg
                 </p>
               ) : (
                 <Select value={accountId} onValueChange={(v) => v && setAccountId(v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an account" />
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an account">
+                      {selectedAccount
+                        ? `${selectedAccount.name}${selectedAccount.currency ? ` (${selectedAccount.currency})` : ""}`
+                        : "Select an account"}
+                    </SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
                     {accounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id}>
-                        {account.name} ({account.currency})
+                      <SelectItem key={account.id} value={account.id} className="pr-10">
+                        {account.name}{account.currency ? ` (${account.currency})` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
