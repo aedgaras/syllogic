@@ -9,7 +9,7 @@ const eslintConfig = defineConfig([
   {
     plugins: { architecture },
     rules: {
-      "architecture/boundaries": "warn",
+      "architecture/boundaries": "error",
       "@typescript-eslint/no-explicit-any": "warn",
       "react/no-unescaped-entities": "warn",
       "react-hooks/set-state-in-effect": "warn",
@@ -27,7 +27,7 @@ const eslintConfig = defineConfig([
     files: ["features/*/domain/**/*.{js,jsx,ts,tsx}"],
     rules: {
       "no-restricted-globals": [
-        "warn",
+        "error",
         ...["window", "document", "navigator", "localStorage", "sessionStorage", "EventSource", "FileReader"].map(
           (name) => ({ name, message: "Domain modules cannot use browser APIs." })
         ),

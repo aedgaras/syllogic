@@ -40,7 +40,7 @@ import {
   RiRepeatLine,
 } from "@remixicon/react";
 import type { TransactionWithRelations } from "@/features/transactions/public";
-import type { CategoryForFilter } from "@/types";
+import type { CategoryForFilter } from "@/shared/domain/display-contracts";
 import { cn } from "@/lib/utils";
 
 interface AccountTransactionFiltersProps {

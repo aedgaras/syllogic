@@ -14,7 +14,7 @@ import type { TransactionWithRelations } from "@/features/transactions/public";
 import type { ParsedCategorySpendingQueryParams } from "@/lib/category-spending/query-params";
 import { buildCategorySpendingQuery } from "@/lib/category-spending/query-params";
 import type { TransactionsQueryState } from "@/features/transactions/public";
-import type { AccountDisplay, CategoryDisplay } from "@/types";
+import type { AccountDisplay, CategoryDisplay } from "@/shared/domain/display-contracts";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 

@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => navigation.searchParams,
 }));
 
-vi.mock("@/lib/hooks/use-filter-persistence", () => ({ useFilterPersistence: vi.fn() }));
+vi.mock("@/shared/client/hooks/use-filter-persistence", () => ({ useFilterPersistence: vi.fn() }));
 vi.mock("./transaction-filters", () => ({ TransactionFilters: () => null }));
 vi.mock("./transaction-pagination", () => ({ TransactionPagination: () => null }));
 vi.mock("./bulk-actions-dock", () => ({ BulkActionsDock: () => null }));

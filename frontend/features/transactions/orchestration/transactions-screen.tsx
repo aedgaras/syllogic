@@ -7,7 +7,7 @@ import { AddTransactionDialog } from "@/components/transactions/add-transaction-
 import { TransactionTable } from "@/components/transactions/transaction-table";
 import { useRegisterCommandPaletteCallbacks } from "@/components/command-palette-context";
 import { exportTransactionsToCSV } from "@/lib/utils/csv-export";
-import type { AccountForFilter, CategoryDisplay } from "@/types";
+import type { AccountForFilter, CategoryDisplay } from "@/shared/domain/display-contracts";
 import type {
   FilteredTransactionTotals,
   TransactionsQueryState,

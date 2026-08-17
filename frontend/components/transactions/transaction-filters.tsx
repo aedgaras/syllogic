@@ -42,7 +42,7 @@ import {
   RiRepeatLine,
   RiLineChartLine,
 } from "@remixicon/react";
-import type { CategoryForFilter, AccountForFilter } from "@/types";
+import type { CategoryForFilter, AccountForFilter } from "@/shared/domain/display-contracts";
 import type { TransactionsQueryState } from "@/features/transactions/public";
 import { useTransactionFilterDraft } from "@/features/transactions/hooks/use-transaction-filter-draft";
 import { cn } from "@/lib/utils";

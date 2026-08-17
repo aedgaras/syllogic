@@ -17,7 +17,7 @@ import { ImportHistoryManager } from "./import-history-manager";
 import { BankConnectionsManager } from "./bank-connections-manager";
 import { HouseholdTab } from "./household-tab";
 import { PreferencesTab } from "./preferences-tab";
-import type { User, Category } from "@/lib/db/schema";
+import type { SettingsCategory, SettingsUser } from "@/features/settings/public";
 import type { CsvImportWithStats } from "@/features/csv-import/public";
 import type { OpenAiSettings } from "@/lib/actions/settings";
 
@@ -30,8 +30,8 @@ type Person = {
 };
 
 interface SettingsTabsProps {
-  user: User;
-  categories: Category[];
+  user: SettingsUser;
+  categories: SettingsCategory[];
   mcpServerUrl: string;
   canCreateApiKeys: boolean;
   canDelete?: boolean;

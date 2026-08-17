@@ -9,6 +9,7 @@ import {
   parseGlobalFiltersFromSearchParams,
 } from "@/lib/filters/global-filters";
 
+/** Keeps the application-wide dashboard filters available across routes. */
 export function useFilterPersistence() {
   const searchParams = useSearchParams();
 

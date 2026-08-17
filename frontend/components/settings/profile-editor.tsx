@@ -16,10 +16,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProfilePhotoUpload } from "@/components/onboarding/profile-photo-upload";
 import { updateUserProfile } from "@/lib/actions/settings";
-import type { User } from "@/lib/db/schema";
+import type { SettingsUser } from "@/features/settings/public";
 
 interface ProfileEditorProps {
-  user: User;
+  user: SettingsUser;
 }
 
 export function ProfileEditor({ user }: ProfileEditorProps) {

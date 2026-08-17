@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import type { CategoryDisplay } from "@/types";
+import type { CategoryDisplay } from "@/shared/domain/display-contracts";
 import type { TransactionWithRelations } from "@/features/transactions/public";
 import { filterSelectableCategories } from "@/lib/utils/category-utils";
 import { DeleteConfirmationDialog } from "./delete-confirmation-dialog";

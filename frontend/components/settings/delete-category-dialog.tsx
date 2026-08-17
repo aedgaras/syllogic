@@ -22,14 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Category } from "@/lib/db/schema";
+import type { SettingsCategory } from "@/features/settings/public";
 
 interface DeleteCategoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  category: Category | null;
+  category: SettingsCategory | null;
   transactionCount: number;
-  sameTypeCategories: Category[];
+  sameTypeCategories: SettingsCategory[];
   onConfirm: (reassignToCategoryId: string | null) => Promise<void>;
   isLoading?: boolean;
 }

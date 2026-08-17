@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { buildTransactionsDrilldownQuery } from "@/lib/dashboard/drilldown-query";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/shared/client/hooks/use-mobile";
 
 interface SankeyNode {
   name: string;

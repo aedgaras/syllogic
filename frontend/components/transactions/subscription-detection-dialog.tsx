@@ -25,7 +25,7 @@ import { RiLoader4Line, RiAlertLine, RiRepeatLine, RiLightbulbLine } from "@remi
 import { format } from "date-fns";
 import { toast } from "sonner";
 import type { TransactionWithRelations } from "@/features/transactions/public";
-import type { CategoryDisplay } from "@/types";
+import type { CategoryDisplay } from "@/shared/domain/display-contracts";
 import {
   detectSubscriptionFromTransaction,
   createSubscriptionFromTransaction,

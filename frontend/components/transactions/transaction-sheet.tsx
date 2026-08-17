@@ -33,7 +33,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn, formatDate, formatAmount } from "@/lib/utils";
 import type { TransactionWithRelations } from "@/features/transactions/public";
 import { Switch } from "@/components/ui/switch";
-import type { CategoryDisplay } from "@/types";
+import type { CategoryDisplay } from "@/shared/domain/display-contracts";
 import { filterSelectableCategories } from "@/lib/utils/category-utils";
 import { RiDeleteBinLine, RiEditLine, RiExchangeLine, RiLoopRightLine } from "@remixicon/react";
 import { useTransactionSheetController } from "@/features/transactions/hooks/use-transaction-sheet-controller";

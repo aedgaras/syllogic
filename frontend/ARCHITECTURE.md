@@ -25,5 +25,17 @@ The complete migration sequence and design rationale live in [ARCHITECTURE_REFAC
 
 ## Enforcement
 
-`pnpm lint` reports all boundary violations as warnings while legacy code is migrated. `pnpm lint:boundaries` compares current findings with `architecture-boundaries-baseline.json` and fails on any new violation. The baseline must only shrink; do not add new entries to make CI pass.
+`pnpm lint` reports architecture boundary violations as errors. `pnpm lint:boundaries` verifies the same dependency rules, including fixture coverage, against a zero-violation baseline.
 
+## Reference feature
+
+`features/accounts` is the smallest complete reference slice:
+
+1. `domain/contracts.ts` defines serializable, persistence-independent contracts.
+2. `application/recalculate-account.ts` coordinates a business use case through narrow ports.
+3. `server/accounts.repository.ts` and `server/timeseries.gateway.ts` implement database and backend seams.
+4. `server.ts` is the server-only public entry point; `public.ts` exposes safe contracts and orchestration.
+5. `client/actions.ts` adapts mutations for client controllers.
+6. `orchestration/account-detail.tsx` owns screen coordination while existing views receive data and callbacks.
+
+When adding a feature, start with only the folders its responsibilities require. Keep feature-specific helpers in the feature; promote a module to `shared/` only after unrelated features use the same contract or browser adapter.

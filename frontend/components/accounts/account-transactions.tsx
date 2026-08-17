@@ -7,7 +7,7 @@ import { type DateRange } from "react-day-picker";
 import { type ColumnFiltersState } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import type { TransactionWithRelations } from "@/features/transactions/public";
-import type { CategoryDisplay } from "@/types";
+import type { CategoryDisplay } from "@/shared/domain/display-contracts";
 import { TransactionSheet } from "@/components/transactions/transaction-sheet";
 import { TransactionPagination } from "@/components/transactions/transaction-pagination";
 import { BulkActionsDock } from "@/components/transactions/bulk-actions-dock";

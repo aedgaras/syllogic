@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { cn } from "@/lib/utils";
 import { RiArrowDownSLine, RiWalletLine } from "@remixicon/react";
-import { useFilterPersistence } from "@/lib/hooks/use-filter-persistence";
+import { useFilterPersistence } from "@/shared/client/hooks/use-filter-persistence";
 import { parseGlobalFiltersFromSearchParams } from "@/lib/filters/global-filters";
 
 interface Account {

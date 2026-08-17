@@ -22,7 +22,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { useIsMobile } from "@/hooks/use-mobile"
+import { useIsMobile } from "@/shared/client/hooks/use-mobile"
 import { RiSideBarLine } from "@remixicon/react"
 
 const SIDEBAR_WIDTH = "14rem"

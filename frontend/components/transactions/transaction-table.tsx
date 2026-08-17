@@ -9,13 +9,13 @@ import type {
   FilteredTransactionTotals,
   TransactionWithRelations,
 } from "@/features/transactions/public";
-import type { CategoryDisplay, AccountForFilter } from "@/types";
+import type { CategoryDisplay, AccountForFilter } from "@/shared/domain/display-contracts";
 import { TransactionSheet } from "./transaction-sheet";
 import { transactionColumns } from "./columns";
 import { TransactionFilters } from "./transaction-filters";
 import { TransactionPagination } from "./transaction-pagination";
 import { BulkActionsDock } from "./bulk-actions-dock";
-import { useFilterPersistence } from "@/lib/hooks/use-filter-persistence";
+import { useFilterPersistence } from "@/shared/client/hooks/use-filter-persistence";
 import {
   hasActiveTransactionFilters,
   type TransactionsQueryState,

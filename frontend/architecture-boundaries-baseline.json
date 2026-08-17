@@ -1,12 +1,1 @@
-[
-  { "file": "app/(dashboard)/accounts/[accountId]/account-detail.tsx", "source": "@/lib/db/schema", "rule": "client-db-import" },
-  { "file": "app/(onboarding)/step-3/page.tsx", "source": "@/lib/db/schema", "rule": "client-db-import" },
-  { "file": "components/accounts/account-header.tsx", "source": "@/lib/db/schema", "rule": "client-db-import" },
-  { "file": "components/settings/category-manager.tsx", "source": "@/lib/db/schema", "rule": "client-db-import" },
-  { "file": "components/settings/delete-category-dialog.tsx", "source": "@/lib/db/schema", "rule": "client-db-import" },
-  { "file": "components/settings/profile-editor.tsx", "source": "@/lib/db/schema", "rule": "client-db-import" },
-  { "file": "components/settings/settings-tabs.tsx", "source": "@/lib/db/schema", "rule": "client-db-import" },
-  { "file": "components/subscriptions/subscription-detail-sheet.tsx", "source": "@/lib/db/schema", "rule": "client-db-import" },
-  { "file": "components/subscriptions/subscription-form-dialog.tsx", "source": "@/lib/db/schema", "rule": "client-db-import" },
-  { "file": "components/subscriptions/subscriptions-client.tsx", "source": "@/lib/db/schema", "rule": "client-db-import" }
-]
+[]

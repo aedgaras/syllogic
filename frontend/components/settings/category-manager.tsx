@@ -25,24 +25,24 @@ import {
   type CategoryUpdateInput,
   type CategoryInput,
 } from "@/lib/actions/categories";
-import type { Category } from "@/lib/db/schema";
+import type { SettingsCategory } from "@/features/settings/public";
 import { groupCategoriesByType, getCategoryTypeLabel, type CategoryType } from "@/lib/utils/category-utils";
 
 interface CategoryManagerProps {
-  initialCategories: Category[];
+  initialCategories: SettingsCategory[];
 }
 
 export function CategoryManager({ initialCategories }: CategoryManagerProps) {
   const router = useRouter();
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [categories, setCategories] = useState<SettingsCategory[]>(initialCategories);
   const [activeTab, setActiveTab] = useState<CategoryType>("expense");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingCategory, setEditingCategory] = useState<SettingsCategory | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState<SettingsCategory | null>(null);
   const [deleteTransactionCount, setDeleteTransactionCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -50,12 +50,12 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
 
   const getCategoriesByType = (type: CategoryType) => groupedCategories[type];
 
-  const handleEdit = (category: Category) => {
+  const handleEdit = (category: SettingsCategory) => {
     setEditingCategory(category);
     setDialogOpen(true);
   };
 
-  const handleDelete = async (category: Category) => {
+  const handleDelete = async (category: SettingsCategory) => {
     if (category.isSystem) {
       toast.error("System categories cannot be deleted");
       return;
@@ -152,7 +152,7 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
         const result = await createCategory(createData);
         if (result.success && result.categoryId) {
           // Add to local state
-          const newCategory: Category = {
+          const newCategory: SettingsCategory = {
             id: result.categoryId,
             userId: "", // Will be filled by server
             name: categoryInput.name,
@@ -181,7 +181,7 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
     }
   };
 
-  const categoryToInput = (category: Category | null): CategoryInput | null => {
+  const categoryToInput = (category: SettingsCategory | null): CategoryInput | null => {
     if (!category) return null;
     return {
       name: category.name,
@@ -195,7 +195,7 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
   };
 
   const renderCategoryList = (
-    categoryList: Category[],
+    categoryList: SettingsCategory[],
     categoryType: "expense" | "income" | "transfer"
   ) => {
     return (

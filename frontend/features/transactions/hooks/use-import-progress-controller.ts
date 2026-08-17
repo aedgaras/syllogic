@@ -8,8 +8,9 @@ import { fetchCsvImportStatus } from "@/lib/import/client";
 import {
   clearPendingImport,
   getPendingImport,
-  useImportStatus,
-} from "@/lib/hooks/use-import-status";
+} from "@/features/csv-import/client/pending-import-storage";
+import { useImportStatus } from "@/features/csv-import/hooks/use-import-status";
+import { presentImportStatusToast } from "@/features/csv-import/orchestration/import-status-toast-presenter";
 
 type ImportState = "importing" | "completed" | "failed" | null;
 type PendingImport = { importId: string; userId: string };
@@ -111,7 +112,7 @@ export function useImportProgressController() {
       clearImport();
       router.refresh();
     },
-    showToasts: true,
+    onEvent: presentImportStatusToast,
   });
 
   React.useEffect(() => {

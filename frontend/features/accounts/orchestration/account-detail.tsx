@@ -5,7 +5,7 @@ import { AccountHeader } from "@/components/accounts/account-header";
 import { AccountBalanceChart } from "@/components/accounts/account-balance-chart";
 import { AccountTransactions } from "@/components/accounts/account-transactions";
 import type { TransactionWithRelations } from "@/features/transactions/public";
-import type { CategoryDisplay } from "@/types";
+import type { CategoryDisplay } from "@/shared/domain/display-contracts";
 import type { AccountViewModel, BalanceHistoryPoint } from "../domain/contracts";
 
 interface AccountDetailProps {
@@ -68,4 +68,3 @@ export function AccountDetail({
     </div>
   );
 }
-

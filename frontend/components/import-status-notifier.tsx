@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
 import {
-  useImportStatus,
   getPendingImport,
   clearPendingImport,
-} from "@/lib/hooks/use-import-status";
+} from "@/features/csv-import/client/pending-import-storage";
+import { useImportStatus } from "@/features/csv-import/hooks/use-import-status";
+import { presentImportStatusToast } from "@/features/csv-import/orchestration/import-status-toast-presenter";
 
 export function ImportStatusNotifier() {
   const router = useRouter();
@@ -31,7 +32,7 @@ export function ImportStatusNotifier() {
   }, [session?.user?.id]);
 
   useImportStatus(pendingImport?.userId, pendingImport?.importId, {
-    showToasts: true,
+    onEvent: presentImportStatusToast,
     onStarted: (event) => {
       console.log("[ImportStatusNotifier] import_started callback", event);
     },
