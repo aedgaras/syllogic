@@ -1,13 +1,22 @@
 "use server";
 
 import { headers } from "next/headers";
+import { cache } from "react";
 import { auth } from "@/lib/auth";
 
+const getSessionForRequest = cache(async () =>
+  auth.api.getSession({ headers: await headers() }),
+);
+
 /**
- * Get the authenticated session from BetterAuth
+ * Get the authenticated session from BetterAuth.
+ *
+ * A dashboard render fans out into several server queries. React's request
+ * cache makes those queries share one session lookup instead of validating the
+ * same cookie (and potentially querying the database) in parallel.
  */
 export async function getAuthenticatedSession() {
-  return auth.api.getSession({ headers: await headers() });
+  return getSessionForRequest();
 }
 
 /**
