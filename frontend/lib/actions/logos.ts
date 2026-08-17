@@ -4,12 +4,59 @@ import { eq, or, ilike } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { companyLogos, type CompanyLogo, type NewCompanyLogo } from "@/lib/db/schema";
 import { storage } from "@/lib/storage";
+import { requireAuth } from "@/lib/auth-helpers";
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 const NOT_FOUND_RECHECK_DAYS = 30;
+const MAX_LOGO_QUERY_LENGTH = 253;
+const MAX_LOGO_BYTES = 1024 * 1024;
+const LOGO_REQUESTS_PER_MINUTE = 10;
+const logoRateLimits = new Map<string, { windowStartedAt: number; count: number }>();
+
+function consumeLogoRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const current = logoRateLimits.get(userId);
+  if (!current || now - current.windowStartedAt >= 60_000) {
+    logoRateLimits.set(userId, { windowStartedAt: now, count: 1 });
+    return true;
+  }
+  if (current.count >= LOGO_REQUESTS_PER_MINUTE) return false;
+  current.count += 1;
+  return true;
+}
+
+function normalizeDomain(input: string): string | null {
+  const value = input.trim().toLowerCase();
+  if (!value || value.length > MAX_LOGO_QUERY_LENGTH) return null;
+  const candidate = value.includes(".") ? value : deriveDomainFromName(value);
+  if (
+    candidate.length > MAX_LOGO_QUERY_LENGTH ||
+    !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(candidate)
+  ) return null;
+  return candidate;
+}
+
+async function readLimitedImage(response: Response): Promise<Buffer | null> {
+  const declaredSize = Number(response.headers.get("content-length") || "0");
+  if (declaredSize > MAX_LOGO_BYTES || !response.body) return null;
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_LOGO_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), total);
+}
 
 function getLogoDevApiKey(): string | undefined {
   // Use bracket access to avoid build-time env inlining in Next.js server bundles.
@@ -148,10 +195,10 @@ async function fetchAndStoreLogo(
     }
 
     // Download the image
-    const imageBuffer = Buffer.from(await response.arrayBuffer());
+    const imageBuffer = await readLimitedImage(response);
 
     // Check if image is too small (likely a placeholder)
-    if (imageBuffer.length < 1000) {
+    if (!imageBuffer || imageBuffer.length < 1000) {
       return { success: false };
     }
 
@@ -190,15 +237,21 @@ export async function searchLogo(
   error?: string;
   logo?: CompanyLogo;
 }> {
+  const userId = await requireAuth();
+  if (!userId) return { success: false, error: "Not authenticated" };
+  if (!consumeLogoRateLimit(userId)) {
+    return { success: false, error: "Too many logo requests. Please try again shortly." };
+  }
   if (!query?.trim()) {
     return { success: false, error: "Query is required" };
   }
 
-  const trimmedQuery = query.trim().toLowerCase();
+  const trimmedQuery = query.trim().toLowerCase().slice(0, MAX_LOGO_QUERY_LENGTH + 1);
 
   // Determine if query is a domain or a name
   const isDomain = trimmedQuery.includes(".");
-  const domain = isDomain ? trimmedQuery : deriveDomainFromName(trimmedQuery);
+  const domain = normalizeDomain(trimmedQuery);
+  if (!domain) return { success: false, error: "Enter a valid company name or domain" };
   const companyName = isDomain ? trimmedQuery.split(".")[0] : trimmedQuery;
 
   try {
@@ -258,6 +311,7 @@ export async function searchLogo(
  * Get a logo by its ID
  */
 export async function getLogoById(id: string): Promise<CompanyLogo | null> {
+  if (!(await requireAuth())) return null;
   if (!id) {
     return null;
   }
@@ -278,6 +332,7 @@ export async function getLogoById(id: string): Promise<CompanyLogo | null> {
  * Get a logo by domain
  */
 export async function getLogoByDomain(domain: string): Promise<CompanyLogo | null> {
+  if (!(await requireAuth())) return null;
   if (!domain?.trim()) {
     return null;
   }
@@ -306,7 +361,8 @@ export async function searchLogosInCache(
   query: string,
   limit = 5
 ): Promise<CompanyLogo[]> {
-  if (!query?.trim()) {
+  if (!(await requireAuth())) return [];
+  if (!query?.trim() || query.length > 100) {
     return [];
   }
 
@@ -316,7 +372,7 @@ export async function searchLogosInCache(
         ilike(companyLogos.domain, `%${query}%`),
         ilike(companyLogos.companyName, `%${query}%`)
       ),
-      limit,
+      limit: Math.max(1, Math.min(limit, 20)),
     });
 
     // Only return logos with status "found"

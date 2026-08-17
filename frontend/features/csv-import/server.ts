@@ -6,7 +6,6 @@ export {
   getAiColumnMapping,
   getCsvImportHistory,
   getCsvImportSession,
-  importRevolutCsv,
   initializeCsvImport,
   parseCsvHeaders,
   previewImportedTransactions,

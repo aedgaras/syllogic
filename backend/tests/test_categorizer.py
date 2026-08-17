@@ -3,6 +3,7 @@ Test categorizer API endpoint.
 """
 import sys
 import os
+import json
 import requests
 from decimal import Decimal
 
@@ -71,10 +72,11 @@ def test_categorizer_single():
             "use_llm": False  # Use deterministic matching for faster tests
         }
         
+        request_body = json.dumps(payload).encode("utf-8")
         response = requests.post(
             url,
-            json=payload,
-            headers=build_internal_auth_headers("POST", path_with_query, user_id),
+            data=request_body,
+            headers={"Content-Type": "application/json", **build_internal_auth_headers("POST", path_with_query, user_id, request_body)},
             timeout=30,
         )
     
@@ -129,10 +131,11 @@ def test_categorizer_batch():
             "use_llm": False  # Use deterministic matching for faster tests
         }
         
+        request_body = json.dumps(payload).encode("utf-8")
         response = requests.post(
             url,
-            json=payload,
-            headers=build_internal_auth_headers("POST", path_with_query, user_id),
+            data=request_body,
+            headers={"Content-Type": "application/json", **build_internal_auth_headers("POST", path_with_query, user_id, request_body)},
             timeout=30,
         )
     

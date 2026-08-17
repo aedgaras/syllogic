@@ -147,11 +147,16 @@ export async function initiateAuth(
   try {
     const backendBase = getBackendBaseUrl().replace(/\/+$/, "");
     const url = `${backendBase}/api/enable-banking/auth`;
+    const body = JSON.stringify({
+      aspsp_name: aspspName,
+      aspsp_country: aspspCountry,
+    });
 
     const signatureHeaders = createInternalAuthHeaders({
       method: "POST",
       pathWithQuery: "/api/enable-banking/auth",
       userId,
+      body,
     });
 
     const resp = await fetch(url, {
@@ -160,10 +165,7 @@ export async function initiateAuth(
         "Content-Type": "application/json",
         ...signatureHeaders,
       },
-      body: JSON.stringify({
-        aspsp_name: aspspName,
-        aspsp_country: aspspCountry,
-      }),
+      body,
     });
 
     if (!resp.ok) {
@@ -247,11 +249,16 @@ export async function submitAccountMappings(
     const backendBase = getBackendBaseUrl().replace(/\/+$/, "");
     const pathWithQuery = `/api/enable-banking/connections/${connectionId}/map-accounts`;
     const url = `${backendBase}${pathWithQuery}`;
+    const body = JSON.stringify({
+      mappings,
+      initial_sync_days: initialSyncDays,
+    });
 
     const signatureHeaders = createInternalAuthHeaders({
       method: "POST",
       pathWithQuery,
       userId,
+      body,
     });
 
     const resp = await fetch(url, {
@@ -260,10 +267,7 @@ export async function submitAccountMappings(
         "Content-Type": "application/json",
         ...signatureHeaders,
       },
-      body: JSON.stringify({
-        mappings,
-        initial_sync_days: initialSyncDays,
-      }),
+      body,
     });
 
     if (!resp.ok) {

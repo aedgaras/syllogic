@@ -83,16 +83,16 @@ async function signedFetch(
   const userId = await requireAuth();
   if (!userId) throw new Error("Not authenticated");
   const { url, pathWithQuery } = buildUrl(path, options.query);
+  const body = options.body !== undefined ? JSON.stringify(options.body) : undefined;
   const signatureHeaders = createInternalAuthHeaders({
     method,
     pathWithQuery,
     userId,
+    body: body ?? "",
   });
   const headers: Record<string, string> = { ...signatureHeaders };
-  let body: string | undefined;
-  if (options.body !== undefined) {
+  if (body !== undefined) {
     headers["Content-Type"] = "application/json";
-    body = JSON.stringify(options.body);
   }
   return fetch(url, { method, headers, body, cache: "no-store" });
 }

@@ -162,8 +162,13 @@ def _client():
 
 def _signed_post(client, user_id: str, path: str, body: dict):
     """POST to an internal-auth-protected endpoint with properly signed headers."""
-    headers = build_internal_auth_headers("POST", path, user_id)
-    return client.post(path, headers=headers, json=body)
+    import json
+    request_body = json.dumps(body, separators=(",", ":")).encode("utf-8")
+    headers = {
+        "Content-Type": "application/json",
+        **build_internal_auth_headers("POST", path, user_id, request_body),
+    }
+    return client.post(path, headers=headers, content=request_body)
 
 
 def _signed_delete(client, user_id: str, path: str):

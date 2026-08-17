@@ -168,6 +168,7 @@ services:
   app:
     image: ghcr.io/syllogic-ai/syllogic-frontend:${APP_VERSION:-edge}
     container_name: syllogic-app
+    read_only: true
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
@@ -191,6 +192,8 @@ services:
       DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
     volumes:
       - uploads_data:/data/uploads
+    tmpfs:
+      - /tmp
     depends_on:
       uploads-init:
         condition: service_completed_successfully

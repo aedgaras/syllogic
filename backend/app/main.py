@@ -18,7 +18,7 @@ from celery_app import celery_app  # noqa: F401, E402
 
 from app.database import engine, Base
 from app.db_helpers import (
-    authenticate_internal_request_from_headers,
+    authenticate_internal_request_with_body,
     clear_request_user_id,
     set_request_user_id,
 )
@@ -86,10 +86,12 @@ async def internal_auth_middleware(request: Request, call_next):
         path_with_query = f"{path_with_query}?{request.url.query}"
 
     try:
-        request_user_id = authenticate_internal_request_from_headers(
+        body_bytes = await request.body()
+        request_user_id = authenticate_internal_request_with_body(
             method=request.method,
             path_with_query=path_with_query,
             headers=request.headers,
+            body_bytes=body_bytes,
         )
     except Exception as exc:
         if hasattr(exc, "status_code") and hasattr(exc, "detail"):

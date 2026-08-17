@@ -44,7 +44,7 @@ class AuthResponse(BaseModel):
 
 class SessionRequest(BaseModel):
     code: str
-    state: Optional[str] = None
+    state: str
 
 class SessionResponse(BaseModel):
     connection_id: str
@@ -158,8 +158,9 @@ def initiate_auth(
     try:
         r = _get_redis()
         r.setex(f"eb:state:{state_nonce}", 600, user_id)  # 10 min TTL
-    except Exception:
-        logger.warning("Failed to store OAuth state in Redis")
+    except Exception as exc:
+        logger.exception("Failed to store OAuth state in Redis")
+        raise HTTPException(status_code=503, detail="OAuth state storage is unavailable") from exc
 
     auth_payload = {
         "access": {
@@ -193,19 +194,19 @@ def create_session(
     Exchange authorization code for an Enable Banking session.
     Creates a bank_connections row and upserts accounts.
     """
-    # Validate OAuth state nonce if provided
-    if body.state:
-        try:
-            r = _get_redis()
-            stored_user_id = r.get(f"eb:state:{body.state}")
-            if stored_user_id and stored_user_id != user_id:
-                raise HTTPException(status_code=403, detail="OAuth state mismatch")
-            # Clean up used nonce
-            r.delete(f"eb:state:{body.state}")
-        except HTTPException:
-            raise
-        except Exception:
-            logger.warning("Failed to validate OAuth state from Redis")
+    # Atomically consume the one-time nonce. Missing, expired, unknown, reused,
+    # mismatched, or unavailable state must all fail closed.
+    try:
+        r = _get_redis()
+        stored_user_id = r.getdel(f"eb:state:{body.state}")
+    except Exception as exc:
+        logger.exception("Failed to validate OAuth state from Redis")
+        raise HTTPException(status_code=503, detail="OAuth state validation is unavailable") from exc
+
+    if not stored_user_id:
+        raise HTTPException(status_code=403, detail="OAuth state is invalid or expired")
+    if stored_user_id != user_id:
+        raise HTTPException(status_code=403, detail="OAuth state mismatch")
 
     client = _get_eb_client()
 

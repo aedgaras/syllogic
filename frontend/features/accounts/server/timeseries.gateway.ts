@@ -38,19 +38,20 @@ export async function createPocketAccountViaBackend(
 ) {
   const path = "/api/accounts/pocket";
   const url = `${getBackendBaseUrl().replace(/\/+$/, "")}${path}`;
+  const body = JSON.stringify({
+    name: input.name,
+    account_type: input.accountType,
+    currency: input.currency,
+    starting_balance: String(input.startingBalance),
+    iban: input.iban,
+  });
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...createInternalAuthHeaders({ method: "POST", pathWithQuery: path, userId }),
+      ...createInternalAuthHeaders({ method: "POST", pathWithQuery: path, userId, body }),
     },
-    body: JSON.stringify({
-      name: input.name,
-      account_type: input.accountType,
-      currency: input.currency,
-      starting_balance: String(input.startingBalance),
-      iban: input.iban,
-    }),
+    body,
   });
   if (!response.ok) {
     const data = await response.json().catch(() => ({ detail: "Failed to create pocket account" }));
@@ -71,4 +72,3 @@ export async function unlinkInternalTransferViaBackend(transferId: string, userI
     throw new Error(typeof data.detail === "string" ? data.detail : "Failed to unlink internal transfer");
   }
 }
-

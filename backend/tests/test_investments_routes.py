@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import json
 import time
 from datetime import date
 from decimal import Decimal
@@ -20,9 +21,9 @@ from app.models import User, Account, Holding, BrokerConnection, HoldingValuatio
 INTERNAL_AUTH_SECRET = "test-internal-secret"
 
 
-def _signed_headers(method: str, path_with_query: str, user_id: str = "u1") -> dict:
+def _signed_headers(method: str, path_with_query: str, user_id: str = "u1", body: bytes = b"") -> dict:
     timestamp = str(int(time.time()))
-    payload = "\n".join([method.upper(), path_with_query, user_id, timestamp])
+    payload = "\n".join([method.upper(), path_with_query, user_id, timestamp, hashlib.sha256(body).hexdigest()])
     signature = hmac.new(
         INTERNAL_AUTH_SECRET.encode("utf-8"),
         payload.encode("utf-8"),
@@ -44,7 +45,14 @@ class SigningClient:
 
     def request(self, method: str, url: str, **kwargs):
         headers = dict(kwargs.pop("headers", {}) or {})
-        headers.update(_signed_headers(method, url))
+        body = b""
+        if "json" in kwargs:
+            body = json.dumps(kwargs.pop("json"), separators=(",", ":")).encode("utf-8")
+            kwargs["content"] = body
+            headers["content-type"] = "application/json"
+        elif isinstance(kwargs.get("content"), bytes):
+            body = kwargs["content"]
+        headers.update(_signed_headers(method, url, body=body))
         return self._client.request(method, url, headers=headers, **kwargs)
 
     def get(self, url, **kw):

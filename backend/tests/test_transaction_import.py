@@ -3,6 +3,7 @@ Test transaction import API endpoint.
 """
 import sys
 import os
+import json
 import requests
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -96,10 +97,11 @@ def test_transaction_import():
             "calculate_balances": False
         }
 
+        request_body = json.dumps(payload).encode("utf-8")
         response = requests.post(
             url,
-            json=payload,
-            headers=build_internal_auth_headers("POST", path_with_query, user_id),
+            data=request_body,
+            headers={"Content-Type": "application/json", **build_internal_auth_headers("POST", path_with_query, user_id, request_body)},
             timeout=30,
         )
         

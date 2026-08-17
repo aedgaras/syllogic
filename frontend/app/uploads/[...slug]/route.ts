@@ -19,8 +19,6 @@ function contentTypeFor(filePath: string): string {
       return "image/webp";
     case ".gif":
       return "image/gif";
-    case ".svg":
-      return "image/svg+xml";
     default:
       return "application/octet-stream";
   }
@@ -53,10 +51,14 @@ export async function GET(
 
   try {
     const file = await fs.readFile(filePath);
+    const contentType = contentTypeFor(filePath);
     return new NextResponse(file, {
       status: 200,
       headers: {
-        "Content-Type": contentTypeFor(filePath),
+        "Content-Type": contentType,
+        "Content-Disposition": contentType.startsWith("image/") ? "inline" : "attachment",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "X-Content-Type-Options": "nosniff",
         // Filenames are stable; callers append ?v=timestamp when replacing files.
         "Cache-Control": "public, max-age=31536000, immutable",
       },

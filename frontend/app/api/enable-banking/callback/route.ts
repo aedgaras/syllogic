@@ -43,6 +43,12 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  if (!state) {
+    return NextResponse.redirect(
+      `${baseUrl}/settings/connect-bank?error=${encodeURIComponent("Missing OAuth state")}`
+    );
+  }
+
   // Get user session to authenticate the backend call
   let userId: string;
   try {
@@ -65,10 +71,12 @@ export async function GET(req: NextRequest) {
     const backendBase = getBackendBaseUrl().replace(/\/+$/, "");
     const upstreamUrl = `${backendBase}/api/enable-banking/session`;
 
+    const requestBody = JSON.stringify({ code, state });
     const signatureHeaders = createInternalAuthHeaders({
       method: "POST",
       pathWithQuery: "/api/enable-banking/session",
       userId,
+      body: requestBody,
     });
 
     const resp = await fetch(upstreamUrl, {
@@ -77,7 +85,7 @@ export async function GET(req: NextRequest) {
         "Content-Type": "application/json",
         ...signatureHeaders,
       },
-      body: JSON.stringify({ code, state }),
+      body: requestBody,
     });
 
     if (!resp.ok) {

@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 export const INTERNAL_AUTH_USER_HEADER = "x-syllogic-user-id";
 export const INTERNAL_AUTH_TIMESTAMP_HEADER = "x-syllogic-timestamp";
@@ -9,6 +9,7 @@ interface InternalAuthSignatureInput {
   pathWithQuery: string;
   userId: string;
   timestamp?: string;
+  body?: string | Buffer | ArrayBuffer;
 }
 
 function getInternalAuthSecret(): string {
@@ -24,8 +25,16 @@ function buildSignaturePayload({
   pathWithQuery,
   userId,
   timestamp,
+  body,
 }: Required<InternalAuthSignatureInput>): string {
-  return [method.toUpperCase(), pathWithQuery, userId, timestamp].join("\n");
+  const bodyBytes =
+    typeof body === "string"
+      ? Buffer.from(body)
+      : body instanceof ArrayBuffer
+        ? Buffer.from(body)
+        : body;
+  const bodyDigest = createHash("sha256").update(bodyBytes).digest("hex");
+  return [method.toUpperCase(), pathWithQuery, userId, timestamp, bodyDigest].join("\n");
 }
 
 export function createInternalAuthHeaders({
@@ -33,6 +42,7 @@ export function createInternalAuthHeaders({
   pathWithQuery,
   userId,
   timestamp = Math.floor(Date.now() / 1000).toString(),
+  body = "",
 }: InternalAuthSignatureInput): Record<string, string> {
   const secret = getInternalAuthSecret();
   const payload = buildSignaturePayload({
@@ -40,6 +50,7 @@ export function createInternalAuthHeaders({
     pathWithQuery,
     userId,
     timestamp,
+    body,
   });
   const signature = createHmac("sha256", secret)
     .update(payload)

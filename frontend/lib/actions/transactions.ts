@@ -212,6 +212,22 @@ export async function createTransaction(
     const backendUrl = getBackendBaseUrl();
     const pathWithQuery = "/api/transactions/import";
 
+    const requestBody = JSON.stringify({
+      transactions: [
+        {
+          account_id: input.accountId,
+          amount: input.amount,
+          description: input.description,
+          merchant: input.merchant || null,
+          booked_at: input.bookedAt.toISOString(),
+          transaction_type: input.transactionType,
+          category_id: input.categoryId || null,
+        },
+      ],
+      sync_exchange_rates: true,
+      update_functional_amounts: true,
+      calculate_balances: true,
+    });
     const response = await fetch(`${backendUrl}${pathWithQuery}`, {
       method: "POST",
       headers: {
@@ -220,24 +236,10 @@ export async function createTransaction(
           method: "POST",
           pathWithQuery,
           userId,
+          body: requestBody,
         }),
       },
-      body: JSON.stringify({
-        transactions: [
-          {
-            account_id: input.accountId,
-            amount: input.amount,
-            description: input.description,
-            merchant: input.merchant || null,
-            booked_at: input.bookedAt.toISOString(),
-            transaction_type: input.transactionType,
-            category_id: input.categoryId || null, // Pre-selected category (skips AI categorization)
-          },
-        ],
-        sync_exchange_rates: true,
-        update_functional_amounts: true,
-        calculate_balances: true,
-      }),
+      body: requestBody,
     });
 
     if (!response.ok) {

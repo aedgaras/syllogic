@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { users, transactions, accounts, type User } from "@/lib/db/schema";
 import { getAuthenticatedSession, requireAuth } from "@/lib/auth-helpers";
 import { storage } from "@/lib/storage";
+import { normalizeProfileImage } from "@/lib/profile-image";
 import { getBackendBaseUrl } from "@/lib/backend-url";
 import { createInternalAuthHeaders } from "@/lib/internal-auth";
 import {
@@ -181,6 +182,7 @@ async function requestOpenAiSettings(
 ): Promise<{ success: true; settings: OpenAiSettings } | { success: false; error: string }> {
   const backendUrl = getBackendBaseUrl();
   const pathWithQuery = "/api/app-settings/openai";
+  const requestBody = body ? JSON.stringify(body) : undefined;
   const response = await fetch(`${backendUrl}${pathWithQuery}`, {
     method,
     headers: {
@@ -189,9 +191,10 @@ async function requestOpenAiSettings(
         method,
         pathWithQuery,
         userId,
+        body: requestBody ?? "",
       }),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: requestBody,
     cache: "no-store",
   });
 
@@ -327,12 +330,11 @@ export async function updateUserProfile(
 
     // Handle profile photo upload
     if (profilePhoto && profilePhoto.size > 0) {
-      const fileExtension = profilePhoto.name.split(".").pop()?.toLowerCase() || "jpg";
-      const fileName = `profile/${session.user.id}.${fileExtension}`;
-      const buffer = Buffer.from(await profilePhoto.arrayBuffer());
+      const fileName = `profile/${session.user.id}.webp`;
+      const buffer = await normalizeProfileImage(profilePhoto);
 
       const uploadedFile = await storage.upload(fileName, buffer, {
-        contentType: profilePhoto.type,
+        contentType: "image/webp",
       });
 
       // Add cache-busting timestamp to prevent browser caching

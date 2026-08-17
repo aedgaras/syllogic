@@ -4,6 +4,7 @@ Test subscription identifier API endpoint.
 import sys
 import os
 import requests
+import json
 from datetime import datetime, timezone, timedelta
 
 # Add parent directory to path
@@ -81,10 +82,11 @@ def test_subscription_detection():
         }
         
         # Import transactions
+        request_body = json.dumps(import_payload).encode("utf-8")
         import_response = requests.post(
             import_url,
-            json=import_payload,
-            headers=build_internal_auth_headers("POST", path_with_query, test_user_id),
+            data=request_body,
+            headers={"Content-Type": "application/json", **build_internal_auth_headers("POST", path_with_query, test_user_id, request_body)},
             timeout=60,
         )
         

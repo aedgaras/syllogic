@@ -1,5 +1,6 @@
 import { decryptWithFallback, encryptValue } from "@/lib/security/data-encryption";
 import { storage } from "@/lib/storage";
+import { randomUUID } from "node:crypto";
 
 export interface StoredImportFile {
   filePath: string;
@@ -8,10 +9,10 @@ export interface StoredImportFile {
 
 export async function storeImportFile(
   userId: string,
-  fileName: string,
   content: string
 ): Promise<StoredImportFile> {
-  const filePath = `csv-imports/${userId}/${Date.now()}-${fileName}`;
+  // Never incorporate a client-controlled filename into a storage path.
+  const filePath = `csv-imports/${userId}/${randomUUID()}.csv`;
   await storage.upload(filePath, Buffer.from(content), { contentType: "text/csv" });
   return { filePath, filePathCiphertext: encryptValue(filePath) };
 }

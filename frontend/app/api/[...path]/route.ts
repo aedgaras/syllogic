@@ -65,12 +65,18 @@ async function proxy(req: NextRequest, pathSegments: string[]) {
   }
 
   const requestHeaders = cloneRequestHeaders(req);
+  let body: ArrayBuffer | undefined;
+  if (method !== "GET" && method !== "HEAD") {
+    const requestBody = await req.arrayBuffer();
+    body = requestBody.byteLength ? requestBody : undefined;
+  }
   if (isProtectedPath && session?.user?.id) {
     try {
       const signatureHeaders = createInternalAuthHeaders({
         method,
         pathWithQuery: `${upstreamUrl.pathname}${upstreamUrl.search}`,
         userId: session.user.id,
+        body: body ?? "",
       });
       Object.entries(signatureHeaders).forEach(([key, value]) => {
         requestHeaders.set(key, value);
@@ -94,10 +100,7 @@ async function proxy(req: NextRequest, pathSegments: string[]) {
     cache: "no-store",
   };
 
-  if (method !== "GET" && method !== "HEAD") {
-    const body = await req.arrayBuffer();
-    init.body = body.byteLength ? body : undefined;
-  }
+  init.body = body;
 
   const upstreamRes = await fetch(upstreamUrl, init);
 

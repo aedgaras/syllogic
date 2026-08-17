@@ -9,6 +9,7 @@ import { storage } from "@/lib/storage";
 import { DEFAULT_CATEGORIES, type DefaultCategory } from "@/lib/constants/default-categories";
 import { CACHE_TAGS } from "@/lib/data/cached";
 import { type CategoryInput } from "./categories";
+import { normalizeProfileImage } from "@/lib/profile-image";
 
 export type OnboardingStatus = "pending" | "step_1" | "step_2" | "step_3" | "completed";
 
@@ -104,12 +105,11 @@ export async function updatePersonalDetails(
 
     // Handle profile photo upload
     if (profilePhoto && profilePhoto.size > 0) {
-      const fileExtension = profilePhoto.name.split(".").pop()?.toLowerCase() || "jpg";
-      const fileName = `profile/${session.user.id}.${fileExtension}`;
-      const buffer = Buffer.from(await profilePhoto.arrayBuffer());
+      const fileName = `profile/${session.user.id}.webp`;
+      const buffer = await normalizeProfileImage(profilePhoto);
 
       const uploadedFile = await storage.upload(fileName, buffer, {
-        contentType: profilePhoto.type,
+        contentType: "image/webp",
       });
 
       // Add cache-busting timestamp to prevent browser caching

@@ -17,7 +17,16 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   private getFullPath(filePath: string): string {
-    return path.join(this.storageRoot, filePath);
+    if (!filePath || path.isAbsolute(filePath)) {
+      throw new Error("Storage path must be a non-empty relative path");
+    }
+
+    const root = path.resolve(this.storageRoot);
+    const fullPath = path.resolve(root, filePath);
+    if (fullPath === root || !fullPath.startsWith(`${root}${path.sep}`)) {
+      throw new Error("Storage path escapes the configured storage root");
+    }
+    return fullPath;
   }
 
   async upload(
@@ -91,6 +100,9 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   getUrl(filePath: string): string {
+    // Validate paths used to construct public URLs too, so callers cannot
+    // accidentally publish traversal-like URLs with a different provider path.
+    this.getFullPath(filePath);
     return `${this.baseUrl}/${filePath.replace(/^\/+/, "")}`;
   }
 }

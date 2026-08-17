@@ -203,6 +203,7 @@ services:
 
   app:
     image: ghcr.io/syllogic-ai/syllogic-frontend:${APP_VERSION:-edge}
+    read_only: true
     environment:
       PUID: ${PUID:-1000}
       PGID: ${PGID:-1000}
@@ -228,6 +229,8 @@ services:
       - type: bind
         source: /DATA/AppData/$AppID/uploads
         target: /data/uploads
+    tmpfs:
+      - /tmp
     depends_on:
       - uploads-init
       - migrate
