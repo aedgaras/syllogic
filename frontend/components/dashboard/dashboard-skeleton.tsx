@@ -23,9 +23,9 @@ export function DashboardSkeleton() {
       </div>
 
       {/* Row 2: charts */}
-      <div className="grid gap-4 md:grid-cols-5">
-        <Skeleton className="h-80 w-full md:col-span-3" />
-        <Skeleton className="h-80 w-full md:col-span-2" />
+      <div className="grid min-w-0 gap-4 xl:grid-cols-5">
+        <Skeleton className="h-80 w-full xl:col-span-3" />
+        <Skeleton className="h-80 w-full xl:col-span-2" />
       </div>
 
       {/* Row 3: cash flow sankey */}

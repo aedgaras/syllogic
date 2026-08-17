@@ -143,17 +143,20 @@ async function DashboardContent({
       </div>
 
       {/* Row 2: Charts */}
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-5">
         <div
           data-walkthrough="walkthrough-profit-loss"
-          className="md:col-span-3"
+          className="min-w-0 xl:col-span-3"
         >
           <ProfitLossChart
             data={data.incomeExpense}
             currency={data.balance.currency}
           />
         </div>
-        <div data-walkthrough="walkthrough-category" className="md:col-span-2">
+        <div
+          data-walkthrough="walkthrough-category"
+          className="min-w-0 xl:col-span-2"
+        >
           <SpendingByCategoryChart
             data={data.spendingByCategory.categories}
             total={data.spendingByCategory.total}

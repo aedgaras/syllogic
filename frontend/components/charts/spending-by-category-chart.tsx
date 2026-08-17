@@ -35,7 +35,7 @@ const OPACITY_LEVELS = [1, 0.8, 0.6, 0.45, 0.3];
 
 function SpendingByCategoryChartSkeleton() {
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader className="flex flex-row items-center justify-between gap-3 pb-2">
         <Skeleton className="h-5 w-32" />
         <Skeleton className="h-8 w-24" />
@@ -102,13 +102,13 @@ export function SpendingByCategoryChart({
   const maxAmount = Math.max(...displayData.map((d) => d.amount), 1);
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader className="pb-4">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-sm font-medium">
             {periodTitle} {translate("expenses")}
           </CardTitle>
-          <span className="break-words font-mono text-xl font-semibold tracking-tight sm:text-2xl">
+          <span className="max-w-full font-mono text-xl font-semibold tracking-tight [overflow-wrap:anywhere] sm:text-2xl">
             {formatCurrency(total, currency)}
           </span>
         </div>
@@ -132,11 +132,11 @@ export function SpendingByCategoryChart({
                   navigateToCategorySpending(categoryKey);
                 }}
               >
-                <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 text-sm">
                   <span className="truncate font-medium">
                     {category.name || translate("unknown")}
                   </span>
-                  <span className="shrink-0 font-mono text-muted-foreground">
+                  <span className="min-w-0 max-w-[55vw] text-right font-mono text-muted-foreground [overflow-wrap:anywhere] sm:max-w-none">
                     {formatCurrency(category.amount, currency)}
                   </span>
                 </div>

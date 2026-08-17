@@ -61,7 +61,7 @@ const chartConfig = {
 
 function ProfitLossChartSkeleton() {
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader>
         <Skeleton className="h-5 w-32" />
       </CardHeader>
@@ -160,16 +160,16 @@ export function ProfitLossChart({
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+    <Card className="min-w-0">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2">
         <CardTitle className="text-sm font-medium">
           {translate("incomeVsExpenses")}
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="min-w-0 px-2 pt-0 sm:px-4">
         <ChartContainer
           config={chartConfig}
-          className="h-[260px] w-full sm:h-[300px]"
+          className="h-[240px] min-w-0 w-full sm:h-[300px]"
         >
           <ComposedChart
             data={data}
