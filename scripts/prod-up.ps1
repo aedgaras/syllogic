@@ -15,13 +15,14 @@
 param(
     [switch]$Help,
     [switch]$Lite,
-    [switch]$Local
+    [switch]$Local,
+    [switch]$Caddy
 )
 
 $ErrorActionPreference = "Stop"
 
 function Show-Usage {
-    Write-Host "Usage: prod-up.ps1 [-Local] [-Lite]"
+    Write-Host "Usage: prod-up.ps1 [-Local] [-Lite] [-Caddy]"
     Write-Host ""
     Write-Host "Starts the production Docker Compose stack."
     Write-Host ""
@@ -29,6 +30,7 @@ function Show-Usage {
     Write-Host "  -Help    Show this help message"
     Write-Host "  -Local   Build production images from the current checkout"
     Write-Host "  -Lite    Use one worker/scheduler and omit the MCP container"
+    Write-Host "  -Caddy   Enable the optional Caddy reverse proxy"
 }
 
 function New-RandomHexSecret {
@@ -113,8 +115,9 @@ function Initialize-LocalEnvironment {
         Write-Host "Created deploy\compose\.env from the local production defaults." -ForegroundColor Green
     }
     Ensure-EnvironmentSetting -Path $Path -Name "APP_URL" -Value "http://localhost:8080"
+    Ensure-EnvironmentSetting -Path $Path -Name "APP_PORT" -Value "8080"
     Ensure-EnvironmentSetting -Path $Path -Name "CADDY_ADDRESS" -Value ":80"
-    Ensure-EnvironmentSetting -Path $Path -Name "HTTP_PORT" -Value "8080"
+    Ensure-EnvironmentSetting -Path $Path -Name "HTTP_PORT" -Value "80"
     Ensure-EnvironmentSetting -Path $Path -Name "POSTGRES_IMAGE" -Value "postgres:16-alpine"
     Ensure-EnvironmentSetting -Path $Path -Name "POSTGRES_USER" -Value "financeuser"
     Ensure-EnvironmentSetting -Path $Path -Name "POSTGRES_DB" -Value "finance_db"
@@ -154,6 +157,20 @@ if (-not (Test-Path $EnvFile)) {
     exit 1
 }
 
+if ($Caddy) {
+    $AppHostPort = Get-EnvironmentSetting -Path $EnvFile -Name "APP_PORT"
+    $CaddyHttpPort = Get-EnvironmentSetting -Path $EnvFile -Name "HTTP_PORT"
+    $CaddyHttpsPort = Get-EnvironmentSetting -Path $EnvFile -Name "HTTPS_PORT"
+    if ([string]::IsNullOrWhiteSpace($AppHostPort)) { $AppHostPort = "8080" }
+    if ([string]::IsNullOrWhiteSpace($CaddyHttpPort)) { $CaddyHttpPort = "80" }
+    if ([string]::IsNullOrWhiteSpace($CaddyHttpsPort)) { $CaddyHttpsPort = "443" }
+    if ($AppHostPort -eq $CaddyHttpPort -or $AppHostPort -eq $CaddyHttpsPort) {
+        Write-Host "APP_PORT ($AppHostPort) conflicts with a Caddy host port." -ForegroundColor Red
+        Write-Host "Set APP_PORT, HTTP_PORT, and HTTPS_PORT to distinct values in $EnvFile."
+        exit 1
+    }
+}
+
 # Check for Docker (installed and running)
 try {
     $null = docker version 2>&1
@@ -184,6 +201,9 @@ if (-not $Local -and $AppVersion -eq "edge") {
 # Build Compose arguments. Lite mode names services explicitly so the separate
 # Beat and MCP services are not started.
 $ComposeArgs = @("compose", "--env-file", $EnvFile, "-f", $ComposeFile)
+if ($Caddy) {
+    $ComposeArgs += @("--profile", "caddy")
+}
 if ($Local) {
     $ComposeArgs += @("-f", $LocalComposeFile)
 }
@@ -191,7 +211,10 @@ $Services = @()
 $ModeName = "full"
 if ($Lite) {
     $ComposeArgs += @("-f", $LiteComposeFile)
-    $Services = @("postgres", "redis", "uploads-init", "migrate", "backend", "worker", "app", "caddy")
+    $Services = @("postgres", "redis", "uploads-init", "migrate", "backend", "worker", "app")
+    if ($Caddy) {
+        $Services += "caddy"
+    }
     $ModeName = "lite"
 }
 

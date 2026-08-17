@@ -6,7 +6,7 @@ This directory contains the production-grade Docker Compose bundle:
 - Redis 7
 - FastAPI backend + Celery worker/beat
 - Next.js app
-- Caddy reverse proxy (TLS by default)
+- Optional Caddy reverse proxy with automatic TLS
 - One-shot Drizzle migration job (runs on deploy/boot)
 
 ## Quick Start
@@ -34,12 +34,18 @@ The steps below are for a server or public deployment using prebuilt images.
      - `INTERNAL_AUTH_SECRET`: `openssl rand -hex 32`
      - `DATA_ENCRYPTION_KEY_CURRENT` (optional, recommended): `openssl rand -base64 32`
    - `APP_URL` defaults to `http://localhost:8080` for LAN/dev mode.
-   - `HTTP_PORT` defaults to `8080` in the example env for a conflict-free local default.
-   - For public internet exposure, set `APP_URL`, `CADDY_ADDRESS`, and `ACME_EMAIL` so TLS is enabled.
+   - `APP_PORT` defaults to `8080`; the app is directly available on that port.
+   - For public internet exposure, set `APP_URL`, `CADDY_ADDRESS`, and `ACME_EMAIL`, then start with `--caddy`.
 3. Start:
 
 ```bash
 ./scripts/prod-up.sh
+```
+
+To include the bundled Caddy reverse proxy:
+
+```bash
+./scripts/prod-up.sh --caddy
 ```
 
 For a Raspberry Pi or a small VPS, use lite mode instead:
@@ -65,9 +71,10 @@ All containers should show `Up` status. The `migrate` container will exit after 
 ## Lightweight / Raspberry Pi Mode
 
 Lite mode layers `docker-compose.lite.yml` over the production stack and runs
-only PostgreSQL, Redis, migrations, FastAPI, one Celery worker, Next.js, and
-Caddy. The worker embeds Celery Beat, so scheduled jobs continue to work while
-the separate Beat process is removed. MCP is not started.
+only PostgreSQL, Redis, migrations, FastAPI, one Celery worker, and Next.js.
+The worker embeds Celery Beat, so scheduled jobs continue to work while the
+separate Beat process is removed. MCP is not started. Add `--caddy` if the
+bundled reverse proxy is wanted.
 
 The override also:
 
@@ -100,8 +107,8 @@ docker compose \
 
 Once all containers are running:
 
-- **Web UI**: Open your browser and navigate to `http://localhost:8080` (or whatever `HTTP_PORT` you configured in `.env`)
-- **Backend API**: Internal only at `http://backend:8000` within the Docker network; proxied through Caddy for external access
+- **Web UI**: Open `http://localhost:8080` (or the origin configured with `APP_URL` and `APP_PORT`)
+- **Backend API**: Internal at `http://backend:8000`; Caddy proxies its public routes when enabled
 - **MCP Server**: Available at `http://localhost:8001` (if enabled)
 
 **First Time Setup**:
@@ -151,7 +158,7 @@ docker compose \
 
 ## Notes
 
-- **Only web ports are exposed** by default: `HTTP_PORT` (80) and `HTTPS_PORT` (443).
+- The app publishes `APP_PORT` (8080 by default). Caddy's `HTTP_PORT` and `HTTPS_PORT` are published only when the `caddy` profile is enabled.
 - DB migrations run automatically via the `migrate` service. They are idempotent.
 - In production-like external DB setups, use `DATABASE_URL` with `?sslmode=require`.
 - File uploads and CSV imports are stored in `public/uploads` and persisted via the `uploads_data` Docker volume.

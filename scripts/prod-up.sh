@@ -6,16 +6,18 @@ ENV_FILE="$ROOT_DIR/deploy/compose/.env"
 
 usage() {
   cat <<'EOF'
-Usage: prod-up.sh [--local] [--lite]
+Usage: prod-up.sh [--local] [--lite] [--caddy]
 
 Options:
   --local  Build production images from the current checkout instead of GHCR
   --lite  Use the resource-constrained single-host stack (no separate Beat or MCP)
+  --caddy  Enable the optional Caddy reverse proxy
 EOF
 }
 
 MODE="full"
 SOURCE="prebuilt"
+ENABLE_CADDY="false"
 
 for arg in "$@"; do
   case "$arg" in
@@ -24,6 +26,9 @@ for arg in "$@"; do
       ;;
     --lite)
       MODE="lite"
+      ;;
+    --caddy)
+      ENABLE_CADDY="true"
       ;;
     -h|--help)
       usage
@@ -98,8 +103,9 @@ initialize_local_env() {
   fi
 
   ensure_setting APP_URL "http://localhost:8080"
+  ensure_setting APP_PORT "8080"
   ensure_setting CADDY_ADDRESS ":80"
-  ensure_setting HTTP_PORT "8080"
+  ensure_setting HTTP_PORT "80"
   ensure_setting POSTGRES_IMAGE "postgres:16-alpine"
   ensure_setting POSTGRES_USER "financeuser"
   ensure_setting POSTGRES_DB "finance_db"
@@ -123,6 +129,20 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
+if [ "$ENABLE_CADDY" = "true" ]; then
+  APP_PORT_VALUE="$(read_setting APP_PORT)"
+  HTTP_PORT_VALUE="$(read_setting HTTP_PORT)"
+  HTTPS_PORT_VALUE="$(read_setting HTTPS_PORT)"
+  APP_PORT_VALUE="${APP_PORT_VALUE:-8080}"
+  HTTP_PORT_VALUE="${HTTP_PORT_VALUE:-80}"
+  HTTPS_PORT_VALUE="${HTTPS_PORT_VALUE:-443}"
+  if [ "$APP_PORT_VALUE" = "$HTTP_PORT_VALUE" ] || [ "$APP_PORT_VALUE" = "$HTTPS_PORT_VALUE" ]; then
+    echo "APP_PORT ($APP_PORT_VALUE) conflicts with a Caddy host port."
+    echo "Set APP_PORT, HTTP_PORT, and HTTPS_PORT to distinct values in $ENV_FILE."
+    exit 1
+  fi
+fi
+
 if ! docker version >/dev/null 2>&1; then
   echo "Docker is not installed or is not running. Start Docker and try again."
   exit 1
@@ -138,13 +158,19 @@ COMPOSE_ARGS=(
   --env-file "$ENV_FILE"
   -f "$ROOT_DIR/deploy/compose/docker-compose.yml"
 )
+if [ "$ENABLE_CADDY" = "true" ]; then
+  COMPOSE_ARGS+=(--profile caddy)
+fi
 if [ "$SOURCE" = "local" ]; then
   COMPOSE_ARGS+=(-f "$ROOT_DIR/deploy/compose/docker-compose.local.yml")
 fi
 SERVICES=()
 if [ "$MODE" = "lite" ]; then
   COMPOSE_ARGS+=(-f "$ROOT_DIR/deploy/compose/docker-compose.lite.yml")
-  SERVICES=(postgres redis uploads-init migrate backend worker app caddy)
+  SERVICES=(postgres redis uploads-init migrate backend worker app)
+  if [ "$ENABLE_CADDY" = "true" ]; then
+    SERVICES+=(caddy)
+  fi
 fi
 
 if [ "$SOURCE" = "prebuilt" ]; then

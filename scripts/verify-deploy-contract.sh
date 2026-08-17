@@ -31,7 +31,10 @@ assert_contains "$ROOT_DIR/docker-compose.yml" "postgres:16-alpine"
 assert_contains "$ROOT_DIR/deploy/compose/docker-compose.yml" "postgres:16-alpine"
 assert_contains "$ROOT_DIR/deploy/compose/docker-compose.yml" "mcp"
 assert_contains "$ROOT_DIR/deploy/compose/docker-compose.yml" "/health"
+assert_contains "$ROOT_DIR/deploy/compose/docker-compose.yml" "ghcr.io/aedgaras/syllogic-frontend"
+assert_contains "$ROOT_DIR/deploy/compose/docker-compose.yml" 'profiles: ["caddy"]'
 assert_contains "$ROOT_DIR/scripts/prod-up.sh" "--local"
+assert_contains "$ROOT_DIR/scripts/prod-up.sh" "--caddy"
 assert_contains "$ROOT_DIR/scripts/prod-up.sh" "docker-compose.local.yml"
 assert_contains "$ROOT_DIR/scripts/prod-up.ps1" '[switch]$Local'
 assert_contains "$ROOT_DIR/README.md" "./scripts/prod-up.sh --local"

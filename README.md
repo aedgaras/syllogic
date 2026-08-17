@@ -87,15 +87,15 @@ openssl rand -base64 32
 Keep the password embedded in `DATABASE_URL` identical to
 `POSTGRES_PASSWORD`.
 
-For LAN-only HTTP, use:
+For direct LAN-only HTTP (the default), use:
 
 ```dotenv
 APP_URL=http://localhost:8080
-CADDY_ADDRESS=:80
+APP_PORT=8080
 ```
 
-For an internet-facing deployment, use your real HTTPS origin and configure
-`ACME_EMAIL`:
+To enable the optional Caddy reverse proxy for an internet-facing deployment,
+use your real HTTPS origin and configure `ACME_EMAIL`:
 
 ```dotenv
 APP_URL=https://finance.example.com
@@ -103,16 +103,19 @@ CADDY_ADDRESS=finance.example.com
 ACME_EMAIL=admin@example.com
 ```
 
-Then run the prebuilt images configured by the Compose bundle:
+Then run the prebuilt images configured by the Compose bundle. Add `--caddy`
+only when you want the bundled reverse proxy:
 
 ```bash
 ./scripts/prod-up.sh
+./scripts/prod-up.sh --caddy
 ```
 
-Windows users can run:
+Windows users can use `-Caddy` in the same way:
 
 ```powershell
 .\scripts\prod-up.bat
+.\scripts\prod-up.bat -Caddy
 ```
 
 ### 3. Verify and sign in

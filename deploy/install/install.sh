@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="syllogic-ai/syllogic"
+REPO="aedgaras/syllogic"
 
 # Root is required on Linux for Docker/apt. On macOS, Docker Desktop runs as user.
 if [[ "${EUID:-$(id -u)}" -ne 0 ]] && [[ "$(uname -s)" != "Darwin" ]]; then
@@ -126,12 +126,14 @@ if [[ "$DEPLOY_MODE" == "public" ]]; then
   prompt ACME_EMAIL "ACME email (for Let's Encrypt): " ""
   APP_URL="https://${DOMAIN}"
   CADDY_ADDRESS="${DOMAIN}"
-  PORT_LINES="HTTP_PORT=8080
+  PORT_LINES="APP_PORT=3000
+HTTP_PORT=80
 HTTPS_PORT=443"
 else
   APP_URL="http://localhost:8080"
   CADDY_ADDRESS=":80"
-  PORT_LINES="HTTP_PORT=8080"
+  PORT_LINES="APP_PORT=8080
+HTTP_PORT=80"
   echo "[install] LAN mode selected. HTTP-only — not suitable for public internet exposure."
 fi
 
@@ -140,6 +142,13 @@ if [[ -f "$INSTALL_DIR/.env" ]]; then
   echo "[install] Existing .env found — preserving. Updating APP_VERSION only."
   sed -i.bak "s/^APP_VERSION=.*/APP_VERSION=${VERSION}/" "$INSTALL_DIR/.env"
   rm -f "$INSTALL_DIR/.env.bak"
+  if ! grep -q '^APP_PORT=' "$INSTALL_DIR/.env"; then
+    if [[ "$DEPLOY_MODE" == "public" ]]; then
+      echo "APP_PORT=3000" >> "$INSTALL_DIR/.env"
+    else
+      echo "APP_PORT=8080" >> "$INSTALL_DIR/.env"
+    fi
+  fi
 else
   cat > "$INSTALL_DIR/.env" <<EOF
 APP_VERSION=${VERSION}
@@ -179,8 +188,12 @@ fi
 
 echo "[install] Starting services..."
 cd "$INSTALL_DIR"
-docker compose --env-file .env -f docker-compose.yml pull
-docker compose --env-file .env -f docker-compose.yml up -d
+COMPOSE_ARGS=(--env-file .env -f docker-compose.yml)
+if [[ "$DEPLOY_MODE" == "public" ]]; then
+  COMPOSE_ARGS+=(--profile caddy)
+fi
+docker compose "${COMPOSE_ARGS[@]}" pull
+docker compose "${COMPOSE_ARGS[@]}" up -d
 
 echo
 echo "[install] Done."
@@ -197,4 +210,5 @@ else
   echo "  APP_URL=https://finance.example.com"
   echo "  CADDY_ADDRESS=finance.example.com"
   echo "  ACME_EMAIL=you@example.com"
+  echo "Then restart with: docker compose --env-file .env -f docker-compose.yml --profile caddy up -d"
 fi

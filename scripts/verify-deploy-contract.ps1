@@ -49,7 +49,10 @@ Assert-Contains -FilePath (Join-Path $RootDir "docker-compose.yml") -Pattern "po
 Assert-Contains -FilePath (Join-Path $RootDir "deploy/compose/docker-compose.yml") -Pattern "postgres:16-alpine"
 Assert-Contains -FilePath (Join-Path $RootDir "deploy/compose/docker-compose.yml") -Pattern "mcp"
 Assert-Contains -FilePath (Join-Path $RootDir "deploy/compose/docker-compose.yml") -Pattern "/health"
+Assert-Contains -FilePath (Join-Path $RootDir "deploy/compose/docker-compose.yml") -Pattern "ghcr.io/aedgaras/syllogic-frontend"
+Assert-Contains -FilePath (Join-Path $RootDir "deploy/compose/docker-compose.yml") -Pattern 'profiles: ["caddy"]'
 Assert-Contains -FilePath (Join-Path $RootDir "scripts/prod-up.sh") -Pattern "--local"
+Assert-Contains -FilePath (Join-Path $RootDir "scripts/prod-up.sh") -Pattern "--caddy"
 Assert-Contains -FilePath (Join-Path $RootDir "scripts/prod-up.sh") -Pattern "docker-compose.local.yml"
 Assert-Contains -FilePath (Join-Path $RootDir "scripts/prod-up.ps1") -Pattern '[switch]$Local'
 Assert-Contains -FilePath (Join-Path $RootDir "README.md") -Pattern "./scripts/prod-up.sh --local"
