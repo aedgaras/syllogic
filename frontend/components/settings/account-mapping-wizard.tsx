@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -85,13 +84,16 @@ export function AccountMappingWizard({
   const [currentStep, setCurrentStep] = useState(0);
 
   const suggestionByUid = Object.fromEntries(
-    suggestedMappings.map((s) => [s.bank_uid, s])
+    suggestedMappings.map((s) => [s.bank_uid, s]),
   );
 
   const [mappings, setMappings] = useState<AccountMapping[]>(
     bankAccounts.map((account) => {
       const suggestion = suggestionByUid[account.uid];
-      if (suggestion?.suggested_action === "link" && suggestion.suggested_account_id) {
+      if (
+        suggestion?.suggested_action === "link" &&
+        suggestion.suggested_account_id
+      ) {
         return {
           bank_uid: account.uid,
           action: "link" as const,
@@ -103,7 +105,7 @@ export function AccountMappingWizard({
         action: "create" as const,
         name: account.name,
       };
-    })
+    }),
   );
   const [initialSyncDays, setInitialSyncDays] = useState(90);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -115,16 +117,19 @@ export function AccountMappingWizard({
 
   // Accounts already selected in other steps (for "link" action)
   const selectedAccountIds = mappings
-    .filter((m, i) => i !== currentStep && m.action === "link" && m.existing_account_id)
+    .filter(
+      (m, i) =>
+        i !== currentStep && m.action === "link" && m.existing_account_id,
+    )
     .map((m) => m.existing_account_id as string);
 
   const availableLinkableAccounts = linkableAccounts.filter(
-    (a) => !selectedAccountIds.includes(a.id)
+    (a) => !selectedAccountIds.includes(a.id),
   );
 
   function updateCurrentMapping(patch: Partial<AccountMapping>) {
     setMappings((prev) =>
-      prev.map((m, i) => (i === currentStep ? { ...m, ...patch } : m))
+      prev.map((m, i) => (i === currentStep ? { ...m, ...patch } : m)),
     );
   }
 
@@ -159,7 +164,7 @@ export function AccountMappingWizard({
       const result = await submitAccountMappings(
         connectionId,
         mappings,
-        initialSyncDays
+        initialSyncDays,
       );
       if (!result.success) {
         setError(result.error || translate("failedToSubmitAccountMappings"));
@@ -185,7 +190,10 @@ export function AccountMappingWizard({
           <span>
             {isSummaryStep
               ? translate("reviewConfirm")
-              : translate("accountOf", { value1: currentStep + 1, value2: bankAccounts.length })}
+              : translate("accountOf", {
+                  value1: currentStep + 1,
+                  value2: bankAccounts.length,
+                })}
           </span>
           <span>{Math.round(progressPercent)}%</span>
         </div>
@@ -225,7 +233,8 @@ export function AccountMappingWizard({
 
           {/* Action selection */}
           <div className="space-y-3">
-            {suggestionByUid[currentAccount.uid]?.suggested_action === "link" && (
+            {suggestionByUid[currentAccount.uid]?.suggested_action ===
+              "link" && (
               <div className="mb-3 flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
                 <RiCheckLine className="h-3.5 w-3.5 shrink-0 text-green-500" />
                 {translate("previouslyLinkedPreSelectedForYouYouCanChange")}
@@ -247,7 +256,9 @@ export function AccountMappingWizard({
               >
                 <RiAddLine className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
                 <div>
-                  <p className="font-medium text-sm">{translate("createNewAccounta7bff9")}</p>
+                  <p className="font-medium text-sm">
+                    {translate("createNewAccounta7bff9")}
+                  </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {translate("addThisAsANewAccountInSyllogic")}
                   </p>
@@ -270,7 +281,9 @@ export function AccountMappingWizard({
               >
                 <RiLinkM className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
                 <div>
-                  <p className="font-medium text-sm">{translate("linkToExistingAccount")}</p>
+                  <p className="font-medium text-sm">
+                    {translate("linkToExistingAccount")}
+                  </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {availableLinkableAccounts.length === 0
                       ? translate("noUnlinkedAccountsAvailable")
@@ -287,7 +300,9 @@ export function AccountMappingWizard({
           {/* Create: name input */}
           {currentMapping.action === "create" && (
             <div className="space-y-2">
-              <Label htmlFor="account-name">{translate("accountNameabe4d6")}</Label>
+              <Label htmlFor="account-name">
+                {translate("accountNameabe4d6")}
+              </Label>
               <Input
                 id="account-name"
                 value={currentMapping.name || ""}
@@ -300,7 +315,9 @@ export function AccountMappingWizard({
           {/* Link: account dropdown */}
           {currentMapping.action === "link" && (
             <div className="space-y-2">
-              <Label htmlFor="existing-account">{translate("selectExistingAccount")}</Label>
+              <Label htmlFor="existing-account">
+                {translate("selectExistingAccount")}
+              </Label>
               <Select
                 value={currentMapping.existing_account_id || ""}
                 onValueChange={(v) =>
@@ -314,36 +331,44 @@ export function AccountMappingWizard({
                   {availableLinkableAccounts.map((account) => (
                     <SelectItem key={account.id} value={account.id}>
                       {account.name}
-                      {account.currency && translate("messagecd176d", { value1: account.currency })}
+                      {account.currency &&
+                        translate("messagecd176d", {
+                          value1: account.currency,
+                        })}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
               {/* Currency mismatch warning */}
-              {currentMapping.existing_account_id && (() => {
-                const linked = linkableAccounts.find(
-                  (a) => a.id === currentMapping.existing_account_id
-                );
-                if (
-                  linked &&
-                  linked.currency &&
-                  linked.currency.toUpperCase() !==
-                    currentAccount.currency.toUpperCase()
-                ) {
-                  return (
-                    <div className="flex items-start gap-2 rounded-none border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                      <RiAlertLine className="mt-0.5 h-4 w-4 shrink-0" />
-                      <p className="text-xs">
-                        {translate("currencyMismatchBankAccountIs")}{" "}
-                        <strong>{currentAccount.currency}</strong> {translate("butSelectedAccountIs")}{" "}
-                        <strong>{linked.currency.toUpperCase()}</strong>{translate("transactionsMayBeRecordedInDifferentCurrencies")}
-                      </p>
-                    </div>
+              {currentMapping.existing_account_id &&
+                (() => {
+                  const linked = linkableAccounts.find(
+                    (a) => a.id === currentMapping.existing_account_id,
                   );
-                }
-                return null;
-              })()}
+                  if (
+                    linked &&
+                    linked.currency &&
+                    linked.currency.toUpperCase() !==
+                      currentAccount.currency.toUpperCase()
+                  ) {
+                    return (
+                      <div className="flex items-start gap-2 rounded-none border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                        <RiAlertLine className="mt-0.5 h-4 w-4 shrink-0" />
+                        <p className="text-xs">
+                          {translate("currencyMismatchBankAccountIs")}{" "}
+                          <strong>{currentAccount.currency}</strong>{" "}
+                          {translate("butSelectedAccountIs")}{" "}
+                          <strong>{linked.currency.toUpperCase()}</strong>
+                          {translate(
+                            "transactionsMayBeRecordedInDifferentCurrencies",
+                          )}
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
             </div>
           )}
         </div>
@@ -353,7 +378,9 @@ export function AccountMappingWizard({
       {isSummaryStep && (
         <div className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold">{translate("reviewYourMappings")}</h2>
+            <h2 className="text-lg font-semibold">
+              {translate("reviewYourMappings")}
+            </h2>
             <p className="text-sm text-muted-foreground mt-1">
               {translate("confirmHowEachBankAccountWillBeSetUp")}
             </p>
@@ -365,7 +392,7 @@ export function AccountMappingWizard({
               const linkedAccount =
                 mapping.action === "link"
                   ? linkableAccounts.find(
-                      (a) => a.id === mapping.existing_account_id
+                      (a) => a.id === mapping.existing_account_id,
                     )
                   : null;
 
@@ -427,7 +454,11 @@ export function AccountMappingWizard({
               <SelectContent>
                 {SYNC_DAY_OPTIONS.map((days) => (
                   <SelectItem key={days} value={String(days)}>
-                    {days === 365 ? translate("message1Year") : days === 730 ? translate("message2Years") : translate("days", { days: days })}
+                    {days === 365
+                      ? translate("message1Year")
+                      : days === 730
+                        ? translate("message2Years")
+                        : translate("days", { days: days })}
                   </SelectItem>
                 ))}
               </SelectContent>

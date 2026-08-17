@@ -4,5 +4,9 @@ import { getTransactionPage as runGetTransactionPage } from "../application/get-
 import { transactionListRepository } from "./transaction-list.repository";
 
 export async function getTransactionPage(query: TransactionsQueryState) {
-  return runGetTransactionPage(await requireAuth(), query, transactionListRepository);
+  return runGetTransactionPage(
+    await requireAuth(),
+    query,
+    transactionListRepository,
+  );
 }

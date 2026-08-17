@@ -1,6 +1,7 @@
 """
 Integration-style test for encrypted account external_id dedupe in SyncService.
 """
+
 import base64
 import os
 import sys
@@ -109,11 +110,14 @@ def test_account_sync_dedupes_on_encrypted_external_id() -> bool:
 
         assert len(rows) == 1, "Expected exactly one synced account after duplicate sync."
         row = rows[0]
-        assert row.external_id == "provider-account-123", "Dual-write should keep plaintext during validation window."
+        assert row.external_id == "provider-account-123", (
+            "Dual-write should keep plaintext during validation window."
+        )
         assert row.external_id_ciphertext, "Ciphertext should be populated."
         assert row.external_id_hash, "Blind index hash should be populated."
         assert (
-            decrypt_with_fallback(row.external_id_ciphertext, row.external_id) == "provider-account-123"
+            decrypt_with_fallback(row.external_id_ciphertext, row.external_id)
+            == "provider-account-123"
         ), "Decrypted external_id should match original value."
 
         print("✓ encrypted account dedupe sync")
@@ -131,7 +135,9 @@ def test_account_sync_dedupes_on_encrypted_external_id() -> bool:
 class _IBANAdapter(BankAdapter):
     """Minimal adapter that returns a single transaction with a counterparty IBAN."""
 
-    def __init__(self, account_external_id: str, iban: Optional[str] = "NL91ABNA0417164300") -> None:
+    def __init__(
+        self, account_external_id: str, iban: Optional[str] = "NL91ABNA0417164300"
+    ) -> None:
         self._account_external_id = account_external_id
         self._iban = iban
 
@@ -154,6 +160,7 @@ class _IBANAdapter(BankAdapter):
         end_date: Optional[datetime] = None,
     ) -> list[TransactionData]:
         from datetime import timezone
+
         return [
             TransactionData(
                 external_id="ext-iban-1",
@@ -186,10 +193,14 @@ def test_sync_service_persists_encrypted_counterparty_iban() -> bool:
 
         # Clean up any leftover rows from prior runs
         provider = "iban-enc-test"
-        existing_accounts = db.query(Account).filter(
-            Account.user_id == user_id,
-            Account.provider == provider,
-        ).all()
+        existing_accounts = (
+            db.query(Account)
+            .filter(
+                Account.user_id == user_id,
+                Account.provider == provider,
+            )
+            .all()
+        )
         for acc in existing_accounts:
             db.query(Transaction).filter(Transaction.account_id == acc.id).delete()
         db.query(Account).filter(
@@ -207,11 +218,16 @@ def test_sync_service_persists_encrypted_counterparty_iban() -> bool:
         finally:
             clear_request_user_id(token)
 
-        row = db.query(Transaction).join(Account).filter(
-            Account.user_id == user_id,
-            Account.provider == provider,
-            Transaction.external_id == "ext-iban-1",
-        ).first()
+        row = (
+            db.query(Transaction)
+            .join(Account)
+            .filter(
+                Account.user_id == user_id,
+                Account.provider == provider,
+                Transaction.external_id == "ext-iban-1",
+            )
+            .first()
+        )
 
         assert row is not None, "Transaction row should have been created."
         assert row.counterparty_iban_ciphertext is not None, (
@@ -232,10 +248,14 @@ def test_sync_service_persists_encrypted_counterparty_iban() -> bool:
     finally:
         if user_id:
             provider = "iban-enc-test"
-            existing_accounts = db.query(Account).filter(
-                Account.user_id == user_id,
-                Account.provider == provider,
-            ).all()
+            existing_accounts = (
+                db.query(Account)
+                .filter(
+                    Account.user_id == user_id,
+                    Account.provider == provider,
+                )
+                .all()
+            )
             for acc in existing_accounts:
                 db.query(Transaction).filter(Transaction.account_id == acc.id).delete()
             db.query(Account).filter(
@@ -251,6 +271,7 @@ def _cleanup_user(db, user_id: str) -> None:
     """Best-effort cleanup of a synthetic test user and its accounts."""
     try:
         from app.models import Transaction
+
         accs = db.query(Account).filter(Account.user_id == user_id).all()
         for acc in accs:
             db.query(Transaction).filter(Transaction.account_id == acc.id).delete()
@@ -277,6 +298,7 @@ def test_sync_service_persists_iban_on_synced_account_first_sync() -> bool:
         service = SyncService(db, user_id=user_id, use_llm_categorization=False)
 
         from unittest.mock import MagicMock
+
         adapter = MagicMock()
         adapter.fetch_accounts.return_value = [
             AccountData(
@@ -340,6 +362,7 @@ def test_sync_service_does_not_overwrite_existing_iban() -> bool:
 
         service = SyncService(db, user_id=user_id, use_llm_categorization=False)
         from unittest.mock import MagicMock
+
         adapter = MagicMock()
         adapter.fetch_accounts.return_value = [
             AccountData(
@@ -381,6 +404,7 @@ def test_sync_service_skips_iban_when_account_data_iban_is_none() -> bool:
         user_id = str(user.id)
         service = SyncService(db, user_id=user_id, use_llm_categorization=False)
         from unittest.mock import MagicMock
+
         adapter = MagicMock()
         adapter.fetch_accounts.return_value = [
             AccountData(
@@ -415,5 +439,9 @@ if __name__ == "__main__":
     success4 = test_sync_service_does_not_overwrite_existing_iban()
     success5 = test_sync_service_skips_iban_when_account_data_iban_is_none()
     all_passed = success and success2 and success3 and success4 and success5
-    print("All encrypted account sync tests passed." if all_passed else "Encrypted account sync tests failed.")
+    print(
+        "All encrypted account sync tests passed."
+        if all_passed
+        else "Encrypted account sync tests failed."
+    )
     sys.exit(0 if all_passed else 1)

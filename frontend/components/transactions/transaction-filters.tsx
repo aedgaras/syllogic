@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import * as React from "react";
 import { type DateRange } from "react-day-picker";
 import {
@@ -44,7 +43,10 @@ import {
   RiRepeatLine,
   RiLineChartLine,
 } from "@remixicon/react";
-import type { CategoryForFilter, AccountForFilter } from "@/shared/domain/display-contracts";
+import type {
+  CategoryForFilter,
+  AccountForFilter,
+} from "@/shared/domain/display-contracts";
 import type { TransactionsQueryState } from "@/features/transactions/public";
 import { useTransactionFilterDraft } from "@/features/transactions/hooks/use-transaction-filter-draft";
 import { cn } from "@/lib/utils";
@@ -64,7 +66,7 @@ interface TransactionFiltersProps {
   action?: React.ReactNode;
   onFiltersChange: (
     patch: Partial<TransactionsQueryState>,
-    options?: { resetPage?: boolean }
+    options?: { resetPage?: boolean },
   ) => void;
   onClearFilters: () => void;
 }
@@ -85,7 +87,10 @@ const datePresets = [
   },
   {
     label: translate("thisMonth"),
-    getValue: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }),
+    getValue: () => ({
+      from: startOfMonth(new Date()),
+      to: endOfMonth(new Date()),
+    }),
   },
   {
     label: translate("lastMonth20fe4f"),
@@ -96,7 +101,10 @@ const datePresets = [
   },
   {
     label: translate("thisQuarter"),
-    getValue: () => ({ from: startOfQuarter(new Date()), to: endOfQuarter(new Date()) }),
+    getValue: () => ({
+      from: startOfQuarter(new Date()),
+      to: endOfQuarter(new Date()),
+    }),
   },
   {
     label: translate("lastQuarter"),
@@ -107,7 +115,10 @@ const datePresets = [
   },
   {
     label: translate("thisYear"),
-    getValue: () => ({ from: startOfYear(new Date()), to: endOfYear(new Date()) }),
+    getValue: () => ({
+      from: startOfYear(new Date()),
+      to: endOfYear(new Date()),
+    }),
   },
   {
     label: translate("lastYear"),
@@ -143,7 +154,7 @@ function MultiSelectFilter({
   const filteredOptions = React.useMemo(() => {
     if (!search) return options;
     return options.filter((opt) =>
-      opt.label.toLowerCase().includes(search.toLowerCase())
+      opt.label.toLowerCase().includes(search.toLowerCase()),
     );
   }, [options, search]);
 
@@ -184,7 +195,9 @@ function MultiSelectFilter({
           {searchable && (
             <div className="border-b p-2">
               <Input
-                placeholder={translate("search", { value1: label.toLowerCase() })}
+                placeholder={translate("search", {
+                  value1: label.toLowerCase(),
+                })}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="h-7 text-xs"
@@ -251,7 +264,8 @@ function formatDateRangeDisplay(range: DateRange | undefined): string {
   if (!range?.from) return "Range";
   if (!range.to) return format(range.from, "MMM d, yyyy");
 
-  const spansDifferentYears = range.from.getFullYear() !== range.to.getFullYear();
+  const spansDifferentYears =
+    range.from.getFullYear() !== range.to.getFullYear();
   if (spansDifferentYears) {
     return `${format(range.from, "MMM d, yyyy")} - ${format(range.to, "MMM d, yyyy")}`;
   }
@@ -259,7 +273,10 @@ function formatDateRangeDisplay(range: DateRange | undefined): string {
   return `${format(range.from, "MMM d")} - ${format(range.to, "MMM d, yyyy")}`;
 }
 
-function DateRangeFilter({ dateRange, onDateRangeChange }: DateRangeFilterProps) {
+function DateRangeFilter({
+  dateRange,
+  onDateRangeChange,
+}: DateRangeFilterProps) {
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -274,7 +291,10 @@ function DateRangeFilter({ dateRange, onDateRangeChange }: DateRangeFilterProps)
           <span className="truncate">{formatDateRangeDisplay(dateRange)}</span>
           <RiArrowDownSLine className="h-4 w-4 shrink-0 text-muted-foreground" />
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-[calc(100vw-2rem)] p-0 sm:w-auto">
+        <PopoverContent
+          align="start"
+          className="w-[calc(100vw-2rem)] p-0 sm:w-auto"
+        >
           <div className="flex flex-col sm:flex-row">
             <div className="w-full space-y-0.5 border-b p-2 sm:w-28 sm:border-b-0 sm:border-r">
               <button
@@ -285,7 +305,7 @@ function DateRangeFilter({ dateRange, onDateRangeChange }: DateRangeFilterProps)
                 }}
                 className={cn(
                   "w-full px-2 py-1.5 text-left text-xs hover:bg-accent",
-                  !dateRange?.from && "bg-accent"
+                  !dateRange?.from && "bg-accent",
                 )}
               >
                 {translate("clear")}
@@ -363,7 +383,13 @@ function AmountRangeFilter({
   );
 }
 
-function FilterTag({ label, onRemove }: { label: string; onRemove: () => void }) {
+function FilterTag({
+  label,
+  onRemove,
+}: {
+  label: string;
+  onRemove: () => void;
+}) {
   return (
     <button
       type="button"
@@ -388,12 +414,9 @@ export function TransactionFilters({
   const commitDraft = React.useCallback(
     (patch: { search?: string; minAmount?: string; maxAmount?: string }) =>
       onFiltersChange(patch, { resetPage: true }),
-    [onFiltersChange]
+    [onFiltersChange],
   );
-  const { draft, setField } = useTransactionFilterDraft(
-    filters,
-    commitDraft
-  );
+  const { draft, setField } = useTransactionFilterDraft(filters, commitDraft);
 
   const dateRange = React.useMemo<DateRange | undefined>(() => {
     if (!filters.from) return undefined;
@@ -439,7 +462,12 @@ export function TransactionFilters({
     { id: "no_subscription", label: translate("noSubscription") },
     ...recurringOptions.map((recurring) => ({
       id: recurring.id,
-      label: recurring.merchant ? translate("message", { value1: recurring.name, value2: recurring.merchant }) : recurring.name,
+      label: recurring.merchant
+        ? translate("message", {
+            value1: recurring.name,
+            value2: recurring.merchant,
+          })
+        : recurring.name,
     })),
   ];
 
@@ -452,7 +480,7 @@ export function TransactionFilters({
         onRemove: () =>
           onFiltersChange(
             { category: filters.category.filter((value) => value !== id) },
-            { resetPage: true }
+            { resetPage: true },
           ),
       });
       return;
@@ -464,7 +492,7 @@ export function TransactionFilters({
       onRemove: () =>
         onFiltersChange(
           { category: filters.category.filter((value) => value !== id) },
-          { resetPage: true }
+          { resetPage: true },
         ),
     });
   });
@@ -477,7 +505,7 @@ export function TransactionFilters({
       onRemove: () =>
         onFiltersChange(
           { accountIds: filters.accountIds.filter((value) => value !== id) },
-          { resetPage: true }
+          { resetPage: true },
         ),
     });
   });
@@ -488,7 +516,7 @@ export function TransactionFilters({
       onRemove: () =>
         onFiltersChange(
           { status: filters.status.filter((value) => value !== id) },
-          { resetPage: true }
+          { resetPage: true },
         ),
     });
   });
@@ -499,8 +527,12 @@ export function TransactionFilters({
         label: translate("noSubscription"),
         onRemove: () =>
           onFiltersChange(
-            { subscription: filters.subscription.filter((value) => value !== id) },
-            { resetPage: true }
+            {
+              subscription: filters.subscription.filter(
+                (value) => value !== id,
+              ),
+            },
+            { resetPage: true },
           ),
       });
       return;
@@ -508,22 +540,32 @@ export function TransactionFilters({
     const recurring = recurringOptions.find((item) => item.id === id);
     if (!recurring) return;
     filterTags.push({
-      label: recurring.merchant ? translate("message", { value1: recurring.name, value2: recurring.merchant }) : recurring.name,
+      label: recurring.merchant
+        ? translate("message", {
+            value1: recurring.name,
+            value2: recurring.merchant,
+          })
+        : recurring.name,
       onRemove: () =>
         onFiltersChange(
-          { subscription: filters.subscription.filter((value) => value !== id) },
-          { resetPage: true }
+          {
+            subscription: filters.subscription.filter((value) => value !== id),
+          },
+          { resetPage: true },
         ),
     });
   });
 
   filters.analytics.forEach((id) => {
     filterTags.push({
-      label: id === "included" ? translate("inAnalytics") : translate("excludedFromAnalyticsa63fd0"),
+      label:
+        id === "included"
+          ? translate("inAnalytics")
+          : translate("excludedFromAnalyticsa63fd0"),
       onRemove: () =>
         onFiltersChange(
           { analytics: filters.analytics.filter((value) => value !== id) },
-          { resetPage: true }
+          { resetPage: true },
         ),
     });
   });
@@ -534,17 +576,20 @@ export function TransactionFilters({
       onRemove: () =>
         onFiltersChange(
           { from: undefined, to: undefined, horizon: 30 },
-          { resetPage: true }
+          { resetPage: true },
         ),
     });
   } else if (filters.horizon) {
-    const horizonLabel = filters.horizon === 365 ? translate("message12m") : translate("d", { value1: filters.horizon });
+    const horizonLabel =
+      filters.horizon === 365
+        ? translate("message12m")
+        : translate("d", { value1: filters.horizon });
     filterTags.push({
       label: horizonLabel,
       onRemove: () =>
         onFiltersChange(
           { horizon: undefined, from: undefined, to: undefined },
-          { resetPage: true }
+          { resetPage: true },
         ),
     });
   }
@@ -564,7 +609,7 @@ export function TransactionFilters({
       onRemove: () =>
         onFiltersChange(
           { minAmount: undefined, maxAmount: undefined },
-          { resetPage: true }
+          { resetPage: true },
         ),
     });
   }
@@ -573,7 +618,10 @@ export function TransactionFilters({
     <div className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative w-full sm:w-64" data-walkthrough="walkthrough-search">
+          <div
+            className="relative w-full sm:w-64"
+            data-walkthrough="walkthrough-search"
+          >
             <RiSearchLine className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder={translate("searchTransactions")}
@@ -596,9 +644,14 @@ export function TransactionFilters({
                 </span>
               )}
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-[calc(100vw-2rem)] sm:w-80">
+            <PopoverContent
+              align="start"
+              className="w-[calc(100vw-2rem)] sm:w-80"
+            >
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{translate("filters")}</span>
+                <span className="text-sm font-medium">
+                  {translate("filters")}
+                </span>
                 {activeFilterCount > 0 && (
                   <Button
                     variant="ghost"
@@ -620,11 +673,14 @@ export function TransactionFilters({
                     if (!range?.from) {
                       onFiltersChange(
                         { from: undefined, to: undefined, horizon: 30 },
-                        { resetPage: true }
+                        { resetPage: true },
                       );
                       return;
                     }
-                    const normalizedFrom = format(startOfDay(range.from), "yyyy-MM-dd");
+                    const normalizedFrom = format(
+                      startOfDay(range.from),
+                      "yyyy-MM-dd",
+                    );
                     const normalizedTo = range.to
                       ? format(endOfDay(range.to), "yyyy-MM-dd")
                       : undefined;
@@ -634,7 +690,7 @@ export function TransactionFilters({
                         to: normalizedTo,
                         horizon: undefined,
                       },
-                      { resetPage: true }
+                      { resetPage: true },
                     );
                   }}
                 />
@@ -702,8 +758,11 @@ export function TransactionFilters({
             </PopoverContent>
           </Popover>
         </div>
-        <div className="flex flex-wrap items-center gap-2" data-walkthrough="walkthrough-import">
-        {action}
+        <div
+          className="flex flex-wrap items-center gap-2"
+          data-walkthrough="walkthrough-import"
+        >
+          {action}
         </div>
       </div>
 
@@ -718,7 +777,6 @@ export function TransactionFilters({
           ))}
         </div>
       )}
-
     </div>
   );
 }

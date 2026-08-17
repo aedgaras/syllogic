@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useMemo } from "react";
 import { RiArrowRightLine } from "@remixicon/react";
 import type { ColumnMapping } from "@/features/csv-import/public";
@@ -29,7 +28,9 @@ export function CsvSamplePreview({
       const mapped: Record<string, string> = {};
 
       MAPPED_FIELDS.forEach((field) => {
-        const columnName = mapping[field.key as keyof ColumnMapping] as string | null;
+        const columnName = mapping[field.key as keyof ColumnMapping] as
+          | string
+          | null;
         if (columnName) {
           const columnIndex = headers.indexOf(columnName);
           if (columnIndex !== -1) {
@@ -44,12 +45,12 @@ export function CsvSamplePreview({
 
   // Check if any fields are mapped
   const hasMappings = Object.values(mapping).some(
-    (value) => value !== null && typeof value !== "object"
+    (value) => value !== null && typeof value !== "object",
   );
 
   // Get the list of mapped fields for display
   const activeMappings = MAPPED_FIELDS.filter(
-    (field) => mapping[field.key as keyof ColumnMapping]
+    (field) => mapping[field.key as keyof ColumnMapping],
   );
 
   if (!hasMappings) {
@@ -69,7 +70,9 @@ export function CsvSamplePreview({
       {/* Mapping indicators */}
       <div className="flex flex-wrap gap-2">
         {activeMappings.map((field) => {
-          const columnName = mapping[field.key as keyof ColumnMapping] as string;
+          const columnName = mapping[
+            field.key as keyof ColumnMapping
+          ] as string;
           return (
             <div
               key={field.key}
@@ -117,7 +120,8 @@ export function CsvSamplePreview({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {translate("showing")} {mappedData.length} {translate("of")} {sampleRows.length} {translate("sampleRows")}
+        {translate("showing")} {mappedData.length} {translate("of")}{" "}
+        {sampleRows.length} {translate("sampleRows")}
       </p>
     </div>
   );

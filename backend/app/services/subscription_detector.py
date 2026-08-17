@@ -9,6 +9,7 @@ Usage:
     result = detector.detect_and_apply(new_transaction_ids)
     # creates/updates account-scoped monthly subscriptions and links transactions
 """
+
 import os
 import re
 import json
@@ -32,9 +33,9 @@ logger = logging.getLogger(__name__)
 
 
 # Configuration
-ENABLE_SUBSCRIPTION_SUGGESTIONS = os.getenv(
-    "ENABLE_SUBSCRIPTION_SUGGESTIONS", "true"
-).lower() == "true"
+ENABLE_SUBSCRIPTION_SUGGESTIONS = (
+    os.getenv("ENABLE_SUBSCRIPTION_SUGGESTIONS", "true").lower() == "true"
+)
 
 MIN_CONFIDENCE = int(os.getenv("SUBSCRIPTION_SUGGESTION_MIN_CONFIDENCE", "55"))
 MAX_SUGGESTIONS = int(os.getenv("SUBSCRIPTION_SUGGESTION_MAX_COUNT", "20"))
@@ -59,28 +60,29 @@ ACTIVE_LOOKBACK_DAYS = 62  # "last 2 months" window for active subscriptions
 # These patterns indicate transfers to individuals rather than businesses
 P2P_PATTERNS = [
     # Dutch personal transfer patterns
-    r'\bnaar\s+(?:hr|mw|dhr|mevr)\.?\s*[A-Za-z]+',  # "naar hr/mw [Name]"
-    r'\bvan\s+(?:hr|mw|dhr|mevr)\.?\s*[A-Za-z]+',   # "van hr/mw [Name]"
-    r'\boverboeking\s+(?:naar|van)\s+[A-Z][a-z]+',  # "overboeking naar/van [Name]"
-    r'\bhr\.\s*[A-Z]\s+[A-Za-z]+',                   # "Hr. J Lastname"
-    r'\bmw\.\s*[A-Z]\s+[A-Za-z]+',                   # "Mw. M Lastname"
-    r'\bdhr\.\s*[A-Z]\s+[A-Za-z]+',                  # "Dhr. J Lastname"
-    r'\bmevr\.\s*[A-Z]\s+[A-Za-z]+',                 # "Mevr. M Lastname"
+    r"\bnaar\s+(?:hr|mw|dhr|mevr)\.?\s*[A-Za-z]+",  # "naar hr/mw [Name]"
+    r"\bvan\s+(?:hr|mw|dhr|mevr)\.?\s*[A-Za-z]+",  # "van hr/mw [Name]"
+    r"\boverboeking\s+(?:naar|van)\s+[A-Z][a-z]+",  # "overboeking naar/van [Name]"
+    r"\bhr\.\s*[A-Z]\s+[A-Za-z]+",  # "Hr. J Lastname"
+    r"\bmw\.\s*[A-Z]\s+[A-Za-z]+",  # "Mw. M Lastname"
+    r"\bdhr\.\s*[A-Z]\s+[A-Za-z]+",  # "Dhr. J Lastname"
+    r"\bmevr\.\s*[A-Z]\s+[A-Za-z]+",  # "Mevr. M Lastname"
     # English personal transfer patterns
-    r'\btransfer\s+(?:to|from)\s+[A-Z][a-z]+\s+[A-Z][a-z]+',  # "transfer to/from John Doe"
-    r'\bpayment\s+(?:to|from)\s+[A-Z][a-z]+\s+[A-Z][a-z]+',   # "payment to/from John Doe"
+    r"\btransfer\s+(?:to|from)\s+[A-Z][a-z]+\s+[A-Z][a-z]+",  # "transfer to/from John Doe"
+    r"\bpayment\s+(?:to|from)\s+[A-Z][a-z]+\s+[A-Z][a-z]+",  # "payment to/from John Doe"
     # P2P services (not subscriptions, often person-to-person)
-    r'\btikkie\b',                  # Dutch P2P payment app
-    r'\bpaypal\s+(?:to|from|aan)\b', # PayPal P2P transfers
-    r'\bbunq\s+(?:to|from|naar)\b',  # Bunq P2P transfers
+    r"\btikkie\b",  # Dutch P2P payment app
+    r"\bpaypal\s+(?:to|from|aan)\b",  # PayPal P2P transfers
+    r"\bbunq\s+(?:to|from|naar)\b",  # Bunq P2P transfers
     # Name patterns: "Naam: [FirstName] [LastName]" without business indicators
-    r'naam:\s*[A-Z][a-z]+\s+[A-Z][a-z]+\s*$',  # Just a name, nothing else
+    r"naam:\s*[A-Z][a-z]+\s+[A-Z][a-z]+\s*$",  # Just a name, nothing else
 ]
 
 
 @dataclass
 class DetectedPattern:
     """A detected recurring payment pattern."""
+
     account_id: str
     suggested_name: str
     suggested_merchant: Optional[str]
@@ -116,28 +118,28 @@ class SubscriptionDetector:
     # These are Dutch direct debit creditor identifiers
     # Note: CSIDs can have varying lengths, we match by prefix
     KNOWN_CREDITOR_PREFIXES = {
-        'NL10ZZZ302086370': 'Zilveren Kruis',
-        'NL41ZZZ671825500': 'ODIDO',
-        'NL08ZZZ502057730': 'Mollie',  # Payment processor (VOLT45 etc)
-        'NL03ZZZ301243580': 'NS Reizigers',
-        'NL36ZZZ332952490': 'Vattenfall',
-        'NL32ZZZ332660000': 'Ziggo',
-        'NL96ZZZ301970550': 'KPN',
-        'NL65ZZZ331646640': 'T-Mobile',
-        'NL22ZZZ301853520': 'Eneco',
-        'NL09ZZZ301625750': 'Essent',
+        "NL10ZZZ302086370": "Zilveren Kruis",
+        "NL41ZZZ671825500": "ODIDO",
+        "NL08ZZZ502057730": "Mollie",  # Payment processor (VOLT45 etc)
+        "NL03ZZZ301243580": "NS Reizigers",
+        "NL36ZZZ332952490": "Vattenfall",
+        "NL32ZZZ332660000": "Ziggo",
+        "NL96ZZZ301970550": "KPN",
+        "NL65ZZZ331646640": "T-Mobile",
+        "NL22ZZZ301853520": "Eneco",
+        "NL09ZZZ301625750": "Essent",
         # Add more as discovered
     }
 
     # Named frequency ranges (for labeling detected patterns)
     FREQUENCY_LABELS = {
-        'weekly': (5, 9),
-        'biweekly': (12, 18),
-        'monthly': (26, 35),
-        'bimonthly': (55, 70),
-        'quarterly': (85, 100),
-        'semi-annual': (170, 200),
-        'yearly': (350, 380),
+        "weekly": (5, 9),
+        "biweekly": (12, 18),
+        "monthly": (26, 35),
+        "bimonthly": (55, 70),
+        "quarterly": (85, 100),
+        "semi-annual": (170, 200),
+        "yearly": (350, 380),
     }
 
     def __init__(self, db: Session, user_id: Optional[str] = None):
@@ -151,10 +153,14 @@ class SubscriptionDetector:
     def _load_existing_subscriptions(self) -> List[RecurringTransaction]:
         """Load and cache active subscriptions for the user."""
         if self._existing_subscriptions is None:
-            self._existing_subscriptions = self.db.query(RecurringTransaction).filter(
-                RecurringTransaction.user_id == self.user_id,
-                RecurringTransaction.is_active == True
-            ).all()
+            self._existing_subscriptions = (
+                self.db.query(RecurringTransaction)
+                .filter(
+                    RecurringTransaction.user_id == self.user_id,
+                    RecurringTransaction.is_active == True,
+                )
+                .all()
+            )
         return self._existing_subscriptions
 
     @staticmethod
@@ -190,12 +196,12 @@ class SubscriptionDetector:
             return False
 
         # Check for IBAN without CSID - could be personal transfer
-        iban_match = re.search(r'\b([A-Z]{2}\d{2}[A-Z]{4}\d{10})\b', text, re.IGNORECASE)
+        iban_match = re.search(r"\b([A-Z]{2}\d{2}[A-Z]{4}\d{10})\b", text, re.IGNORECASE)
         if iban_match:
             # If we have an IBAN but no CSID, and description has personal indicators
             personal_indicators = [
-                r'\b(naar|van|to|from)\s+[A-Z][a-z]+\b',  # "naar John" / "to John"
-                r'\bnaam:\s*[A-Z]',  # "Naam: J..."
+                r"\b(naar|van|to|from)\s+[A-Z][a-z]+\b",  # "naar John" / "to John"
+                r"\bnaam:\s*[A-Z]",  # "Naam: J..."
             ]
             for indicator in personal_indicators:
                 if re.search(indicator, text, re.IGNORECASE):
@@ -212,25 +218,25 @@ class SubscriptionDetector:
         """
         label_lower = frequency_label.lower()
 
-        if 'month' in label_lower:
-            return 'monthly'
-        elif 'year' in label_lower or 'annual' in label_lower:
-            return 'yearly'
-        elif 'quarter' in label_lower:
-            return 'quarterly'
-        elif 'semi' in label_lower and 'annual' in label_lower:
-            return 'semi-annual'
-        elif 'biweek' in label_lower or 'bi-week' in label_lower:
-            return 'biweekly'
-        elif 'week' in label_lower:
+        if "month" in label_lower:
+            return "monthly"
+        elif "year" in label_lower or "annual" in label_lower:
+            return "yearly"
+        elif "quarter" in label_lower:
+            return "quarterly"
+        elif "semi" in label_lower and "annual" in label_lower:
+            return "semi-annual"
+        elif "biweek" in label_lower or "bi-week" in label_lower:
+            return "biweekly"
+        elif "week" in label_lower:
             # "every 6 weeks" should be custom, "weekly" is weekly
-            if frequency_label == 'weekly':
-                return 'weekly'
-            return 'custom'
-        elif 'day' in label_lower:
-            return 'custom'
+            if frequency_label == "weekly":
+                return "weekly"
+            return "custom"
+        elif "day" in label_lower:
+            return "custom"
 
-        return 'custom'
+        return "custom"
 
     def _extract_sepa_creditor_id(self, text: Optional[str]) -> Optional[str]:
         """
@@ -246,13 +252,13 @@ class SubscriptionDetector:
 
         # Look for CSID pattern (NLxxZZZxxxxxxxxx) - SEPA Direct Debit creditor
         # CSIDs can be 15-18 digits after the ZZZ
-        csid_match = re.search(r'\b(NL\d{2}ZZZ\d{9,18})\b', text, re.IGNORECASE)
+        csid_match = re.search(r"\b(NL\d{2}ZZZ\d{9,18})\b", text, re.IGNORECASE)
         if csid_match:
             return csid_match.group(1).upper()
 
         # Look for IBAN in context of transfers (for recurring transfers)
         # Pattern: IBAN/NLxxAAAAxxxxxxxxxx or IBAN: NLxxAAAAxxxxxxxxxx
-        iban_match = re.search(r'IBAN[/: ]*([A-Z]{2}\d{2}[A-Z]{4}\d{10})\b', text, re.IGNORECASE)
+        iban_match = re.search(r"IBAN[/: ]*([A-Z]{2}\d{2}[A-Z]{4}\d{10})\b", text, re.IGNORECASE)
         if iban_match:
             return iban_match.group(1).upper()
 
@@ -284,29 +290,29 @@ class SubscriptionDetector:
 
         # Remove common noise patterns (but NOT CSID/IBAN - those are handled separately)
         noise_patterns = [
-            r'\b\d{8,}\b',  # Very long numbers only (8+ digits)
-            r'\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}',  # Dates (DD/MM/YYYY)
-            r'\d{4}[-/.]\d{1,2}[-/.]\d{1,2}',  # ISO dates (YYYY-MM-DD)
-            r'\b\d{2}[-/]\d{4}\b',  # Month-year (01-2025)
-            r'\b(ref|nr|no|number|kenmerk|factnr|factuur|invoice)[.:# ]*\w*',  # Reference labels
-            r'\b(btw|vat|tax)[.:# ]*\d*%?\b',  # Tax references
-            r'\b(periode|period|termijn)[.:# ]*\w*\b',  # Period references
-            r'\b(bv|nv|ltd|inc|gmbh|llc|co|corp)\b\.?',  # Company suffixes
-            r'\bb\.v\.?\b|\bn\.v\.?\b',  # Dutch company suffixes with dots
-            r'[%€$£]',  # Currency/percentage symbols
-            r'/trtp/',  # Transaction type prefix
-            r'/csid/',  # CSID prefix (we extract the ID separately)
-            r'/iban/',  # IBAN prefix
-            r'/bic/',  # BIC prefix
-            r'/naam/',  # Name prefix
-            r'pas\d{3}',  # Card number suffix (PAS000)
+            r"\b\d{8,}\b",  # Very long numbers only (8+ digits)
+            r"\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}",  # Dates (DD/MM/YYYY)
+            r"\d{4}[-/.]\d{1,2}[-/.]\d{1,2}",  # ISO dates (YYYY-MM-DD)
+            r"\b\d{2}[-/]\d{4}\b",  # Month-year (01-2025)
+            r"\b(ref|nr|no|number|kenmerk|factnr|factuur|invoice)[.:# ]*\w*",  # Reference labels
+            r"\b(btw|vat|tax)[.:# ]*\d*%?\b",  # Tax references
+            r"\b(periode|period|termijn)[.:# ]*\w*\b",  # Period references
+            r"\b(bv|nv|ltd|inc|gmbh|llc|co|corp)\b\.?",  # Company suffixes
+            r"\bb\.v\.?\b|\bn\.v\.?\b",  # Dutch company suffixes with dots
+            r"[%€$£]",  # Currency/percentage symbols
+            r"/trtp/",  # Transaction type prefix
+            r"/csid/",  # CSID prefix (we extract the ID separately)
+            r"/iban/",  # IBAN prefix
+            r"/bic/",  # BIC prefix
+            r"/naam/",  # Name prefix
+            r"pas\d{3}",  # Card number suffix (PAS000)
         ]
 
         for pattern in noise_patterns:
-            normalized = re.sub(pattern, ' ', normalized, flags=re.IGNORECASE)
+            normalized = re.sub(pattern, " ", normalized, flags=re.IGNORECASE)
 
         # Remove extra whitespace and trim
-        normalized = re.sub(r'\s+', ' ', normalized).strip()
+        normalized = re.sub(r"\s+", " ", normalized).strip()
 
         return normalized
 
@@ -339,17 +345,41 @@ class SubscriptionDetector:
         normalized = self._normalize_description(txn.description)
 
         skip_words = {
-            'sepa', 'incasso', 'machtiging', 'payment', 'transfer', 'betaling',
-            'overboeking', 'periodieke', 'overb', 'algemeen', 'doorlopend',
-            'naar', 'van', 'voor', 'met', 'aan', 'bij', 'the', 'for', 'from', 'to',
-            'bv', 'nv', 'ltd', 'inc', 'gmbh', 'llc', 'incassant'
+            "sepa",
+            "incasso",
+            "machtiging",
+            "payment",
+            "transfer",
+            "betaling",
+            "overboeking",
+            "periodieke",
+            "overb",
+            "algemeen",
+            "doorlopend",
+            "naar",
+            "van",
+            "voor",
+            "met",
+            "aan",
+            "bij",
+            "the",
+            "for",
+            "from",
+            "to",
+            "bv",
+            "nv",
+            "ltd",
+            "inc",
+            "gmbh",
+            "llc",
+            "incassant",
         }
 
         words = normalized.split()
         significant = [w for w in words if len(w) >= 3 and w not in skip_words]
 
         if significant:
-            return ' '.join(significant[:4])
+            return " ".join(significant[:4])
 
         return normalized[:40] if normalized else ""
 
@@ -421,7 +451,7 @@ class SubscriptionDetector:
         # Calculate intervals between consecutive dates
         intervals = []
         for i in range(1, len(sorted_dates)):
-            days = (sorted_dates[i] - sorted_dates[i-1]).days
+            days = (sorted_dates[i] - sorted_dates[i - 1]).days
             if days > 0:  # Ignore same-day transactions
                 intervals.append(days)
 
@@ -443,7 +473,7 @@ class SubscriptionDetector:
 
         # Calculate coefficient of variation (std_dev / mean)
         variance = sum((x - avg_interval) ** 2 for x in intervals) / len(intervals)
-        std_dev = variance ** 0.5
+        std_dev = variance**0.5
         cv = std_dev / avg_interval if avg_interval > 0 else 1.0
 
         # Consistency score: lower CV = more consistent
@@ -478,10 +508,7 @@ class SubscriptionDetector:
             return f"every {years} years"
 
     def _find_similar_transactions(
-        self,
-        target_txn: Transaction,
-        all_transactions: List[Transaction],
-        processed_ids: Set[str]
+        self, target_txn: Transaction, all_transactions: List[Transaction], processed_ids: Set[str]
     ) -> List[Transaction]:
         """
         Find all transactions similar to the target transaction.
@@ -502,8 +529,7 @@ class SubscriptionDetector:
         return similar
 
     def _extract_subscription_pattern(
-        self,
-        transactions: List[Transaction]
+        self, transactions: List[Transaction]
     ) -> Tuple[List[Transaction], float, float]:
         """
         Extract the main subscription pattern from a group of transactions.
@@ -585,7 +611,7 @@ class SubscriptionDetector:
 
         if len(amounts) > 1:
             variance = sum((a - avg_amount) ** 2 for a in amounts) / len(amounts)
-            std_dev = variance ** 0.5
+            std_dev = variance**0.5
             amount_cv = std_dev / avg_amount if avg_amount > 0 else 0
         else:
             amount_cv = 0.0
@@ -593,9 +619,7 @@ class SubscriptionDetector:
         return best_cluster, avg_amount, amount_cv
 
     def _analyze_transaction_group(
-        self,
-        transactions: List[Transaction],
-        account_latest_date: datetime
+        self, transactions: List[Transaction], account_latest_date: datetime
     ) -> Optional[DetectedPattern]:
         """
         Analyze a group of similar transactions to see if they form a pattern.
@@ -620,7 +644,7 @@ class SubscriptionDetector:
             amounts = [abs(float(txn.amount)) for txn in transactions]
             avg_amount = sum(amounts) / len(amounts)
             amount_variance = sum((a - avg_amount) ** 2 for a in amounts) / len(amounts)
-            amount_std = amount_variance ** 0.5
+            amount_std = amount_variance**0.5
             amount_cv = amount_std / avg_amount if avg_amount > 0 else 0
 
         # Get dates from the (possibly filtered) transactions
@@ -724,11 +748,11 @@ class SubscriptionDetector:
 
         if known_merchant:
             # Special case: Mollie is a payment processor, try to extract actual merchant
-            if known_merchant == 'Mollie':
+            if known_merchant == "Mollie":
                 # Look for merchant name after "Mollie" in description
                 for txn in transactions:
                     result = self.merchant_extractor.extract(txn.description, txn.merchant)
-                    if result.merchant and result.merchant.lower() != 'mollie':
+                    if result.merchant and result.merchant.lower() != "mollie":
                         return result.merchant, result.merchant
 
             return known_merchant, known_merchant
@@ -749,13 +773,13 @@ class SubscriptionDetector:
         for txn in transactions:
             desc = txn.description or ""
             # Look for "Naam: XXX" pattern
-            naam_match = re.search(r'Naam:\s*([^\s/][^/\n]{2,})', desc, re.IGNORECASE)
+            naam_match = re.search(r"Naam:\s*([^\s/][^/\n]{2,})", desc, re.IGNORECASE)
             if naam_match:
                 name = naam_match.group(1).strip()
                 if name:
                     return name, name
             # Look for "/NAME/XXX/" pattern
-            name_match = re.search(r'/NAME/([^/]+)', desc, re.IGNORECASE)
+            name_match = re.search(r"/NAME/([^/]+)", desc, re.IGNORECASE)
             if name_match:
                 name = name_match.group(1).strip()
                 if name:
@@ -768,8 +792,10 @@ class SubscriptionDetector:
                 normalized = self._normalize_description(txn.description)
                 # Remove common SEPA prefixes
                 cleaned = re.sub(
-                    r'^(sepa\s+)?(incasso\s+)?(algemeen\s+)?(doorlopend\s+)?',
-                    '', normalized, flags=re.IGNORECASE
+                    r"^(sepa\s+)?(incasso\s+)?(algemeen\s+)?(doorlopend\s+)?",
+                    "",
+                    normalized,
+                    flags=re.IGNORECASE,
                 ).strip()
                 if cleaned and len(cleaned) >= 3:
                     return cleaned[:50].title(), None
@@ -833,7 +859,7 @@ class SubscriptionDetector:
                 subscription_name=sub.name,
                 subscription_merchant=sub.merchant,
                 transaction_description=pattern.suggested_name,
-                transaction_merchant=pattern.suggested_merchant
+                transaction_merchant=pattern.suggested_merchant,
             )
 
             if score >= 50:
@@ -842,14 +868,17 @@ class SubscriptionDetector:
         return False
 
     def _check_similar_pending_suggestion(
-        self,
-        pattern: DetectedPattern
+        self, pattern: DetectedPattern
     ) -> Optional[SubscriptionSuggestion]:
         """Check if a similar suggestion already exists (pending)."""
-        pending = self.db.query(SubscriptionSuggestion).filter(
-            SubscriptionSuggestion.user_id == self.user_id,
-            SubscriptionSuggestion.status == "pending"
-        ).all()
+        pending = (
+            self.db.query(SubscriptionSuggestion)
+            .filter(
+                SubscriptionSuggestion.user_id == self.user_id,
+                SubscriptionSuggestion.status == "pending",
+            )
+            .all()
+        )
 
         for suggestion in pending:
             suggestion_account_id = str(suggestion.account_id) if suggestion.account_id else None
@@ -868,8 +897,7 @@ class SubscriptionDetector:
 
             # Check name similarity
             score = self.text_similarity.calculate(
-                suggestion.suggested_name,
-                pattern.suggested_name
+                suggestion.suggested_name, pattern.suggested_name
             ).score
 
             if score >= 60:
@@ -921,7 +949,9 @@ class SubscriptionDetector:
             lookback_date = datetime.utcnow() - timedelta(days=lookback_days)
             query = query.filter(Transaction.booked_at >= lookback_date)
 
-        transactions = query.order_by(Transaction.account_id.asc(), Transaction.booked_at.asc()).all()
+        transactions = query.order_by(
+            Transaction.account_id.asc(), Transaction.booked_at.asc()
+        ).all()
 
         if not transactions:
             logger.info("[SUBSCRIPTION_DETECTOR] No expense transactions found")
@@ -996,8 +1026,7 @@ class SubscriptionDetector:
                         continue
 
                     pattern = self._analyze_transaction_group(
-                        similar,
-                        account_latest_date=account_latest_date
+                        similar, account_latest_date=account_latest_date
                     )
 
                     if pattern:
@@ -1005,9 +1034,7 @@ class SubscriptionDetector:
                         for t in similar:
                             processed_ids.add(str(t.id))
 
-        logger.info(
-            f"[SUBSCRIPTION_DETECTOR] Found {len(patterns)} potential patterns"
-        )
+        logger.info(f"[SUBSCRIPTION_DETECTOR] Found {len(patterns)} potential patterns")
 
         if exclude_existing:
             patterns = [p for p in patterns if not self._matches_existing_subscription(p)]
@@ -1019,9 +1046,7 @@ class SubscriptionDetector:
         if exclude_existing:
             patterns = patterns[:MAX_SUGGESTIONS]
 
-        logger.info(
-            f"[SUBSCRIPTION_DETECTOR] Final result: {len(patterns)} subscription patterns"
-        )
+        logger.info(f"[SUBSCRIPTION_DETECTOR] Final result: {len(patterns)} subscription patterns")
 
         for p in patterns:
             logger.info(
@@ -1031,10 +1056,7 @@ class SubscriptionDetector:
 
         return patterns
 
-    def save_suggestions(
-        self,
-        patterns: List[DetectedPattern]
-    ) -> List[SubscriptionSuggestion]:
+    def save_suggestions(self, patterns: List[DetectedPattern]) -> List[SubscriptionSuggestion]:
         """Save detected patterns as suggestions in the database."""
         if not patterns:
             return []
@@ -1063,7 +1085,7 @@ class SubscriptionDetector:
                 account_id=self._to_uuid(pattern.account_id),
                 suggested_category_id=self._to_uuid(pattern.category_id),
                 matched_transaction_ids=json.dumps(pattern.matched_transaction_ids),
-                status="pending"
+                status="pending",
             )
 
             self.db.add(suggestion)
@@ -1081,10 +1103,7 @@ class SubscriptionDetector:
 
         return created
 
-    def detect_and_save(
-        self,
-        transaction_ids: Optional[List[str]] = None
-    ) -> int:
+    def detect_and_save(self, transaction_ids: Optional[List[str]] = None) -> int:
         """Detect patterns and save suggestions in one call."""
         patterns = self.detect_patterns(
             transaction_ids=transaction_ids,
@@ -1095,20 +1114,23 @@ class SubscriptionDetector:
         return len(suggestions)
 
     def _find_matching_subscription_for_pattern(
-        self,
-        pattern: DetectedPattern
+        self, pattern: DetectedPattern
     ) -> Optional[RecurringTransaction]:
         """Find an existing account-scoped monthly subscription matching a detected pattern."""
         account_uuid = self._to_uuid(pattern.account_id)
         if not account_uuid:
             return None
 
-        candidates = self.db.query(RecurringTransaction).filter(
-            RecurringTransaction.user_id == self.user_id,
-            RecurringTransaction.account_id.isnot(None),
-            RecurringTransaction.account_id == account_uuid,
-            RecurringTransaction.frequency == "monthly",
-        ).all()
+        candidates = (
+            self.db.query(RecurringTransaction)
+            .filter(
+                RecurringTransaction.user_id == self.user_id,
+                RecurringTransaction.account_id.isnot(None),
+                RecurringTransaction.account_id == account_uuid,
+                RecurringTransaction.frequency == "monthly",
+            )
+            .all()
+        )
 
         best_match: Optional[RecurringTransaction] = None
         best_score = 0.0
@@ -1139,8 +1161,7 @@ class SubscriptionDetector:
         return None
 
     def _upsert_subscription_from_pattern(
-        self,
-        pattern: DetectedPattern
+        self, pattern: DetectedPattern
     ) -> Tuple[RecurringTransaction, bool]:
         """
         Create or update a monthly account-scoped subscription from a detected pattern.
@@ -1186,30 +1207,37 @@ class SubscriptionDetector:
         return subscription, True
 
     def _link_transactions_to_subscription(
-        self,
-        subscription: RecurringTransaction,
-        transaction_ids: List[str]
+        self, subscription: RecurringTransaction, transaction_ids: List[str]
     ) -> int:
         """Link matched transactions to a subscription, with safe account-aware reassignment."""
         if not transaction_ids:
             return 0
 
-        matched_transactions = self.db.query(Transaction).filter(
-            Transaction.user_id == self.user_id,
-            Transaction.id.in_(transaction_ids),
-        ).all()
+        matched_transactions = (
+            self.db.query(Transaction)
+            .filter(
+                Transaction.user_id == self.user_id,
+                Transaction.id.in_(transaction_ids),
+            )
+            .all()
+        )
 
         existing_subscription_ids = {
             str(txn.recurring_transaction_id)
             for txn in matched_transactions
-            if txn.recurring_transaction_id and str(txn.recurring_transaction_id) != str(subscription.id)
+            if txn.recurring_transaction_id
+            and str(txn.recurring_transaction_id) != str(subscription.id)
         }
         existing_by_id: Dict[str, RecurringTransaction] = {}
         if existing_subscription_ids:
-            existing_subscriptions = self.db.query(RecurringTransaction).filter(
-                RecurringTransaction.user_id == self.user_id,
-                RecurringTransaction.id.in_(existing_subscription_ids),
-            ).all()
+            existing_subscriptions = (
+                self.db.query(RecurringTransaction)
+                .filter(
+                    RecurringTransaction.user_id == self.user_id,
+                    RecurringTransaction.id.in_(existing_subscription_ids),
+                )
+                .all()
+            )
             existing_by_id = {str(sub.id): sub for sub in existing_subscriptions}
 
         linked_count = 0
@@ -1217,7 +1245,9 @@ class SubscriptionDetector:
             if str(txn.account_id) != str(subscription.account_id):
                 continue
 
-            if txn.recurring_transaction_id and str(txn.recurring_transaction_id) == str(subscription.id):
+            if txn.recurring_transaction_id and str(txn.recurring_transaction_id) == str(
+                subscription.id
+            ):
                 continue
 
             should_reassign = False
@@ -1243,20 +1273,29 @@ class SubscriptionDetector:
         If linked transactions span multiple accounts, keep account_id null and
         mark inactive to avoid surfacing ambiguous account attribution.
         """
-        legacy_subs = self.db.query(RecurringTransaction).filter(
-            RecurringTransaction.user_id == self.user_id,
-            RecurringTransaction.account_id.is_(None),
-            RecurringTransaction.frequency == "monthly",
-        ).all()
+        legacy_subs = (
+            self.db.query(RecurringTransaction)
+            .filter(
+                RecurringTransaction.user_id == self.user_id,
+                RecurringTransaction.account_id.is_(None),
+                RecurringTransaction.frequency == "monthly",
+            )
+            .all()
+        )
 
         for sub in legacy_subs:
-            account_rows = self.db.query(
-                Transaction.account_id,
-                func.count(Transaction.id),
-            ).filter(
-                Transaction.user_id == self.user_id,
-                Transaction.recurring_transaction_id == sub.id,
-            ).group_by(Transaction.account_id).all()
+            account_rows = (
+                self.db.query(
+                    Transaction.account_id,
+                    func.count(Transaction.id),
+                )
+                .filter(
+                    Transaction.user_id == self.user_id,
+                    Transaction.recurring_transaction_id == sub.id,
+                )
+                .group_by(Transaction.account_id)
+                .all()
+            )
 
             if len(account_rows) == 0:
                 sub.is_active = False
@@ -1266,10 +1305,14 @@ class SubscriptionDetector:
                 sub.is_active = False
 
             if not sub.category_id:
-                linked_txns = self.db.query(Transaction).filter(
-                    Transaction.user_id == self.user_id,
-                    Transaction.recurring_transaction_id == sub.id,
-                ).all()
+                linked_txns = (
+                    self.db.query(Transaction)
+                    .filter(
+                        Transaction.user_id == self.user_id,
+                        Transaction.recurring_transaction_id == sub.id,
+                    )
+                    .all()
+                )
                 category_id = self._resolve_pattern_category_id(linked_txns)
                 category_uuid = self._to_uuid(category_id)
                 if category_uuid:
@@ -1282,34 +1325,48 @@ class SubscriptionDetector:
         A subscription is active only if it appeared within 2 months of the
         latest transaction date for its account.
         """
-        subscriptions = self.db.query(RecurringTransaction).filter(
-            RecurringTransaction.user_id == self.user_id,
-            RecurringTransaction.account_id.isnot(None),
-            RecurringTransaction.frequency == "monthly",
-        ).all()
+        subscriptions = (
+            self.db.query(RecurringTransaction)
+            .filter(
+                RecurringTransaction.user_id == self.user_id,
+                RecurringTransaction.account_id.isnot(None),
+                RecurringTransaction.frequency == "monthly",
+            )
+            .all()
+        )
 
         if not subscriptions:
             return {"activated": 0, "deactivated": 0}
 
-        account_latest_rows = self.db.query(
-            Transaction.account_id,
-            func.max(Transaction.booked_at),
-        ).filter(
-            Transaction.user_id == self.user_id,
-        ).group_by(Transaction.account_id).all()
+        account_latest_rows = (
+            self.db.query(
+                Transaction.account_id,
+                func.max(Transaction.booked_at),
+            )
+            .filter(
+                Transaction.user_id == self.user_id,
+            )
+            .group_by(Transaction.account_id)
+            .all()
+        )
         account_latest = {
             str(account_id): latest_at
             for account_id, latest_at in account_latest_rows
             if account_id and latest_at
         }
 
-        subscription_latest_rows = self.db.query(
-            Transaction.recurring_transaction_id,
-            func.max(Transaction.booked_at),
-        ).filter(
-            Transaction.user_id == self.user_id,
-            Transaction.recurring_transaction_id.isnot(None),
-        ).group_by(Transaction.recurring_transaction_id).all()
+        subscription_latest_rows = (
+            self.db.query(
+                Transaction.recurring_transaction_id,
+                func.max(Transaction.booked_at),
+            )
+            .filter(
+                Transaction.user_id == self.user_id,
+                Transaction.recurring_transaction_id.isnot(None),
+            )
+            .group_by(Transaction.recurring_transaction_id)
+            .all()
+        )
         subscription_latest = {
             str(sub_id): latest_at
             for sub_id, latest_at in subscription_latest_rows

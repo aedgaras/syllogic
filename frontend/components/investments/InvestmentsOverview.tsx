@@ -89,7 +89,8 @@ export function InvestmentsOverview({
     }
   }
   const isEmptyPortfolio = activePositions === 0;
-  const hasCompleteCost = !isEmptyPortfolio && activeWithCost === activePositions;
+  const hasCompleteCost =
+    !isEmptyPortfolio && activeWithCost === activePositions;
   const costBasis = isEmptyPortfolio
     ? 0
     : hasCompleteCost
@@ -109,10 +110,13 @@ export function InvestmentsOverview({
     bestDayRaw && history[bestDayRaw.index]
       ? {
           delta: bestDayRaw.delta,
-          label: new Date(history[bestDayRaw.index].date).toLocaleDateString(defaultLocale, {
-            month: "short",
-            day: "numeric",
-          }),
+          label: new Date(history[bestDayRaw.index].date).toLocaleDateString(
+            defaultLocale,
+            {
+              month: "short",
+              day: "numeric",
+            },
+          ),
         }
       : null;
 
@@ -179,7 +183,11 @@ export function InvestmentsOverview({
         headerAction={refreshButton}
       />
 
-      <Card className={pending ? "opacity-70 transition-opacity" : "transition-opacity"}>
+      <Card
+        className={
+          pending ? "opacity-70 transition-opacity" : "transition-opacity"
+        }
+      >
         <CardContent className="p-4">
           <PortfolioChart data={series} currencySymbol={sym} />
           <PortfolioStatsStrip

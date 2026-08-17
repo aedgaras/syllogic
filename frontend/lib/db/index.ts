@@ -15,7 +15,10 @@ if (!connectionString) {
 assertProductionDatabaseTls(connectionString, "db");
 
 const sslRequired = databaseUrlRequiresTls(connectionString);
-const configuredPoolSize = Number.parseInt(process.env.DB_POOL_SIZE ?? "10", 10);
+const configuredPoolSize = Number.parseInt(
+  process.env.DB_POOL_SIZE ?? "10",
+  10,
+);
 const dbPoolSize = Number.isFinite(configuredPoolSize)
   ? Math.min(100, Math.max(1, configuredPoolSize))
   : 10;
@@ -27,12 +30,12 @@ const client = postgres(connectionString, {
   max: dbPoolSize,
   idle_timeout: 20, // Close idle connections after 20 seconds
   max_lifetime: 60 * 30, // Close connections after 30 minutes
-  
+
   // Connection settings
   connection: {
     application_name: "syllogic-frontend",
   },
-  
+
   // Error handling
   onnotice: (notice) => {
     // Log PostgreSQL notices (warnings, info) in development
@@ -40,7 +43,7 @@ const client = postgres(connectionString, {
       console.log("[PostgreSQL Notice]", notice);
     }
   },
-  
+
   // Transform to handle bigint and other types
   transform: {
     undefined: null,
@@ -54,7 +57,7 @@ if (typeof process !== "undefined") {
   const shutdown = async () => {
     await client.end();
   };
-  
+
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 }

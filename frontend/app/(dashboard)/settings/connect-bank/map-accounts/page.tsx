@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { getCurrentUserProfile } from "@/lib/actions/settings";
 import { isDemoRestrictedUserEmail } from "@/lib/demo-access";
-import { getConnectionForMapping, getLinkableAccounts, getSuggestedMappings, type SuggestedMapping } from "@/lib/actions/bank-connections";
+import {
+  getConnectionForMapping,
+  getLinkableAccounts,
+  getSuggestedMappings,
+  type SuggestedMapping,
+} from "@/lib/actions/bank-connections";
 import { AccountMappingWizard } from "@/components/settings/account-mapping-wizard";
 import { RiLoader4Line } from "@remixicon/react";
 
@@ -12,7 +17,9 @@ interface MapAccountsPageProps {
   searchParams: Promise<{ connectionId?: string }>;
 }
 
-export default async function MapAccountsPage({ searchParams }: MapAccountsPageProps) {
+export default async function MapAccountsPage({
+  searchParams,
+}: MapAccountsPageProps) {
   const user = await getCurrentUserProfile();
   if (!user) redirect("/login");
   if (isDemoRestrictedUserEmail(user.email)) redirect("/settings");

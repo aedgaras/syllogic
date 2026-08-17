@@ -1,7 +1,4 @@
 """Verify that with an alias-matched account, the LLM prompt steers toward the transfer category."""
-from decimal import Decimal
-
-import pytest
 
 from app.services.category_matcher import CategoryMatcher
 
@@ -23,6 +20,7 @@ class FakeAccount:
 
 def test_llm_selects_transfers_when_alias_matches(monkeypatch, db_session):
     import app.services.category_matcher as cm_module
+
     monkeypatch.setattr(cm_module, "ENRICHED_PROMPT_ENABLED", True)
 
     class StubClient:
@@ -33,14 +31,23 @@ def test_llm_selects_transfers_when_alias_matches(monkeypatch, db_session):
                     # The stub "reads" the prompt: if it mentions the alias + transfer rule,
                     # return the transfer category name.
                     content = kwargs["messages"][1]["content"]
-                    if "Apple Pay Top-Up by *1234" in content and "internal transfer" in content.lower():
+                    if (
+                        "Apple Pay Top-Up by *1234" in content
+                        and "internal transfer" in content.lower()
+                    ):
                         answer = "Transfers"
                     else:
                         answer = "UNKNOWN"
-                    return type("R", (), {
-                        "choices": [type("X", (), {"message": type("M", (), {"content": answer})()})()],
-                        "usage": type("U", (), {"prompt_tokens": 1, "completion_tokens": 1})(),
-                    })
+                    return type(
+                        "R",
+                        (),
+                        {
+                            "choices": [
+                                type("X", (), {"message": type("M", (), {"content": answer})()})()
+                            ],
+                            "usage": type("U", (), {"prompt_tokens": 1, "completion_tokens": 1})(),
+                        },
+                    )
 
     m = CategoryMatcher(db=db_session, user_id="llm-user")
     monkeypatch.setattr(m, "_get_openai_client", lambda: StubClient())

@@ -12,7 +12,7 @@ import {
 } from "@/features/assets/server";
 
 function ownerIdsByEntity(
-  map: Map<string, { personId: string }[]>
+  map: Map<string, { personId: string }[]>,
 ): Record<string, string[]> {
   const out: Record<string, string[]> = {};
   for (const [id, owners] of map) {
@@ -35,9 +35,18 @@ export async function AssetsSection() {
   // requests from <OwnerBadges> on each row.
   const [accountOwnersMap, propertyOwnersMap, vehicleOwnersMap] =
     await Promise.all([
-      getOwnersForEntities("account", accounts.map((a) => a.id)),
-      getOwnersForEntities("property", properties.map((p) => p.id)),
-      getOwnersForEntities("vehicle", vehicles.map((v) => v.id)),
+      getOwnersForEntities(
+        "account",
+        accounts.map((a) => a.id),
+      ),
+      getOwnersForEntities(
+        "property",
+        properties.map((p) => p.id),
+      ),
+      getOwnersForEntities(
+        "vehicle",
+        vehicles.map((v) => v.id),
+      ),
     ]);
 
   const people = peopleRows.map((p) => ({
@@ -52,10 +61,20 @@ export async function AssetsSection() {
   const propertyOwnerIds = ownerIdsByEntity(propertyOwnersMap);
   const vehicleOwnerIds = ownerIdsByEntity(vehicleOwnersMap);
 
-  return <AssetManagement model={{
-    accounts: accounts.map((account) => toAccountAssetViewModel(account, accountOwnerIds[account.id])),
-    properties: properties.map((property) => toPropertyAssetViewModel(property, propertyOwnerIds[property.id])),
-    vehicles: vehicles.map((vehicle) => toVehicleAssetViewModel(vehicle, vehicleOwnerIds[vehicle.id])),
-    people,
-  }} />;
+  return (
+    <AssetManagement
+      model={{
+        accounts: accounts.map((account) =>
+          toAccountAssetViewModel(account, accountOwnerIds[account.id]),
+        ),
+        properties: properties.map((property) =>
+          toPropertyAssetViewModel(property, propertyOwnerIds[property.id]),
+        ),
+        vehicles: vehicles.map((vehicle) =>
+          toVehicleAssetViewModel(vehicle, vehicleOwnerIds[vehicle.id]),
+        ),
+        people,
+      }}
+    />
+  );
 }

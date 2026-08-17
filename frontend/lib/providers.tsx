@@ -18,7 +18,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             refetchOnWindowFocus: false,
           },
         },
-      })
+      }),
   );
 
   return (

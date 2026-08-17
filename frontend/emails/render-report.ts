@@ -1,5 +1,7 @@
 import { render } from "@react-email/render";
-import ReportNewsletter, { type ReportNewsletterProps } from "./report-newsletter";
+import ReportNewsletter, {
+  type ReportNewsletterProps,
+} from "./report-newsletter";
 
 async function main() {
   const chunks: Buffer[] = [];

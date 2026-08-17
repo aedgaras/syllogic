@@ -1,13 +1,14 @@
 """
 Account tools for the MCP server.
 """
+
 from typing import Optional
 
 from app.mcp.dependencies import get_db, validate_uuid, validate_date
 from app.mcp.tools._asset_class import account_type_to_asset_class
 from app.models import Account, AccountBalance
 from app.security.data_encryption import decrypt_with_fallback
-from app.services.ownership_service import attribute_amount, entity_ids_for_people, get_owners
+from app.services.ownership_service import attribute_amount, entity_ids_for_people
 
 
 def list_accounts(
@@ -57,14 +58,17 @@ def list_accounts(
         owners_cache: dict = {}
         if single_person:
             from app.models import AccountOwner
+
             account_ids = [a.id for a in accounts]
             if account_ids:
                 rows = db.query(AccountOwner).filter(AccountOwner.account_id.in_(account_ids)).all()
                 for row in rows:
-                    owners_cache.setdefault(str(row.account_id), []).append({
-                        "person_id": str(row.person_id),
-                        "share": float(row.share) if row.share is not None else None,
-                    })
+                    owners_cache.setdefault(str(row.account_id), []).append(
+                        {
+                            "person_id": str(row.person_id),
+                            "share": float(row.share) if row.share is not None else None,
+                        }
+                    )
             # Ensure every account has an entry (even if empty)
             for a in accounts:
                 owners_cache.setdefault(str(a.id), [])
@@ -79,12 +83,20 @@ def list_accounts(
                 "institution": account.institution,
                 "currency": account.currency,
                 "provider": account.provider,
-                "balance_available": float(account.balance_available) if account.balance_available else None,
-                "starting_balance": float(account.starting_balance) if account.starting_balance else 0,
-                "functional_balance": float(account.functional_balance) if account.functional_balance else None,
+                "balance_available": float(account.balance_available)
+                if account.balance_available
+                else None,
+                "starting_balance": float(account.starting_balance)
+                if account.starting_balance
+                else 0,
+                "functional_balance": float(account.functional_balance)
+                if account.functional_balance
+                else None,
                 "is_active": account.is_active,
                 "alias_patterns": account.alias_patterns or [],
-                "last_synced_at": account.last_synced_at.isoformat() if account.last_synced_at else None,
+                "last_synced_at": account.last_synced_at.isoformat()
+                if account.last_synced_at
+                else None,
                 "created_at": account.created_at.isoformat() if account.created_at else None,
             }
             if single_person:
@@ -96,9 +108,7 @@ def list_accounts(
                     full_balance = float(account.balance_available)
                 else:
                     full_balance = 0.0
-                row["attributed_balance"] = attribute_amount(
-                    full_balance, owners, person_ids[0]
-                )
+                row["attributed_balance"] = attribute_amount(full_balance, owners, person_ids[0])
             results.append(row)
 
         if asset_class is not None:
@@ -124,10 +134,9 @@ def get_account(user_id: str, account_id: str) -> dict | None:
         return None
 
     with get_db() as db:
-        account = db.query(Account).filter(
-            Account.id == account_uuid,
-            Account.user_id == user_id
-        ).first()
+        account = (
+            db.query(Account).filter(Account.id == account_uuid, Account.user_id == user_id).first()
+        )
 
         if not account:
             return None
@@ -140,13 +149,21 @@ def get_account(user_id: str, account_id: str) -> dict | None:
             "institution": account.institution,
             "currency": account.currency,
             "provider": account.provider,
-            "external_id": decrypt_with_fallback(account.external_id_ciphertext, account.external_id),
-            "balance_available": float(account.balance_available) if account.balance_available else None,
+            "external_id": decrypt_with_fallback(
+                account.external_id_ciphertext, account.external_id
+            ),
+            "balance_available": float(account.balance_available)
+            if account.balance_available
+            else None,
             "starting_balance": float(account.starting_balance) if account.starting_balance else 0,
-            "functional_balance": float(account.functional_balance) if account.functional_balance else None,
+            "functional_balance": float(account.functional_balance)
+            if account.functional_balance
+            else None,
             "is_active": account.is_active,
             "alias_patterns": account.alias_patterns or [],
-            "last_synced_at": account.last_synced_at.isoformat() if account.last_synced_at else None,
+            "last_synced_at": account.last_synced_at.isoformat()
+            if account.last_synced_at
+            else None,
             "created_at": account.created_at.isoformat() if account.created_at else None,
             "updated_at": account.updated_at.isoformat() if account.updated_at else None,
         }
@@ -182,25 +199,20 @@ def get_account_balance_history(
 
     with get_db() as db:
         # First verify the account belongs to the user
-        account = db.query(Account).filter(
-            Account.id == account_uuid,
-            Account.user_id == user_id
-        ).first()
+        account = (
+            db.query(Account).filter(Account.id == account_uuid, Account.user_id == user_id).first()
+        )
 
         if not account:
             return []
 
         # Apply person_ids ownership filter (filter-only; no attribution on history)
         if person_ids is not None and len(person_ids) > 0:
-            allowed_ids = set(
-                str(uid) for uid in entity_ids_for_people(db, "account", person_ids)
-            )
+            allowed_ids = set(str(uid) for uid in entity_ids_for_people(db, "account", person_ids))
             if str(account_uuid) not in allowed_ids:
                 return []
 
-        query = db.query(AccountBalance).filter(
-            AccountBalance.account_id == account_uuid
-        )
+        query = db.query(AccountBalance).filter(AccountBalance.account_id == account_uuid)
 
         if from_dt:
             query = query.filter(AccountBalance.date >= from_dt)
@@ -213,8 +225,12 @@ def get_account_balance_history(
         return [
             {
                 "date": balance.date.isoformat() if balance.date else None,
-                "balance_in_account_currency": float(balance.balance_in_account_currency) if balance.balance_in_account_currency else 0,
-                "balance_in_functional_currency": float(balance.balance_in_functional_currency) if balance.balance_in_functional_currency else 0,
+                "balance_in_account_currency": float(balance.balance_in_account_currency)
+                if balance.balance_in_account_currency
+                else 0,
+                "balance_in_functional_currency": float(balance.balance_in_functional_currency)
+                if balance.balance_in_functional_currency
+                else 0,
             }
             for balance in balances
         ]

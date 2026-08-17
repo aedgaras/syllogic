@@ -7,7 +7,10 @@ import {
   toggleSubscriptionActive,
   updateSubscription,
 } from "@/lib/actions/subscriptions";
-import { dismissSuggestion, verifySuggestion } from "@/lib/actions/subscription-suggestions";
+import {
+  dismissSuggestion,
+  verifySuggestion,
+} from "@/lib/actions/subscription-suggestions";
 import { hasLogoApiKey, searchLogo } from "@/lib/actions/logos";
 
 export {

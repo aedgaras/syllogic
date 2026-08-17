@@ -16,27 +16,40 @@ interface CommandPaletteContextValue {
   unregisterCallbacks: (keys: (keyof CommandPaletteCallbacks)[]) => void;
 }
 
-const CommandPaletteContext = React.createContext<CommandPaletteContextValue | null>(null);
+const CommandPaletteContext =
+  React.createContext<CommandPaletteContextValue | null>(null);
 
-export function CommandPaletteProvider({ children }: { children: React.ReactNode }) {
+export function CommandPaletteProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [callbacks, setCallbacks] = React.useState<CommandPaletteCallbacks>({});
 
-  const registerCallbacks = React.useCallback((newCallbacks: Partial<CommandPaletteCallbacks>) => {
-    setCallbacks((prev) => ({ ...prev, ...newCallbacks }));
-  }, []);
+  const registerCallbacks = React.useCallback(
+    (newCallbacks: Partial<CommandPaletteCallbacks>) => {
+      setCallbacks((prev) => ({ ...prev, ...newCallbacks }));
+    },
+    [],
+  );
 
-  const unregisterCallbacks = React.useCallback((keys: (keyof CommandPaletteCallbacks)[]) => {
-    setCallbacks((prev) => {
-      const next = { ...prev };
-      keys.forEach((key) => {
-        delete next[key];
+  const unregisterCallbacks = React.useCallback(
+    (keys: (keyof CommandPaletteCallbacks)[]) => {
+      setCallbacks((prev) => {
+        const next = { ...prev };
+        keys.forEach((key) => {
+          delete next[key];
+        });
+        return next;
       });
-      return next;
-    });
-  }, []);
+    },
+    [],
+  );
 
   return (
-    <CommandPaletteContext.Provider value={{ callbacks, registerCallbacks, unregisterCallbacks }}>
+    <CommandPaletteContext.Provider
+      value={{ callbacks, registerCallbacks, unregisterCallbacks }}
+    >
       {children}
     </CommandPaletteContext.Provider>
   );
@@ -45,21 +58,26 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
 export function useCommandPaletteCallbacks() {
   const context = React.useContext(CommandPaletteContext);
   if (!context) {
-    throw new Error("useCommandPaletteCallbacks must be used within a CommandPaletteProvider");
+    throw new Error(
+      "useCommandPaletteCallbacks must be used within a CommandPaletteProvider",
+    );
   }
   return context;
 }
 
 export function useRegisterCommandPaletteCallbacks(
   callbacks: Partial<CommandPaletteCallbacks>,
-  deps: React.DependencyList
+  deps: React.DependencyList,
 ) {
-  const { registerCallbacks, unregisterCallbacks } = useCommandPaletteCallbacks();
+  const { registerCallbacks, unregisterCallbacks } =
+    useCommandPaletteCallbacks();
 
   React.useEffect(() => {
     registerCallbacks(callbacks);
     return () => {
-      unregisterCallbacks(Object.keys(callbacks) as (keyof CommandPaletteCallbacks)[]);
+      unregisterCallbacks(
+        Object.keys(callbacks) as (keyof CommandPaletteCallbacks)[],
+      );
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);

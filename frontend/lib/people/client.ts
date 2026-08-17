@@ -35,7 +35,7 @@ export async function fetchPeople(): Promise<ClientPerson[]> {
 
 export async function fetchOwners(
   entityType: EntityType,
-  entityId: string
+  entityId: string,
 ): Promise<OwnerRow[]> {
   const response = await fetch(`/api/owners/${entityType}/${entityId}`);
   if (!response.ok) {
@@ -48,7 +48,7 @@ export async function fetchOwners(
 export async function saveOwners(
   entityType: EntityType,
   entityId: string,
-  owners: OwnerRow[]
+  owners: OwnerRow[],
 ) {
   const response = await fetch(`/api/owners/${entityType}/${entityId}`, {
     method: "PUT",
@@ -97,7 +97,7 @@ export function usePeopleQuery(initialPeople?: ClientPerson[]) {
 export function useOwnersQuery(
   entityType: EntityType,
   entityId: string,
-  options?: { enabled?: boolean; initialOwners?: OwnerRow[] }
+  options?: { enabled?: boolean; initialOwners?: OwnerRow[] },
 ) {
   return useQuery({
     queryKey: ownersQueryKey(entityType, entityId),
@@ -107,12 +107,18 @@ export function useOwnersQuery(
   });
 }
 
-export function useSaveOwnersMutation(entityType: EntityType, entityId: string) {
+export function useSaveOwnersMutation(
+  entityType: EntityType,
+  entityId: string,
+) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (owners: OwnerRow[]) => saveOwners(entityType, entityId, owners),
+    mutationFn: (owners: OwnerRow[]) =>
+      saveOwners(entityType, entityId, owners),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ownersQueryKey(entityType, entityId) });
+      queryClient.invalidateQueries({
+        queryKey: ownersQueryKey(entityType, entityId),
+      });
     },
   });
 }

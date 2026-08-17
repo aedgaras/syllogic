@@ -39,7 +39,10 @@ export function useBulkTransactionActions(): BulkTransactionActions {
       },
       async setAnalytics(ids, includeInAnalytics) {
         try {
-          const result = await bulkUpdateTransactionIncludeInAnalytics(ids, includeInAnalytics);
+          const result = await bulkUpdateTransactionIncludeInAnalytics(
+            ids,
+            includeInAnalytics,
+          );
           if (!result.success) {
             toast.error(result.error || "Failed to update transactions");
             return false;
@@ -47,7 +50,7 @@ export function useBulkTransactionActions(): BulkTransactionActions {
           toast.success(
             includeInAnalytics
               ? `${result.updatedCount} transactions included in analytics`
-              : `${result.updatedCount} transactions excluded from analytics`
+              : `${result.updatedCount} transactions excluded from analytics`,
           );
           router.refresh();
           return true;
@@ -90,6 +93,6 @@ export function useBulkTransactionActions(): BulkTransactionActions {
         }
       },
     }),
-    [router]
+    [router],
   );
 }

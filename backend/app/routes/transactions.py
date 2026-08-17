@@ -69,17 +69,13 @@ def list_transactions(
     if category_id:
         # Match effective category: user override first, otherwise AI-assigned fallback
         query = query.filter(
-            (Transaction.category_id == category_id) |
-            and_(
-                Transaction.category_id.is_(None),
-                Transaction.category_system_id == category_id
-            )
+            (Transaction.category_id == category_id)
+            | and_(Transaction.category_id.is_(None), Transaction.category_system_id == category_id)
         )
 
     if uncategorized:
         query = query.filter(
-            Transaction.category_id.is_(None),
-            Transaction.category_system_id.is_(None)
+            Transaction.category_id.is_(None), Transaction.category_system_id.is_(None)
         )
 
     if from_date:
@@ -160,15 +156,22 @@ def get_spending_by_category(
     """Get spending statistics by category for the current user."""
     user_id = get_user_id(user_id)
     # Use category_id (user override) or category_system_id (AI assigned) for grouping
-    query = db.query(
-        func.coalesce(Transaction.category_id, Transaction.category_system_id).label("category_id"),
-        Category.name.label("category_name"),
-        func.sum(Transaction.amount).label("total"),
-        func.count(Transaction.id).label("count"),
-    ).outerjoin(
-        Category,
-        (Transaction.category_id == Category.id) | (Transaction.category_system_id == Category.id)
-    ).filter(Transaction.user_id == user_id)
+    query = (
+        db.query(
+            func.coalesce(Transaction.category_id, Transaction.category_system_id).label(
+                "category_id"
+            ),
+            Category.name.label("category_name"),
+            func.sum(Transaction.amount).label("total"),
+            func.count(Transaction.id).label("count"),
+        )
+        .outerjoin(
+            Category,
+            (Transaction.category_id == Category.id)
+            | (Transaction.category_system_id == Category.id),
+        )
+        .filter(Transaction.user_id == user_id)
+    )
 
     # Only expenses (negative amounts)
     query = query.filter(Transaction.amount < 0)
@@ -179,8 +182,7 @@ def get_spending_by_category(
         query = query.filter(Transaction.booked_at <= to_date)
 
     results = query.group_by(
-        func.coalesce(Transaction.category_id, Transaction.category_system_id),
-        Category.name
+        func.coalesce(Transaction.category_id, Transaction.category_system_id), Category.name
     ).all()
 
     return [
@@ -196,16 +198,15 @@ def get_spending_by_category(
 
 @router.get("/{transaction_id}", response_model=TransactionResponse)
 def get_transaction(
-    transaction_id: UUID,
-    user_id: Optional[str] = None,
-    db: Session = Depends(get_db)
+    transaction_id: UUID, user_id: Optional[str] = None, db: Session = Depends(get_db)
 ):
     """Get a specific transaction by ID."""
     user_id = get_user_id(user_id)
-    transaction = db.query(Transaction).filter(
-        Transaction.id == transaction_id,
-        Transaction.user_id == user_id
-    ).first()
+    transaction = (
+        db.query(Transaction)
+        .filter(Transaction.id == transaction_id, Transaction.user_id == user_id)
+        .first()
+    )
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
     return transaction
@@ -213,26 +214,26 @@ def get_transaction(
 
 @router.post("/", response_model=TransactionResponse, status_code=201)
 def create_transaction(
-    transaction: TransactionCreate,
-    user_id: Optional[str] = None,
-    db: Session = Depends(get_db)
+    transaction: TransactionCreate, user_id: Optional[str] = None, db: Session = Depends(get_db)
 ):
     """Create a new transaction."""
     user_id = get_user_id(user_id)
     # Verify account exists and belongs to user
-    account = db.query(Account).filter(
-        Account.id == transaction.account_id,
-        Account.user_id == user_id
-    ).first()
+    account = (
+        db.query(Account)
+        .filter(Account.id == transaction.account_id, Account.user_id == user_id)
+        .first()
+    )
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
     # Verify category exists if provided
     if transaction.category_id:
-        category = db.query(Category).filter(
-            Category.id == transaction.category_id,
-            Category.user_id == user_id
-        ).first()
+        category = (
+            db.query(Category)
+            .filter(Category.id == transaction.category_id, Category.user_id == user_id)
+            .first()
+        )
         if not category:
             raise HTTPException(status_code=404, detail="Category not found")
 
@@ -250,14 +251,15 @@ def update_transaction(
     transaction_id: UUID,
     updates: TransactionUpdate,
     user_id: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Update a transaction."""
     user_id = get_user_id(user_id)
-    transaction = db.query(Transaction).filter(
-        Transaction.id == transaction_id,
-        Transaction.user_id == user_id
-    ).first()
+    transaction = (
+        db.query(Transaction)
+        .filter(Transaction.id == transaction_id, Transaction.user_id == user_id)
+        .first()
+    )
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
@@ -275,21 +277,23 @@ def assign_category(
     transaction_id: UUID,
     category_data: CategoryAssign,
     user_id: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Assign a category to a transaction (user override)."""
     user_id = get_user_id(user_id)
-    transaction = db.query(Transaction).filter(
-        Transaction.id == transaction_id,
-        Transaction.user_id == user_id
-    ).first()
+    transaction = (
+        db.query(Transaction)
+        .filter(Transaction.id == transaction_id, Transaction.user_id == user_id)
+        .first()
+    )
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
-    category = db.query(Category).filter(
-        Category.id == category_data.category_id,
-        Category.user_id == user_id
-    ).first()
+    category = (
+        db.query(Category)
+        .filter(Category.id == category_data.category_id, Category.user_id == user_id)
+        .first()
+    )
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
@@ -302,16 +306,15 @@ def assign_category(
 
 @router.delete("/{transaction_id}", status_code=204)
 def delete_transaction(
-    transaction_id: UUID,
-    user_id: Optional[str] = None,
-    db: Session = Depends(get_db)
+    transaction_id: UUID, user_id: Optional[str] = None, db: Session = Depends(get_db)
 ):
     """Delete a transaction."""
     user_id = get_user_id(user_id)
-    transaction = db.query(Transaction).filter(
-        Transaction.id == transaction_id,
-        Transaction.user_id == user_id
-    ).first()
+    transaction = (
+        db.query(Transaction)
+        .filter(Transaction.id == transaction_id, Transaction.user_id == user_id)
+        .first()
+    )
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
@@ -327,21 +330,21 @@ def delete_transactions_by_account(account_id: UUID, db: Session = Depends(get_d
     Use with caution - this permanently deletes all transactions.
     """
     from app.models import Account
-    
+
     # Verify account exists
     account = db.query(Account).filter(Account.id == account_id).first()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
-    
+
     # Count transactions before deletion
     transaction_count = db.query(Transaction).filter(Transaction.account_id == account_id).count()
-    
+
     # Delete all transactions for this account
     db.query(Transaction).filter(Transaction.account_id == account_id).delete()
     db.commit()
-    
+
     return {
         "message": f"Deleted {transaction_count} transaction(s) for account '{account.name}'",
         "deleted_count": transaction_count,
-        "account_name": account.name
+        "account_name": account.name,
     }

@@ -4,7 +4,10 @@ import { useEffect } from "react";
 
 export function ServiceWorkerRegistration() {
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) {
+    if (
+      process.env.NODE_ENV !== "production" ||
+      !("serviceWorker" in navigator)
+    ) {
       return;
     }
 
@@ -15,7 +18,10 @@ export function ServiceWorkerRegistration() {
           updateViaCache: "none",
         })
         .catch((error: unknown) => {
-          console.error("Unable to register the Syllogic service worker", error);
+          console.error(
+            "Unable to register the Syllogic service worker",
+            error,
+          );
         });
     };
 

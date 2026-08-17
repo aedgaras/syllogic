@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useRef, useCallback } from "react";
 import { RiCameraLine, RiCloseLine } from "@remixicon/react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -39,7 +38,7 @@ export function ProfilePhotoUpload({
         onChange(null);
       }
     },
-    [onChange]
+    [onChange],
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,7 +55,7 @@ export function ProfilePhotoUpload({
         handleFileChange(file);
       }
     },
-    [handleFileChange]
+    [handleFileChange],
   );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -93,7 +92,7 @@ export function ProfilePhotoUpload({
       <div
         className={cn(
           "relative cursor-pointer transition-all",
-          isDragging && "ring-2 ring-primary ring-offset-2"
+          isDragging && "ring-2 ring-primary ring-offset-2",
         )}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -102,9 +101,14 @@ export function ProfilePhotoUpload({
       >
         <Avatar className="h-24 w-24">
           {displayImage ? (
-            <AvatarImage src={displayImage} alt={translate("profilePhoto33f385")} />
+            <AvatarImage
+              src={displayImage}
+              alt={translate("profilePhoto33f385")}
+            />
           ) : (
-            <AvatarFallback className="text-2xl">{getInitials(name)}</AvatarFallback>
+            <AvatarFallback className="text-2xl">
+              {getInitials(name)}
+            </AvatarFallback>
           )}
         </Avatar>
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity hover:opacity-100">

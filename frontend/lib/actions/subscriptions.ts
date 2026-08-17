@@ -1,7 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, and, isNull, desc, asc, sql, inArray, gte, lt, or, ne } from "drizzle-orm";
+import {
+  eq,
+  and,
+  isNull,
+  desc,
+  asc,
+  sql,
+  inArray,
+  gte,
+  lt,
+  or,
+  ne,
+} from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   recurringTransactions,
@@ -22,8 +34,15 @@ import type {
   SubscriptionUpdateInput,
   SubscriptionViewModel,
 } from "@/features/subscriptions/public";
-import { monthlyEquivalent, validateSubscriptionInput } from "@/features/subscriptions/public";
-import { calculateStringSimilarity, detectFrequencyFromGaps, scoreSubscriptionMatch } from "@/features/subscriptions/domain/matching";
+import {
+  monthlyEquivalent,
+  validateSubscriptionInput,
+} from "@/features/subscriptions/public";
+import {
+  calculateStringSimilarity,
+  detectFrequencyFromGaps,
+  scoreSubscriptionMatch,
+} from "@/features/subscriptions/domain/matching";
 
 export type {
   MatchedTransaction,
@@ -59,12 +78,22 @@ function toSubscriptionViewModel(row: SubscriptionRow): SubscriptionViewModel {
     description: row.description,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
-    account: row.account ? { id: row.account.id, name: row.account.name } : null,
+    account: row.account
+      ? { id: row.account.id, name: row.account.name }
+      : null,
     category: row.category
-      ? { id: row.category.id, name: row.category.name, color: row.category.color }
+      ? {
+          id: row.category.id,
+          name: row.category.name,
+          color: row.category.color,
+        }
       : null,
     logo: row.logo
-      ? { id: row.logo.id, logoUrl: row.logo.logoUrl, updatedAt: row.logo.updatedAt }
+      ? {
+          id: row.logo.id,
+          logoUrl: row.logo.logoUrl,
+          updatedAt: row.logo.updatedAt,
+        }
       : null,
   };
 }
@@ -77,7 +106,7 @@ function toSubscriptionViewModel(row: SubscriptionRow): SubscriptionViewModel {
  * Create a new subscription
  */
 export async function createSubscription(
-  input: SubscriptionCreateInput
+  input: SubscriptionCreateInput,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -95,10 +124,7 @@ export async function createSubscription(
     if (validationError) return { success: false, error: validationError };
 
     const account = await db.query.accounts.findFirst({
-      where: and(
-        eq(accounts.id, input.accountId),
-        eq(accounts.userId, userId)
-      ),
+      where: and(eq(accounts.id, input.accountId), eq(accounts.userId, userId)),
     });
 
     if (!account) {
@@ -110,7 +136,7 @@ export async function createSubscription(
       const category = await db.query.categories.findFirst({
         where: and(
           eq(categories.id, input.categoryId),
-          eq(categories.userId, userId)
+          eq(categories.userId, userId),
         ),
       });
 
@@ -124,7 +150,7 @@ export async function createSubscription(
       where: and(
         eq(recurringTransactions.userId, userId),
         eq(recurringTransactions.accountId, input.accountId),
-        eq(recurringTransactions.name, input.name.trim())
+        eq(recurringTransactions.name, input.name.trim()),
       ),
     });
 
@@ -156,7 +182,7 @@ export async function createSubscription(
     const subscription = await db.query.recurringTransactions.findFirst({
       where: and(
         eq(recurringTransactions.id, created.id),
-        eq(recurringTransactions.userId, userId)
+        eq(recurringTransactions.userId, userId),
       ),
       with: {
         account: true,
@@ -169,7 +195,9 @@ export async function createSubscription(
     return {
       success: true,
       subscriptionId: created.id,
-      subscription: subscription ? toSubscriptionViewModel(subscription) : undefined,
+      subscription: subscription
+        ? toSubscriptionViewModel(subscription)
+        : undefined,
     };
   } catch (error) {
     console.error("Failed to create subscription:", error);
@@ -182,7 +210,7 @@ export async function createSubscription(
  */
 export async function updateSubscription(
   id: string,
-  input: SubscriptionUpdateInput
+  input: SubscriptionUpdateInput,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -195,7 +223,7 @@ export async function updateSubscription(
     const existing = await db.query.recurringTransactions.findFirst({
       where: and(
         eq(recurringTransactions.id, id),
-        eq(recurringTransactions.userId, userId)
+        eq(recurringTransactions.userId, userId),
       ),
     });
 
@@ -208,7 +236,10 @@ export async function updateSubscription(
       return { success: false, error: "Amount must be greater than 0" };
     }
 
-    if (input.importance !== undefined && (input.importance < 1 || input.importance > 3)) {
+    if (
+      input.importance !== undefined &&
+      (input.importance < 1 || input.importance > 3)
+    ) {
       return { success: false, error: "Importance must be between 1 and 3" };
     }
 
@@ -217,7 +248,7 @@ export async function updateSubscription(
       const category = await db.query.categories.findFirst({
         where: and(
           eq(categories.id, input.categoryId),
-          eq(categories.userId, userId)
+          eq(categories.userId, userId),
         ),
       });
 
@@ -230,7 +261,7 @@ export async function updateSubscription(
       const account = await db.query.accounts.findFirst({
         where: and(
           eq(accounts.id, input.accountId),
-          eq(accounts.userId, userId)
+          eq(accounts.userId, userId),
         ),
       });
 
@@ -245,12 +276,15 @@ export async function updateSubscription(
     const duplicateAccountCondition = targetAccountId
       ? eq(recurringTransactions.accountId, targetAccountId)
       : isNull(recurringTransactions.accountId);
-    if (targetName !== existing.name || targetAccountId !== existing.accountId) {
+    if (
+      targetName !== existing.name ||
+      targetAccountId !== existing.accountId
+    ) {
       const duplicate = await db.query.recurringTransactions.findFirst({
         where: and(
           eq(recurringTransactions.userId, userId),
           duplicateAccountCondition,
-          eq(recurringTransactions.name, targetName)
+          eq(recurringTransactions.name, targetName),
         ),
       });
 
@@ -268,15 +302,20 @@ export async function updateSubscription(
     };
 
     if (input.name !== undefined) updateData.name = input.name.trim();
-    if (input.merchant !== undefined) updateData.merchant = input.merchant.trim() || null;
+    if (input.merchant !== undefined)
+      updateData.merchant = input.merchant.trim() || null;
     if (input.amount !== undefined) updateData.amount = input.amount.toFixed(2);
     if (input.currency !== undefined) updateData.currency = input.currency;
-    if (input.categoryId !== undefined) updateData.categoryId = input.categoryId || null;
-    if (input.accountId !== undefined) updateData.accountId = input.accountId || null;
+    if (input.categoryId !== undefined)
+      updateData.categoryId = input.categoryId || null;
+    if (input.accountId !== undefined)
+      updateData.accountId = input.accountId || null;
     if (input.logoId !== undefined) updateData.logoId = input.logoId || null;
-    if (input.importance !== undefined) updateData.importance = input.importance;
+    if (input.importance !== undefined)
+      updateData.importance = input.importance;
     if (input.frequency !== undefined) updateData.frequency = input.frequency;
-    if (input.description !== undefined) updateData.description = input.description?.trim() || null;
+    if (input.description !== undefined)
+      updateData.description = input.description?.trim() || null;
     if (input.isActive !== undefined) updateData.isActive = input.isActive;
 
     // Update
@@ -298,7 +337,7 @@ export async function updateSubscription(
  * Delete a subscription
  */
 export async function deleteSubscription(
-  id: string
+  id: string,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -311,7 +350,7 @@ export async function deleteSubscription(
     const existing = await db.query.recurringTransactions.findFirst({
       where: and(
         eq(recurringTransactions.id, id),
-        eq(recurringTransactions.userId, userId)
+        eq(recurringTransactions.userId, userId),
       ),
     });
 
@@ -338,7 +377,7 @@ export async function deleteSubscription(
  */
 export async function toggleSubscriptionActive(
   id: string,
-  isActive: boolean
+  isActive: boolean,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -351,7 +390,7 @@ export async function toggleSubscriptionActive(
     const existing = await db.query.recurringTransactions.findFirst({
       where: and(
         eq(recurringTransactions.id, id),
-        eq(recurringTransactions.userId, userId)
+        eq(recurringTransactions.userId, userId),
       ),
     });
 
@@ -380,7 +419,7 @@ export async function toggleSubscriptionActive(
  * Get all subscriptions for the current user
  */
 export async function getSubscriptions(
-  includeInactive = false
+  includeInactive = false,
 ): Promise<SubscriptionViewModel[]> {
   const userId = await requireAuth();
 
@@ -393,7 +432,7 @@ export async function getSubscriptions(
       ? eq(recurringTransactions.userId, userId)
       : and(
           eq(recurringTransactions.userId, userId),
-          eq(recurringTransactions.isActive, true)
+          eq(recurringTransactions.isActive, true),
         );
 
     const results = await db.query.recurringTransactions.findMany({
@@ -423,14 +462,19 @@ export async function getSubscriptionKpis(): Promise<SubscriptionKpis> {
   const userId = await requireAuth();
 
   if (!userId) {
-    return { activeCount: 0, monthlyTotal: 0, allTimeTotal: 0, currency: "EUR" };
+    return {
+      activeCount: 0,
+      monthlyTotal: 0,
+      allTimeTotal: 0,
+      currency: "EUR",
+    };
   }
 
   try {
     const activeSubscriptions = await db.query.recurringTransactions.findMany({
       where: and(
         eq(recurringTransactions.userId, userId),
-        eq(recurringTransactions.isActive, true)
+        eq(recurringTransactions.isActive, true),
       ),
       columns: {
         amount: true,
@@ -439,11 +483,18 @@ export async function getSubscriptionKpis(): Promise<SubscriptionKpis> {
       },
     });
 
-    const monthlyTotal = activeSubscriptions.reduce((sumValue, subscription) => {
-      return sumValue + monthlyEquivalent(subscription.amount, subscription.frequency);
-    }, 0);
+    const monthlyTotal = activeSubscriptions.reduce(
+      (sumValue, subscription) => {
+        return (
+          sumValue +
+          monthlyEquivalent(subscription.amount, subscription.frequency)
+        );
+      },
+      0,
+    );
 
-    const currency = activeSubscriptions.find((sub) => sub.currency)?.currency || "EUR";
+    const currency =
+      activeSubscriptions.find((sub) => sub.currency)?.currency || "EUR";
 
     const allTimeResult = await db
       .select({
@@ -453,8 +504,8 @@ export async function getSubscriptionKpis(): Promise<SubscriptionKpis> {
       .where(
         and(
           eq(transactions.userId, userId),
-          sql`${transactions.recurringTransactionId} is not null`
-        )
+          sql`${transactions.recurringTransactionId} is not null`,
+        ),
       );
 
     const allTimeTotal = allTimeResult[0]?.total ?? 0;
@@ -467,7 +518,12 @@ export async function getSubscriptionKpis(): Promise<SubscriptionKpis> {
     };
   } catch (error) {
     console.error("Failed to get subscription KPIs:", error);
-    return { activeCount: 0, monthlyTotal: 0, allTimeTotal: 0, currency: "EUR" };
+    return {
+      activeCount: 0,
+      monthlyTotal: 0,
+      allTimeTotal: 0,
+      currency: "EUR",
+    };
   }
 }
 
@@ -475,7 +531,7 @@ export async function getSubscriptionKpis(): Promise<SubscriptionKpis> {
  * Get a single subscription by ID
  */
 export async function getSubscription(
-  id: string
+  id: string,
 ): Promise<SubscriptionViewModel | null> {
   const userId = await requireAuth();
 
@@ -487,7 +543,7 @@ export async function getSubscription(
     const result = await db.query.recurringTransactions.findFirst({
       where: and(
         eq(recurringTransactions.id, id),
-        eq(recurringTransactions.userId, userId)
+        eq(recurringTransactions.userId, userId),
       ),
       with: {
         account: true,
@@ -522,7 +578,7 @@ export async function findPotentialMatches(): Promise<PotentialMatch[]> {
     const activeSubscriptions = await db.query.recurringTransactions.findMany({
       where: and(
         eq(recurringTransactions.userId, userId),
-        eq(recurringTransactions.isActive, true)
+        eq(recurringTransactions.isActive, true),
       ),
     });
 
@@ -538,7 +594,7 @@ export async function findPotentialMatches(): Promise<PotentialMatch[]> {
       where: and(
         eq(transactions.userId, userId),
         isNull(transactions.recurringTransactionId),
-        sql`${transactions.bookedAt} >= ${ninetyDaysAgo}`
+        sql`${transactions.bookedAt} >= ${ninetyDaysAgo}`,
       ),
       with: {
         account: true,
@@ -556,14 +612,15 @@ export async function findPotentialMatches(): Promise<PotentialMatch[]> {
 
     for (const subscription of activeSubscriptions) {
       for (const transaction of unlinkedTransactions) {
-        if (subscription.accountId && transaction.accountId !== subscription.accountId) {
+        if (
+          subscription.accountId &&
+          transaction.accountId !== subscription.accountId
+        ) {
           continue;
         }
 
-        const { score: matchScore, reason: matchReason } = scoreSubscriptionMatch(
-          subscription,
-          transaction
-        );
+        const { score: matchScore, reason: matchReason } =
+          scoreSubscriptionMatch(subscription, transaction);
 
         // Only include matches with score >= 50
         if (matchScore >= 50) {
@@ -607,7 +664,7 @@ export async function findPotentialMatches(): Promise<PotentialMatch[]> {
  */
 export async function linkTransactionToSubscription(
   transactionId: string,
-  subscriptionId: string
+  subscriptionId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -621,13 +678,13 @@ export async function linkTransactionToSubscription(
       db.query.transactions.findFirst({
         where: and(
           eq(transactions.id, transactionId),
-          eq(transactions.userId, userId)
+          eq(transactions.userId, userId),
         ),
       }),
       db.query.recurringTransactions.findFirst({
         where: and(
           eq(recurringTransactions.id, subscriptionId),
-          eq(recurringTransactions.userId, userId)
+          eq(recurringTransactions.userId, userId),
         ),
       }),
     ]);
@@ -640,7 +697,10 @@ export async function linkTransactionToSubscription(
       return { success: false, error: "Subscription not found" };
     }
 
-    if (subscription.accountId && transaction.accountId !== subscription.accountId) {
+    if (
+      subscription.accountId &&
+      transaction.accountId !== subscription.accountId
+    ) {
       return {
         success: false,
         error: "Transaction account does not match this subscription account",
@@ -669,7 +729,7 @@ export async function linkTransactionToSubscription(
  * Unlink a transaction from its subscription
  */
 export async function unlinkTransactionFromSubscription(
-  transactionId: string
+  transactionId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -682,7 +742,7 @@ export async function unlinkTransactionFromSubscription(
     const transaction = await db.query.transactions.findFirst({
       where: and(
         eq(transactions.id, transactionId),
-        eq(transactions.userId, userId)
+        eq(transactions.userId, userId),
       ),
     });
 
@@ -712,7 +772,7 @@ export async function unlinkTransactionFromSubscription(
  * Bulk link multiple transactions to subscriptions
  */
 export async function bulkLinkTransactions(
-  links: Array<{ transactionId: string; subscriptionId: string }>
+  links: Array<{ transactionId: string; subscriptionId: string }>,
 ): Promise<{ success: boolean; error?: string; linkedCount?: number }> {
   const userId = await requireAuth();
 
@@ -733,13 +793,13 @@ export async function bulkLinkTransactions(
       db.query.transactions.findMany({
         where: and(
           inArray(transactions.id, transactionIds),
-          eq(transactions.userId, userId)
+          eq(transactions.userId, userId),
         ),
       }),
       db.query.recurringTransactions.findMany({
         where: and(
           inArray(recurringTransactions.id, subscriptionIds),
-          eq(recurringTransactions.userId, userId)
+          eq(recurringTransactions.userId, userId),
         ),
       }),
     ]);
@@ -751,25 +811,29 @@ export async function bulkLinkTransactions(
     const subscriptionById = new Map(userSubscriptions.map((r) => [r.id, r]));
 
     // Filter to valid links only
-    const validLinks = links.filter(
-      (link) => {
-        if (!validTransactionIds.has(link.transactionId) || !validSubscriptionIds.has(link.subscriptionId)) {
-          return false;
-        }
-
-        const transaction = transactionById.get(link.transactionId);
-        const subscription = subscriptionById.get(link.subscriptionId);
-        if (!transaction || !subscription) {
-          return false;
-        }
-
-        if (subscription.accountId && subscription.accountId !== transaction.accountId) {
-          return false;
-        }
-
-        return true;
+    const validLinks = links.filter((link) => {
+      if (
+        !validTransactionIds.has(link.transactionId) ||
+        !validSubscriptionIds.has(link.subscriptionId)
+      ) {
+        return false;
       }
-    );
+
+      const transaction = transactionById.get(link.transactionId);
+      const subscription = subscriptionById.get(link.subscriptionId);
+      if (!transaction || !subscription) {
+        return false;
+      }
+
+      if (
+        subscription.accountId &&
+        subscription.accountId !== transaction.accountId
+      ) {
+        return false;
+      }
+
+      return true;
+    });
 
     if (validLinks.length === 0) {
       return { success: false, error: "No valid links found" };
@@ -804,8 +868,13 @@ export async function bulkLinkTransactions(
 export async function matchTransactionsToSubscription(
   subscriptionId: string,
   descriptionSimilarityThreshold: number = 0.6,
-  amountTolerancePercent: number = 0.05
-): Promise<{ success: boolean; error?: string; matchedCount?: number; transactionIds?: string[] }> {
+  amountTolerancePercent: number = 0.05,
+): Promise<{
+  success: boolean;
+  error?: string;
+  matchedCount?: number;
+  transactionIds?: string[];
+}> {
   const userId = await requireAuth();
 
   if (!userId) {
@@ -816,7 +885,7 @@ export async function matchTransactionsToSubscription(
     const subscription = await db.query.recurringTransactions.findFirst({
       where: and(
         eq(recurringTransactions.id, subscriptionId),
-        eq(recurringTransactions.userId, userId)
+        eq(recurringTransactions.userId, userId),
       ),
     });
 
@@ -826,18 +895,15 @@ export async function matchTransactionsToSubscription(
 
     const recurringMismatchCondition = or(
       isNull(transactions.recurringTransactionId),
-      ne(transactions.recurringTransactionId, subscriptionId)
+      ne(transactions.recurringTransactionId, subscriptionId),
     );
     const candidateWhere = subscription.accountId
       ? and(
           eq(transactions.userId, userId),
           eq(transactions.accountId, subscription.accountId),
-          recurringMismatchCondition
+          recurringMismatchCondition,
         )
-      : and(
-          eq(transactions.userId, userId),
-          recurringMismatchCondition
-        );
+      : and(eq(transactions.userId, userId), recurringMismatchCondition);
 
     const candidateTransactions = await db.query.transactions.findMany({
       where: candidateWhere,
@@ -868,28 +934,28 @@ export async function matchTransactionsToSubscription(
       if (subscription.merchant && txn.merchant) {
         bestScore = Math.max(
           bestScore,
-          calculateStringSimilarity(subscription.merchant, txn.merchant)
+          calculateStringSimilarity(subscription.merchant, txn.merchant),
         );
       }
 
       if (subscription.name && txn.description) {
         bestScore = Math.max(
           bestScore,
-          calculateStringSimilarity(subscription.name, txn.description)
+          calculateStringSimilarity(subscription.name, txn.description),
         );
       }
 
       if (subscription.name && txn.merchant) {
         bestScore = Math.max(
           bestScore,
-          calculateStringSimilarity(subscription.name, txn.merchant)
+          calculateStringSimilarity(subscription.name, txn.merchant),
         );
       }
 
       if (subscription.merchant && txn.description) {
         bestScore = Math.max(
           bestScore,
-          calculateStringSimilarity(subscription.merchant, txn.description)
+          calculateStringSimilarity(subscription.merchant, txn.description),
         );
       }
 
@@ -929,7 +995,7 @@ export async function matchTransactionsToSubscription(
  * Returns the sum of linked transactions for this year and all time
  */
 export async function getSubscriptionCostAggregations(
-  subscriptionId: string
+  subscriptionId: string,
 ): Promise<{ thisYear: number; allTime: number }> {
   const userId = await requireAuth();
 
@@ -942,7 +1008,7 @@ export async function getSubscriptionCostAggregations(
     const subscription = await db.query.recurringTransactions.findFirst({
       where: and(
         eq(recurringTransactions.id, subscriptionId),
-        eq(recurringTransactions.userId, userId)
+        eq(recurringTransactions.userId, userId),
       ),
     });
 
@@ -954,7 +1020,7 @@ export async function getSubscriptionCostAggregations(
     const linkedTransactions = await db.query.transactions.findMany({
       where: and(
         eq(transactions.userId, userId),
-        eq(transactions.recurringTransactionId, subscriptionId)
+        eq(transactions.recurringTransactionId, subscriptionId),
       ),
     });
 
@@ -967,7 +1033,9 @@ export async function getSubscriptionCostAggregations(
     const currentYear = new Date().getFullYear();
     const thisYear = linkedTransactions
       .filter((txn) => {
-        const txnYear = txn.bookedAt ? new Date(txn.bookedAt).getFullYear() : null;
+        const txnYear = txn.bookedAt
+          ? new Date(txn.bookedAt).getFullYear()
+          : null;
         return txnYear === currentYear;
       })
       .reduce((sum, txn) => {
@@ -985,7 +1053,7 @@ export async function getSubscriptionCostAggregations(
  * Get all transactions linked to a subscription
  */
 export async function getLinkedTransactions(
-  subscriptionId: string
+  subscriptionId: string,
 ): Promise<LinkedSubscriptionTransaction[]> {
   const userId = await requireAuth();
 
@@ -998,7 +1066,7 @@ export async function getLinkedTransactions(
     const subscription = await db.query.recurringTransactions.findFirst({
       where: and(
         eq(recurringTransactions.id, subscriptionId),
-        eq(recurringTransactions.userId, userId)
+        eq(recurringTransactions.userId, userId),
       ),
     });
 
@@ -1010,7 +1078,7 @@ export async function getLinkedTransactions(
     const linkedTransactions = await db.query.transactions.findMany({
       where: and(
         eq(transactions.userId, userId),
-        eq(transactions.recurringTransactionId, subscriptionId)
+        eq(transactions.recurringTransactionId, subscriptionId),
       ),
       with: {
         account: true,
@@ -1027,7 +1095,11 @@ export async function getLinkedTransactions(
       bookedAt: transaction.bookedAt,
       account: transaction.account ? { name: transaction.account.name } : null,
       category: transaction.category
-        ? { id: transaction.category.id, name: transaction.category.name, color: transaction.category.color }
+        ? {
+            id: transaction.category.id,
+            name: transaction.category.name,
+            color: transaction.category.color,
+          }
         : null,
     }));
   } catch (error) {
@@ -1045,7 +1117,7 @@ export async function getLinkedTransactions(
  * Finds similar historical transactions and detects the frequency
  */
 export async function detectSubscriptionFromTransaction(
-  transactionId: string
+  transactionId: string,
 ): Promise<SubscriptionDetectionResult> {
   const userId = await requireAuth();
 
@@ -1066,7 +1138,7 @@ export async function detectSubscriptionFromTransaction(
     const sourceTransaction = await db.query.transactions.findFirst({
       where: and(
         eq(transactions.id, transactionId),
-        eq(transactions.userId, userId)
+        eq(transactions.userId, userId),
       ),
       with: {
         account: true,
@@ -1095,14 +1167,16 @@ export async function detectSubscriptionFromTransaction(
         eq(transactions.userId, userId),
         eq(transactions.accountId, sourceTransaction.accountId),
         gte(transactions.bookedAt, twoYearsAgo),
-        lt(transactions.amount, "0") // Only expenses
+        lt(transactions.amount, "0"), // Only expenses
       ),
       orderBy: [asc(transactions.bookedAt)],
     });
 
     const sourceAmount = Math.abs(parseFloat(sourceTransaction.amount || "0"));
-    const sourceMerchant = sourceTransaction.merchant?.toLowerCase().trim() || "";
-    const sourceDescription = sourceTransaction.description?.toLowerCase().trim() || "";
+    const sourceMerchant =
+      sourceTransaction.merchant?.toLowerCase().trim() || "";
+    const sourceDescription =
+      sourceTransaction.description?.toLowerCase().trim() || "";
 
     // Find similar transactions by merchant/description and amount
     const similarTransactions: MatchedTransaction[] = [];
@@ -1117,7 +1191,7 @@ export async function detectSubscriptionFromTransaction(
 
       // Amount matching (within 10% tolerance to account for minor currency conversion fluctuations)
       const amountDiff = Math.abs(sourceAmount - txnAmount);
-      const amountTolerance = sourceAmount * 0.10;
+      const amountTolerance = sourceAmount * 0.1;
       const amountMatches = amountDiff <= amountTolerance;
 
       if (!amountMatches) continue;
@@ -1133,14 +1207,25 @@ export async function detectSubscriptionFromTransaction(
           textMatches = true;
           bestSimilarity = 100;
         } else {
-          const similarity = calculateStringSimilarity(sourceMerchant, txnMerchant);
-          if (similarity >= 70) { // Lowered from 80% to 70% for more forgiving matching
+          const similarity = calculateStringSimilarity(
+            sourceMerchant,
+            txnMerchant,
+          );
+          if (similarity >= 70) {
+            // Lowered from 80% to 70% for more forgiving matching
             textMatches = true;
             bestSimilarity = Math.max(bestSimilarity, similarity);
           }
           // Also check substring matching for merchants
-          if (!textMatches && sourceMerchant.length >= 4 && txnMerchant.length >= 4) {
-            if (sourceMerchant.includes(txnMerchant) || txnMerchant.includes(sourceMerchant)) {
+          if (
+            !textMatches &&
+            sourceMerchant.length >= 4 &&
+            txnMerchant.length >= 4
+          ) {
+            if (
+              sourceMerchant.includes(txnMerchant) ||
+              txnMerchant.includes(sourceMerchant)
+            ) {
               textMatches = true;
               bestSimilarity = Math.max(bestSimilarity, 85);
             }
@@ -1155,14 +1240,25 @@ export async function detectSubscriptionFromTransaction(
           textMatches = true;
           bestSimilarity = 100;
         } else {
-          const similarity = calculateStringSimilarity(sourceDescription, txnDescription);
-          if (similarity >= 50) { // Lowered threshold from 60% to 50%
+          const similarity = calculateStringSimilarity(
+            sourceDescription,
+            txnDescription,
+          );
+          if (similarity >= 50) {
+            // Lowered threshold from 60% to 50%
             textMatches = true;
             bestSimilarity = Math.max(bestSimilarity, similarity);
           }
           // Substring matching for short descriptions (like "Moneybird")
-          if (!textMatches && sourceDescription.length >= 4 && txnDescription.length >= 4) {
-            if (sourceDescription.includes(txnDescription) || txnDescription.includes(sourceDescription)) {
+          if (
+            !textMatches &&
+            sourceDescription.length >= 4 &&
+            txnDescription.length >= 4
+          ) {
+            if (
+              sourceDescription.includes(txnDescription) ||
+              txnDescription.includes(sourceDescription)
+            ) {
               textMatches = true;
               bestSimilarity = Math.max(bestSimilarity, 80);
             }
@@ -1172,14 +1268,21 @@ export async function detectSubscriptionFromTransaction(
 
       // 3. Cross-matching: source description to candidate merchant
       if (!textMatches && sourceDescription && txnMerchant) {
-        const similarity = calculateStringSimilarity(sourceDescription, txnMerchant);
-        if (similarity >= 60) { // Lowered from 70%
+        const similarity = calculateStringSimilarity(
+          sourceDescription,
+          txnMerchant,
+        );
+        if (similarity >= 60) {
+          // Lowered from 70%
           textMatches = true;
           bestSimilarity = Math.max(bestSimilarity, similarity);
         }
         // Substring check
         if (!textMatches && sourceDescription.length >= 4) {
-          if (sourceDescription.includes(txnMerchant) || txnMerchant.includes(sourceDescription)) {
+          if (
+            sourceDescription.includes(txnMerchant) ||
+            txnMerchant.includes(sourceDescription)
+          ) {
             textMatches = true;
             bestSimilarity = Math.max(bestSimilarity, 75);
           }
@@ -1188,14 +1291,21 @@ export async function detectSubscriptionFromTransaction(
 
       // 4. Cross-matching: source merchant to candidate description
       if (!textMatches && sourceMerchant && txnDescription) {
-        const similarity = calculateStringSimilarity(sourceMerchant, txnDescription);
-        if (similarity >= 60) { // Lowered from 70%
+        const similarity = calculateStringSimilarity(
+          sourceMerchant,
+          txnDescription,
+        );
+        if (similarity >= 60) {
+          // Lowered from 70%
           textMatches = true;
           bestSimilarity = Math.max(bestSimilarity, similarity);
         }
         // Substring check
         if (!textMatches && sourceMerchant.length >= 4) {
-          if (sourceMerchant.includes(txnDescription) || txnDescription.includes(sourceMerchant)) {
+          if (
+            sourceMerchant.includes(txnDescription) ||
+            txnDescription.includes(sourceMerchant)
+          ) {
             textMatches = true;
             bestSimilarity = Math.max(bestSimilarity, 75);
           }
@@ -1204,13 +1314,23 @@ export async function detectSubscriptionFromTransaction(
 
       // 5. Fallback: Very close amounts with same day of month (likely same subscription with price change)
       // Only if we have SOME text match potential (at least one field in common)
-      if (!textMatches && amountDiff <= sourceAmount * 0.03) { // Within 3% amount difference
+      if (!textMatches && amountDiff <= sourceAmount * 0.03) {
+        // Within 3% amount difference
         // Check if at least one text field has some overlap
         const hasAnyTextOverlap =
-          (sourceMerchant && txnMerchant && calculateStringSimilarity(sourceMerchant, txnMerchant) >= 50) ||
-          (sourceDescription && txnDescription && calculateStringSimilarity(sourceDescription, txnDescription) >= 40) ||
-          (sourceMerchant && txnDescription && txnDescription.includes(sourceMerchant)) ||
-          (sourceDescription && txnMerchant && sourceDescription.includes(txnMerchant));
+          (sourceMerchant &&
+            txnMerchant &&
+            calculateStringSimilarity(sourceMerchant, txnMerchant) >= 50) ||
+          (sourceDescription &&
+            txnDescription &&
+            calculateStringSimilarity(sourceDescription, txnDescription) >=
+              40) ||
+          (sourceMerchant &&
+            txnDescription &&
+            txnDescription.includes(sourceMerchant)) ||
+          (sourceDescription &&
+            txnMerchant &&
+            sourceDescription.includes(txnMerchant));
 
         if (hasAnyTextOverlap) {
           textMatches = true;
@@ -1249,7 +1369,8 @@ export async function detectSubscriptionFromTransaction(
     });
 
     // Calculate suggested name and amount
-    const suggestedName = sourceTransaction.merchant ||
+    const suggestedName =
+      sourceTransaction.merchant ||
       sourceTransaction.description?.substring(0, 50) ||
       "Subscription";
     const suggestedAmount = sourceAmount;
@@ -1276,14 +1397,17 @@ export async function detectSubscriptionFromTransaction(
       if (!prevBookedAt || !currBookedAt) continue;
       const prevDate = new Date(prevBookedAt);
       const currDate = new Date(currBookedAt);
-      const daysDiff = Math.round((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+      const daysDiff = Math.round(
+        (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
       if (!isNaN(daysDiff) && daysDiff > 0) {
         gaps.push(daysDiff);
       }
     }
 
     // Detect frequency
-    const { frequency, confidence: gapConfidence } = detectFrequencyFromGaps(gaps);
+    const { frequency, confidence: gapConfidence } =
+      detectFrequencyFromGaps(gaps);
 
     // Calculate overall confidence
     let confidence = gapConfidence;
@@ -1294,7 +1418,7 @@ export async function detectSubscriptionFromTransaction(
 
     // Boost for exact merchant matches
     const exactMerchantMatches = similarTransactions.filter(
-      (t) => t.merchant?.toLowerCase() === sourceMerchant
+      (t) => t.merchant?.toLowerCase() === sourceMerchant,
     ).length;
     if (exactMerchantMatches > 0) {
       confidence = Math.min(100, confidence + 10);
@@ -1311,7 +1435,8 @@ export async function detectSubscriptionFromTransaction(
     };
   } catch (error) {
     console.error("Failed to detect subscription:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     return {
       success: false,
       error: `Failed to detect subscription pattern: ${errorMessage}`,
@@ -1340,8 +1465,13 @@ export interface CreateSubscriptionFromTransactionInput {
  * Create a subscription from a transaction and link all matched transactions
  */
 export async function createSubscriptionFromTransaction(
-  input: CreateSubscriptionFromTransactionInput
-): Promise<{ success: boolean; error?: string; subscriptionId?: string; linkedCount?: number }> {
+  input: CreateSubscriptionFromTransactionInput,
+): Promise<{
+  success: boolean;
+  error?: string;
+  subscriptionId?: string;
+  linkedCount?: number;
+}> {
   const userId = await requireAuth();
 
   if (!userId) {
@@ -1353,7 +1483,7 @@ export async function createSubscriptionFromTransaction(
     const sourceTransaction = await db.query.transactions.findFirst({
       where: and(
         eq(transactions.id, input.transactionId),
-        eq(transactions.userId, userId)
+        eq(transactions.userId, userId),
       ),
     });
 
@@ -1376,7 +1506,7 @@ export async function createSubscriptionFromTransaction(
       const category = await db.query.categories.findFirst({
         where: and(
           eq(categories.id, input.categoryId),
-          eq(categories.userId, userId)
+          eq(categories.userId, userId),
         ),
       });
 
@@ -1390,12 +1520,15 @@ export async function createSubscriptionFromTransaction(
       where: and(
         eq(recurringTransactions.userId, userId),
         eq(recurringTransactions.accountId, sourceTransaction.accountId),
-        eq(recurringTransactions.name, input.name.trim())
+        eq(recurringTransactions.name, input.name.trim()),
       ),
     });
 
     if (existing) {
-      return { success: false, error: "A subscription with this name already exists" };
+      return {
+        success: false,
+        error: "A subscription with this name already exists",
+      };
     }
 
     // Create the subscription
@@ -1423,7 +1556,7 @@ export async function createSubscriptionFromTransaction(
       const userTxns = await db.query.transactions.findMany({
         where: and(
           inArray(transactions.id, input.matchedTransactionIds),
-          eq(transactions.userId, userId)
+          eq(transactions.userId, userId),
         ),
       });
 

@@ -13,7 +13,7 @@ export type AuthResult =
 /**
  * Require authentication for server actions
  * Returns userId if authenticated, otherwise returns an error
- * 
+ *
  * @example
  * ```ts
  * const authResult = await requireAuth();

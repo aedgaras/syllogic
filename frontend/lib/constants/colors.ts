@@ -21,5 +21,7 @@ export function getColorByValue(value: string): CategoryColor | undefined {
 }
 
 export function getColorByName(name: string): CategoryColor | undefined {
-  return CATEGORY_COLORS.find((color) => color.name.toLowerCase() === name.toLowerCase());
+  return CATEGORY_COLORS.find(
+    (color) => color.name.toLowerCase() === name.toLowerCase(),
+  );
 }

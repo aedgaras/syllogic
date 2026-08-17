@@ -2,6 +2,7 @@
 Pre-compute idle cash + recent trade activity to ground the investment-plan
 agent before its loop starts.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -46,12 +47,14 @@ def collect_grounding(user_id: str, days: int = 30) -> dict[str, list[dict]]:
                 avg = float(h.avg_cost or 0)
                 held_value += qty * avg
             idle = max(0.0, balance - held_value)
-            cash_snapshot.append({
-                "accountId": str(a.id),
-                "accountName": a.name,
-                "idleCash": round(idle, 2),
-                "currency": a.currency or "EUR",
-            })
+            cash_snapshot.append(
+                {
+                    "accountId": str(a.id),
+                    "accountName": a.name,
+                    "idleCash": round(idle, 2),
+                    "currency": a.currency or "EUR",
+                }
+            )
 
         cutoff = (datetime.utcnow() - timedelta(days=days)).date()
         trades = (

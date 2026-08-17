@@ -15,13 +15,20 @@ describe("PWA assets", () => {
     });
 
     for (const icon of result.icons ?? []) {
-      const iconPath = path.join(process.cwd(), "public", icon.src.replace(/^\//, ""));
+      const iconPath = path.join(
+        process.cwd(),
+        "public",
+        icon.src.replace(/^\//, ""),
+      );
       expect(existsSync(iconPath), `${icon.src} should exist`).toBe(true);
     }
   });
 
   it("keeps authenticated responses out of the service-worker cache", () => {
-    const worker = readFileSync(path.join(process.cwd(), "public/sw.js"), "utf8");
+    const worker = readFileSync(
+      path.join(process.cwd(), "public/sw.js"),
+      "utf8",
+    );
 
     expect(worker).toContain('event.request.mode !== "navigate"');
     expect(worker).not.toContain("cache.put(");

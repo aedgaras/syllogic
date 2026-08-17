@@ -1,5 +1,21 @@
 from fastapi import APIRouter
-from app.routes import accounts, categories, transactions, analytics, sync, transaction_import, subscriptions, events, csv_import, health, enable_banking, investments, reports, app_settings, llm
+from app.routes import (
+    accounts,
+    categories,
+    transactions,
+    analytics,
+    sync,
+    transaction_import,
+    subscriptions,
+    events,
+    csv_import,
+    health,
+    enable_banking,
+    investments,
+    reports,
+    app_settings,
+    llm,
+)
 
 api_router = APIRouter()
 

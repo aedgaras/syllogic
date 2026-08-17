@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -18,8 +17,15 @@ import {
 import { CURRENCIES } from "@/lib/constants/currencies";
 import { createVehicle } from "@/lib/actions/vehicles";
 import { VEHICLE_TYPES } from "./types";
-import { OwnersField, type OwnerValue } from "@/components/household/owners-field";
-import { saveOwners, usePeopleQuery, type ClientPerson } from "@/lib/people/client";
+import {
+  OwnersField,
+  type OwnerValue,
+} from "@/components/household/owners-field";
+import {
+  saveOwners,
+  usePeopleQuery,
+  type ClientPerson,
+} from "@/lib/people/client";
 
 interface AddVehicleFormProps {
   onSuccess?: () => void;
@@ -44,8 +50,13 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
   const [owners, setOwners] = useState<OwnerValue[]>([]);
   const [ownersError, setOwnersError] = useState<string | null>(null);
   const saveVehicleOwnersMutation = useMutation({
-    mutationFn: ({ entityId, owners }: { entityId: string; owners: OwnerValue[] }) =>
-      saveOwners("vehicle", entityId, owners),
+    mutationFn: ({
+      entityId,
+      owners,
+    }: {
+      entityId: string;
+      owners: OwnerValue[];
+    }) => saveOwners("vehicle", entityId, owners),
   });
 
   useEffect(() => {
@@ -63,13 +74,19 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
     const allNull = owners.every((o) => o.share === null);
     const allSet = owners.every((o) => o.share !== null);
     if (!allNull && !allSet) {
-      setOwnersError(translate("allOwnersMustEitherSplitEquallyOrSpecifyShares"));
+      setOwnersError(
+        translate("allOwnersMustEitherSplitEquallyOrSpecifyShares"),
+      );
       return false;
     }
     if (allSet) {
       const sum = owners.reduce((acc, o) => acc + (o.share as number), 0);
       if (Math.abs(sum - 1) > 0.0001) {
-        setOwnersError(translate("sharesMustSumTo100Currentlyc8e2ea", { value1: Math.round(sum * 100) }));
+        setOwnersError(
+          translate("sharesMustSumTo100Currentlyc8e2ea", {
+            value1: Math.round(sum * 100),
+          }),
+        );
         return false;
       }
     }
@@ -81,7 +98,10 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
     try {
       await saveVehicleOwnersMutation.mutateAsync({ entityId, owners });
     } catch (err) {
-      toast.error((err as Error).message || translate("vehicleCreatedButFailedToSaveOwnershipYouCan"));
+      toast.error(
+        (err as Error).message ||
+          translate("vehicleCreatedButFailedToSaveOwnershipYouCan"),
+      );
     }
   };
 
@@ -120,7 +140,12 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
       }
 
       const yearNum = year ? parseInt(year, 10) : undefined;
-      if (year && (isNaN(yearNum!) || yearNum! < 1900 || yearNum! > new Date().getFullYear() + 1)) {
+      if (
+        year &&
+        (isNaN(yearNum!) ||
+          yearNum! < 1900 ||
+          yearNum! > new Date().getFullYear() + 1)
+      ) {
         toast.error(translate("pleaseEnterAValidYear"));
         setIsLoading(false);
         return;
@@ -169,7 +194,10 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
         {/* Vehicle Type */}
         <div className="space-y-2">
           <Label htmlFor="vehicle-type">{translate("vehicleType")}</Label>
-          <Select value={vehicleType} onValueChange={(v) => v && setVehicleType(v)}>
+          <Select
+            value={vehicleType}
+            onValueChange={(v) => v && setVehicleType(v)}
+          >
             <SelectTrigger>
               <SelectValue placeholder={translate("selectVehicleType")} />
             </SelectTrigger>

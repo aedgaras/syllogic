@@ -74,7 +74,9 @@ export function PortfolioHero({
             {RANGE_LABEL[range]}
           </span>
           {asOf && (
-            <span className="text-xs text-muted-foreground">{translate("asOf")} {asOf}</span>
+            <span className="text-xs text-muted-foreground">
+              {translate("asOf")} {asOf}
+            </span>
           )}
           {staleCount > 0 && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] text-amber-600 dark:text-amber-400 border border-amber-600/30 rounded">
@@ -92,7 +94,11 @@ export function PortfolioHero({
             size="sm"
           >
             {RANGES.map((r) => (
-              <ToggleGroupItem key={r} value={r} aria-label={translate("range", { r: r })}>
+              <ToggleGroupItem
+                key={r}
+                value={r}
+                aria-label={translate("range", { r: r })}
+              >
                 {r}
               </ToggleGroupItem>
             ))}

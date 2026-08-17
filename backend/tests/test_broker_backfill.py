@@ -1,4 +1,5 @@
 """Tests for backfill_history and compute_open_quantity_series."""
+
 from __future__ import annotations
 
 import uuid
@@ -17,7 +18,7 @@ from app.models import (
     PriceSnapshot,
     User,
 )
-from app.services.broker_trade_service import backfill_history, import_trades
+from app.services.broker_trade_service import backfill_history
 from app.services.pnl_service import Trade, compute_open_quantity_series
 
 
@@ -179,12 +180,8 @@ def investment_account_with_aapl(db_session):
     }
 
     # Teardown — clean up valuations + balances we created.
-    db_session.query(HoldingValuation).filter(
-        HoldingValuation.holding_id == holding.id
-    ).delete()
-    db_session.query(AccountBalance).filter(
-        AccountBalance.account_id == account.id
-    ).delete()
+    db_session.query(HoldingValuation).filter(HoldingValuation.holding_id == holding.id).delete()
+    db_session.query(AccountBalance).filter(AccountBalance.account_id == account.id).delete()
     db_session.query(BrokerTrade).filter(BrokerTrade.account_id == account.id).delete()
     db_session.query(PriceSnapshot).filter(PriceSnapshot.symbol == "AAPL").delete()
     db_session.delete(holding)
@@ -193,9 +190,7 @@ def investment_account_with_aapl(db_session):
     db_session.commit()
 
 
-def test_backfill_history_creates_valuations_for_each_day(
-    db_session, investment_account_with_aapl
-):
+def test_backfill_history_creates_valuations_for_each_day(db_session, investment_account_with_aapl):
     ctx = investment_account_with_aapl
     trade_date = ctx["trade_date"]
     today = date.today()
@@ -239,9 +234,7 @@ def test_backfill_history_creates_valuations_for_each_day(
         assert Decimal(rows[2].value_user_currency) == Decimal("1600.00")
 
 
-def test_backfill_history_creates_account_balances(
-    db_session, investment_account_with_aapl
-):
+def test_backfill_history_creates_account_balances(db_session, investment_account_with_aapl):
     ctx = investment_account_with_aapl
     trade_date = ctx["trade_date"]
     today = date.today()
@@ -276,14 +269,18 @@ def test_backfill_history_is_idempotent(db_session, investment_account_with_aapl
     fx = _FakeFx()
 
     backfill_history(db_session, ctx["account"], ["AAPL"], price_provider=provider, fx_service=fx)
-    first_count = db_session.query(HoldingValuation).filter(
-        HoldingValuation.holding_id == ctx["holding"].id
-    ).count()
+    first_count = (
+        db_session.query(HoldingValuation)
+        .filter(HoldingValuation.holding_id == ctx["holding"].id)
+        .count()
+    )
 
     backfill_history(db_session, ctx["account"], ["AAPL"], price_provider=provider, fx_service=fx)
-    second_count = db_session.query(HoldingValuation).filter(
-        HoldingValuation.holding_id == ctx["holding"].id
-    ).count()
+    second_count = (
+        db_session.query(HoldingValuation)
+        .filter(HoldingValuation.holding_id == ctx["holding"].id)
+        .count()
+    )
 
     assert first_count == second_count
 
@@ -312,14 +309,16 @@ def test_backfill_history_partial_import_preserves_other_holdings_balance(
     )
     db_session.add(msft)
     db_session.flush()
-    db_session.add(HoldingValuation(
-        holding_id=msft.id,
-        date=trade_date,
-        quantity=Decimal("5"),
-        price=Decimal("300"),
-        value_user_currency=Decimal("1500.00"),
-        is_stale=False,
-    ))
+    db_session.add(
+        HoldingValuation(
+            holding_id=msft.id,
+            date=trade_date,
+            quantity=Decimal("5"),
+            price=Decimal("300"),
+            value_user_currency=Decimal("1500.00"),
+            is_stale=False,
+        )
+    )
     db_session.commit()
 
     try:
@@ -343,9 +342,7 @@ def test_backfill_history_partial_import_preserves_other_holdings_balance(
         )
         assert Decimal(bal.balance_in_functional_currency) == Decimal("3000.00")
     finally:
-        db_session.query(HoldingValuation).filter(
-            HoldingValuation.holding_id == msft.id
-        ).delete()
+        db_session.query(HoldingValuation).filter(HoldingValuation.holding_id == msft.id).delete()
         db_session.delete(msft)
         db_session.commit()
 
@@ -362,7 +359,9 @@ def test_backfill_history_no_quotes_no_rows(db_session, investment_account_with_
         fx_service=_FakeFx(),
     )
     assert result["valuations_upserted"] == 0
-    rows = db_session.query(HoldingValuation).filter(
-        HoldingValuation.holding_id == ctx["holding"].id
-    ).count()
+    rows = (
+        db_session.query(HoldingValuation)
+        .filter(HoldingValuation.holding_id == ctx["holding"].id)
+        .count()
+    )
     assert rows == 0

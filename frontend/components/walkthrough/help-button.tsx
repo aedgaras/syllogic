@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { usePathname } from "next/navigation";
 import { RiInformationLine } from "@remixicon/react";
 import {
@@ -10,10 +9,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import {
-  SidebarMenuButton,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { SidebarMenuButton, useSidebar } from "@/components/ui/sidebar";
 import { useWalkthroughStore, getPageConfig } from "./walkthrough-store";
 
 export function HelpButton() {
@@ -21,8 +17,14 @@ export function HelpButton() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const config = getPageConfig(pathname);
-  const { tutorialsEnabled, openOverview, startWalkthrough, closeOverview, showOverview, currentPage } =
-    useWalkthroughStore();
+  const {
+    tutorialsEnabled,
+    openOverview,
+    startWalkthrough,
+    closeOverview,
+    showOverview,
+    currentPage,
+  } = useWalkthroughStore();
 
   if (!config || !tutorialsEnabled) return null;
 
@@ -37,15 +39,14 @@ export function HelpButton() {
   const isOpen = showOverview && currentPage === config.page;
 
   return (
-    <Popover
-      open={isOpen}
-      onOpenChange={(open) => !open && closeOverview()}
-    >
+    <Popover open={isOpen} onOpenChange={(open) => !open && closeOverview()}>
       <PopoverTrigger
         render={
           <SidebarMenuButton
             tooltip={translate("help")}
-            onClick={() => (isOpen ? closeOverview() : openOverview(config.page))}
+            onClick={() =>
+              isOpen ? closeOverview() : openOverview(config.page)
+            }
             className="data-[popup-open]:bg-sidebar-accent data-[popup-open]:text-sidebar-accent-foreground"
           >
             <RiInformationLine className="shrink-0" />

@@ -13,7 +13,7 @@ export function useTransactionFilterDraft(
     search?: string;
     minAmount?: string;
     maxAmount?: string;
-  }) => void
+  }) => void,
 ) {
   const authoritativeDraft = React.useMemo<TransactionFilterDraft>(
     () => ({
@@ -21,11 +21,11 @@ export function useTransactionFilterDraft(
       minAmount: filters.minAmount ?? "",
       maxAmount: filters.maxAmount ?? "",
     }),
-    [filters.maxAmount, filters.minAmount, filters.search]
+    [filters.maxAmount, filters.minAmount, filters.search],
   );
   const [draft, dispatch] = React.useReducer(
     transactionFilterDraftReducer,
-    authoritativeDraft
+    authoritativeDraft,
   );
 
   React.useEffect(() => {
@@ -38,11 +38,9 @@ export function useTransactionFilterDraft(
       normalized.search === filters.search &&
       normalized.minAmount === filters.minAmount &&
       normalized.maxAmount === filters.maxAmount
-    ) return;
-    const timeout = window.setTimeout(
-      () => onCommit(normalized),
-      250
-    );
+    )
+      return;
+    const timeout = window.setTimeout(() => onCommit(normalized), 250);
     return () => window.clearTimeout(timeout);
   }, [draft, filters.maxAmount, filters.minAmount, filters.search, onCommit]);
 

@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RiAddLine } from "@remixicon/react";
@@ -28,7 +27,11 @@ import {
   type CategoryInput,
 } from "@/lib/actions/categories";
 import type { SettingsCategory } from "@/features/settings/public";
-import { groupCategoriesByType, getCategoryTypeLabel, type CategoryType } from "@/lib/utils/category-utils";
+import {
+  groupCategoriesByType,
+  getCategoryTypeLabel,
+  type CategoryType,
+} from "@/lib/utils/category-utils";
 
 interface CategoryManagerProps {
   initialCategories: SettingsCategory[];
@@ -36,15 +39,18 @@ interface CategoryManagerProps {
 
 export function CategoryManager({ initialCategories }: CategoryManagerProps) {
   const router = useRouter();
-  const [categories, setCategories] = useState<SettingsCategory[]>(initialCategories);
+  const [categories, setCategories] =
+    useState<SettingsCategory[]>(initialCategories);
   const [activeTab, setActiveTab] = useState<CategoryType>("expense");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<SettingsCategory | null>(null);
+  const [editingCategory, setEditingCategory] =
+    useState<SettingsCategory | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deletingCategory, setDeletingCategory] = useState<SettingsCategory | null>(null);
+  const [deletingCategory, setDeletingCategory] =
+    useState<SettingsCategory | null>(null);
   const [deleteTransactionCount, setDeleteTransactionCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -82,12 +88,22 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
 
     setIsDeleting(true);
     try {
-      const result = await deleteCategoryWithReassignment(deletingCategory.id, reassignToCategoryId);
+      const result = await deleteCategoryWithReassignment(
+        deletingCategory.id,
+        reassignToCategoryId,
+      );
       if (result.success) {
         setCategories(categories.filter((c) => c.id !== deletingCategory.id));
-        const message = result.reassignedCount && result.reassignedCount > 0
-          ? translate("categoryDeletedTransaction", { value1: result.reassignedCount, value2: result.reassignedCount !== 1 ? "s" : "", value3: reassignToCategoryId ? "reassigned" : "set to uncategorized" })
-          : translate("categoryDeleted");
+        const message =
+          result.reassignedCount && result.reassignedCount > 0
+            ? translate("categoryDeletedTransaction", {
+                value1: result.reassignedCount,
+                value2: result.reassignedCount !== 1 ? "s" : "",
+                value3: reassignToCategoryId
+                  ? "reassigned"
+                  : "set to uncategorized",
+              })
+            : translate("categoryDeleted");
         toast.success(message);
         router.refresh();
         setDeleteDialogOpen(false);
@@ -123,18 +139,21 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
         const result = await updateCategory(editingCategory.id, updateData);
         if (result.success) {
           // Update local state
-          setCategories(categories.map((c) =>
-            c.id === editingCategory.id
-              ? {
-                  ...c,
-                  name: categoryInput.name,
-                  color: categoryInput.color,
-                  icon: categoryInput.icon,
-                  description: categoryInput.description || null,
-                  categorizationInstructions: categoryInput.categorizationInstructions || null,
-                }
-              : c
-          ));
+          setCategories(
+            categories.map((c) =>
+              c.id === editingCategory.id
+                ? {
+                    ...c,
+                    name: categoryInput.name,
+                    color: categoryInput.color,
+                    icon: categoryInput.icon,
+                    description: categoryInput.description || null,
+                    categorizationInstructions:
+                      categoryInput.categorizationInstructions || null,
+                  }
+                : c,
+            ),
+          );
           toast.success(translate("categoryUpdated"));
           router.refresh();
         } else {
@@ -163,7 +182,8 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
             color: categoryInput.color,
             icon: categoryInput.icon,
             description: categoryInput.description || null,
-            categorizationInstructions: categoryInput.categorizationInstructions || null,
+            categorizationInstructions:
+              categoryInput.categorizationInstructions || null,
             isSystem: false,
             hideFromSelection: false,
             createdAt: new Date(),
@@ -183,7 +203,9 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
     }
   };
 
-  const categoryToInput = (category: SettingsCategory | null): CategoryInput | null => {
+  const categoryToInput = (
+    category: SettingsCategory | null,
+  ): CategoryInput | null => {
     if (!category) return null;
     return {
       name: category.name,
@@ -191,14 +213,15 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
       color: category.color || "#6b7280",
       icon: category.icon || "RiFolderLine",
       description: category.description || undefined,
-      categorizationInstructions: category.categorizationInstructions || undefined,
+      categorizationInstructions:
+        category.categorizationInstructions || undefined,
       isSystem: category.isSystem || false,
     };
   };
 
   const renderCategoryList = (
     categoryList: SettingsCategory[],
-    categoryType: "expense" | "income" | "transfer"
+    categoryType: "expense" | "income" | "transfer",
   ) => {
     return (
       <div className="flex flex-col">
@@ -206,7 +229,9 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
         <div className="space-y-1 min-h-[200px] max-h-[400px] overflow-y-auto">
           {categoryList.length === 0 ? (
             <div className="flex h-24 items-center justify-center rounded border border-dashed">
-              <p className="text-sm text-muted-foreground">{translate("noCategoriesYet")}</p>
+              <p className="text-sm text-muted-foreground">
+                {translate("noCategoriesYet")}
+              </p>
             </div>
           ) : (
             categoryList.map((category) => {
@@ -235,7 +260,8 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
             disabled={isLoading}
           >
             <RiAddLine className="mr-2 h-4 w-4" />
-            {translate("add")} {getCategoryTypeLabel(categoryType)} {translate("category")}
+            {translate("add")} {getCategoryTypeLabel(categoryType)}{" "}
+            {translate("category")}
           </Button>
         </div>
       </div>
@@ -248,7 +274,9 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
         <CardHeader>
           <CardTitle>{translate("categories")}</CardTitle>
           <CardDescription>
-            {translate("manageYourTransactionCategoriesCategoriesHelpYouOrganizeAnd")}
+            {translate(
+              "manageYourTransactionCategoriesCategoriesHelpYouOrganizeAnd",
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -258,13 +286,16 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
           >
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="expense">
-                {translate("expenses10fcd2")}{groupedCategories.expense.length})
+                {translate("expenses10fcd2")}
+                {groupedCategories.expense.length})
               </TabsTrigger>
               <TabsTrigger value="income">
-                {translate("incomec43e68")}{groupedCategories.income.length})
+                {translate("incomec43e68")}
+                {groupedCategories.income.length})
               </TabsTrigger>
               <TabsTrigger value="transfer">
-                {translate("transfers908301")}{groupedCategories.transfer.length})
+                {translate("transfers908301")}
+                {groupedCategories.transfer.length})
               </TabsTrigger>
             </TabsList>
             <TabsContent value="expense" className="mt-4">

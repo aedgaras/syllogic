@@ -3,7 +3,12 @@
 import { revalidatePath, updateTag } from "next/cache";
 import { eq, and, count } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { categories, transactions, type Category, type NewCategory } from "@/lib/db/schema";
+import {
+  categories,
+  transactions,
+  type Category,
+  type NewCategory,
+} from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth-helpers";
 import { getCachedUserCategories, CACHE_TAGS } from "@/lib/data/cached";
 
@@ -36,7 +41,7 @@ export interface CategoryUpdateInput {
 }
 
 export async function createCategory(
-  input: CategoryCreateInput
+  input: CategoryCreateInput,
 ): Promise<{ success: boolean; error?: string; categoryId?: string }> {
   const userId = await requireAuth();
 
@@ -50,12 +55,15 @@ export async function createCategory(
       where: and(
         eq(categories.userId, userId),
         eq(categories.name, input.name.trim()),
-        eq(categories.categoryType, input.categoryType)
+        eq(categories.categoryType, input.categoryType),
       ),
     });
 
     if (existing) {
-      return { success: false, error: "A category with this name already exists" };
+      return {
+        success: false,
+        error: "A category with this name already exists",
+      };
     }
 
     const newCategory: NewCategory = {
@@ -65,11 +73,15 @@ export async function createCategory(
       color: input.color,
       icon: input.icon,
       description: input.description?.trim() || null,
-      categorizationInstructions: input.categorizationInstructions?.trim() || null,
+      categorizationInstructions:
+        input.categorizationInstructions?.trim() || null,
       isSystem: false,
     };
 
-    const [inserted] = await db.insert(categories).values(newCategory).returning({ id: categories.id });
+    const [inserted] = await db
+      .insert(categories)
+      .values(newCategory)
+      .returning({ id: categories.id });
 
     revalidatePath("/");
     revalidatePath("/settings");
@@ -83,7 +95,7 @@ export async function createCategory(
 
 export async function updateCategory(
   categoryId: string,
-  input: CategoryUpdateInput
+  input: CategoryUpdateInput,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -94,10 +106,7 @@ export async function updateCategory(
   try {
     // Get the existing category
     const existing = await db.query.categories.findFirst({
-      where: and(
-        eq(categories.id, categoryId),
-        eq(categories.userId, userId)
-      ),
+      where: and(eq(categories.id, categoryId), eq(categories.userId, userId)),
     });
 
     if (!existing) {
@@ -115,16 +124,20 @@ export async function updateCategory(
       if (attemptingStructuralChange) {
         return {
           success: false,
-          error: "System categories only allow editing description and categorization instructions",
+          error:
+            "System categories only allow editing description and categorization instructions",
         };
       }
 
       await db
         .update(categories)
         .set({
-          ...(input.description !== undefined && { description: input.description?.trim() || null }),
+          ...(input.description !== undefined && {
+            description: input.description?.trim() || null,
+          }),
           ...(input.categorizationInstructions !== undefined && {
-            categorizationInstructions: input.categorizationInstructions?.trim() || null,
+            categorizationInstructions:
+              input.categorizationInstructions?.trim() || null,
           }),
         })
         .where(eq(categories.id, categoryId));
@@ -136,17 +149,24 @@ export async function updateCategory(
     }
 
     // Check for duplicate name if name is being changed
-    if (input.name && input.name.trim() !== existing.name && existing.categoryType) {
+    if (
+      input.name &&
+      input.name.trim() !== existing.name &&
+      existing.categoryType
+    ) {
       const duplicate = await db.query.categories.findFirst({
         where: and(
           eq(categories.userId, userId),
           eq(categories.name, input.name.trim()),
-          eq(categories.categoryType, existing.categoryType)
+          eq(categories.categoryType, existing.categoryType),
         ),
       });
 
       if (duplicate) {
-        return { success: false, error: "A category with this name already exists" };
+        return {
+          success: false,
+          error: "A category with this name already exists",
+        };
       }
     }
 
@@ -156,9 +176,12 @@ export async function updateCategory(
         ...(input.name && { name: input.name.trim() }),
         ...(input.color && { color: input.color }),
         ...(input.icon && { icon: input.icon }),
-        ...(input.description !== undefined && { description: input.description?.trim() || null }),
+        ...(input.description !== undefined && {
+          description: input.description?.trim() || null,
+        }),
         ...(input.categorizationInstructions !== undefined && {
-          categorizationInstructions: input.categorizationInstructions?.trim() || null,
+          categorizationInstructions:
+            input.categorizationInstructions?.trim() || null,
         }),
       })
       .where(eq(categories.id, categoryId));
@@ -174,7 +197,7 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(
-  categoryId: string
+  categoryId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -185,10 +208,7 @@ export async function deleteCategory(
   try {
     // Get the existing category
     const existing = await db.query.categories.findFirst({
-      where: and(
-        eq(categories.id, categoryId),
-        eq(categories.userId, userId)
-      ),
+      where: and(eq(categories.id, categoryId), eq(categories.userId, userId)),
     });
 
     if (!existing) {
@@ -206,8 +226,8 @@ export async function deleteCategory(
       .where(
         and(
           eq(transactions.userId, userId),
-          eq(transactions.categoryId, categoryId)
-        )
+          eq(transactions.categoryId, categoryId),
+        ),
       );
 
     // Clear categorySystemId references on transactions as well
@@ -217,8 +237,8 @@ export async function deleteCategory(
       .where(
         and(
           eq(transactions.userId, userId),
-          eq(transactions.categorySystemId, categoryId)
-        )
+          eq(transactions.categorySystemId, categoryId),
+        ),
       );
 
     await db.delete(categories).where(eq(categories.id, categoryId));
@@ -242,7 +262,7 @@ export async function getCategories(): Promise<Category[]> {
 export const getUserCategories = getCategories;
 
 export async function getCategoriesByType(
-  type: "expense" | "income" | "transfer"
+  type: "expense" | "income" | "transfer",
 ): Promise<Category[]> {
   const userId = await requireAuth();
 
@@ -253,13 +273,15 @@ export async function getCategoriesByType(
   return db.query.categories.findMany({
     where: and(
       eq(categories.userId, userId),
-      eq(categories.categoryType, type)
+      eq(categories.categoryType, type),
     ),
     orderBy: (categories, { asc }) => [asc(categories.name)],
   });
 }
 
-export async function getCategoryByName(name: string): Promise<Category | null> {
+export async function getCategoryByName(
+  name: string,
+): Promise<Category | null> {
   const userId = await requireAuth();
 
   if (!userId) {
@@ -267,10 +289,7 @@ export async function getCategoryByName(name: string): Promise<Category | null> 
   }
 
   const category = await db.query.categories.findFirst({
-    where: and(
-      eq(categories.userId, userId),
-      eq(categories.name, name)
-    ),
+    where: and(eq(categories.userId, userId), eq(categories.name, name)),
   });
 
   return category || null;
@@ -280,7 +299,7 @@ export async function getCategoryByName(name: string): Promise<Category | null> 
  * Get the count of transactions assigned to a category
  */
 export async function getCategoryTransactionCount(
-  categoryId: string
+  categoryId: string,
 ): Promise<{ count: number; error?: string }> {
   const userId = await requireAuth();
 
@@ -295,8 +314,8 @@ export async function getCategoryTransactionCount(
       .where(
         and(
           eq(transactions.userId, userId),
-          eq(transactions.categoryId, categoryId)
-        )
+          eq(transactions.categoryId, categoryId),
+        ),
       );
 
     return { count: result[0]?.count ?? 0 };
@@ -313,7 +332,7 @@ export async function getCategoryTransactionCount(
  */
 export async function deleteCategoryWithReassignment(
   categoryId: string,
-  reassignToCategoryId: string | null
+  reassignToCategoryId: string | null,
 ): Promise<{ success: boolean; error?: string; reassignedCount?: number }> {
   const userId = await requireAuth();
 
@@ -324,10 +343,7 @@ export async function deleteCategoryWithReassignment(
   try {
     // Get the category to delete
     const categoryToDelete = await db.query.categories.findFirst({
-      where: and(
-        eq(categories.id, categoryId),
-        eq(categories.userId, userId)
-      ),
+      where: and(eq(categories.id, categoryId), eq(categories.userId, userId)),
     });
 
     if (!categoryToDelete) {
@@ -343,7 +359,7 @@ export async function deleteCategoryWithReassignment(
       const targetCategory = await db.query.categories.findFirst({
         where: and(
           eq(categories.id, reassignToCategoryId),
-          eq(categories.userId, userId)
+          eq(categories.userId, userId),
         ),
       });
 
@@ -353,7 +369,10 @@ export async function deleteCategoryWithReassignment(
 
       // Verify same category type
       if (targetCategory.categoryType !== categoryToDelete.categoryType) {
-        return { success: false, error: "Cannot reassign to a different category type" };
+        return {
+          success: false,
+          error: "Cannot reassign to a different category type",
+        };
       }
     }
 
@@ -364,8 +383,8 @@ export async function deleteCategoryWithReassignment(
       .where(
         and(
           eq(transactions.userId, userId),
-          eq(transactions.categoryId, categoryId)
-        )
+          eq(transactions.categoryId, categoryId),
+        ),
       );
     const reassignedCount = countResult[0]?.count ?? 0;
 
@@ -376,8 +395,8 @@ export async function deleteCategoryWithReassignment(
       .where(
         and(
           eq(transactions.userId, userId),
-          eq(transactions.categoryId, categoryId)
-        )
+          eq(transactions.categoryId, categoryId),
+        ),
       );
 
     // Reassign transactions with system-assigned categorySystemId
@@ -387,8 +406,8 @@ export async function deleteCategoryWithReassignment(
       .where(
         and(
           eq(transactions.userId, userId),
-          eq(transactions.categorySystemId, categoryId)
-        )
+          eq(transactions.categorySystemId, categoryId),
+        ),
       );
 
     // Delete the category

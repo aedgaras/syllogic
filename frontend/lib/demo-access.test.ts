@@ -56,7 +56,7 @@ describe("demo access helpers", () => {
 
       expect(getConfiguredDemoUserEmail()).toBe("user@example.com");
       expect(
-        getDemoRestrictionState("user@example.com").isDemoRestrictedUser
+        getDemoRestrictionState("user@example.com").isDemoRestrictedUser,
       ).toBe(true);
     } finally {
       restoreEnv();

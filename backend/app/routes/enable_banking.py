@@ -22,7 +22,6 @@ from app.db_helpers import get_user_id
 from app.models import BankConnection, Account
 from app.integrations.enable_banking_auth import EnableBankingClient
 from app.integrations.enable_banking_adapter import (
-    EnableBankingAdapter,
     _ACCOUNT_TYPE_MAP,
     _extract_iban,
 )
@@ -39,22 +38,27 @@ ASPSP_CACHE_TTL = 86400  # 24 hours
 
 # --- Request/Response models ---
 
+
 class AuthRequest(BaseModel):
     aspsp_name: str
     aspsp_country: str
     connection_id: Optional[str] = None
 
+
 class AuthResponse(BaseModel):
     url: str
+
 
 class SessionRequest(BaseModel):
     code: str
     state: str
 
+
 class SessionResponse(BaseModel):
     connection_id: str
     accounts_count: int
     relinked: bool = False
+
 
 class SyncProgress(BaseModel):
     stage: str  # "syncing" | "done"
@@ -63,6 +67,7 @@ class SyncProgress(BaseModel):
     transactions_created: int
     transactions_updated: int
     started_at: Optional[str] = None
+
 
 class ConnectionStatusResponse(BaseModel):
     id: str
@@ -75,9 +80,11 @@ class ConnectionStatusResponse(BaseModel):
     accounts_count: int
     sync_progress: Optional[SyncProgress] = None
 
+
 class SyncTriggerResponse(BaseModel):
     message: str
     task_id: Optional[str] = None
+
 
 class AccountMapping(BaseModel):
     bank_uid: str
@@ -85,27 +92,32 @@ class AccountMapping(BaseModel):
     name: Optional[str] = None
     existing_account_id: Optional[str] = None
 
+
 class MapAccountsRequest(BaseModel):
     mappings: List[AccountMapping]
     initial_sync_days: int = 90
+
 
 class MapAccountsResponse(BaseModel):
     connection_id: str
     accounts_created: int
     accounts_linked: int
 
+
 class SuggestedMapping(BaseModel):
     bank_uid: str
     bank_name: str
-    suggested_action: str       # "link" or "create"
+    suggested_action: str  # "link" or "create"
     suggested_account_id: Optional[str] = None
     suggested_account_name: Optional[str] = None
 
 
 # --- Helper ---
 
+
 def _get_eb_client() -> EnableBankingClient:
     return EnableBankingClient()
+
 
 def _get_redis() -> redis.Redis:
     return redis.from_url(REDIS_URL, decode_responses=True)
@@ -136,9 +148,13 @@ def _relink_accounts(
     UID first, then stable IBAN, then a unique name/currency pair. Accounts no
     longer included in the renewed consent are detached but their history stays.
     """
-    linked_accounts = db.query(Account).filter(
-        Account.bank_connection_id == connection.id,
-    ).all()
+    linked_accounts = (
+        db.query(Account)
+        .filter(
+            Account.bank_connection_id == connection.id,
+        )
+        .all()
+    )
     unmatched = list(linked_accounts)
     connected_count = 0
 
@@ -211,6 +227,7 @@ def _relink_accounts(
 
 # --- Routes ---
 
+
 @router.get("/aspsps")
 def list_aspsps(country: Optional[str] = None, user_id: str = Depends(get_user_id)):
     """
@@ -259,11 +276,15 @@ def initiate_auth(
 
     relink_connection = None
     if body.connection_id:
-        relink_connection = db.query(BankConnection).filter(
-            BankConnection.id == body.connection_id,
-            BankConnection.user_id == user_id,
-            BankConnection.status.in_(("active", "expired", "error")),
-        ).first()
+        relink_connection = (
+            db.query(BankConnection)
+            .filter(
+                BankConnection.id == body.connection_id,
+                BankConnection.user_id == user_id,
+                BankConnection.status.in_(("active", "expired", "error")),
+            )
+            .first()
+        )
         if not relink_connection:
             raise HTTPException(status_code=404, detail="Bank connection not found")
 
@@ -271,10 +292,12 @@ def initiate_auth(
     state_nonce = str(uuid_mod.uuid4())
     try:
         r = _get_redis()
-        state_data = json.dumps({
-            "user_id": user_id,
-            "connection_id": str(relink_connection.id) if relink_connection else None,
-        })
+        state_data = json.dumps(
+            {
+                "user_id": user_id,
+                "connection_id": str(relink_connection.id) if relink_connection else None,
+            }
+        )
         r.setex(f"eb:state:{state_nonce}", 600, state_data)  # 10 min TTL
     except Exception as exc:
         logger.exception("Failed to store OAuth state in Redis")
@@ -282,7 +305,9 @@ def initiate_auth(
 
     auth_payload = {
         "access": {
-            "valid_until": (datetime.now(timezone.utc) + timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+            "valid_until": (datetime.now(timezone.utc) + timedelta(days=90)).strftime(
+                "%Y-%m-%dT%H:%M:%S.000Z"
+            ),
         },
         "aspsp": {
             "name": relink_connection.aspsp_name if relink_connection else body.aspsp_name,
@@ -321,7 +346,9 @@ def create_session(
         stored_user_id = r.getdel(f"eb:state:{body.state}")
     except Exception as exc:
         logger.exception("Failed to validate OAuth state from Redis")
-        raise HTTPException(status_code=503, detail="OAuth state validation is unavailable") from exc
+        raise HTTPException(
+            status_code=503, detail="OAuth state validation is unavailable"
+        ) from exc
 
     if not stored_user_id:
         raise HTTPException(status_code=403, detail="OAuth state is invalid or expired")
@@ -358,17 +385,23 @@ def create_session(
         consent_expires_at = datetime.now(timezone.utc) + timedelta(days=90)
 
     if relink_connection_id:
-        connection = db.query(BankConnection).filter(
-            BankConnection.id == relink_connection_id,
-            BankConnection.user_id == user_id,
-        ).first()
+        connection = (
+            db.query(BankConnection)
+            .filter(
+                BankConnection.id == relink_connection_id,
+                BankConnection.user_id == user_id,
+            )
+            .first()
+        )
         if not connection:
             raise HTTPException(status_code=404, detail="Bank connection to relink was not found")
         if (
             connection.aspsp_name != aspsp_name
             or connection.aspsp_country.upper() != aspsp_country.upper()
         ):
-            raise HTTPException(status_code=400, detail="Authorized bank does not match the connection")
+            raise HTTPException(
+                status_code=400, detail="Authorized bank does not match the connection"
+            )
 
         connection.session_id = session_id
         connection.consent_expires_at = consent_expires_at
@@ -386,6 +419,7 @@ def create_session(
 
         try:
             from tasks.enable_banking_tasks import sync_bank_connection
+
             sync_bank_connection.delay(str(connection.id))
         except Exception:
             logger.warning("Failed to dispatch sync task after bank relink", exc_info=True)
@@ -439,10 +473,14 @@ def map_accounts(
         )
 
     # Validate connection exists, belongs to user, and is pending setup
-    connection = db.query(BankConnection).filter(
-        BankConnection.id == connection_id,
-        BankConnection.user_id == user_id,
-    ).first()
+    connection = (
+        db.query(BankConnection)
+        .filter(
+            BankConnection.id == connection_id,
+            BankConnection.user_id == user_id,
+        )
+        .first()
+    )
     if not connection:
         raise HTTPException(status_code=404, detail="Connection not found")
     if connection.status != "pending_setup":
@@ -452,7 +490,9 @@ def map_accounts(
         )
 
     # Index raw bank accounts by UID for quick lookup
-    raw_accounts = connection.raw_session_data.get("accounts", []) if connection.raw_session_data else []
+    raw_accounts = (
+        connection.raw_session_data.get("accounts", []) if connection.raw_session_data else []
+    )
     raw_by_uid = {acc["uid"]: acc for acc in raw_accounts}
 
     accounts_created = 0
@@ -476,7 +516,9 @@ def map_accounts(
             new_account = Account(
                 user_id=user_id,
                 name=name,
-                account_type=_ACCOUNT_TYPE_MAP.get((acc_data.get("cash_account_type") or "").upper(), "checking"),
+                account_type=_ACCOUNT_TYPE_MAP.get(
+                    (acc_data.get("cash_account_type") or "").upper(), "checking"
+                ),
                 currency=acc_data.get("currency", "EUR"),
                 provider="enable_banking",
                 institution=connection.aspsp_name,
@@ -497,10 +539,14 @@ def map_accounts(
                     status_code=400,
                     detail=f"existing_account_id is required for action 'link' (uid: {mapping.bank_uid})",
                 )
-            existing = db.query(Account).filter(
-                Account.id == mapping.existing_account_id,
-                Account.user_id == user_id,
-            ).first()
+            existing = (
+                db.query(Account)
+                .filter(
+                    Account.id == mapping.existing_account_id,
+                    Account.user_id == user_id,
+                )
+                .first()
+            )
             if not existing:
                 raise HTTPException(
                     status_code=404,
@@ -535,6 +581,7 @@ def map_accounts(
     # Trigger initial sync
     try:
         from tasks.enable_banking_tasks import sync_bank_connection
+
         sync_bank_connection.delay(str(connection.id))
     except Exception:
         logger.warning("Failed to dispatch sync task after map-accounts", exc_info=True)
@@ -560,10 +607,14 @@ def recategorize_connection(
     """
     from app.models import Transaction
 
-    connection = db.query(BankConnection).filter(
-        BankConnection.id == connection_id,
-        BankConnection.user_id == user_id,
-    ).first()
+    connection = (
+        db.query(BankConnection)
+        .filter(
+            BankConnection.id == connection_id,
+            BankConnection.user_id == user_id,
+        )
+        .first()
+    )
     if not connection:
         raise HTTPException(status_code=404, detail="Connection not found")
 
@@ -576,10 +627,12 @@ def recategorize_connection(
 
     transaction_ids = [
         str(t.id)
-        for t in db.query(Transaction.id).filter(
+        for t in db.query(Transaction.id)
+        .filter(
             Transaction.user_id == user_id,
             Transaction.account_id.in_(account_ids),
-        ).all()
+        )
+        .all()
     ]
 
     if not transaction_ids:
@@ -587,6 +640,7 @@ def recategorize_connection(
 
     try:
         from tasks.post_import_pipeline import post_import_pipeline
+
         task = post_import_pipeline.delay(
             user_id=user_id,
             account_ids=account_ids,
@@ -608,10 +662,14 @@ def trigger_sync(
     db: Session = Depends(get_db),
 ):
     """Trigger on-demand sync for a bank connection."""
-    connection = db.query(BankConnection).filter(
-        BankConnection.id == connection_id,
-        BankConnection.user_id == user_id,
-    ).first()
+    connection = (
+        db.query(BankConnection)
+        .filter(
+            BankConnection.id == connection_id,
+            BankConnection.user_id == user_id,
+        )
+        .first()
+    )
     if not connection:
         raise HTTPException(status_code=404, detail="Connection not found")
 
@@ -623,6 +681,7 @@ def trigger_sync(
 
     try:
         from tasks.enable_banking_tasks import sync_bank_connection
+
         task = sync_bank_connection.delay(str(connection.id))
         return SyncTriggerResponse(message="Sync started", task_id=task.id)
     except Exception as e:
@@ -636,16 +695,24 @@ def connection_status(
     db: Session = Depends(get_db),
 ):
     """Get connection status, last sync time, consent expiry."""
-    connection = db.query(BankConnection).filter(
-        BankConnection.id == connection_id,
-        BankConnection.user_id == user_id,
-    ).first()
+    connection = (
+        db.query(BankConnection)
+        .filter(
+            BankConnection.id == connection_id,
+            BankConnection.user_id == user_id,
+        )
+        .first()
+    )
     if not connection:
         raise HTTPException(status_code=404, detail="Connection not found")
 
-    accounts_count = db.query(Account).filter(
-        Account.bank_connection_id == connection.id,
-    ).count()
+    accounts_count = (
+        db.query(Account)
+        .filter(
+            Account.bank_connection_id == connection.id,
+        )
+        .count()
+    )
 
     # Read live sync progress from Redis (set by Celery worker)
     sync_progress = None
@@ -664,7 +731,9 @@ def connection_status(
         aspsp_country=connection.aspsp_country,
         status=connection.status,
         last_synced_at=connection.last_synced_at.isoformat() if connection.last_synced_at else None,
-        consent_expires_at=connection.consent_expires_at.isoformat() if connection.consent_expires_at else None,
+        consent_expires_at=connection.consent_expires_at.isoformat()
+        if connection.consent_expires_at
+        else None,
         last_sync_error=connection.last_sync_error,
         accounts_count=accounts_count,
         sync_progress=sync_progress,
@@ -677,26 +746,39 @@ def list_connections(
     db: Session = Depends(get_db),
 ):
     """List all bank connections for the current user."""
-    connections = db.query(BankConnection).filter(
-        BankConnection.user_id == user_id,
-    ).order_by(BankConnection.created_at.desc()).all()
+    connections = (
+        db.query(BankConnection)
+        .filter(
+            BankConnection.user_id == user_id,
+        )
+        .order_by(BankConnection.created_at.desc())
+        .all()
+    )
 
     results = []
     for conn in connections:
-        accounts_count = db.query(Account).filter(
-            Account.bank_connection_id == conn.id,
-        ).count()
-        results.append({
-            "id": str(conn.id),
-            "aspsp_name": conn.aspsp_name,
-            "aspsp_country": conn.aspsp_country,
-            "status": conn.status,
-            "last_synced_at": conn.last_synced_at.isoformat() if conn.last_synced_at else None,
-            "consent_expires_at": conn.consent_expires_at.isoformat() if conn.consent_expires_at else None,
-            "last_sync_error": conn.last_sync_error,
-            "accounts_count": accounts_count,
-            "created_at": conn.created_at.isoformat() if conn.created_at else None,
-        })
+        accounts_count = (
+            db.query(Account)
+            .filter(
+                Account.bank_connection_id == conn.id,
+            )
+            .count()
+        )
+        results.append(
+            {
+                "id": str(conn.id),
+                "aspsp_name": conn.aspsp_name,
+                "aspsp_country": conn.aspsp_country,
+                "status": conn.status,
+                "last_synced_at": conn.last_synced_at.isoformat() if conn.last_synced_at else None,
+                "consent_expires_at": conn.consent_expires_at.isoformat()
+                if conn.consent_expires_at
+                else None,
+                "last_sync_error": conn.last_sync_error,
+                "accounts_count": accounts_count,
+                "created_at": conn.created_at.isoformat() if conn.created_at else None,
+            }
+        )
 
     return results
 
@@ -713,13 +795,15 @@ def _build_suggested_mappings(
         bank_name = raw_acc.get("account_name") or raw_acc.get("name") or "Bank Account"
 
         if not uid:
-            results.append({
-                "bank_uid": uid,
-                "bank_name": bank_name,
-                "suggested_action": "create",
-                "suggested_account_id": None,
-                "suggested_account_name": None,
-            })
+            results.append(
+                {
+                    "bank_uid": uid,
+                    "bank_name": bank_name,
+                    "suggested_action": "create",
+                    "suggested_account_id": None,
+                    "suggested_account_name": None,
+                }
+            )
             continue
 
         uid_hash = blind_index(uid)
@@ -733,26 +817,32 @@ def _build_suggested_mappings(
         )
 
         if existing:
-            results.append({
-                "bank_uid": uid,
-                "bank_name": bank_name,
-                "suggested_action": "link",
-                "suggested_account_id": str(existing.id),
-                "suggested_account_name": existing.name,
-            })
+            results.append(
+                {
+                    "bank_uid": uid,
+                    "bank_name": bank_name,
+                    "suggested_action": "link",
+                    "suggested_account_id": str(existing.id),
+                    "suggested_account_name": existing.name,
+                }
+            )
         else:
-            results.append({
-                "bank_uid": uid,
-                "bank_name": bank_name,
-                "suggested_action": "create",
-                "suggested_account_id": None,
-                "suggested_account_name": None,
-            })
+            results.append(
+                {
+                    "bank_uid": uid,
+                    "bank_name": bank_name,
+                    "suggested_action": "create",
+                    "suggested_account_id": None,
+                    "suggested_account_name": None,
+                }
+            )
 
     return results
 
 
-@router.get("/connections/{connection_id}/suggested-mappings", response_model=List[SuggestedMapping])
+@router.get(
+    "/connections/{connection_id}/suggested-mappings", response_model=List[SuggestedMapping]
+)
 def get_suggested_mappings(
     connection_id: str,
     user_id: str = Depends(get_user_id),
@@ -765,10 +855,14 @@ def get_suggested_mappings(
     whether the user already has an account with that external_id_hash and
     suggests 'link' or 'create' accordingly. Requires connection in pending_setup status.
     """
-    connection = db.query(BankConnection).filter(
-        BankConnection.id == connection_id,
-        BankConnection.user_id == user_id,
-    ).first()
+    connection = (
+        db.query(BankConnection)
+        .filter(
+            BankConnection.id == connection_id,
+            BankConnection.user_id == user_id,
+        )
+        .first()
+    )
     if not connection:
         raise HTTPException(status_code=404, detail="Connection not found")
     if connection.status != "pending_setup":
@@ -793,10 +887,14 @@ def disconnect(
     db: Session = Depends(get_db),
 ):
     """Disconnect bank: revoke EB session, mark connection as disconnected."""
-    connection = db.query(BankConnection).filter(
-        BankConnection.id == connection_id,
-        BankConnection.user_id == user_id,
-    ).first()
+    connection = (
+        db.query(BankConnection)
+        .filter(
+            BankConnection.id == connection_id,
+            BankConnection.user_id == user_id,
+        )
+        .first()
+    )
     if not connection:
         raise HTTPException(status_code=404, detail="Connection not found")
 

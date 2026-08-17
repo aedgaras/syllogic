@@ -3,13 +3,13 @@
 Run with:
     cd backend && .venv/bin/pytest tests/test_report_service.py -v
 """
+
 from __future__ import annotations
 
 import base64
 import os
 import sys
 import uuid
-from datetime import datetime, time, timedelta
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -25,12 +25,14 @@ def _set_test_env() -> None:
 _set_test_env()
 
 from app.database import SessionLocal  # noqa: E402
-from app.models import Account, Report, ReportRun, User  # noqa: E402
+from app.models import Account, ReportRun, User  # noqa: E402
 from app.services import report_service  # noqa: E402
 
 
 def _seed_user(db) -> User:
-    user = User(id=f"test-user-{uuid.uuid4()}", email=f"{uuid.uuid4()}@example.com", name="Test User")
+    user = User(
+        id=f"test-user-{uuid.uuid4()}", email=f"{uuid.uuid4()}@example.com", name="Test User"
+    )
     db.add(user)
     db.flush()
     return user
@@ -101,7 +103,9 @@ def test_create_report_rejects_foreign_account_id():
     try:
         user = _seed_user(db)
         other = _seed_user(db)
-        acc = Account(user_id=other.id, name="Other's account", account_type="checking", currency="EUR")
+        acc = Account(
+            user_id=other.id, name="Other's account", account_type="checking", currency="EUR"
+        )
         db.add(acc)
         db.flush()
         try:
@@ -154,7 +158,9 @@ def test_update_report_rejects_frequency_change_without_day_field():
     db = SessionLocal()
     try:
         user = _seed_user(db)
-        report = report_service.create_report(db, user.id, _base_payload(frequency="DAILY", send_day_of_week=None))
+        report = report_service.create_report(
+            db, user.id, _base_payload(frequency="DAILY", send_day_of_week=None)
+        )
         try:
             report_service.update_report(db, user.id, str(report.id), {"frequency": "MONTHLY"})
             assert False, "expected ReportValidationError"
@@ -271,7 +277,9 @@ def test_list_report_runs_scoped_to_report():
     try:
         user = _seed_user(db)
         report = report_service.create_report(db, user.id, _base_payload())
-        db.add(ReportRun(report_id=report.id, status="SUCCEEDED", recipient_emails=["me@example.com"]))
+        db.add(
+            ReportRun(report_id=report.id, status="SUCCEEDED", recipient_emails=["me@example.com"])
+        )
         db.commit()
         runs = report_service.list_report_runs(db, user.id, str(report.id))
         assert len(runs) == 1

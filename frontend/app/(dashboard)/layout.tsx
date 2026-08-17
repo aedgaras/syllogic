@@ -9,7 +9,11 @@ import { ImportStatusNotifier } from "@/components/import-status-notifier";
 import { WalkthroughProvider } from "@/components/walkthrough/walkthrough-provider";
 import { getRegistrationStatus } from "@/lib/registration-settings";
 
-const jbMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jb-mono", weight: ["400","500","600","700"] });
+const jbMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jb-mono",
+  weight: ["400", "500", "600", "700"],
+});
 
 export default async function DashboardLayout({
   children,
@@ -24,7 +28,9 @@ export default async function DashboardLayout({
 
   if (!session) {
     const registration = await getRegistrationStatus();
-    redirect(registration.firstUserWillBeAdmin ? "/register?first=1" : "/login");
+    redirect(
+      registration.firstUserWillBeAdmin ? "/register?first=1" : "/login",
+    );
   }
 
   // Check onboarding status and redirect if not completed.
@@ -33,7 +39,9 @@ export default async function DashboardLayout({
   // Do NOT wrap this in a broad try/catch, or the redirect will be swallowed.
   const onboardingStatus = await getCachedOnboardingStatus();
   if (onboardingStatus && !onboardingStatus.isCompleted) {
-    const redirectPath = await getOnboardingRedirectPath(onboardingStatus.status);
+    const redirectPath = await getOnboardingRedirectPath(
+      onboardingStatus.status,
+    );
     redirect(redirectPath);
   }
 

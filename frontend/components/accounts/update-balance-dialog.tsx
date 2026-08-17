@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -50,7 +49,9 @@ export function UpdateBalanceDialog({
   const [adjustmentDate, setAdjustmentDate] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
-  const [balancingCategoryId, setBalancingCategoryId] = useState<string | null>(null);
+  const [balancingCategoryId, setBalancingCategoryId] = useState<string | null>(
+    null,
+  );
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [balanceOnDate, setBalanceOnDate] = useState<number>(0);
 
@@ -59,19 +60,22 @@ export function UpdateBalanceDialog({
   const difference = newBalanceValue - balanceOnDate;
 
   // Fetch balance for a specific date
-  const fetchBalanceForDate = useCallback(async (date: Date) => {
-    setIsLoadingBalance(true);
-    try {
-      const result = await getAccountBalanceOnDate(account.id, date);
-      setBalanceOnDate(result.balance);
-    } catch (error) {
-      console.error("Failed to fetch balance:", error);
-      // Fallback to current balance
-      setBalanceOnDate(parseFloat(account.functionalBalance || "0"));
-    } finally {
-      setIsLoadingBalance(false);
-    }
-  }, [account.id, account.functionalBalance]);
+  const fetchBalanceForDate = useCallback(
+    async (date: Date) => {
+      setIsLoadingBalance(true);
+      try {
+        const result = await getAccountBalanceOnDate(account.id, date);
+        setBalanceOnDate(result.balance);
+      } catch (error) {
+        console.error("Failed to fetch balance:", error);
+        // Fallback to current balance
+        setBalanceOnDate(parseFloat(account.functionalBalance || "0"));
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    },
+    [account.id, account.functionalBalance],
+  );
 
   // Fetch the "Balancing Transfer" category and initial balance on mount
   useEffect(() => {
@@ -110,7 +114,9 @@ export function UpdateBalanceDialog({
     e.preventDefault();
 
     if (!balancingCategoryId) {
-      toast.error(translate("balancingTransferCategoryNotFoundPleaseEnsureItExists"));
+      toast.error(
+        translate("balancingTransferCategoryNotFoundPleaseEnsureItExists"),
+      );
       return;
     }
 
@@ -147,7 +153,8 @@ export function UpdateBalanceDialog({
         <DialogHeader>
           <DialogTitle>{translate("updateBalance")}</DialogTitle>
           <DialogDescription>
-            {translate("adjustTheBalanceFor")} {account.name}{translate("anAdjustmentTransactionWillBeCreated")}
+            {translate("adjustTheBalanceFor")} {account.name}
+            {translate("anAdjustmentTransactionWillBeCreated")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -158,11 +165,13 @@ export function UpdateBalanceDialog({
                 <PopoverTrigger
                   className={cn(
                     "flex h-9 w-full items-center justify-start gap-2 border border-input bg-transparent px-3 text-sm hover:bg-muted transition-colors",
-                    !adjustmentDate && "text-muted-foreground"
+                    !adjustmentDate && "text-muted-foreground",
                   )}
                 >
                   <RiCalendarLine className="h-4 w-4" />
-                  {adjustmentDate ? format(adjustmentDate, "PPP") : translate("selectDate")}
+                  {adjustmentDate
+                    ? format(adjustmentDate, "PPP")
+                    : translate("selectDate")}
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
@@ -179,7 +188,9 @@ export function UpdateBalanceDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>{translate("balanceOn")} {format(adjustmentDate, "MMM d, yyyy")}</Label>
+              <Label>
+                {translate("balanceOn")} {format(adjustmentDate, "MMM d, yyyy")}
+              </Label>
               <div className="flex items-center gap-2 text-lg font-medium">
                 {isLoadingBalance ? (
                   <RiLoader4Line className="h-4 w-4 animate-spin" />
@@ -204,17 +215,22 @@ export function UpdateBalanceDialog({
 
             {newBalance !== "" && difference !== 0 && (
               <div className="space-y-2 rounded-md border p-3">
-                <Label className="text-sm text-muted-foreground">{translate("adjustmentAmount")}</Label>
+                <Label className="text-sm text-muted-foreground">
+                  {translate("adjustmentAmount")}
+                </Label>
                 <div
                   className={cn(
                     "text-lg font-medium",
-                    difference > 0 ? "text-green-600" : "text-red-600"
+                    difference > 0 ? "text-green-600" : "text-red-600",
                   )}
                 >
                   {formatCurrencyValue(difference, true)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  A {difference > 0 ? translate("credit") : translate("debit")} {translate("transactionWillBeCreatedWithCategoryBalancingTransfer")}
+                  A {difference > 0 ? translate("credit") : translate("debit")}{" "}
+                  {translate(
+                    "transactionWillBeCreatedWithCategoryBalancingTransfer",
+                  )}
                 </p>
               </div>
             )}
@@ -230,7 +246,12 @@ export function UpdateBalanceDialog({
             </Button>
             <Button
               type="submit"
-              disabled={isLoading || isLoadingBalance || !newBalance || !balancingCategoryId}
+              disabled={
+                isLoading ||
+                isLoadingBalance ||
+                !newBalance ||
+                !balancingCategoryId
+              }
             >
               {isLoading ? translate("updating") : translate("updateBalance")}
             </Button>

@@ -1,14 +1,16 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState } from "react";
 import { RiAddLine } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import { CategoryRow } from "./category-row";
 import { CategoryFormDialog } from "./category-form-dialog";
 import { type CategoryInput } from "@/lib/actions/categories";
-import { groupCategoriesByType, type CategoryType } from "@/lib/utils/category-utils";
+import {
+  groupCategoriesByType,
+  type CategoryType,
+} from "@/lib/utils/category-utils";
 
 interface CategoryListEditorProps {
   categories: CategoryInput[];
@@ -28,16 +30,30 @@ export function CategoryListEditor({
   activeType,
 }: CategoryListEditorProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<CategoryInput | null>(null);
+  const [editingCategory, setEditingCategory] = useState<CategoryInput | null>(
+    null,
+  );
   const [editingIndex, setEditingIndex] = useState<number>(-1);
   const [addingType, setAddingType] = useState<CategoryType>("expense");
 
   const groupedCategories = groupCategoriesByType(categories);
 
   const groups: CategoryGroup[] = [
-    { type: "expense", label: translate("expenses"), categories: groupedCategories.expense },
-    { type: "income", label: translate("income1c89b1"), categories: groupedCategories.income },
-    { type: "transfer", label: translate("transfers"), categories: groupedCategories.transfer },
+    {
+      type: "expense",
+      label: translate("expenses"),
+      categories: groupedCategories.expense,
+    },
+    {
+      type: "income",
+      label: translate("income1c89b1"),
+      categories: groupedCategories.income,
+    },
+    {
+      type: "transfer",
+      label: translate("transfers"),
+      categories: groupedCategories.transfer,
+    },
   ];
 
   const getCategoriesByType = (type: CategoryType) => groupedCategories[type];
@@ -73,50 +89,54 @@ export function CategoryListEditor({
     }
   };
 
-  const visibleGroups = activeType ? groups.filter((group) => group.type === activeType) : groups;
+  const visibleGroups = activeType
+    ? groups.filter((group) => group.type === activeType)
+    : groups;
 
   return (
     <>
       <div className="flex-1 min-h-0 h-full overflow-y-auto pr-2">
         <div className="space-y-6">
-        {visibleGroups.map((group) => (
-          <div key={group.type}>
-            <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                {group.label} ({group.categories.length})
-              </h3>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => handleAddClick(group.type)}
-              >
-                <RiAddLine className="mr-1 h-3 w-3" />
-                {translate("add")}
-              </Button>
+          {visibleGroups.map((group) => (
+            <div key={group.type}>
+              <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  {group.label} ({group.categories.length})
+                </h3>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => handleAddClick(group.type)}
+                >
+                  <RiAddLine className="mr-1 h-3 w-3" />
+                  {translate("add")}
+                </Button>
+              </div>
+              <div className="space-y-1 border rounded-md p-2">
+                {group.categories.length === 0 ? (
+                  <div className="flex h-12 items-center justify-center">
+                    <p className="text-sm text-muted-foreground">
+                      {translate("noCategories")}
+                    </p>
+                  </div>
+                ) : (
+                  group.categories.map((category) => {
+                    const globalIndex = categories.indexOf(category);
+                    return (
+                      <CategoryRow
+                        key={`${category.name}-${globalIndex}`}
+                        category={category}
+                        onEdit={() => handleEdit(category, globalIndex)}
+                        onDelete={() => handleDelete(category)}
+                      />
+                    );
+                  })
+                )}
+              </div>
             </div>
-            <div className="space-y-1 border rounded-md p-2">
-              {group.categories.length === 0 ? (
-                <div className="flex h-12 items-center justify-center">
-                  <p className="text-sm text-muted-foreground">{translate("noCategories")}</p>
-                </div>
-              ) : (
-                group.categories.map((category) => {
-                  const globalIndex = categories.indexOf(category);
-                  return (
-                    <CategoryRow
-                      key={`${category.name}-${globalIndex}`}
-                      category={category}
-                      onEdit={() => handleEdit(category, globalIndex)}
-                      onDelete={() => handleDelete(category)}
-                    />
-                  );
-                })
-              )}
-            </div>
-          </div>
-        ))}
+          ))}
         </div>
       </div>
 
@@ -126,7 +146,10 @@ export function CategoryListEditor({
         categoryType={editingCategory?.categoryType || addingType}
         category={editingCategory}
         onSave={handleSaveCategory}
-        existingCount={getCategoriesByType(editingCategory?.categoryType || addingType).length}
+        existingCount={
+          getCategoriesByType(editingCategory?.categoryType || addingType)
+            .length
+        }
       />
     </>
   );

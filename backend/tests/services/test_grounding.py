@@ -6,7 +6,11 @@ from uuid import uuid4
 import pytest
 
 from app.models import (
-    User, Person, Account, AccountOwner, BrokerTrade,
+    User,
+    Person,
+    Account,
+    AccountOwner,
+    BrokerTrade,
 )
 from app.services.grounding import collect_grounding
 
@@ -21,19 +25,29 @@ def seeded_user_with_investment_account(db_session):
     db_session.add(self_p)
     db_session.flush()
     acct = Account(
-        user_id=uid, name="IBKR", account_type="investment_brokerage", currency="EUR",
-        functional_balance=1234, balance_available=1234,
+        user_id=uid,
+        name="IBKR",
+        account_type="investment_brokerage",
+        currency="EUR",
+        functional_balance=1234,
+        balance_available=1234,
     )
     db_session.add(acct)
     db_session.flush()
     db_session.add(AccountOwner(account_id=acct.id, person_id=self_p.id, share=None))
     # Recent trade: bought 5 VUAA at €100 each, 7 days ago.
-    db_session.add(BrokerTrade(
-        account_id=acct.id, symbol="VUAA",
-        trade_date=(datetime.utcnow() - timedelta(days=7)).date(),
-        side="buy", quantity=5, price=100, currency="EUR",
-        external_id="t1",
-    ))
+    db_session.add(
+        BrokerTrade(
+            account_id=acct.id,
+            symbol="VUAA",
+            trade_date=(datetime.utcnow() - timedelta(days=7)).date(),
+            side="buy",
+            quantity=5,
+            price=100,
+            currency="EUR",
+            external_id="t1",
+        )
+    )
     db_session.commit()
     return uid
 

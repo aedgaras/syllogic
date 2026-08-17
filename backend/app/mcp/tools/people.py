@@ -1,6 +1,7 @@
 """
 People and household tools for the MCP server.
 """
+
 from __future__ import annotations
 
 from app.mcp.dependencies import get_db
@@ -26,15 +27,10 @@ def list_people(user_id: str) -> list[dict]:
             .order_by(Person.kind, Person.created_at)
             .all()
         )
-        return [
-            {"id": str(p.id), "name": p.name, "kind": p.kind, "color": p.color}
-            for p in rows
-        ]
+        return [{"id": str(p.id), "name": p.name, "kind": p.kind, "color": p.color} for p in rows]
 
 
-def get_household_summary(
-    user_id: str, person_ids: list[str] | None = None
-) -> dict:
+def get_household_summary(user_id: str, person_ids: list[str] | None = None) -> dict:
     """
     Per-person net worth breakdown across cash, investments, properties, vehicles.
 
@@ -56,9 +52,7 @@ def get_household_summary(
             people = [p for p in people if str(p.id) in pid_set]
 
         accounts = (
-            db.query(Account)
-            .filter(Account.user_id == user_id, Account.is_active.is_(True))
-            .all()
+            db.query(Account).filter(Account.user_id == user_id, Account.is_active.is_(True)).all()
         )
         properties = (
             db.query(Property)
@@ -66,9 +60,7 @@ def get_household_summary(
             .all()
         )
         vehicles = (
-            db.query(Vehicle)
-            .filter(Vehicle.user_id == user_id, Vehicle.is_active.is_(True))
-            .all()
+            db.query(Vehicle).filter(Vehicle.user_id == user_id, Vehicle.is_active.is_(True)).all()
         )
 
         # Cache owners per entity to avoid N*M queries.
@@ -107,13 +99,15 @@ def get_household_summary(
                     continue
                 vehicles_total += attribute_amount(float(v.current_value or 0), owners, pid)
 
-            out.append({
-                "person_id": pid,
-                "name": person.name,
-                "cash": round(cash, 2),
-                "investments": round(investments, 2),
-                "properties": round(properties_total, 2),
-                "vehicles": round(vehicles_total, 2),
-                "total": round(cash + investments + properties_total + vehicles_total, 2),
-            })
+            out.append(
+                {
+                    "person_id": pid,
+                    "name": person.name,
+                    "cash": round(cash, 2),
+                    "investments": round(investments, 2),
+                    "properties": round(properties_total, 2),
+                    "vehicles": round(vehicles_total, 2),
+                    "total": round(cash + investments + properties_total + vehicles_total, 2),
+                }
+            )
         return {"people": out}

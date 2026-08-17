@@ -16,7 +16,7 @@ describe("buildClaudeDesktopMcpConfig", () => {
   it("uses the provided MCP URL override exactly", () => {
     const config = buildClaudeDesktopMcpConfig(
       "pf_test_key",
-      "https://example.com/custom/mcp"
+      "https://example.com/custom/mcp",
     );
     const serverConfig = config.mcpServers.syllogic;
 
@@ -29,7 +29,9 @@ describe("buildClaudeDesktopMcpConfig", () => {
     const serverConfig = config.mcpServers.syllogic;
 
     expect(serverConfig.args).toContain("--header");
-    expect(serverConfig.args).toContain("Authorization:${SYLLOGIC_AUTH_HEADER}");
+    expect(serverConfig.args).toContain(
+      "Authorization:${SYLLOGIC_AUTH_HEADER}",
+    );
     expect(serverConfig.env.SYLLOGIC_AUTH_HEADER).toBe("Bearer pf_secret");
   });
 
@@ -44,7 +46,7 @@ describe("buildClaudeDesktopMcpConfig", () => {
   it("appends --allow-http for http endpoints", () => {
     const config = buildClaudeDesktopMcpConfig(
       "pf_test_key",
-      "http://localhost:8001/mcp"
+      "http://localhost:8001/mcp",
     );
     const serverConfig = config.mcpServers.syllogic;
 

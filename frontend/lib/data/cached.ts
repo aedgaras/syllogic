@@ -11,7 +11,10 @@ import { db } from "@/lib/db";
 import { accounts, categories, users } from "@/lib/db/schema";
 import { getAuthenticatedSession } from "@/lib/auth-helpers";
 import { resolveMissingAccountLogos } from "@/lib/actions/account-logos";
-import type { OnboardingStatus, OnboardingStatusResult } from "@/lib/actions/onboarding";
+import type {
+  OnboardingStatus,
+  OnboardingStatusResult,
+} from "@/lib/actions/onboarding";
 
 export const CACHE_TAGS = {
   categories: (userId: string) => `categories:${userId}`,
@@ -33,11 +36,9 @@ async function fetchCategoriesForUser(userId: string) {
 }
 
 const getCachedCategoriesByUser = (userId: string) =>
-  unstable_cache(
-    () => fetchCategoriesForUser(userId),
-    ["categories", userId],
-    { tags: [CACHE_TAGS.categories(userId)] },
-  )();
+  unstable_cache(() => fetchCategoriesForUser(userId), ["categories", userId], {
+    tags: [CACHE_TAGS.categories(userId)],
+  })();
 
 export const getCachedUserCategories = cache(async () => {
   const session = await getCachedSession();
@@ -63,11 +64,9 @@ async function fetchAccountsForUser(userId: string) {
 }
 
 const getCachedAccountsByUser = (userId: string) =>
-  unstable_cache(
-    () => fetchAccountsForUser(userId),
-    ["accounts", userId],
-    { tags: [CACHE_TAGS.accounts(userId)] },
-  )();
+  unstable_cache(() => fetchAccountsForUser(userId), ["accounts", userId], {
+    tags: [CACHE_TAGS.accounts(userId)],
+  })();
 
 export const getCachedUserAccounts = cache(async () => {
   const session = await getCachedSession();

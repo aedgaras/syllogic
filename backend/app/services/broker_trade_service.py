@@ -5,6 +5,7 @@ Validates ownership, generates stable external_ids for dedup, bulk-inserts
 into `broker_trades`, and recomputes `Holding.quantity` and `Holding.avg_cost`
 for every affected (account_id, symbol) pair using FIFO.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -13,7 +14,6 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from typing import Any
-from uuid import UUID
 
 from datetime import timedelta
 import logging
@@ -57,13 +57,15 @@ def _hash_trade_key(
     price: Decimal,
 ) -> str:
     """16-hex stable digest of the trade collision key (date|symbol|side|qty|price)."""
-    key = "|".join([
-        trade_date.isoformat(),
-        symbol.upper(),
-        side.lower(),
-        _normalize_quantity(quantity),
-        _normalize_quantity(price),
-    ])
+    key = "|".join(
+        [
+            trade_date.isoformat(),
+            symbol.upper(),
+            side.lower(),
+            _normalize_quantity(quantity),
+            _normalize_quantity(price),
+        ]
+    )
     return hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
 
 
@@ -151,11 +153,7 @@ def import_trades(
     dry_run: bool,
 ) -> dict[str, Any]:
     """Import a batch of broker trades. See spec §"New MCP tools"."""
-    account = (
-        db.query(Account)
-        .filter(Account.id == account_id, Account.user_id == user_id)
-        .first()
-    )
+    account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
     if account is None:
         raise ImportError(f"account not found or not owned by user: {account_id}")
     if account.account_type not in ("investment_manual", "investment_brokerage"):
@@ -187,9 +185,7 @@ def import_trades(
     # rows don't collide with the existing #0..#N-1 and are correctly inserted.
     existing_max_by_digest: dict[str, int] = {}
     existing_rows = (
-        db.query(BrokerTrade.external_id)
-        .filter(BrokerTrade.account_id == account.id)
-        .all()
+        db.query(BrokerTrade.external_id).filter(BrokerTrade.account_id == account.id).all()
     )
     for (eid,) in existing_rows:
         if not eid or "#" not in eid:
@@ -264,6 +260,7 @@ def import_trades(
         # earliest trade. Failures here must NOT fail the import.
         # Skippable via env for tests that don't want live yfinance calls.
         import os
+
         if os.getenv("BROKER_BACKFILL_ENABLED", "1") not in ("0", "false", "False"):
             try:
                 backfill_history(db, account, affected_symbols)
@@ -431,9 +428,7 @@ def backfill_history(
                 holding.provider_symbol or sym, earliest, today
             )
         except Exception as e:
-            logger.warning(
-                "backfill_history: price fetch failed for %s: %s", sym, e
-            )
+            logger.warning("backfill_history: price fetch failed for %s: %s", sym, e)
             quotes = []
 
         # Persist quotes as PriceSnapshot rows for future single-date lookups
@@ -494,9 +489,7 @@ def backfill_history(
                 if rate_user is None:
                     cur += timedelta(days=1)
                     continue
-                value_user = (value_native * Decimal(rate_user)).quantize(
-                    Decimal("0.01")
-                )
+                value_user = (value_native * Decimal(rate_user)).quantize(Decimal("0.01"))
                 rate_acct = (
                     Decimal("1")
                     if quote_ccy == account_currency
@@ -507,18 +500,18 @@ def backfill_history(
                 if rate_acct is None:
                     cur += timedelta(days=1)
                     continue
-                value_acct = (value_native * Decimal(rate_acct)).quantize(
-                    Decimal("0.01")
-                )
+                value_acct = (value_native * Decimal(rate_acct)).quantize(Decimal("0.01"))
 
-                val_rows.append({
-                    "holding_id": holding.id,
-                    "date": cur,
-                    "quantity": qty,
-                    "price": last_price,
-                    "value_user_currency": value_user,
-                    "is_stale": False,
-                })
+                val_rows.append(
+                    {
+                        "holding_id": holding.id,
+                        "date": cur,
+                        "quantity": qty,
+                        "price": last_price,
+                        "value_user_currency": value_user,
+                        "is_stale": False,
+                    }
+                )
                 daily_user_total[cur] = daily_user_total.get(cur, Decimal("0")) + value_user
                 daily_acct_total[cur] = daily_acct_total.get(cur, Decimal("0")) + value_acct
             cur += timedelta(days=1)
@@ -552,13 +545,11 @@ def backfill_history(
     bal_count = 0
     if daily_user_total:
         from sqlalchemy import func as _sa_func
+
         affected_dates = sorted(daily_user_total.keys())
 
         account_holding_ids = [
-            row[0]
-            for row in db.query(Holding.id)
-            .filter(Holding.account_id == account.id)
-            .all()
+            row[0] for row in db.query(Holding.id).filter(Holding.account_id == account.id).all()
         ]
         full_user_total: dict[date, Decimal] = {}
         if account_holding_ids:
@@ -598,12 +589,14 @@ def backfill_history(
                     if rate is not None
                     else daily_acct_total.get(d, Decimal("0"))
                 )
-            bal_rows.append({
-                "account_id": account.id,
-                "date": d,
-                "balance_in_account_currency": acct_total,
-                "balance_in_functional_currency": functional_total,
-            })
+            bal_rows.append(
+                {
+                    "account_id": account.id,
+                    "date": d,
+                    "balance_in_account_currency": acct_total,
+                    "balance_in_functional_currency": functional_total,
+                }
+            )
 
         CHUNK = 500
         for i in range(0, len(bal_rows), CHUNK):
@@ -621,4 +614,3 @@ def backfill_history(
 
     db.commit()
     return {"valuations_upserted": val_count, "balances_upserted": bal_count}
-

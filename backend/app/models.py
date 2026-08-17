@@ -2,6 +2,7 @@
 SQLAlchemy models matching the Drizzle schema.ts structure.
 These models mirror the frontend Drizzle schema for consistency.
 """
+
 import uuid
 from datetime import datetime, time
 from sqlalchemy import (
@@ -17,7 +18,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     UniqueConstraint,
-    JSON,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -32,6 +32,7 @@ class Account(Base):
     Account model matching Drizzle schema.
     Note: Includes userId for multi-tenancy support.
     """
+
     __tablename__ = "accounts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -39,19 +40,31 @@ class Account(Base):
     name = Column(String(255), nullable=False)
     account_type = Column(String(50), nullable=False)  # checking, savings, credit
     institution = Column(String(255))
-    logo_id = Column(UUID(as_uuid=True), ForeignKey("company_logos.id", ondelete="SET NULL"), nullable=True)
+    logo_id = Column(
+        UUID(as_uuid=True), ForeignKey("company_logos.id", ondelete="SET NULL"), nullable=True
+    )
     currency = Column(String(3), default="EUR")
     provider = Column(String(50), nullable=True)  # gocardless, manual
     external_id = Column(String(255), nullable=True)  # Provider's account ID
     external_id_ciphertext = Column(Text, nullable=True)
     external_id_hash = Column(String(64), nullable=True, index=True)
     iban_ciphertext = Column(Text, nullable=True)
-    iban_hash = Column(String(64), nullable=True, index=False)  # composite index defined in __table_args__
-    bank_connection_id = Column(UUID(as_uuid=True), ForeignKey("bank_connections.id", ondelete="SET NULL"), nullable=True)
+    iban_hash = Column(
+        String(64), nullable=True, index=False
+    )  # composite index defined in __table_args__
+    bank_connection_id = Column(
+        UUID(as_uuid=True), ForeignKey("bank_connections.id", ondelete="SET NULL"), nullable=True
+    )
     balance_available = Column(Numeric(15, 2), nullable=True)
-    starting_balance = Column(Numeric(15, 2), default=Decimal("0"))  # Starting balance for calculation
-    functional_balance = Column(Numeric(15, 2), nullable=True)  # Calculated balance (sum of transactions + starting_balance)
-    balance_is_anchored = Column(Boolean, default=False)  # True when starting_balance is from verified bank data
+    starting_balance = Column(
+        Numeric(15, 2), default=Decimal("0")
+    )  # Starting balance for calculation
+    functional_balance = Column(
+        Numeric(15, 2), nullable=True
+    )  # Calculated balance (sum of transactions + starting_balance)
+    balance_is_anchored = Column(
+        Boolean, default=False
+    )  # True when starting_balance is from verified bank data
     is_active = Column(Boolean, default=True)
     alias_patterns = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     last_synced_at = Column(DateTime, nullable=True)
@@ -76,7 +89,9 @@ class Account(Base):
     # Indexes and constraints
     __table_args__ = (
         Index("idx_accounts_user", "user_id"),
-        UniqueConstraint("user_id", "provider", "external_id", name="accounts_user_provider_external_id"),
+        UniqueConstraint(
+            "user_id", "provider", "external_id", name="accounts_user_provider_external_id"
+        ),
         Index(
             "accounts_user_provider_external_id_hash_uq",
             "user_id",
@@ -95,6 +110,7 @@ class BankConnection(Base):
     Bank connection model for Enable Banking sessions.
     Tracks consent lifecycle and sync state.
     """
+
     __tablename__ = "bank_connections"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -132,6 +148,7 @@ class Category(Base):
     Category model matching Drizzle schema.
     Note: Includes userId for multi-tenancy support.
     """
+
     __tablename__ = "categories"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -142,7 +159,9 @@ class Category(Base):
     color = Column(String(7))  # Hex color
     icon = Column(String(50))  # Remix icon name
     description = Column(Text, nullable=True)  # Category description
-    categorization_instructions = Column(Text, nullable=True)  # User instructions for AI categorization
+    categorization_instructions = Column(
+        Text, nullable=True
+    )  # User instructions for AI categorization
     is_system = Column(Boolean, default=False)
     hide_from_selection = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -150,10 +169,18 @@ class Category(Base):
     # Relationships
     user = relationship("User", back_populates="categories")
     parent = relationship("Category", remote_side=[id], backref="children")
-    transactions = relationship("Transaction", back_populates="category", foreign_keys="Transaction.category_id")
-    system_transactions = relationship("Transaction", back_populates="category_system", foreign_keys="Transaction.category_system_id")
+    transactions = relationship(
+        "Transaction", back_populates="category", foreign_keys="Transaction.category_id"
+    )
+    system_transactions = relationship(
+        "Transaction",
+        back_populates="category_system",
+        foreign_keys="Transaction.category_system_id",
+    )
     categorization_rules = relationship("CategorizationRule", back_populates="category")
-    subscription_suggestions = relationship("SubscriptionSuggestion", back_populates="suggested_category")
+    subscription_suggestions = relationship(
+        "SubscriptionSuggestion", back_populates="suggested_category"
+    )
 
     # Indexes and constraints
     __table_args__ = (
@@ -167,20 +194,28 @@ class Transaction(Base):
     Transaction model matching Drizzle schema.
     Note: Includes userId for multi-tenancy support and separate category fields.
     """
+
     __tablename__ = "transactions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    account_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     external_id = Column(String(255), nullable=True)
     transaction_type = Column(String(20))  # debit, credit
     amount = Column(Numeric(15, 2), nullable=False)
     currency = Column(String(3), default="EUR")
-    functional_amount = Column(Numeric(15, 2), nullable=True)  # Amount converted to user's functional currency
+    functional_amount = Column(
+        Numeric(15, 2), nullable=True
+    )  # Amount converted to user's functional currency
     description = Column(Text)
     merchant = Column(String(255))
-    creditor = Column(String(255), nullable=True)   # Counterparty name for debits (payee)
-    debtor = Column(String(255), nullable=True)     # Counterparty name for credits (payer)
+    creditor = Column(String(255), nullable=True)  # Counterparty name for debits (payee)
+    debtor = Column(String(255), nullable=True)  # Counterparty name for credits (payer)
     counterparty_iban_ciphertext = Column(Text, nullable=True)
     counterparty_iban_hash = Column(String(64), nullable=True)
     internal_transfer_id = Column(
@@ -188,15 +223,31 @@ class Transaction(Base):
         ForeignKey("internal_transfers.id", ondelete="SET NULL"),
         nullable=True,
     )
-    category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True, index=True)  # User-overridden category
-    category_system_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True, index=True)  # AI-assigned category
+    category_id = Column(
+        UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True, index=True
+    )  # User-overridden category
+    category_system_id = Column(
+        UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True, index=True
+    )  # AI-assigned category
     booked_at = Column(DateTime, nullable=False, index=True)
     pending = Column(Boolean, default=False)
     categorization_instructions = Column(Text)  # User instructions for AI categorization
     enrichment_data = Column(JSONB)  # Enriched merchant info, logos, etc.
-    recurring_transaction_id = Column(UUID(as_uuid=True), ForeignKey("recurring_transactions.id", ondelete="SET NULL"), nullable=True, index=True)  # Link to recurring transaction label
-    include_in_analytics = Column(Boolean, default=True, nullable=False)  # Whether to include in analytics (charts, KPIs, etc.)
-    csv_import_id = Column(UUID(as_uuid=True), ForeignKey("csv_imports.id", ondelete="SET NULL"), nullable=True, index=True)  # Source CSV import (null for manual/bank-synced)
+    recurring_transaction_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("recurring_transactions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )  # Link to recurring transaction label
+    include_in_analytics = Column(
+        Boolean, default=True, nullable=False
+    )  # Whether to include in analytics (charts, KPIs, etc.)
+    csv_import_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("csv_imports.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )  # Source CSV import (null for manual/bank-synced)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -204,8 +255,12 @@ class Transaction(Base):
     user = relationship("User", back_populates="transactions")
     account = relationship("Account", back_populates="transactions")
     category = relationship("Category", foreign_keys=[category_id], back_populates="transactions")
-    category_system = relationship("Category", foreign_keys=[category_system_id], back_populates="system_transactions")
-    recurring_transaction = relationship("RecurringTransaction", back_populates="linked_transactions")
+    category_system = relationship(
+        "Category", foreign_keys=[category_system_id], back_populates="system_transactions"
+    )
+    recurring_transaction = relationship(
+        "RecurringTransaction", back_populates="linked_transactions"
+    )
     transaction_link = relationship("TransactionLink", back_populates="transaction", uselist=False)
     csv_import = relationship("CsvImport", back_populates="transactions")
 
@@ -225,6 +280,7 @@ class Transaction(Base):
 
 class Report(Base):
     """Newsletter report configuration."""
+
     __tablename__ = "reports"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -256,10 +312,13 @@ class Report(Base):
 
 class ReportRun(Base):
     """Single scheduled or ad-hoc execution of a Report."""
+
     __tablename__ = "report_runs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    report_id = Column(UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False)
+    report_id = Column(
+        UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False
+    )
     scheduled_for = Column(DateTime, nullable=True)
     is_test = Column(Boolean, default=False, nullable=False)
     started_at = Column(DateTime, nullable=True)
@@ -283,6 +342,7 @@ class InternalTransfer(Base):
     Links a source transaction on a synced account to a mirror transaction
     on a manually-registered pocket account, matched by counterparty IBAN.
     """
+
     __tablename__ = "internal_transfers"
 
     id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
@@ -325,17 +385,25 @@ class RecurringTransaction(Base):
     Recurring Transaction model matching Drizzle schema.
     Stores recurring transaction labels (subscriptions, bills, etc.) for automatic linking.
     """
+
     __tablename__ = "recurring_transactions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True, index=True)
+    account_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     name = Column(String(255), nullable=False)
     merchant = Column(String(255), nullable=True)
     amount = Column(Numeric(15, 2), nullable=False)
     currency = Column(String(3), default="EUR")
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True, index=True)
-    logo_id = Column(UUID(as_uuid=True), ForeignKey("company_logos.id", ondelete="SET NULL"), nullable=True)
+    logo_id = Column(
+        UUID(as_uuid=True), ForeignKey("company_logos.id", ondelete="SET NULL"), nullable=True
+    )
     importance = Column(Integer, nullable=False, default=3)  # 1-5 scale
     frequency = Column(String(20), nullable=False)  # monthly, weekly, yearly, quarterly, biweekly
     is_active = Column(Boolean, default=True)
@@ -364,11 +432,14 @@ class CategorizationRule(Base):
     Categorization rules model matching Drizzle schema.
     Stores user-provided instructions for AI categorization.
     """
+
     __tablename__ = "categorization_rules"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id", ondelete="CASCADE"), nullable=False)
+    category_id = Column(
+        UUID(as_uuid=True), ForeignKey("categories.id", ondelete="CASCADE"), nullable=False
+    )
     instructions = Column(Text)  # User-provided instructions for AI categorization
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -378,21 +449,28 @@ class CategorizationRule(Base):
     category = relationship("Category", back_populates="categorization_rules")
 
 
-
 class CsvImport(Base):
     """
     CSV Import model matching Drizzle schema.
     Stores CSV import job information.
     """
+
     __tablename__ = "csv_imports"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    account_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     file_name = Column(String(255), nullable=False)
     file_path = Column(Text, nullable=True)
     file_path_ciphertext = Column(Text, nullable=True)
-    status = Column(String(20), default="pending")  # pending, mapping, previewing, importing, completed, failed
+    status = Column(
+        String(20), default="pending"
+    )  # pending, mapping, previewing, importing, completed, failed
     column_mapping = Column(JSONB, nullable=True)
     total_rows = Column(Integer, nullable=True)
     imported_rows = Column(Integer, nullable=True)
@@ -422,13 +500,18 @@ class ExchangeRate(Base):
     Exchange rate model for currency conversion.
     Stores daily exchange rates between base currencies and target currencies (EUR, USD).
     """
+
     __tablename__ = "exchange_rates"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     date = Column(DateTime, nullable=False, index=True)  # Date of the exchange rate
-    base_currency = Column(String(3), nullable=False, index=True)  # Source currency (transaction currency)
+    base_currency = Column(
+        String(3), nullable=False, index=True
+    )  # Source currency (transaction currency)
     target_currency = Column(String(3), nullable=False, index=True)  # Target currency (EUR or USD)
-    rate = Column(Numeric(18, 8), nullable=False)  # Exchange rate (how many target currency = 1 base currency)
+    rate = Column(
+        Numeric(18, 8), nullable=False
+    )  # Exchange rate (how many target currency = 1 base currency)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -437,7 +520,9 @@ class ExchangeRate(Base):
         Index("idx_exchange_rates_date", "date"),
         Index("idx_exchange_rates_base", "base_currency"),
         Index("idx_exchange_rates_target", "target_currency"),
-        UniqueConstraint("date", "base_currency", "target_currency", name="exchange_rates_date_base_target"),
+        UniqueConstraint(
+            "date", "base_currency", "target_currency", name="exchange_rates_date_base_target"
+        ),
     )
 
 
@@ -446,13 +531,23 @@ class AccountBalance(Base):
     Account balance model for daily balance snapshots.
     Stores daily balance for each account in both account currency and functional currency.
     """
+
     __tablename__ = "account_balances"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    account_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     date = Column(DateTime, nullable=False, index=True)  # Date of the balance snapshot
-    balance_in_account_currency = Column(Numeric(15, 2), nullable=False)  # Balance in account's currency
-    balance_in_functional_currency = Column(Numeric(15, 2), nullable=False)  # Balance converted to functional currency
+    balance_in_account_currency = Column(
+        Numeric(15, 2), nullable=False
+    )  # Balance in account's currency
+    balance_in_functional_currency = Column(
+        Numeric(15, 2), nullable=False
+    )  # Balance converted to functional currency
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -472,6 +567,7 @@ class Property(Base):
     Property model matching Drizzle schema.
     Stores real estate properties owned by users.
     """
+
     __tablename__ = "properties"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -489,9 +585,7 @@ class Property(Base):
     user = relationship("User", back_populates="properties")
 
     # Indexes and constraints
-    __table_args__ = (
-        Index("idx_properties_user", "user_id"),
-    )
+    __table_args__ = (Index("idx_properties_user", "user_id"),)
 
 
 class Vehicle(Base):
@@ -499,6 +593,7 @@ class Vehicle(Base):
     Vehicle model matching Drizzle schema.
     Stores vehicles owned by users.
     """
+
     __tablename__ = "vehicles"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -518,9 +613,7 @@ class Vehicle(Base):
     user = relationship("User", back_populates="vehicles")
 
     # Indexes and constraints
-    __table_args__ = (
-        Index("idx_vehicles_user", "user_id"),
-    )
+    __table_args__ = (Index("idx_vehicles_user", "user_id"),)
 
 
 class SubscriptionSuggestion(Base):
@@ -528,6 +621,7 @@ class SubscriptionSuggestion(Base):
     Subscription suggestion model matching Drizzle schema.
     Stores detected subscription patterns for user review.
     """
+
     __tablename__ = "subscription_suggestions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -538,10 +632,22 @@ class SubscriptionSuggestion(Base):
     suggested_merchant = Column(String(255), nullable=True)
     suggested_amount = Column(Numeric(15, 2), nullable=False)
     currency = Column(String(3), default="EUR", nullable=False)
-    detected_frequency = Column(String(20), nullable=False)  # weekly, biweekly, monthly, quarterly, yearly
+    detected_frequency = Column(
+        String(20), nullable=False
+    )  # weekly, biweekly, monthly, quarterly, yearly
     confidence = Column(Integer, nullable=False)  # 0-100
-    account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True, index=True)
-    suggested_category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True)
+    account_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    suggested_category_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("categories.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Linked transactions (stored as JSON array of IDs)
     matched_transaction_ids = Column(Text, nullable=False)  # JSON array
@@ -572,12 +678,17 @@ class TransactionLink(Base):
     Transaction link model matching Drizzle schema.
     Links transactions together for reimbursement/expense tracking.
     """
+
     __tablename__ = "transaction_links"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    group_id = Column(UUID(as_uuid=True), nullable=False, index=True)  # Groups linked transactions together
-    transaction_id = Column(UUID(as_uuid=True), ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False)
+    group_id = Column(
+        UUID(as_uuid=True), nullable=False, index=True
+    )  # Groups linked transactions together
+    transaction_id = Column(
+        UUID(as_uuid=True), ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False
+    )
     link_role = Column(String(20), nullable=False)  # "primary" | "reimbursement" | "expense"
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -598,6 +709,7 @@ class CompanyLogo(Base):
     Company logo model matching Drizzle schema.
     Stores company logos for subscriptions and recurring transactions.
     """
+
     __tablename__ = "company_logos"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -625,12 +737,14 @@ class CompanyLogo(Base):
 # BetterAuth Tables (minimal models for foreign key relationships)
 # ============================================================================
 
+
 class VerificationToken(Base):
     """
     VerificationToken model for BetterAuth integration.
     Stores email verification tokens.
     Minimal model matching Drizzle schema for foreign key relationships.
     """
+
     __tablename__ = "verification_tokens"
 
     id = Column(String, primary_key=True)
@@ -647,6 +761,7 @@ class Session(Base):
     Stores user session information.
     Minimal model matching Drizzle schema for foreign key relationships.
     """
+
     __tablename__ = "sessions"
 
     id = Column(String, primary_key=True)
@@ -668,6 +783,7 @@ class AuthAccount(Base):
     Stores authentication account information (OAuth providers, credentials, etc.).
     Minimal model matching Drizzle schema for foreign key relationships.
     """
+
     __tablename__ = "auth_accounts"
 
     id = Column(String, primary_key=True)
@@ -694,6 +810,7 @@ class User(Base):
     Minimal model for foreign key relationships.
     Full user management is handled by BetterAuth in the frontend.
     """
+
     __tablename__ = "users"
 
     id = Column(String, primary_key=True)
@@ -701,9 +818,13 @@ class User(Base):
     email = Column(Text, unique=True, nullable=False)
     email_verified = Column(Boolean, default=False)
     image = Column(Text, nullable=True)
-    onboarding_status = Column(String(20), default="pending")  # pending, step_1, step_2, step_3, completed
+    onboarding_status = Column(
+        String(20), default="pending"
+    )  # pending, step_1, step_2, step_3, completed
     onboarding_completed_at = Column(DateTime, nullable=True)
-    functional_currency = Column(String(3), default="EUR")  # User's functional currency for reporting
+    functional_currency = Column(
+        String(3), default="EUR"
+    )  # User's functional currency for reporting
     profile_photo_path = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -714,15 +835,25 @@ class User(Base):
     accounts = relationship("Account", back_populates="user", cascade="all, delete-orphan")
     categories = relationship("Category", back_populates="user", cascade="all, delete-orphan")
     transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
-    recurring_transactions = relationship("RecurringTransaction", back_populates="user", cascade="all, delete-orphan")
-    categorization_rules = relationship("CategorizationRule", back_populates="user", cascade="all, delete-orphan")
+    recurring_transactions = relationship(
+        "RecurringTransaction", back_populates="user", cascade="all, delete-orphan"
+    )
+    categorization_rules = relationship(
+        "CategorizationRule", back_populates="user", cascade="all, delete-orphan"
+    )
     csv_imports = relationship("CsvImport", back_populates="user", cascade="all, delete-orphan")
     properties = relationship("Property", back_populates="user", cascade="all, delete-orphan")
     vehicles = relationship("Vehicle", back_populates="user", cascade="all, delete-orphan")
-    subscription_suggestions = relationship("SubscriptionSuggestion", back_populates="user", cascade="all, delete-orphan")
+    subscription_suggestions = relationship(
+        "SubscriptionSuggestion", back_populates="user", cascade="all, delete-orphan"
+    )
     api_keys = relationship("ApiKey", back_populates="user", cascade="all, delete-orphan")
-    transaction_links = relationship("TransactionLink", back_populates="user", cascade="all, delete-orphan")
-    bank_connections = relationship("BankConnection", back_populates="user", cascade="all, delete-orphan")
+    transaction_links = relationship(
+        "TransactionLink", back_populates="user", cascade="all, delete-orphan"
+    )
+    bank_connections = relationship(
+        "BankConnection", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class ApiKey(Base):
@@ -730,12 +861,15 @@ class ApiKey(Base):
     API Key model for MCP server authentication.
     Stores hashed API keys for secure authentication.
     """
+
     __tablename__ = "api_keys"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(255), nullable=False)
-    key_hash = Column(String(128), nullable=False, index=True)  # Supports bcrypt (60 chars) and SHA-256 (64 chars)
+    key_hash = Column(
+        String(128), nullable=False, index=True
+    )  # Supports bcrypt (60 chars) and SHA-256 (64 chars)
     key_prefix = Column(String(12), nullable=False)
     last_used_at = Column(DateTime, nullable=True)
     expires_at = Column(DateTime, nullable=True)
@@ -756,6 +890,7 @@ class AppSetting(Base):
     Global application setting.
     Secret values are stored encrypted in value_encrypted.
     """
+
     __tablename__ = "app_settings"
 
     key = Column(String(255), primary_key=True)
@@ -770,7 +905,9 @@ class BrokerConnection(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
+    account_id = Column(
+        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False
+    )
     provider = Column(String(50), nullable=False)
     credentials_encrypted = Column(Text, nullable=False)
     last_sync_at = Column(DateTime, nullable=True)
@@ -787,7 +924,9 @@ class Holding(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
+    account_id = Column(
+        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False
+    )
     symbol = Column(String(64), nullable=False)
     provider_symbol = Column(String(64), nullable=True)
     name = Column(String(255))
@@ -801,10 +940,14 @@ class Holding(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    valuations = relationship("HoldingValuation", back_populates="holding", cascade="all, delete-orphan")
+    valuations = relationship(
+        "HoldingValuation", back_populates="holding", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
-        UniqueConstraint("account_id", "symbol", "instrument_type", name="holdings_account_symbol_type_uq"),
+        UniqueConstraint(
+            "account_id", "symbol", "instrument_type", name="holdings_account_symbol_type_uq"
+        ),
         Index("idx_holdings_account", "account_id"),
     )
 
@@ -813,7 +956,9 @@ class BrokerTrade(Base):
     __tablename__ = "broker_trades"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
+    account_id = Column(
+        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False
+    )
     symbol = Column(String(64), nullable=False)
     trade_date = Column(Date, nullable=False)
     side = Column(String(10), nullable=False)
@@ -838,16 +983,16 @@ class PriceSnapshot(Base):
     close = Column(Numeric(28, 8), nullable=False)
     provider = Column(String(20), nullable=False)
 
-    __table_args__ = (
-        UniqueConstraint("symbol", "date", name="price_snapshots_symbol_date_uq"),
-    )
+    __table_args__ = (UniqueConstraint("symbol", "date", name="price_snapshots_symbol_date_uq"),)
 
 
 class HoldingValuation(Base):
     __tablename__ = "holding_valuations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    holding_id = Column(UUID(as_uuid=True), ForeignKey("holdings.id", ondelete="CASCADE"), nullable=False)
+    holding_id = Column(
+        UUID(as_uuid=True), ForeignKey("holdings.id", ondelete="CASCADE"), nullable=False
+    )
     date = Column(Date, nullable=False)
     quantity = Column(Numeric(28, 8), nullable=False)
     price = Column(Numeric(28, 8), nullable=False)
@@ -875,16 +1020,18 @@ class Person(Base):
 
     user = relationship("User", backref="people")
 
-    __table_args__ = (
-        Index("idx_people_user", "user_id"),
-    )
+    __table_args__ = (Index("idx_people_user", "user_id"),)
 
 
 class AccountOwner(Base):
     __tablename__ = "account_owners"
 
-    account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True)
-    person_id = Column(UUID(as_uuid=True), ForeignKey("people.id", ondelete="CASCADE"), primary_key=True)
+    account_id = Column(
+        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True
+    )
+    person_id = Column(
+        UUID(as_uuid=True), ForeignKey("people.id", ondelete="CASCADE"), primary_key=True
+    )
     share = Column(Numeric(5, 4), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -892,8 +1039,12 @@ class AccountOwner(Base):
 class PropertyOwner(Base):
     __tablename__ = "property_owners"
 
-    property_id = Column(UUID(as_uuid=True), ForeignKey("properties.id", ondelete="CASCADE"), primary_key=True)
-    person_id = Column(UUID(as_uuid=True), ForeignKey("people.id", ondelete="CASCADE"), primary_key=True)
+    property_id = Column(
+        UUID(as_uuid=True), ForeignKey("properties.id", ondelete="CASCADE"), primary_key=True
+    )
+    person_id = Column(
+        UUID(as_uuid=True), ForeignKey("people.id", ondelete="CASCADE"), primary_key=True
+    )
     share = Column(Numeric(5, 4), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -901,7 +1052,11 @@ class PropertyOwner(Base):
 class VehicleOwner(Base):
     __tablename__ = "vehicle_owners"
 
-    vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id", ondelete="CASCADE"), primary_key=True)
-    person_id = Column(UUID(as_uuid=True), ForeignKey("people.id", ondelete="CASCADE"), primary_key=True)
+    vehicle_id = Column(
+        UUID(as_uuid=True), ForeignKey("vehicles.id", ondelete="CASCADE"), primary_key=True
+    )
+    person_id = Column(
+        UUID(as_uuid=True), ForeignKey("people.id", ondelete="CASCADE"), primary_key=True
+    )
     share = Column(Numeric(5, 4), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

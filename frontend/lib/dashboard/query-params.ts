@@ -27,7 +27,9 @@ function toURLSearchParams(params: SearchParamsInput): URLSearchParams {
   return nextParams;
 }
 
-export function parseIsoDateParam(value: string | undefined | null): string | undefined {
+export function parseIsoDateParam(
+  value: string | undefined | null,
+): string | undefined {
   if (!value) {
     return undefined;
   }
@@ -45,7 +47,9 @@ export function parseIsoDateParam(value: string | undefined | null): string | un
   return date.toISOString().slice(0, 10) === trimmed ? trimmed : undefined;
 }
 
-export function parseHorizonParam(value: string | undefined | null): SupportedHorizon | undefined {
+export function parseHorizonParam(
+  value: string | undefined | null,
+): SupportedHorizon | undefined {
   if (!value) {
     return undefined;
   }
@@ -59,7 +63,7 @@ export function parseHorizonParam(value: string | undefined | null): SupportedHo
 }
 
 export function parseDashboardSearchParams(
-  params: SearchParamsInput
+  params: SearchParamsInput,
 ): ParsedDashboardQueryParams {
   const urlSearchParams = toURLSearchParams(params);
   const accountIds = parseAccountParams(urlSearchParams);
@@ -67,7 +71,9 @@ export function parseDashboardSearchParams(
   const dateFrom = parseIsoDateParam(urlSearchParams.get("from"));
   const parsedDateTo = parseIsoDateParam(urlSearchParams.get("to"));
   const dateTo =
-    dateFrom && parsedDateTo && parsedDateTo < dateFrom ? undefined : parsedDateTo;
+    dateFrom && parsedDateTo && parsedDateTo < dateFrom
+      ? undefined
+      : parsedDateTo;
 
   const horizon = parseHorizonParam(urlSearchParams.get("horizon")) ?? 30;
 

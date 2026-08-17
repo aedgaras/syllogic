@@ -13,7 +13,7 @@ self.addEventListener("install", (event) => {
     caches
       .open(CACHE_NAME)
       .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting())
+      .then(() => self.skipWaiting()),
   );
 });
 
@@ -24,11 +24,14 @@ self.addEventListener("activate", (event) => {
       .then((names) =>
         Promise.all(
           names
-            .filter((name) => name.startsWith("syllogic-offline-") && name !== CACHE_NAME)
-            .map((name) => caches.delete(name))
-        )
+            .filter(
+              (name) =>
+                name.startsWith("syllogic-offline-") && name !== CACHE_NAME,
+            )
+            .map((name) => caches.delete(name)),
+        ),
       )
-      .then(() => self.clients.claim())
+      .then(() => self.clients.claim()),
   );
 });
 
@@ -44,6 +47,6 @@ self.addEventListener("fetch", (event) => {
     fetch(event.request).catch(async () => {
       const fallback = await caches.match(OFFLINE_URL);
       return fallback ?? Response.error();
-    })
+    }),
   );
 });

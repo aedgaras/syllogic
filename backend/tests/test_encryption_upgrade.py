@@ -1,6 +1,7 @@
 """
 Unit tests for the encryption upgrade orchestration script.
 """
+
 import os
 import sys
 from unittest.mock import patch
@@ -36,22 +37,34 @@ def _coverage(
 
 def test_coverage_is_complete() -> None:
     assert coverage_is_complete(_coverage(), require_plaintext_cleared=False) is True
-    assert coverage_is_complete(
-        _coverage(accounts_missing_encryption=1),
-        require_plaintext_cleared=False,
-    ) is False
-    assert coverage_is_complete(
-        _coverage(csv_missing_encryption=1),
-        require_plaintext_cleared=False,
-    ) is False
-    assert coverage_is_complete(
-        _coverage(external_id_plaintext_present=2),
-        require_plaintext_cleared=True,
-    ) is False
-    assert coverage_is_complete(
-        _coverage(file_path_plaintext_present=1),
-        require_plaintext_cleared=True,
-    ) is False
+    assert (
+        coverage_is_complete(
+            _coverage(accounts_missing_encryption=1),
+            require_plaintext_cleared=False,
+        )
+        is False
+    )
+    assert (
+        coverage_is_complete(
+            _coverage(csv_missing_encryption=1),
+            require_plaintext_cleared=False,
+        )
+        is False
+    )
+    assert (
+        coverage_is_complete(
+            _coverage(external_id_plaintext_present=2),
+            require_plaintext_cleared=True,
+        )
+        is False
+    )
+    assert (
+        coverage_is_complete(
+            _coverage(file_path_plaintext_present=1),
+            require_plaintext_cleared=True,
+        )
+        is False
+    )
     print("✓ coverage completion checks")
 
 

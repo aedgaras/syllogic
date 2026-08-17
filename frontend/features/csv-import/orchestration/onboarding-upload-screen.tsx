@@ -1,9 +1,12 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useRouter } from "next/navigation";
-import { RiArrowLeftLine, RiArrowRightLine, RiSkipForwardLine } from "@remixicon/react";
+import {
+  RiArrowLeftLine,
+  RiArrowRightLine,
+  RiSkipForwardLine,
+} from "@remixicon/react";
 import {
   Card,
   CardContent,
@@ -27,7 +30,17 @@ import { useUploadController } from "@/features/csv-import/hooks/use-upload-cont
 
 export default function StepFourImportPage() {
   const router = useRouter();
-  const { accounts, selectedAccountId, setSelectedAccountId, selectedFile, isLoading, selectFile, continueToMapping, goBack, skip } = useUploadController("onboarding");
+  const {
+    accounts,
+    selectedAccountId,
+    setSelectedAccountId,
+    selectedFile,
+    isLoading,
+    selectFile,
+    continueToMapping,
+    goBack,
+    skip,
+  } = useUploadController("onboarding");
 
   return (
     <div className="space-y-8">
@@ -55,15 +68,23 @@ export default function StepFourImportPage() {
                 </Button>
               </div>
             ) : (
-              <Select value={selectedAccountId} onValueChange={(v) => v && setSelectedAccountId(v)}>
+              <Select
+                value={selectedAccountId}
+                onValueChange={(v) => v && setSelectedAccountId(v)}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder={translate("selectAnAccount")}>
-                    {accounts.find((a) => a.id === selectedAccountId)?.name ?? translate("selectAnAccount")}
+                    {accounts.find((a) => a.id === selectedAccountId)?.name ??
+                      translate("selectAnAccount")}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
                   {accounts.map((account) => (
-                    <SelectItem key={account.id} value={account.id} className="pr-10">
+                    <SelectItem
+                      key={account.id}
+                      value={account.id}
+                      className="pr-10"
+                    >
                       {account.name} ({account.currency})
                     </SelectItem>
                   ))}
@@ -74,7 +95,10 @@ export default function StepFourImportPage() {
 
           <div className="space-y-2">
             <Label>{translate("uploadFile")}</Label>
-            <CsvUploadDropzone onFileSelect={selectFile} isUploading={isLoading} />
+            <CsvUploadDropzone
+              onFileSelect={selectFile}
+              isUploading={isLoading}
+            />
           </div>
         </CardContent>
         <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
@@ -83,7 +107,12 @@ export default function StepFourImportPage() {
             {translate("back")}
           </Button>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="ghost" onClick={() => skip?.()} disabled={isLoading}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => skip?.()}
+              disabled={isLoading}
+            >
               {translate("skipForNow")}
               <RiSkipForwardLine className="ml-2 h-4 w-4" />
             </Button>

@@ -24,18 +24,45 @@ export function useUploadController(context: ImportContext) {
     });
   }, []);
 
-  const selectFile = (file: File, content: string) => { setSelectedFile(file); setFileContent(content); };
+  const selectFile = (file: File, content: string) => {
+    setSelectedFile(file);
+    setFileContent(content);
+  };
   const continueToMapping = async () => {
-    if (!selectedAccountId) { toast.error("Please select an account"); return; }
-    if (!selectedFile || !fileContent) { toast.error("Please upload a file"); return; }
+    if (!selectedAccountId) {
+      toast.error("Please select an account");
+      return;
+    }
+    if (!selectedFile || !fileContent) {
+      toast.error("Please upload a file");
+      return;
+    }
     setIsLoading(true);
     try {
-      const result = await initializeCsvImport(selectedAccountId, selectedFile.name, fileContent);
-      if (result.success && result.importId) router.push(policy.mappingPath(result.importId));
+      const result = await initializeCsvImport(
+        selectedAccountId,
+        selectedFile.name,
+        fileContent,
+      );
+      if (result.success && result.importId)
+        router.push(policy.mappingPath(result.importId));
       else toast.error(result.error || "Failed to initialize import");
-    } catch { toast.error("An error occurred. Please try again."); }
-    finally { setIsLoading(false); }
+    } catch {
+      toast.error("An error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  return { accounts, selectedAccountId, setSelectedAccountId, selectedFile, isLoading, selectFile, continueToMapping, goBack: () => router.push(policy.uploadBackPath), skip: context === "onboarding" ? () => router.push("/?tour=1") : null };
+  return {
+    accounts,
+    selectedAccountId,
+    setSelectedAccountId,
+    selectedFile,
+    isLoading,
+    selectFile,
+    continueToMapping,
+    goBack: () => router.push(policy.uploadBackPath),
+    skip: context === "onboarding" ? () => router.push("/?tour=1") : null,
+  };
 }

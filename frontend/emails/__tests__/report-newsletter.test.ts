@@ -8,13 +8,25 @@ const props = {
   periodLabel: "Last 7 days",
   totalBalance: "3394.04",
   totalCurrency: "EUR",
-  accounts: [{
-    name: "ABN AMRO Giannis", institution: "ABN AMRO",
-    logoUrl: "https://app.syllogic.ai/uploads/logos/abnamro.com.png",
-    balance: "591.51", currency: "EUR",
-  }],
+  accounts: [
+    {
+      name: "ABN AMRO Giannis",
+      institution: "ABN AMRO",
+      logoUrl: "https://app.syllogic.ai/uploads/logos/abnamro.com.png",
+      balance: "591.51",
+      currency: "EUR",
+    },
+  ],
   transactionsModeLabel: "Top 8 expenses",
-  transactions: [{ description: "British Airways Plc", date: "2026-07-16", amount: "829.94", currency: "EUR", direction: "out" as const }],
+  transactions: [
+    {
+      description: "British Airways Plc",
+      date: "2026-07-16",
+      amount: "829.94",
+      currency: "EUR",
+      direction: "out" as const,
+    },
+  ],
   manageUrl: "https://app.syllogic.ai/reports/1",
 };
 
@@ -44,7 +56,9 @@ describe("ReportNewsletter", () => {
   });
 
   it("omits the total block when the total is unavailable", async () => {
-    const html = await render(ReportNewsletter({ ...props, totalBalance: null }));
+    const html = await render(
+      ReportNewsletter({ ...props, totalBalance: null }),
+    );
     expect(html).not.toMatch(/total balance/i);
   });
 

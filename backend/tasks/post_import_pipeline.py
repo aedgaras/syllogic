@@ -10,9 +10,8 @@ Runs 7 post-processing steps in order after any transaction import (CSV or Enabl
   6. Balance timeseries
   7. Subscription detection
 """
+
 import logging
-from datetime import datetime
-from decimal import Decimal
 from typing import List, Optional
 
 from celery_app import celery_app
@@ -33,6 +32,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
 
 def _sync_exchange_rates(db, user_id: str, transaction_ids: List[str]) -> None:
     """Fetch and store exchange rates for all currencies in the given transactions."""
@@ -202,8 +202,7 @@ def _batch_categorize_transactions(db, user_id: str, transaction_ids: List[str])
         db.commit()
 
     logger.info(
-        "[POST_IMPORT_PIPELINE] Batch categorized %d/%d transactions "
-        "(tokens: %d, cost: $%.6f)",
+        "[POST_IMPORT_PIPELINE] Batch categorized %d/%d transactions (tokens: %d, cost: $%.6f)",
         assigned,
         len(transactions),
         total_tokens,
@@ -287,6 +286,7 @@ def _detect_subscriptions(
 # Core logic (extracted for testability)
 # ---------------------------------------------------------------------------
 
+
 def _run_post_import_pipeline(
     user_id: str,
     account_ids: List[str],
@@ -354,6 +354,7 @@ def _run_post_import_pipeline(
 # ---------------------------------------------------------------------------
 # Celery task
 # ---------------------------------------------------------------------------
+
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
 def post_import_pipeline(

@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState } from "react";
 import {
   Dialog,
@@ -25,10 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-  RiExternalLinkLine,
-  RiLinkUnlinkM,
-} from "@remixicon/react";
+import { RiExternalLinkLine, RiLinkUnlinkM } from "@remixicon/react";
 import Link from "next/link";
 import { toast } from "sonner";
 import type { TransactionWithRelations } from "@/features/transactions/public";
@@ -103,8 +99,12 @@ export function SubscriptionLinkedDialog({
           <div className="bg-muted/50 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-medium">{subscription.name}</h3>
-              <Badge variant="secondary" className={frequencyColors[subscription.frequency]}>
-                {frequencyLabels[subscription.frequency] || subscription.frequency}
+              <Badge
+                variant="secondary"
+                className={frequencyColors[subscription.frequency]}
+              >
+                {frequencyLabels[subscription.frequency] ||
+                  subscription.frequency}
               </Badge>
             </div>
 
@@ -120,10 +120,7 @@ export function SubscriptionLinkedDialog({
           {/* Actions */}
           <div className="space-y-2">
             <Link href="/subscriptions" className="block">
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-              >
+              <Button variant="outline" className="w-full justify-start">
                 <RiExternalLinkLine className="h-4 w-4 mr-2" />
                 {translate("viewAllSubscriptions")}
               </Button>
@@ -138,15 +135,23 @@ export function SubscriptionLinkedDialog({
                     disabled={isUnlinking}
                   >
                     <RiLinkUnlinkM className="h-4 w-4 mr-2" />
-                    {isUnlinking ? translate("unlinking") : translate("unlinkFromSubscription")}
+                    {isUnlinking
+                      ? translate("unlinking")
+                      : translate("unlinkFromSubscription")}
                   </Button>
                 }
               />
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>{translate("unlinkTransaction")}</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    {translate("unlinkTransaction")}
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    {translate("thisWillRemoveTheLinkBetweenThisTransactionAnd")}{subscription.name}{translate("theSubscriptionItselfWillNotBeDeleted")}
+                    {translate(
+                      "thisWillRemoveTheLinkBetweenThisTransactionAnd",
+                    )}
+                    {subscription.name}
+                    {translate("theSubscriptionItselfWillNotBeDeleted")}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

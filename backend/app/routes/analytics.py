@@ -28,11 +28,10 @@ def get_monthly_cashflow(
         extract("year", Transaction.booked_at).label("year"),
         extract("month", Transaction.booked_at).label("month"),
         func.sum(case((Transaction.amount > 0, Transaction.amount), else_=0)).label("income"),
-        func.sum(case((Transaction.amount < 0, func.abs(Transaction.amount)), else_=0)).label("expenses"),
-    ).filter(
-        Transaction.user_id == user_id,
-        Transaction.include_in_analytics == True
-    )
+        func.sum(case((Transaction.amount < 0, func.abs(Transaction.amount)), else_=0)).label(
+            "expenses"
+        ),
+    ).filter(Transaction.user_id == user_id, Transaction.include_in_analytics == True)
 
     if from_date:
         query = query.filter(Transaction.booked_at >= from_date)
@@ -41,13 +40,12 @@ def get_monthly_cashflow(
     if category_id:
         # Check both category_id and category_system_id
         query = query.filter(
-            (Transaction.category_id == category_id) |
-            (Transaction.category_system_id == category_id)
+            (Transaction.category_id == category_id)
+            | (Transaction.category_system_id == category_id)
         )
     if uncategorized:
         query = query.filter(
-            Transaction.category_id.is_(None),
-            Transaction.category_system_id.is_(None)
+            Transaction.category_id.is_(None), Transaction.category_system_id.is_(None)
         )
     if account_id:
         query = query.filter(Transaction.account_id == account_id)
@@ -90,7 +88,7 @@ def get_sankey_data(
     income_query = db.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == user_id,
         Transaction.amount > 0,
-        Transaction.include_in_analytics == True
+        Transaction.include_in_analytics == True,
     )
     if from_date:
         income_query = income_query.filter(Transaction.booked_at >= from_date)
@@ -102,16 +100,21 @@ def get_sankey_data(
     total_income = income_query.scalar() or 0
 
     # Get income by category
-    income_by_cat_query = db.query(
-        Category.name.label("category_name"),
-        func.sum(Transaction.amount).label("total"),
-    ).outerjoin(
-        Category,
-        (Transaction.category_id == Category.id) | (Transaction.category_system_id == Category.id)
-    ).filter(
-        Transaction.user_id == user_id,
-        Transaction.amount > 0,
-        Transaction.include_in_analytics == True
+    income_by_cat_query = (
+        db.query(
+            Category.name.label("category_name"),
+            func.sum(Transaction.amount).label("total"),
+        )
+        .outerjoin(
+            Category,
+            (Transaction.category_id == Category.id)
+            | (Transaction.category_system_id == Category.id),
+        )
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.amount > 0,
+            Transaction.include_in_analytics == True,
+        )
     )
 
     if from_date:
@@ -122,23 +125,27 @@ def get_sankey_data(
         income_by_cat_query = income_by_cat_query.filter(Transaction.account_id == account_id)
     if uncategorized:
         income_by_cat_query = income_by_cat_query.filter(
-            Transaction.category_id.is_(None),
-            Transaction.category_system_id.is_(None)
+            Transaction.category_id.is_(None), Transaction.category_system_id.is_(None)
         )
 
     income_by_cat = income_by_cat_query.group_by(Category.name).all()
 
     # Get expenses by category
-    expense_query = db.query(
-        Category.name.label("category_name"),
-        func.sum(func.abs(Transaction.amount)).label("total"),
-    ).outerjoin(
-        Category,
-        (Transaction.category_id == Category.id) | (Transaction.category_system_id == Category.id)
-    ).filter(
-        Transaction.user_id == user_id,
-        Transaction.amount < 0,
-        Transaction.include_in_analytics == True
+    expense_query = (
+        db.query(
+            Category.name.label("category_name"),
+            func.sum(func.abs(Transaction.amount)).label("total"),
+        )
+        .outerjoin(
+            Category,
+            (Transaction.category_id == Category.id)
+            | (Transaction.category_system_id == Category.id),
+        )
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.amount < 0,
+            Transaction.include_in_analytics == True,
+        )
     )
 
     if from_date:
@@ -149,8 +156,7 @@ def get_sankey_data(
         expense_query = expense_query.filter(Transaction.account_id == account_id)
     if uncategorized:
         expense_query = expense_query.filter(
-            Transaction.category_id.is_(None),
-            Transaction.category_system_id.is_(None)
+            Transaction.category_id.is_(None), Transaction.category_system_id.is_(None)
         )
 
     expenses_by_category = expense_query.group_by(Category.name).all()
@@ -190,28 +196,34 @@ def get_sankey_data(
     for item in income_by_cat:
         name = item.category_name or "Other Income"
         source_name = f"Income: {name}"
-        links.append({
-            "source": node_index[source_name],
-            "target": node_index["Total Income"],
-            "value": float(item.total),
-        })
+        links.append(
+            {
+                "source": node_index[source_name],
+                "target": node_index["Total Income"],
+                "value": float(item.total),
+            }
+        )
 
     # Create links from Total Income to expense categories
     for item in expenses_by_category:
         name = item.category_name or "Uncategorized"
-        links.append({
-            "source": node_index["Total Income"],
-            "target": node_index[name],
-            "value": float(item.total),
-        })
+        links.append(
+            {
+                "source": node_index["Total Income"],
+                "target": node_index[name],
+                "value": float(item.total),
+            }
+        )
 
     # Add savings link if positive
     if savings > 0:
-        links.append({
-            "source": node_index["Total Income"],
-            "target": node_index["Savings"],
-            "value": savings,
-        })
+        links.append(
+            {
+                "source": node_index["Total Income"],
+                "target": node_index["Savings"],
+                "value": savings,
+            }
+        )
 
     return {
         "nodes": nodes,
@@ -239,92 +251,122 @@ def get_account_balances(
     """
     user_id = get_user_id(user_id)
     # Base query for accounts
-    accounts_query = db.query(Account).filter(
-        Account.user_id == user_id,
-        Account.is_active == True
-    )
-    
+    accounts_query = db.query(Account).filter(Account.user_id == user_id, Account.is_active == True)
+
     # If account_id filter is provided, only show that account
     if account_id:
         accounts_query = accounts_query.filter(Account.id == account_id)
-    
+
     accounts = accounts_query.all()
-    
+
     result = []
-    
+
     for account in accounts:
         # If category filter is provided, check if this account has transactions in that category
         if category_id:
-            has_transactions = db.query(Transaction).filter(
-                Transaction.user_id == user_id,
-                Transaction.account_id == account.id,
-                (
-                    (Transaction.category_id == category_id) |
-                    (Transaction.category_system_id == category_id)
+            has_transactions = (
+                db.query(Transaction)
+                .filter(
+                    Transaction.user_id == user_id,
+                    Transaction.account_id == account.id,
+                    (
+                        (Transaction.category_id == category_id)
+                        | (Transaction.category_system_id == category_id)
+                    ),
                 )
-            ).first()
+                .first()
+            )
             if not has_transactions:
                 continue
         elif uncategorized:
-            has_transactions = db.query(Transaction).filter(
-                Transaction.user_id == user_id,
-                Transaction.account_id == account.id,
-                Transaction.category_id.is_(None),
-                Transaction.category_system_id.is_(None)
-            ).first()
+            has_transactions = (
+                db.query(Transaction)
+                .filter(
+                    Transaction.user_id == user_id,
+                    Transaction.account_id == account.id,
+                    Transaction.category_id.is_(None),
+                    Transaction.category_system_id.is_(None),
+                )
+                .first()
+            )
             if not has_transactions:
                 continue
-        
+
         # Calculate balance based on date filters
         if to_date:
             # Calculate balance at end of period
             # Balance at to_date = current_balance - sum(transactions after to_date)
-            transactions_after = db.query(func.sum(Transaction.amount)).filter(
-                Transaction.user_id == user_id,
-                Transaction.account_id == account.id,
-                Transaction.booked_at > to_date
-            ).scalar() or 0
-            
+            transactions_after = (
+                db.query(func.sum(Transaction.amount))
+                .filter(
+                    Transaction.user_id == user_id,
+                    Transaction.account_id == account.id,
+                    Transaction.booked_at > to_date,
+                )
+                .scalar()
+                or 0
+            )
+
             # If category filter, only consider transactions in that category
             if category_id:
-                transactions_after = db.query(func.sum(Transaction.amount)).filter(
-                    Transaction.user_id == user_id,
-                    Transaction.account_id == account.id,
-                    Transaction.booked_at > to_date,
-                    (
-                        (Transaction.category_id == category_id) |
-                        (Transaction.category_system_id == category_id)
+                transactions_after = (
+                    db.query(func.sum(Transaction.amount))
+                    .filter(
+                        Transaction.user_id == user_id,
+                        Transaction.account_id == account.id,
+                        Transaction.booked_at > to_date,
+                        (
+                            (Transaction.category_id == category_id)
+                            | (Transaction.category_system_id == category_id)
+                        ),
                     )
-                ).scalar() or 0
+                    .scalar()
+                    or 0
+                )
                 # For category filter, calculate net change in period
-                transactions_in_period = db.query(func.sum(Transaction.amount)).filter(
-                    Transaction.user_id == user_id,
-                    Transaction.account_id == account.id,
-                    Transaction.booked_at >= (from_date or datetime.min),
-                    Transaction.booked_at <= to_date,
-                    (
-                        (Transaction.category_id == category_id) |
-                        (Transaction.category_system_id == category_id)
+                transactions_in_period = (
+                    db.query(func.sum(Transaction.amount))
+                    .filter(
+                        Transaction.user_id == user_id,
+                        Transaction.account_id == account.id,
+                        Transaction.booked_at >= (from_date or datetime.min),
+                        Transaction.booked_at <= to_date,
+                        (
+                            (Transaction.category_id == category_id)
+                            | (Transaction.category_system_id == category_id)
+                        ),
                     )
-                ).scalar() or 0
+                    .scalar()
+                    or 0
+                )
                 balance = float(transactions_in_period)
             elif uncategorized:
-                transactions_after = db.query(func.sum(Transaction.amount)).filter(
-                    Transaction.user_id == user_id,
-                    Transaction.account_id == account.id,
-                    Transaction.booked_at > to_date,
-                    Transaction.category_id.is_(None),
-                    Transaction.category_system_id.is_(None)
-                ).scalar() or 0
+                transactions_after = (
+                    db.query(func.sum(Transaction.amount))
+                    .filter(
+                        Transaction.user_id == user_id,
+                        Transaction.account_id == account.id,
+                        Transaction.booked_at > to_date,
+                        Transaction.category_id.is_(None),
+                        Transaction.category_system_id.is_(None),
+                    )
+                    .scalar()
+                    or 0
+                )
                 # For uncategorized filter, calculate net change in period
-                transactions_in_period = db.query(func.sum(Transaction.amount)).filter(
-                    Transaction.user_id == user_id,
-                    Transaction.account_id == account.id,
-                    Transaction.booked_at >= (from_date or datetime.min),
-                    Transaction.booked_at <= to_date,
-                    Transaction.category_id.is_(None),
-                    Transaction.category_system_id.is_(None)
-                ).scalar() or 0
+                transactions_in_period = (
+                    db.query(func.sum(Transaction.amount))
+                    .filter(
+                        Transaction.user_id == user_id,
+                        Transaction.account_id == account.id,
+                        Transaction.booked_at >= (from_date or datetime.min),
+                        Transaction.booked_at <= to_date,
+                        Transaction.category_id.is_(None),
+                        Transaction.category_system_id.is_(None),
+                    )
+                    .scalar()
+                    or 0
+                )
                 balance = float(transactions_in_period)
             else:
                 # Use functional_balance instead of balance_current
@@ -335,17 +377,16 @@ def get_account_balances(
             balance_query = db.query(func.sum(Transaction.amount)).filter(
                 Transaction.user_id == user_id,
                 Transaction.account_id == account.id,
-                Transaction.booked_at >= from_date
+                Transaction.booked_at >= from_date,
             )
             if category_id:
                 balance_query = balance_query.filter(
-                    (Transaction.category_id == category_id) |
-                    (Transaction.category_system_id == category_id)
+                    (Transaction.category_id == category_id)
+                    | (Transaction.category_system_id == category_id)
                 )
             elif uncategorized:
                 balance_query = balance_query.filter(
-                    Transaction.category_id.is_(None),
-                    Transaction.category_system_id.is_(None)
+                    Transaction.category_id.is_(None), Transaction.category_system_id.is_(None)
                 )
             balance_change = balance_query.scalar() or 0
             if category_id or uncategorized:
@@ -354,34 +395,46 @@ def get_account_balances(
                 balance = float(account.functional_balance) if account.functional_balance else 0.0
         elif category_id:
             # Category filter only: show net change for transactions in that category
-            balance = db.query(func.sum(Transaction.amount)).filter(
-                Transaction.user_id == user_id,
-                Transaction.account_id == account.id,
-                (
-                    (Transaction.category_id == category_id) |
-                    (Transaction.category_system_id == category_id)
+            balance = (
+                db.query(func.sum(Transaction.amount))
+                .filter(
+                    Transaction.user_id == user_id,
+                    Transaction.account_id == account.id,
+                    (
+                        (Transaction.category_id == category_id)
+                        | (Transaction.category_system_id == category_id)
+                    ),
                 )
-            ).scalar() or 0
+                .scalar()
+                or 0
+            )
             balance = float(balance)
         elif uncategorized:
             # Uncategorized filter only: show net change for uncategorized transactions
-            balance = db.query(func.sum(Transaction.amount)).filter(
-                Transaction.user_id == user_id,
-                Transaction.account_id == account.id,
-                Transaction.category_id.is_(None),
-                Transaction.category_system_id.is_(None)
-            ).scalar() or 0
+            balance = (
+                db.query(func.sum(Transaction.amount))
+                .filter(
+                    Transaction.user_id == user_id,
+                    Transaction.account_id == account.id,
+                    Transaction.category_id.is_(None),
+                    Transaction.category_system_id.is_(None),
+                )
+                .scalar()
+                or 0
+            )
             balance = float(balance)
         else:
             # No date or category filters, use current balance
             balance = float(account.balance_current)
-        
-        result.append({
-            "account_id": str(account.id),
-            "name": account.name,
-            "balance": balance,
-            "currency": account.currency,
-            "account_type": account.account_type,
-        })
-    
+
+        result.append(
+            {
+                "account_id": str(account.id),
+                "name": account.name,
+                "balance": balance,
+                "currency": account.currency,
+                "account_type": account.account_type,
+            }
+        )
+
     return result

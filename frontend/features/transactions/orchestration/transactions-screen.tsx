@@ -7,7 +7,10 @@ import { AddTransactionDialog } from "@/components/transactions/add-transaction-
 import { TransactionTable } from "@/components/transactions/transaction-table";
 import { useRegisterCommandPaletteCallbacks } from "@/components/command-palette-context";
 import { exportTransactionsToCSV } from "@/lib/utils/csv-export";
-import type { AccountForFilter, CategoryDisplay } from "@/shared/domain/display-contracts";
+import type {
+  AccountForFilter,
+  CategoryDisplay,
+} from "@/shared/domain/display-contracts";
 import type {
   FilteredTransactionTotals,
   TransactionsQueryState,
@@ -42,7 +45,7 @@ export function TransactionsScreen({
   const router = useRouter();
   const [transactions, dispatch] = React.useReducer(
     transactionListReducer,
-    initialTransactions
+    initialTransactions,
   );
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const importProgress = useImportProgressController();
@@ -55,11 +58,11 @@ export function TransactionsScreen({
   const handleAddManual = React.useCallback(() => setIsAddDialogOpen(true), []);
   const handleExportCsv = React.useCallback(
     () => exportTransactionsToCSV(transactions),
-    [transactions]
+    [transactions],
   );
   const handleImportCsv = React.useCallback(
     () => router.push("/transactions/import"),
-    [router]
+    [router],
   );
 
   useRegisterCommandPaletteCallbacks(
@@ -68,7 +71,7 @@ export function TransactionsScreen({
       onExportCSV: handleExportCsv,
       onImportCsv: canImportCsv ? handleImportCsv : undefined,
     },
-    [canImportCsv, handleAddManual, handleExportCsv, handleImportCsv]
+    [canImportCsv, handleAddManual, handleExportCsv, handleImportCsv],
   );
 
   return (
@@ -81,7 +84,9 @@ export function TransactionsScreen({
           queryState={initialQueryState}
           categories={categories}
           accounts={accounts}
-          onUpdateTransaction={(id, updates) => dispatch({ type: "update", id, updates })}
+          onUpdateTransaction={(id, updates) =>
+            dispatch({ type: "update", id, updates })
+          }
           onDeleteTransaction={(id) => dispatch({ type: "delete", ids: [id] })}
           onBulkUpdate={(ids, categoryId) =>
             dispatch({
@@ -89,7 +94,8 @@ export function TransactionsScreen({
               ids,
               categoryId,
               category: categoryId
-                ? categories.find((category) => category.id === categoryId) ?? null
+                ? (categories.find((category) => category.id === categoryId) ??
+                  null)
                 : null,
             })
           }

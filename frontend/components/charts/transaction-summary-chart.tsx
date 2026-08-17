@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from "recharts";
 import {
   Card,
@@ -41,7 +40,9 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function TransactionSummaryChart({ data }: TransactionSummaryChartProps) {
+export function TransactionSummaryChart({
+  data,
+}: TransactionSummaryChartProps) {
   const chartData = data.map((item) => ({
     ...item,
     date: item.date,
@@ -57,13 +58,16 @@ export function TransactionSummaryChart({ data }: TransactionSummaryChartProps) 
     }
   }
 
-  const hasData = data.length > 0 && data.some((d) => d.income > 0 || d.expenses > 0);
+  const hasData =
+    data.length > 0 && data.some((d) => d.income > 0 || d.expenses > 0);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>{translate("transactionSummary")}</CardTitle>
-        <CardDescription>{translate("dailyIncomeVsExpensesLast30Days")}</CardDescription>
+        <CardDescription>
+          {translate("dailyIncomeVsExpensesLast30Days")}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {hasData ? (
@@ -90,7 +94,11 @@ export function TransactionSummaryChart({ data }: TransactionSummaryChartProps) 
                         className="fill-muted-foreground"
                       >
                         <tspan x="0">{monthDay}</tspan>
-                        {showYear && <tspan x="0" dy="12">{year}</tspan>}
+                        {showYear && (
+                          <tspan x="0" dy="12">
+                            {year}
+                          </tspan>
+                        )}
                       </text>
                     </g>
                   );
@@ -108,7 +116,9 @@ export function TransactionSummaryChart({ data }: TransactionSummaryChartProps) 
                     indicator="dashed"
                     labelFormatter={(_, payload) => {
                       const rawDate = payload?.[0]?.payload?.date;
-                      return rawDate ? format(parseISO(rawDate), "MMMM d, yyyy") : "";
+                      return rawDate
+                        ? format(parseISO(rawDate), "MMMM d, yyyy")
+                        : "";
                     }}
                   />
                 }

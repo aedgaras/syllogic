@@ -15,13 +15,21 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => navigation.searchParams,
 }));
 
-vi.mock("@/shared/client/hooks/use-filter-persistence", () => ({ useFilterPersistence: vi.fn() }));
+vi.mock("@/shared/client/hooks/use-filter-persistence", () => ({
+  useFilterPersistence: vi.fn(),
+}));
 vi.mock("./transaction-filters", () => ({ TransactionFilters: () => null }));
-vi.mock("./transaction-pagination", () => ({ TransactionPagination: () => null }));
+vi.mock("./transaction-pagination", () => ({
+  TransactionPagination: () => null,
+}));
 vi.mock("./bulk-actions-dock", () => ({ BulkActionsDock: () => null }));
 vi.mock("./columns", () => ({ transactionColumns: [] }));
 vi.mock("./transaction-sheet", () => ({
-  TransactionSheet: ({ transaction }: { transaction: TransactionWithRelations | null }) => (
+  TransactionSheet: ({
+    transaction,
+  }: {
+    transaction: TransactionWithRelations | null;
+  }) => (
     <div data-testid="selected-transaction">{transaction?.id ?? "none"}</div>
   ),
 }));
@@ -29,14 +37,33 @@ vi.mock("@/components/ui/data-table", () => ({
   DataTable: (props: {
     data: TransactionWithRelations[];
     onRowClick: (row: TransactionWithRelations) => void;
-    onSortingStateChange: (sorting: Array<{ id: string; desc: boolean }>) => void;
-    onPaginationStateChange: (pagination: { pageIndex: number; pageSize: number }) => void;
+    onSortingStateChange: (
+      sorting: Array<{ id: string; desc: boolean }>,
+    ) => void;
+    onPaginationStateChange: (pagination: {
+      pageIndex: number;
+      pageSize: number;
+    }) => void;
     footer?: React.ReactNode;
   }) => (
     <div>
-      <button onClick={() => props.onRowClick(props.data[0])}>select row</button>
-      <button onClick={() => props.onSortingStateChange([{ id: "amount", desc: false }])}>sort amount</button>
-      <button onClick={() => props.onPaginationStateChange({ pageIndex: 2, pageSize: 50 })}>page 3</button>
+      <button onClick={() => props.onRowClick(props.data[0])}>
+        select row
+      </button>
+      <button
+        onClick={() =>
+          props.onSortingStateChange([{ id: "amount", desc: false }])
+        }
+      >
+        sort amount
+      </button>
+      <button
+        onClick={() =>
+          props.onPaginationStateChange({ pageIndex: 2, pageSize: 50 })
+        }
+      >
+        page 3
+      </button>
       {props.footer}
     </div>
   ),
@@ -90,11 +117,16 @@ describe("TransactionTable characterization", () => {
         totalCount={1}
         filteredTotals={null}
         queryState={queryState}
-      />
+      />,
     );
 
-    expect(screen.getByTestId("selected-transaction")).toHaveTextContent("tx-1");
-    expect(navigation.replace).toHaveBeenCalledWith("/transactions?page=2&view=compact", { scroll: false });
+    expect(screen.getByTestId("selected-transaction")).toHaveTextContent(
+      "tx-1",
+    );
+    expect(navigation.replace).toHaveBeenCalledWith(
+      "/transactions?page=2&view=compact",
+      { scroll: false },
+    );
   });
 
   it("preserves unrelated query parameters for sort and pagination changes", () => {
@@ -104,15 +136,21 @@ describe("TransactionTable characterization", () => {
         totalCount={100}
         filteredTotals={{ totalIn: 1200, totalOut: 450 }}
         queryState={{ ...queryState, search: "coffee" }}
-      />
+      />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "sort amount" }));
     fireEvent.click(screen.getByRole("button", { name: "page 3" }));
 
-    const destinations = navigation.replace.mock.calls.map(([destination]) => destination as string);
-    const sortDestination = destinations.find((destination) => destination.includes("sort=amount"));
-    const pageDestination = destinations.find((destination) => destination.includes("page=3"));
+    const destinations = navigation.replace.mock.calls.map(
+      ([destination]) => destination as string,
+    );
+    const sortDestination = destinations.find((destination) =>
+      destination.includes("sort=amount"),
+    );
+    const pageDestination = destinations.find((destination) =>
+      destination.includes("page=3"),
+    );
     expect(sortDestination).toContain("view=compact");
     expect(sortDestination).toContain("order=asc");
     expect(pageDestination).toContain("view=compact");

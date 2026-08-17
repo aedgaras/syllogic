@@ -2,6 +2,7 @@
 API Key authentication for the MCP server.
 Validates API keys and resolves them to user IDs.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -14,6 +15,7 @@ from typing import Optional
 try:
     from fastmcp.server.auth import AuthProvider, AccessToken
 except ImportError:  # pragma: no cover - fallback for environments without FastMCP
+
     class AuthProvider:  # type: ignore[override]
         pass
 
@@ -24,6 +26,7 @@ except ImportError:  # pragma: no cover - fallback for environments without Fast
         scopes: list[str]
         expires_at: Optional[datetime]
         claims: dict[str, str]
+
 
 from app.database import SessionLocal
 from app.models import ApiKey
@@ -133,9 +136,7 @@ except ImportError:  # pragma: no cover
 
 
 AS_ISSUER = os.environ.get("MCP_OAUTH_ISSUER", "https://app.syllogic.ai/api/auth")
-AS_JWKS_URI = os.environ.get(
-    "MCP_OAUTH_JWKS_URI", "https://app.syllogic.ai/api/auth/jwks"
-)
+AS_JWKS_URI = os.environ.get("MCP_OAUTH_JWKS_URI", "https://app.syllogic.ai/api/auth/jwks")
 MCP_AUDIENCE = os.environ.get("MCP_OAUTH_AUDIENCE", "https://mcp.syllogic.ai/mcp")
 # Public server root (no path). RemoteAuthProvider uses this as base_url and
 # appends the MCP route on top when advertising the Protected Resource.

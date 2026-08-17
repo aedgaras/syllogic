@@ -1,13 +1,18 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { type ColumnDef } from "@tanstack/react-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import type { TransactionWithRelations } from "@/features/transactions/public";
-import { RiArrowUpLine, RiArrowDownLine, RiSubtractLine, RiCheckLine, RiLink } from "@remixicon/react";
+import {
+  RiArrowUpLine,
+  RiArrowDownLine,
+  RiSubtractLine,
+  RiCheckLine,
+  RiLink,
+} from "@remixicon/react";
 import {
   Tooltip,
   TooltipContent,
@@ -69,7 +74,11 @@ function CategoryCell({
   const displayCategory = transaction.category ?? transaction.categorySystem;
 
   if (!displayCategory) {
-    return <div className="text-center text-muted-foreground">{translate("uncategorized")}</div>;
+    return (
+      <div className="text-center text-muted-foreground">
+        {translate("uncategorized")}
+      </div>
+    );
   }
 
   return (
@@ -84,7 +93,8 @@ function CategoryCell({
         title={displayCategory.name}
         onClick={(event) => {
           event.stopPropagation();
-          const globalFilters = parseGlobalFiltersFromSearchParams(searchParams);
+          const globalFilters =
+            parseGlobalFiltersFromSearchParams(searchParams);
           const query = buildCategorySpendingQuery({
             categoryId: displayCategory.id,
             accountIds: globalFilters.accountIds,
@@ -92,7 +102,9 @@ function CategoryCell({
             dateTo: globalFilters.to,
             horizon: globalFilters.horizon,
           });
-          router.push(query ? `/category-spending?${query}` : "/category-spending");
+          router.push(
+            query ? `/category-spending?${query}` : "/category-spending",
+          );
         }}
       >
         {displayCategory.name}
@@ -108,14 +120,15 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       const allRowsSelected = table.getIsAllRowsSelected();
       const allPageRowsSelected = table.getIsAllPageRowsSelected();
       const someRowsSelected = table.getIsSomeRowsSelected();
-      
+
       // Determine checkbox state:
       // - Checked (✓): all rows across all pages are selected
       // - Indeterminate (-): only current page is selected (or some rows)
       // - Unchecked: nothing selected
       const isChecked = allRowsSelected;
-      const isIndeterminate = !allRowsSelected && (allPageRowsSelected || someRowsSelected);
-      
+      const isIndeterminate =
+        !allRowsSelected && (allPageRowsSelected || someRowsSelected);
+
       const handleClick = () => {
         if (allRowsSelected) {
           // All selected -> deselect all
@@ -215,7 +228,9 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
           )}
           <div
             className="truncate"
-            style={{ maxWidth: `${columnSize - (isExcludedFromAnalytics ? 24 : 0)}px` }}
+            style={{
+              maxWidth: `${columnSize - (isExcludedFromAnalytics ? 24 : 0)}px`,
+            }}
             title={row.getValue("description") || ""}
           >
             {row.getValue("description")}
@@ -237,8 +252,8 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       const merchant = row.original.merchant;
       const columnSize = column.getSize();
       return merchant ? (
-        <div 
-          className="truncate" 
+        <div
+          className="truncate"
           style={{ maxWidth: `${columnSize}px` }}
           title={merchant}
         >
@@ -256,15 +271,17 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
   },
   {
     accessorKey: "category",
-    header: () => <div className="text-center" data-walkthrough="walkthrough-category-badge">{translate("category")}</div>,
+    header: () => (
+      <div
+        className="text-center"
+        data-walkthrough="walkthrough-category-badge"
+      >
+        {translate("category")}
+      </div>
+    ),
     cell: ({ row, column }) => {
       const columnSize = column.getSize();
-      return (
-        <CategoryCell
-          transaction={row.original}
-          maxWidth={columnSize}
-        />
-      );
+      return <CategoryCell transaction={row.original} maxWidth={columnSize} />;
     },
     size: 140,
     meta: {
@@ -272,8 +289,14 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       mobilePriority: "secondary",
     },
     filterFn: (row, id, filterValue) => {
-      if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
-      if (filterValue.includes("uncategorized") && !row.original.category) return true;
+      if (
+        !filterValue ||
+        !Array.isArray(filterValue) ||
+        filterValue.length === 0
+      )
+        return true;
+      if (filterValue.includes("uncategorized") && !row.original.category)
+        return true;
       return filterValue.includes(row.original.category?.id);
     },
   },
@@ -321,12 +344,18 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
   },
   {
     accessorKey: "account",
-    header: () => <div className="text-center">{translate("account85dfa3")}</div>,
+    header: () => (
+      <div className="text-center">{translate("account85dfa3")}</div>
+    ),
     cell: ({ row, column }) => {
       const columnSize = column.getSize();
       const account = row.original.account;
       if (!account) {
-        return <div className="text-center text-muted-foreground">{translate("unknown")}</div>;
+        return (
+          <div className="text-center text-muted-foreground">
+            {translate("unknown")}
+          </div>
+        );
       }
       return (
         <div className="flex justify-center">
@@ -345,7 +374,12 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       mobilePriority: "secondary",
     },
     filterFn: (row, id, filterValue) => {
-      if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
+      if (
+        !filterValue ||
+        !Array.isArray(filterValue) ||
+        filterValue.length === 0
+      )
+        return true;
       const account = row.original.account;
       if (!account) return false;
       return filterValue.includes(account.id);
@@ -361,7 +395,12 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       }
       return (
         <div className="flex justify-center">
-          <span title={translate("message", { value1: recurring.name, value2: recurring.frequency })}>
+          <span
+            title={translate("message", {
+              value1: recurring.name,
+              value2: recurring.frequency,
+            })}
+          >
             <RiCheckLine className="h-4 w-4 text-emerald-600" />
           </span>
         </div>
@@ -372,8 +411,17 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       mobilePriority: "hidden",
     },
     filterFn: (row, id, filterValue) => {
-      if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
-      if (filterValue.includes("no_subscription") && !row.original.recurringTransaction) return true;
+      if (
+        !filterValue ||
+        !Array.isArray(filterValue) ||
+        filterValue.length === 0
+      )
+        return true;
+      if (
+        filterValue.includes("no_subscription") &&
+        !row.original.recurringTransaction
+      )
+        return true;
       if (row.original.recurringTransaction) {
         return filterValue.includes(row.original.recurringTransaction.id);
       }
@@ -388,7 +436,12 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       if (!link) {
         return <div className="text-center text-muted-foreground">-</div>;
       }
-      const roleLabel = link.linkRole === "primary" ? "Primary" : link.linkRole === "reimbursement" ? "Reimbursement" : "Expense";
+      const roleLabel =
+        link.linkRole === "primary"
+          ? "Primary"
+          : link.linkRole === "reimbursement"
+            ? "Reimbursement"
+            : "Expense";
       return (
         <div className="flex justify-center">
           <Tooltip>
@@ -396,7 +449,10 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
               <RiLink className="h-4 w-4 text-blue-600" />
             </TooltipTrigger>
             <TooltipContent side="top">
-              <p>{translate("linked")}{roleLabel})</p>
+              <p>
+                {translate("linked")}
+                {roleLabel})
+              </p>
             </TooltipContent>
           </Tooltip>
         </div>
@@ -407,9 +463,16 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       mobilePriority: "hidden",
     },
     filterFn: (row, id, filterValue) => {
-      if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
-      if (filterValue.includes("not_linked") && !row.original.transactionLink) return true;
-      if (filterValue.includes("linked") && row.original.transactionLink) return true;
+      if (
+        !filterValue ||
+        !Array.isArray(filterValue) ||
+        filterValue.length === 0
+      )
+        return true;
+      if (filterValue.includes("not_linked") && !row.original.transactionLink)
+        return true;
+      if (filterValue.includes("linked") && row.original.transactionLink)
+        return true;
       return false;
     },
   },
@@ -428,9 +491,15 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       mobilePriority: "secondary",
     },
     filterFn: (row, id, filterValue) => {
-      if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
+      if (
+        !filterValue ||
+        !Array.isArray(filterValue) ||
+        filterValue.length === 0
+      )
+        return true;
       if (filterValue.includes("pending") && row.original.pending) return true;
-      if (filterValue.includes("completed") && !row.original.pending) return true;
+      if (filterValue.includes("completed") && !row.original.pending)
+        return true;
       return false;
     },
   },
@@ -444,7 +513,12 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       mobilePriority: "hidden",
     },
     filterFn: (row, id, filterValue) => {
-      if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
+      if (
+        !filterValue ||
+        !Array.isArray(filterValue) ||
+        filterValue.length === 0
+      )
+        return true;
       const includeInAnalytics = row.original.includeInAnalytics ?? true;
       if (filterValue.includes("included") && includeInAnalytics) return true;
       if (filterValue.includes("excluded") && !includeInAnalytics) return true;
@@ -457,7 +531,7 @@ export const categorySpendingTransactionColumns: ColumnDef<TransactionWithRelati
   transactionColumns.filter((column) => {
     const key = String(
       ("accessorKey" in column ? column.accessorKey : undefined) ??
-        ("id" in column ? column.id : "")
+        ("id" in column ? column.id : ""),
     );
 
     return ![

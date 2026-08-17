@@ -1,4 +1,5 @@
 """Unit tests for the pure FIFO P&L engine."""
+
 from datetime import date
 from decimal import Decimal
 
@@ -22,8 +23,8 @@ def _t(symbol, d, side, qty, price, currency="USD", fees="0"):
 def test_compute_fifo_single_buy_full_sell_with_fees():
     """Buy fees increase cost basis; sell fees reduce proceeds."""
     trades = [
-        _t("AAPL", "2024-01-10", "buy", 10, 150, fees="5"),    # cost = 1500 + 5 = 1505
-        _t("AAPL", "2024-06-01", "sell", 10, 200, fees="3"),   # proceeds = 2000 - 3 = 1997
+        _t("AAPL", "2024-01-10", "buy", 10, 150, fees="5"),  # cost = 1500 + 5 = 1505
+        _t("AAPL", "2024-06-01", "sell", 10, 200, fees="3"),  # proceeds = 2000 - 3 = 1997
     ]
 
     result = compute_fifo(trades)
@@ -94,8 +95,8 @@ def test_compute_fifo_buy_fees_carry_into_open_lot_cost():
 def test_compute_fifo_sell_fees_prorated_across_lots():
     """When a sell consumes multiple lots, the sell's fee is prorated by quantity."""
     trades = [
-        _t("MSFT", "2024-01-10", "buy", 10, 100),    # cost basis 100/share, 0 fees
-        _t("MSFT", "2024-02-10", "buy", 10, 100),    # cost basis 100/share, 0 fees
+        _t("MSFT", "2024-01-10", "buy", 10, 100),  # cost basis 100/share, 0 fees
+        _t("MSFT", "2024-02-10", "buy", 10, 100),  # cost basis 100/share, 0 fees
         _t("MSFT", "2024-06-01", "sell", 20, 150, fees="10"),  # prorate 10 across 20 shares
     ]
 

@@ -40,7 +40,9 @@ export async function updatePerson(input: {
     .set({
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.color !== undefined ? { color: input.color } : {}),
-      ...(input.avatarPath !== undefined ? { avatarPath: input.avatarPath } : {}),
+      ...(input.avatarPath !== undefined
+        ? { avatarPath: input.avatarPath }
+        : {}),
       updatedAt: new Date(),
     })
     .where(and(eq(people.id, input.id), eq(people.userId, input.userId)))
@@ -81,7 +83,9 @@ export async function deletePerson(input: { userId: string; id: string }) {
   }
 
   if (blockers.length > 0) {
-    const err = new Error("person is sole owner or holds an explicit share that would leave others unbalanced");
+    const err = new Error(
+      "person is sole owner or holds an explicit share that would leave others unbalanced",
+    );
     (err as any).blockers = blockers;
     (err as any).code = "SOLE_OWNER";
     throw err;
@@ -114,9 +118,9 @@ export async function setOwners(input: {
         eq(people.userId, input.userId),
         inArray(
           people.id,
-          input.owners.map((o) => o.personId)
-        )
-      )
+          input.owners.map((o) => o.personId),
+        ),
+      ),
     );
   if (ownedPeople.length !== input.owners.length) {
     throw new Error("one or more personIds do not belong to this user");
@@ -148,7 +152,7 @@ export async function setOwners(input: {
         [idField]: input.entityId,
         personId: o.personId,
         share: o.share === null ? null : String(o.share),
-      })) as any
+      })) as any,
     );
   });
 }

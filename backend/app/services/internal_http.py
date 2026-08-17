@@ -1,4 +1,5 @@
 """Backend → frontend signed HTTP calls (mirror of frontend/lib/internal/sign.ts)."""
+
 from __future__ import annotations
 
 import hashlib

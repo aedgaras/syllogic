@@ -115,10 +115,29 @@ Schema changes must be made in Drizzle first (source of truth), then mirrored to
 - shadcn/ui components before building custom UI
 - Follow the existing folder structure and naming conventions
 
+Run the frontend style checks before submitting changes:
+
+```bash
+cd frontend
+pnpm format
+pnpm lint
+pnpm format:check
+```
+
 ### Backend
 
 - PEP 8 style guide
 - Type hints where practical
+
+Run the backend style checks before submitting changes:
+
+```bash
+cd backend
+ruff format .
+ruff check --fix .
+ruff format --check .
+ruff check .
+```
 
 ## Submitting Changes
 

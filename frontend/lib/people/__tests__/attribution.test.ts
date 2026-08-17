@@ -12,7 +12,7 @@ describe("resolveShares", () => {
         { personId: "a", share: null },
         { personId: "b", share: null },
         { personId: "c", share: null },
-      ])
+      ]),
     ).toEqual({ a: 1 / 3, b: 1 / 3, c: 1 / 3 });
   });
 
@@ -21,7 +21,7 @@ describe("resolveShares", () => {
       resolveShares([
         { personId: "a", share: 0.6 },
         { personId: "b", share: 0.4 },
-      ])
+      ]),
     ).toEqual({ a: 0.6, b: 0.4 });
   });
 });

@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useEffect, useMemo, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -11,7 +10,12 @@ import { PersonAvatar } from "./person-avatar";
 
 export type OwnerValue = { personId: string; share: number | null };
 
-type Person = { id: string; name: string; color?: string | null; avatarUrl?: string | null };
+type Person = {
+  id: string;
+  name: string;
+  color?: string | null;
+  avatarUrl?: string | null;
+};
 
 export function OwnersField(props: {
   people: Person[];
@@ -21,20 +25,25 @@ export function OwnersField(props: {
 }) {
   const { people, value, onChange, disabled } = props;
   const [equalSplit, setEqualSplit] = useState<boolean>(
-    value.length > 0 ? value.every((o) => o.share === null) : true
+    value.length > 0 ? value.every((o) => o.share === null) : true,
   );
 
   // When the value prop loads asynchronously (e.g. fetched from the server),
   // re-derive equalSplit from it so the toggle reflects the loaded state.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    setEqualSplit(value.length > 0 ? value.every((o) => o.share === null) : true);
+    setEqualSplit(
+      value.length > 0 ? value.every((o) => o.share === null) : true,
+    );
     // Intentionally depend on a stable serialization of the shares to avoid
     // re-running on every render while still reacting when the async load arrives.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value.length, value.map((o) => o.share).join(",")]);
 
-  const selectedIds = useMemo(() => new Set(value.map((o) => o.personId)), [value]);
+  const selectedIds = useMemo(
+    () => new Set(value.map((o) => o.personId)),
+    [value],
+  );
 
   function toggle(personId: string) {
     if (selectedIds.has(personId)) {
@@ -48,7 +57,9 @@ export function OwnersField(props: {
     let n = raw === "" ? 0 : Number(raw) / 100;
     if (!Number.isFinite(n) || n < 0) n = 0;
     if (n > 1) n = 1;
-    onChange(value.map((o) => (o.personId === personId ? { ...o, share: n } : o)));
+    onChange(
+      value.map((o) => (o.personId === personId ? { ...o, share: n } : o)),
+    );
   }
 
   useEffect(() => {
@@ -70,7 +81,10 @@ export function OwnersField(props: {
         <Label>{translate("owners")}</Label>
         {value.length > 1 && (
           <div className="flex items-center gap-2">
-            <Label htmlFor="equal-split" className="text-sm font-normal text-muted-foreground">
+            <Label
+              htmlFor="equal-split"
+              className="text-sm font-normal text-muted-foreground"
+            >
               {translate("splitEqually")}
             </Label>
             <Switch
@@ -103,7 +117,9 @@ export function OwnersField(props: {
                     min={0}
                     max={100}
                     step={1}
-                    value={owner?.share != null ? Math.round(owner.share * 100) : ""}
+                    value={
+                      owner?.share != null ? Math.round(owner.share * 100) : ""
+                    }
                     onChange={(e) => setShare(p.id, e.target.value)}
                     disabled={disabled}
                     className="w-20"
@@ -122,7 +138,9 @@ export function OwnersField(props: {
         </p>
       )}
       {value.length === 0 && (
-        <p className="text-sm text-destructive">{translate("selectAtLeastOneOwner")}</p>
+        <p className="text-sm text-destructive">
+          {translate("selectAtLeastOneOwner")}
+        </p>
       )}
     </div>
   );

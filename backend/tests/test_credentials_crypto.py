@@ -1,5 +1,3 @@
-import os
-import json
 import pytest
 from app.services import credentials_crypto
 

@@ -28,12 +28,21 @@ export async function getSelfPersonId(userId: string): Promise<string> {
   if (existing) return existing.id;
 
   // Auto-create. The partial unique index prevents duplicates if two requests race.
-  const [user] = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1);
+  const [user] = await db
+    .select({ name: users.name })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
   const displayName = (user?.name && user.name.trim()) || "You";
   try {
-    const [created] = await db.insert(people).values({
-      userId, name: displayName, kind: "self",
-    }).returning();
+    const [created] = await db
+      .insert(people)
+      .values({
+        userId,
+        name: displayName,
+        kind: "self",
+      })
+      .returning();
     return created.id;
   } catch {
     // Race: another request created it concurrently. Fetch again.
@@ -73,7 +82,7 @@ export async function getOwners(entityType: EntityType, entityId: string) {
  */
 export async function getOwnersForEntities(
   entityType: EntityType,
-  entityIds: string[]
+  entityIds: string[],
 ): Promise<Map<string, { personId: string; share: number | null }[]>> {
   const out = new Map<string, { personId: string; share: number | null }[]>();
   if (entityIds.length === 0) return out;
@@ -109,7 +118,7 @@ export async function getOwnersForEntities(
 /** Returns the set of entity ids of `entityType` owned by ANY of `personIds`. */
 export async function listEntityIdsForPeople(
   entityType: EntityType,
-  personIds: string[]
+  personIds: string[],
 ): Promise<string[]> {
   if (personIds.length === 0) return [];
   const table =

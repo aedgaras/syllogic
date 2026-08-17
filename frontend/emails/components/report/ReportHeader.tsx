@@ -18,13 +18,38 @@ export function ReportHeader({
   });
   return (
     <Section style={{ padding: "28px 28px 0" }}>
-      <Text className="sy-muted" style={{ fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase", color: light.mutedForeground, margin: 0 }}>
+      <Text
+        className="sy-muted"
+        style={{
+          fontSize: "10px",
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          color: light.mutedForeground,
+          margin: 0,
+        }}
+      >
         {translate("syllogic")}
       </Text>
-      <Text className="sy-fg" style={{ fontSize: "22px", fontWeight: 700, color: light.foreground, margin: "10px 0 0", lineHeight: 1.25 }}>
+      <Text
+        className="sy-fg"
+        style={{
+          fontSize: "22px",
+          fontWeight: 700,
+          color: light.foreground,
+          margin: "10px 0 0",
+          lineHeight: 1.25,
+        }}
+      >
         {reportName}
       </Text>
-      <Text className="sy-muted" style={{ fontSize: "12px", color: light.mutedForeground, margin: "6px 0 0" }}>
+      <Text
+        className="sy-muted"
+        style={{
+          fontSize: "12px",
+          color: light.mutedForeground,
+          margin: "6px 0 0",
+        }}
+      >
         {periodLabel} · {formatted}
       </Text>
     </Section>

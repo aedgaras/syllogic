@@ -16,7 +16,7 @@ describe("transaction query state", () => {
         to: "2026-04-01",
         horizon: "90",
         sort: "unknown",
-      })
+      }),
     ).toMatchObject({
       page: 1,
       pageSize: 100,
@@ -30,12 +30,19 @@ describe("transaction query state", () => {
   });
 
   it("serializes only non-default values and applies a typed patch", () => {
-    const initial = new URLSearchParams("page=2&search=coffee&importing=import-1");
-    const patched = applyTransactionsQueryPatch(initial, { page: 3, order: "asc" });
+    const initial = new URLSearchParams(
+      "page=2&search=coffee&importing=import-1",
+    );
+    const patched = applyTransactionsQueryPatch(initial, {
+      page: 3,
+      order: "asc",
+    });
     expect(patched.get("page")).toBe("3");
     expect(patched.get("search")).toBe("coffee");
     // Query-state owns only transaction filters; workflow parameters are merged by orchestration.
     expect(patched.has("importing")).toBe(false);
-    expect(toTransactionsSearchParams(parseTransactionsSearchParams({})).toString()).toBe("");
+    expect(
+      toTransactionsSearchParams(parseTransactionsSearchParams({})).toString(),
+    ).toBe("");
   });
 });

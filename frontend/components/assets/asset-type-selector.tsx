@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { RiHome4Line, RiCarLine, RiBankLine } from "@remixicon/react";
 import { cn } from "@/lib/utils";
 import type { AssetType } from "./types";
@@ -50,7 +49,7 @@ export function AssetTypeSelector({ onSelect }: AssetTypeSelectorProps) {
             onClick={() => onSelect(option.type)}
             className={cn(
               "flex items-center gap-4 p-4 rounded-md border text-left",
-              "transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              "transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             )}
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted">

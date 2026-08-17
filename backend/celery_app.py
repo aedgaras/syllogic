@@ -1,6 +1,7 @@
 """
 Celery application configuration for scheduled tasks.
 """
+
 import os
 from celery import Celery
 from celery.schedules import crontab
@@ -13,7 +14,14 @@ celery_app = Celery(
     "finance_tasks",
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=["tasks.csv_import_tasks", "tasks.demo_tasks", "tasks.enable_banking_tasks", "tasks.post_import_pipeline", "tasks.investment_tasks", "tasks.report_tasks"],
+    include=[
+        "tasks.csv_import_tasks",
+        "tasks.demo_tasks",
+        "tasks.enable_banking_tasks",
+        "tasks.post_import_pipeline",
+        "tasks.investment_tasks",
+        "tasks.report_tasks",
+    ],
     set_as_current=True,
 )
 # Ensure @shared_task instances bind to this Celery instance instead of any
@@ -93,26 +101,23 @@ def _build_beat_schedule() -> dict:
 
     return schedule
 
+
 # Celery configuration
 celery_app.conf.update(
     # Task result settings
     task_serializer="json",
     result_serializer="json",
     accept_content=["json"],
-
     # Timezone
     timezone="UTC",
     enable_utc=True,
-
     # Task settings
     task_track_started=True,
     task_time_limit=3600,  # 1 hour max per task
     task_soft_time_limit=3300,  # Soft limit at 55 minutes
-
     # Worker settings
     worker_prefetch_multiplier=1,
     worker_concurrency=4,
-
     # Beat schedule for periodic tasks
     beat_schedule=_build_beat_schedule(),
 )

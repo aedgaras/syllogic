@@ -86,21 +86,23 @@ export async function getCommandPaletteData(): Promise<CommandPaletteData> {
   const resolvedAccounts = await resolveMissingAccountLogos(accountsData);
 
   // Transform accounts
-  const formattedAccounts: CommandPaletteAccount[] = resolvedAccounts.map((account) => ({
-    id: account.id,
-    name: account.name,
-    institution: account.institution,
-    balance: parseFloat(account.functionalBalance || "0"),
-    currency: account.currency || "EUR",
-    accountType: account.accountType,
-    logo: account.logo
-      ? {
-          id: account.logo.id,
-          logoUrl: account.logo.logoUrl,
-          updatedAt: account.logo.updatedAt,
-        }
-      : null,
-  }));
+  const formattedAccounts: CommandPaletteAccount[] = resolvedAccounts.map(
+    (account) => ({
+      id: account.id,
+      name: account.name,
+      institution: account.institution,
+      balance: parseFloat(account.functionalBalance || "0"),
+      currency: account.currency || "EUR",
+      accountType: account.accountType,
+      logo: account.logo
+        ? {
+            id: account.logo.id,
+            logoUrl: account.logo.logoUrl,
+            updatedAt: account.logo.updatedAt,
+          }
+        : null,
+    }),
+  );
 
   // Transform assets (combine properties and vehicles)
   const formattedAssets: CommandPaletteAsset[] = [
@@ -120,7 +122,10 @@ export async function getCommandPaletteData(): Promise<CommandPaletteData> {
       currency: vehicle.currency || "EUR",
       category: "vehicle" as const,
       categoryColor: ASSET_CATEGORY_COLORS.vehicle,
-      subtitle: [vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(" ") || vehicle.vehicleType || "",
+      subtitle:
+        [vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(" ") ||
+        vehicle.vehicleType ||
+        "",
     })),
   ];
 
@@ -132,7 +137,7 @@ export async function getCommandPaletteData(): Promise<CommandPaletteData> {
 }
 
 export async function searchCommandPaletteTransactions(
-  query: string
+  query: string,
 ): Promise<CommandPaletteTransaction[]> {
   const userId = await requireAuth();
 
@@ -150,8 +155,8 @@ export async function searchCommandPaletteTransactions(
       eq(transactions.userId, userId),
       or(
         ilike(transactions.merchant, `%${normalizedQuery}%`),
-        ilike(transactions.description, `%${normalizedQuery}%`)
-      )!
+        ilike(transactions.description, `%${normalizedQuery}%`),
+      )!,
     ),
     orderBy: [desc(transactions.bookedAt)],
     limit: 20,

@@ -3,6 +3,7 @@
 Run with:
     cd backend && .venv/bin/pytest tests/test_report_data_service.py -v
 """
+
 from __future__ import annotations
 
 import base64
@@ -30,7 +31,9 @@ from app.services.report_data_service import build_report_payload  # noqa: E402
 
 
 def _seed_user_with_account_and_transactions(db):
-    user = User(id=f"test-user-{uuid.uuid4()}", email=f"{uuid.uuid4()}@example.com", name="Test User")
+    user = User(
+        id=f"test-user-{uuid.uuid4()}", email=f"{uuid.uuid4()}@example.com", name="Test User"
+    )
     db.add(user)
     db.flush()
 
@@ -45,20 +48,24 @@ def _seed_user_with_account_and_transactions(db):
     db.flush()
 
     now = datetime.utcnow()
-    for i, (amount, ttype, desc) in enumerate([
-        (Decimal("-50.00"), "debit", "Groceries"),
-        (Decimal("-20.00"), "debit", "Coffee"),
-        (Decimal("2000.00"), "credit", "Salary"),
-    ]):
-        db.add(Transaction(
-            user_id=user.id,
-            account_id=account.id,
-            transaction_type=ttype,
-            amount=amount,
-            currency="EUR",
-            description=desc,
-            booked_at=now - timedelta(days=i),
-        ))
+    for i, (amount, ttype, desc) in enumerate(
+        [
+            (Decimal("-50.00"), "debit", "Groceries"),
+            (Decimal("-20.00"), "debit", "Coffee"),
+            (Decimal("2000.00"), "credit", "Salary"),
+        ]
+    ):
+        db.add(
+            Transaction(
+                user_id=user.id,
+                account_id=account.id,
+                transaction_type=ttype,
+                amount=amount,
+                currency="EUR",
+                description=desc,
+                booked_at=now - timedelta(days=i),
+            )
+        )
     db.flush()
     return user, account
 
@@ -94,15 +101,17 @@ def test_build_report_payload_top_n_all_orders_by_absolute_magnitude():
         user, account = _seed_user_with_account_and_transactions(db)
         now = datetime.utcnow()
         # Mixed large debit/credit on top of the -50/-20/+2000 seeded above.
-        db.add(Transaction(
-            user_id=user.id,
-            account_id=account.id,
-            transaction_type="debit",
-            amount=Decimal("-5000.00"),
-            currency="EUR",
-            description="Big rent",
-            booked_at=now - timedelta(days=5),
-        ))
+        db.add(
+            Transaction(
+                user_id=user.id,
+                account_id=account.id,
+                transaction_type="debit",
+                amount=Decimal("-5000.00"),
+                currency="EUR",
+                description="Big rent",
+                booked_at=now - timedelta(days=5),
+            )
+        )
         db.flush()
 
         report = Report(
@@ -198,23 +207,39 @@ def test_transactions_outside_the_horizon_are_excluded():
 
         now = datetime.utcnow()
         # Huge, but far outside a 7-day window.
-        db.add(Transaction(
-            user_id=user.id, account_id=account.id, amount=Decimal("-9999.00"),
-            currency="EUR", description="Ancient big spend", transaction_type="debit",
-            booked_at=now - timedelta(days=90),
-        ))
+        db.add(
+            Transaction(
+                user_id=user.id,
+                account_id=account.id,
+                amount=Decimal("-9999.00"),
+                currency="EUR",
+                description="Ancient big spend",
+                transaction_type="debit",
+                booked_at=now - timedelta(days=90),
+            )
+        )
         # Small, but inside the window.
-        db.add(Transaction(
-            user_id=user.id, account_id=account.id, amount=Decimal("-12.00"),
-            currency="EUR", description="Recent coffee", transaction_type="debit",
-            booked_at=now - timedelta(days=1),
-        ))
+        db.add(
+            Transaction(
+                user_id=user.id,
+                account_id=account.id,
+                amount=Decimal("-12.00"),
+                currency="EUR",
+                description="Recent coffee",
+                transaction_type="debit",
+                booked_at=now - timedelta(days=1),
+            )
+        )
         db.flush()
 
         report = Report(
-            user_id=user.id, name="Weekly", account_ids=[str(account.id)],
-            transaction_mode="TOP_N", transaction_count=10,
-            transaction_direction="EXPENSE", frequency="WEEKLY",
+            user_id=user.id,
+            name="Weekly",
+            account_ids=[str(account.id)],
+            transaction_mode="TOP_N",
+            transaction_count=10,
+            transaction_direction="EXPENSE",
+            frequency="WEEKLY",
         )
         db.add(report)
         db.flush()
@@ -242,17 +267,27 @@ def test_recent_mode_is_also_windowed():
         db.flush()
 
         now = datetime.utcnow()
-        db.add(Transaction(
-            user_id=user.id, account_id=account.id, amount=Decimal("-50.00"),
-            currency="EUR", description="Old", transaction_type="debit",
-            booked_at=now - timedelta(days=40),
-        ))
+        db.add(
+            Transaction(
+                user_id=user.id,
+                account_id=account.id,
+                amount=Decimal("-50.00"),
+                currency="EUR",
+                description="Old",
+                transaction_type="debit",
+                booked_at=now - timedelta(days=40),
+            )
+        )
         db.flush()
 
         report = Report(
-            user_id=user.id, name="Daily", account_ids=[str(account.id)],
-            transaction_mode="RECENT", transaction_count=10,
-            transaction_direction="ALL", frequency="DAILY",
+            user_id=user.id,
+            name="Daily",
+            account_ids=[str(account.id)],
+            transaction_mode="RECENT",
+            transaction_count=10,
+            transaction_direction="ALL",
+            frequency="DAILY",
         )
         db.add(report)
         db.flush()
@@ -274,23 +309,41 @@ def test_account_logo_url_is_absolute_and_total_is_summed(monkeypatch):
         db.add(user)
         db.flush()
 
-        logo = CompanyLogo(domain=f"{uuid.uuid4()}.com", company_name="ABN AMRO",
-                           logo_url="/uploads/logos/abnamro.com.png", status="found")
+        logo = CompanyLogo(
+            domain=f"{uuid.uuid4()}.com",
+            company_name="ABN AMRO",
+            logo_url="/uploads/logos/abnamro.com.png",
+            status="found",
+        )
         db.add(logo)
         db.flush()
 
-        with_logo = Account(user_id=user.id, name="ABN", account_type="checking",
-                            currency="EUR", functional_balance=Decimal("100.00"), logo_id=logo.id)
-        without_logo = Account(user_id=user.id, name="Manual", account_type="savings",
-                               currency="EUR", functional_balance=Decimal("50.00"))
+        with_logo = Account(
+            user_id=user.id,
+            name="ABN",
+            account_type="checking",
+            currency="EUR",
+            functional_balance=Decimal("100.00"),
+            logo_id=logo.id,
+        )
+        without_logo = Account(
+            user_id=user.id,
+            name="Manual",
+            account_type="savings",
+            currency="EUR",
+            functional_balance=Decimal("50.00"),
+        )
         db.add_all([with_logo, without_logo])
         db.flush()
 
         report = Report(
-            user_id=user.id, name="R",
+            user_id=user.id,
+            name="R",
             account_ids=[str(with_logo.id), str(without_logo.id)],
-            transaction_mode="RECENT", transaction_count=5,
-            transaction_direction="ALL", frequency="WEEKLY",
+            transaction_mode="RECENT",
+            transaction_count=5,
+            transaction_direction="ALL",
+            frequency="WEEKLY",
         )
         db.add(report)
         db.flush()
@@ -314,17 +367,31 @@ def test_total_is_omitted_when_a_balance_is_not_convertible():
         db.add(user)
         db.flush()
         # No functional_balance -> balance is in the account's native currency.
-        a = Account(user_id=user.id, name="USD acct", account_type="checking",
-                    currency="USD", balance_available=Decimal("500.00"))
-        b = Account(user_id=user.id, name="EUR acct", account_type="checking",
-                    currency="EUR", functional_balance=Decimal("100.00"))
+        a = Account(
+            user_id=user.id,
+            name="USD acct",
+            account_type="checking",
+            currency="USD",
+            balance_available=Decimal("500.00"),
+        )
+        b = Account(
+            user_id=user.id,
+            name="EUR acct",
+            account_type="checking",
+            currency="EUR",
+            functional_balance=Decimal("100.00"),
+        )
         db.add_all([a, b])
         db.flush()
 
         report = Report(
-            user_id=user.id, name="R", account_ids=[str(a.id), str(b.id)],
-            transaction_mode="RECENT", transaction_count=5,
-            transaction_direction="ALL", frequency="WEEKLY",
+            user_id=user.id,
+            name="R",
+            account_ids=[str(a.id), str(b.id)],
+            transaction_mode="RECENT",
+            transaction_count=5,
+            transaction_direction="ALL",
+            frequency="WEEKLY",
         )
         db.add(report)
         db.flush()

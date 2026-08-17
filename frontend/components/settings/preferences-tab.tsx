@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState } from "react";
 import { RiDeleteBinLine, RiKey2Line, RiSave3Line } from "@remixicon/react";
 import { toast } from "sonner";
@@ -91,7 +90,9 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
       <div className="border border-border p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <Label htmlFor="tutorials-enabled">{translate("toursAndTutorials")}</Label>
+            <Label htmlFor="tutorials-enabled">
+              {translate("toursAndTutorials")}
+            </Label>
             <p className="text-xs text-muted-foreground">
               {translate("showPageToursOnboardingTipsAndTheSidebarHelp")}
             </p>
@@ -113,7 +114,9 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
               {translate("llmApiKey")}
             </Label>
             <p className="text-xs text-muted-foreground">
-              {translate("usedByAiCategorizationOpenaiAndOpenaiCompatibleProviders")}
+              {translate(
+                "usedByAiCategorizationOpenaiAndOpenaiCompatibleProviders",
+              )}
             </p>
           </div>
           <div className="shrink-0 border border-border px-2 py-1 text-xs">
@@ -127,16 +130,28 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
           </p>
         )}
 
-        {openAiSettings.environmentConfigured && openAiSettings.source !== "database" && (
-          <p className="border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            {translate("aDeploymentKeyIsCurrentlyActiveSavingAKey")}
-          </p>
-        )}
+        {openAiSettings.environmentConfigured &&
+          openAiSettings.source !== "database" && (
+            <p className="border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              {translate("aDeploymentKeyIsCurrentlyActiveSavingAKey")}
+            </p>
+          )}
 
         <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
-          <p>{translate("provider")} {openAiSettings.provider === "custom" ? translate("customEndpoint") : translate("openai")}</p>
-          <p>{translate("model")} {openAiSettings.model}</p>
-          {openAiSettings.baseUrl && <p className="break-all sm:col-span-2">{translate("endpoint")} {openAiSettings.baseUrl}</p>}
+          <p>
+            {translate("provider")}{" "}
+            {openAiSettings.provider === "custom"
+              ? translate("customEndpoint")
+              : translate("openai")}
+          </p>
+          <p>
+            {translate("model")} {openAiSettings.model}
+          </p>
+          {openAiSettings.baseUrl && (
+            <p className="break-all sm:col-span-2">
+              {translate("endpoint")} {openAiSettings.baseUrl}
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -156,7 +171,10 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button onClick={handleSave} disabled={saving || clearing || !apiKey.trim()}>
+          <Button
+            onClick={handleSave}
+            disabled={saving || clearing || !apiKey.trim()}
+          >
             <RiSave3Line />
             {saving ? translate("saving") : translate("saveKey")}
           </Button>

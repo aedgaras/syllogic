@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ connectionId: string }> }
+  { params }: { params: Promise<{ connectionId: string }> },
 ) {
   const { connectionId } = await params;
 
@@ -40,7 +40,9 @@ export async function GET(
     });
 
     if (!resp.ok) {
-      const data = await resp.json().catch(() => ({ detail: "Status check failed" }));
+      const data = await resp
+        .json()
+        .catch(() => ({ detail: "Status check failed" }));
       return NextResponse.json(data, { status: resp.status });
     }
 
@@ -49,7 +51,7 @@ export async function GET(
   } catch (e) {
     return NextResponse.json(
       { detail: "Failed to check connection status" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

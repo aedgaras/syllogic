@@ -1,7 +1,11 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { HoldingDetailView } from "./HoldingDetailView";
-import type { Holding, PortfolioSummary, ValuationPoint } from "@/lib/api/investments";
+import type {
+  Holding,
+  PortfolioSummary,
+  ValuationPoint,
+} from "@/lib/api/investments";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -65,9 +69,7 @@ describe("HoldingDetailView", () => {
         initialHistory={HISTORY}
       />,
     );
-    expect(
-      screen.getByRole("button", { name: /All holdings/i }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: /All holdings/i })).toBeTruthy();
   });
 
   it("shows Edit button for manual holding and opens dialog", () => {

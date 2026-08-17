@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { RiQuestionLine } from "@remixicon/react";
 import {
   Select,
@@ -17,7 +16,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
-import { FUNCTIONAL_CURRENCIES, CURRENCIES, type Currency, type FunctionalCurrency } from "@/lib/constants";
+import {
+  FUNCTIONAL_CURRENCIES,
+  CURRENCIES,
+  type Currency,
+  type FunctionalCurrency,
+} from "@/lib/constants";
 
 type CurrencyOption = Currency | FunctionalCurrency;
 
@@ -37,7 +41,9 @@ export function CurrencySelector({
   showTooltip = true,
   useAllCurrencies = false,
 }: CurrencySelectorProps) {
-  const currencies: readonly CurrencyOption[] = useAllCurrencies ? CURRENCIES : FUNCTIONAL_CURRENCIES;
+  const currencies: readonly CurrencyOption[] = useAllCurrencies
+    ? CURRENCIES
+    : FUNCTIONAL_CURRENCIES;
 
   return (
     <div className="space-y-2">
@@ -51,7 +57,9 @@ export function CurrencySelector({
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <p>
-                  {translate("yourFunctionalCurrencyIsThePrimaryCurrencyYouUse")}
+                  {translate(
+                    "yourFunctionalCurrencyIsThePrimaryCurrencyYouUse",
+                  )}
                 </p>
               </TooltipContent>
             </Tooltip>

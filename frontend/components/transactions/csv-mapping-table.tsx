@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import {
   Select,
   SelectContent,
@@ -22,13 +21,48 @@ interface CsvMappingTableProps {
 }
 
 const FIELD_MAPPINGS = [
-  { key: "date", label: translate("date"), description: translate("transactionDate"), required: true },
-  { key: "amount", label: translate("amount"), description: translate("transactionAmount"), required: true },
-  { key: "description", label: translate("description55f8eb"), description: translate("transactionDescription"), required: true },
-  { key: "fee", label: translate("fee"), description: translate("transactionFeeDeductedFromBalance"), required: false },
-  { key: "state", label: translate("stateStatus"), description: translate("transactionStatusEGCompletedPending"), required: false },
-  { key: "startingBalance", label: translate("startingBalance"), description: translate("openingBalanceForVerification"), required: false },
-  { key: "endingBalance", label: translate("endingBalance"), description: translate("closingBalanceForVerification"), required: false },
+  {
+    key: "date",
+    label: translate("date"),
+    description: translate("transactionDate"),
+    required: true,
+  },
+  {
+    key: "amount",
+    label: translate("amount"),
+    description: translate("transactionAmount"),
+    required: true,
+  },
+  {
+    key: "description",
+    label: translate("description55f8eb"),
+    description: translate("transactionDescription"),
+    required: true,
+  },
+  {
+    key: "fee",
+    label: translate("fee"),
+    description: translate("transactionFeeDeductedFromBalance"),
+    required: false,
+  },
+  {
+    key: "state",
+    label: translate("stateStatus"),
+    description: translate("transactionStatusEGCompletedPending"),
+    required: false,
+  },
+  {
+    key: "startingBalance",
+    label: translate("startingBalance"),
+    description: translate("openingBalanceForVerification"),
+    required: false,
+  },
+  {
+    key: "endingBalance",
+    label: translate("endingBalance"),
+    description: translate("closingBalanceForVerification"),
+    required: false,
+  },
 ] as const;
 
 export function CsvMappingTable({
@@ -57,7 +91,9 @@ export function CsvMappingTable({
     <div className="space-y-6">
       {/* Field Mappings as List */}
       <div className="space-y-4">
-        <h3 className="text-sm font-medium text-muted-foreground">{translate("columnMappings")}</h3>
+        <h3 className="text-sm font-medium text-muted-foreground">
+          {translate("columnMappings")}
+        </h3>
         <div className="space-y-3">
           {FIELD_MAPPINGS.map((field) => (
             <div
@@ -68,14 +104,23 @@ export function CsvMappingTable({
                 <div className="flex items-center gap-2">
                   <Label className="font-medium">
                     {field.label}
-                    {field.required && <span className="ml-1 text-destructive">*</span>}
+                    {field.required && (
+                      <span className="ml-1 text-destructive">*</span>
+                    )}
                   </Label>
                 </div>
-                <p className="text-xs text-muted-foreground">{field.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {field.description}
+                </p>
               </div>
               <Select
-                value={mapping[field.key as keyof ColumnMapping] as string || "none"}
-                onValueChange={(value) => updateMapping(field.key as keyof ColumnMapping, value)}
+                value={
+                  (mapping[field.key as keyof ColumnMapping] as string) ||
+                  "none"
+                }
+                onValueChange={(value) =>
+                  updateMapping(field.key as keyof ColumnMapping, value)
+                }
               >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder={translate("selectColumn")} />
@@ -96,7 +141,9 @@ export function CsvMappingTable({
 
       {/* Configuration Options */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-muted-foreground">{translate("options")}</h3>
+        <h3 className="text-sm font-medium text-muted-foreground">
+          {translate("options")}
+        </h3>
 
         {/* Amount Sign Configuration */}
         <div className="rounded-lg border bg-card p-4">
@@ -104,7 +151,9 @@ export function CsvMappingTable({
             <Checkbox
               id="isAmountSigned"
               checked={mapping.typeConfig?.isAmountSigned ?? false}
-              onCheckedChange={(checked) => updateTypeConfig("isAmountSigned", !!checked)}
+              onCheckedChange={(checked) =>
+                updateTypeConfig("isAmountSigned", !!checked)
+              }
             />
             <div>
               <Label htmlFor="isAmountSigned" className="font-medium">
@@ -128,7 +177,9 @@ export function CsvMappingTable({
             </div>
             <Select
               value={mapping.typeConfig?.dateFormat ?? "DD-MM-YYYY"}
-              onValueChange={(value) => updateTypeConfig("dateFormat", value as ImportDateFormat)}
+              onValueChange={(value) =>
+                updateTypeConfig("dateFormat", value as ImportDateFormat)
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder={translate("selectDateFormat")} />
@@ -149,7 +200,9 @@ export function CsvMappingTable({
             <div>
               <Label className="font-medium">{translate("amountFormat")}</Label>
               <p className="text-xs text-muted-foreground">
-                {translate("controlsDecimalSeparatorsForAmountsFeesAndBalanceColumns")}
+                {translate(
+                  "controlsDecimalSeparatorsForAmountsFeesAndBalanceColumns",
+                )}
               </p>
             </div>
             <Select
@@ -173,15 +226,21 @@ export function CsvMappingTable({
           <div className="rounded-lg border bg-card p-4">
             <div className="space-y-3">
               <div>
-                <Label className="font-medium">{translate("completedStateValue")}</Label>
+                <Label className="font-medium">
+                  {translate("completedStateValue")}
+                </Label>
                 <p className="text-xs text-muted-foreground">
-                  {translate("valueThatIndicatesACompletedTransactionEGCompleted")}
+                  {translate(
+                    "valueThatIndicatesACompletedTransactionEGCompleted",
+                  )}
                 </p>
               </div>
               <Input
                 placeholder={translate("eGCompleted")}
                 value={mapping.typeConfig?.completedStateValue ?? ""}
-                onChange={(e) => updateTypeConfig("completedStateValue", e.target.value)}
+                onChange={(e) =>
+                  updateTypeConfig("completedStateValue", e.target.value)
+                }
               />
             </div>
           </div>

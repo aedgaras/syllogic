@@ -1,4 +1,7 @@
-import { boundaryViolations, isClientSource } from "../scripts/architecture-boundaries.mjs";
+import {
+  boundaryViolations,
+  isClientSource,
+} from "../scripts/architecture-boundaries.mjs";
 
 const architectureBoundaries = {
   meta: {
@@ -14,8 +17,15 @@ const architectureBoundaries = {
       const source = node.source?.value;
       if (typeof source !== "string") return;
 
-      for (const violation of boundaryViolations(filename, source, clientModule)) {
-        context.report({ node, message: `[${violation.rule}] ${violation.message}` });
+      for (const violation of boundaryViolations(
+        filename,
+        source,
+        clientModule,
+      )) {
+        context.report({
+          node,
+          message: `[${violation.rule}] ${violation.message}`,
+        });
       }
     };
 

@@ -1,6 +1,7 @@
 """
 Database helper utilities for handling user context and authentication.
 """
+
 import contextvars
 import hashlib
 import hmac
@@ -13,8 +14,10 @@ from sqlalchemy.orm import Session
 try:
     from mcp.server.auth.middleware.auth_context import get_access_token
 except ImportError:  # pragma: no cover - fallback when MCP SDK is unavailable
+
     def get_access_token():  # type: ignore[no-redef]
         return None
+
 
 from app.models import User
 from app.mcp.auth import validate_api_key
@@ -78,25 +81,39 @@ def authenticate_internal_request_with_body(
     signature = headers.get(INTERNAL_AUTH_SIGNATURE_HEADER, "").strip()
 
     if not user_id or not timestamp or not signature:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing internal authentication headers.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing internal authentication headers.",
+        )
 
     try:
         timestamp_int = int(timestamp)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid internal authentication timestamp.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid internal authentication timestamp.",
+        ) from exc
 
     now = int(time.time())
     max_age = _get_max_signature_age_seconds()
     if abs(now - timestamp_int) > max_age:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Expired internal authentication signature.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Expired internal authentication signature.",
+        )
 
     secret = _get_internal_auth_secret()
     body_hex = hashlib.sha256(body_bytes).hexdigest()
     payload = "\n".join([method.upper(), path_with_query, user_id, timestamp, body_hex])
-    expected_signature = hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    expected_signature = hmac.new(
+        secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
 
     if not hmac.compare_digest(expected_signature, signature):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid internal authentication signature.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid internal authentication signature.",
+        )
 
     return user_id
 
@@ -118,10 +135,7 @@ def get_or_create_system_user(db: Session) -> User:
     user = db.query(User).filter(User.id == system_user_id).first()
     if not user:
         user = User(
-            id=system_user_id,
-            email="system@localhost",
-            name="System User",
-            email_verified=True
+            id=system_user_id, email="system@localhost", name="System User", email_verified=True
         )
         db.add(user)
         db.commit()

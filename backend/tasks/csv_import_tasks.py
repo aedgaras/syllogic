@@ -2,6 +2,7 @@
 Celery tasks for background CSV import processing.
 Processes transactions in batches with real-time progress updates via Redis Pub/Sub.
 """
+
 import logging
 import uuid
 from typing import List, Optional, Dict, Any
@@ -21,7 +22,6 @@ from app.schemas import (
     BatchCategorizeRequest,
     BatchCategorizeResponse,
     UserOverride,
-    DailyBalanceImport,
 )
 from sqlalchemy import func, cast, Date
 
@@ -40,11 +40,13 @@ def _get_user_overrides_from_db(db, user_id: str) -> List[dict]:
         if txn.category_id:
             category = db.query(Category).filter(Category.id == txn.category_id).first()
             if category:
-                overrides.append({
-                    "description": txn.description,
-                    "merchant": txn.merchant,
-                    "category_name": category.name
-                })
+                overrides.append(
+                    {
+                        "description": txn.description,
+                        "merchant": txn.merchant,
+                        "category_name": category.name,
+                    }
+                )
 
     return overrides
 
@@ -53,10 +55,12 @@ def _get_categorization_instructions_from_db(db, user_id: str) -> List[str]:
     """
     Get categorization instructions from overridden transactions.
     """
-    instructions = db.query(Transaction.categorization_instructions).filter(
-        Transaction.user_id == user_id,
-        Transaction.categorization_instructions.isnot(None)
-    ).distinct().all()
+    instructions = (
+        db.query(Transaction.categorization_instructions)
+        .filter(Transaction.user_id == user_id, Transaction.categorization_instructions.isnot(None))
+        .distinct()
+        .all()
+    )
 
     return [inst[0] for inst in instructions if inst[0]]
 
@@ -82,20 +86,20 @@ def _process_transaction_batch(
     skipped_count = 0
     inserted_transactions = []
     seen_external_ids = set()
-    
+
     # Normalize amounts and transaction_type (same logic as transaction_import route)
     normalized_transactions_data = []
     for txn in transactions_data:
         normalized_txn = txn.copy()
         amount = Decimal(str(txn["amount"]))
         transaction_type = str(txn.get("transaction_type", "")).lower()
-        
+
         # Handle aliases: "expense" = "debit", "income" = "credit"
         if transaction_type in ["expense", "expenses"]:
             transaction_type = "debit"
         elif transaction_type in ["income", "revenue"]:
             transaction_type = "credit"
-        
+
         # Normalize amounts: credit = positive, debit = negative
         if transaction_type == "credit":
             normalized_amount = abs(amount)  # Ensure positive
@@ -132,28 +136,29 @@ def _process_transaction_batch(
             else:
                 transaction_type = "debit"
                 normalized_amount = -abs(amount)
-        
+
         normalized_txn["amount"] = float(normalized_amount)
         normalized_txn["transaction_type"] = transaction_type
         normalized_transactions_data.append(normalized_txn)
-    
+
     # Use normalized transactions for the rest of the processing
     transactions_data = normalized_transactions_data
 
     # Build set of existing external_ids for duplicate detection
     incoming_external_ids = [
-        txn.get("external_id")
-        for txn in transactions_data
-        if txn.get("external_id")
+        txn.get("external_id") for txn in transactions_data if txn.get("external_id")
     ]
 
     duplicate_external_ids = set()
     if incoming_external_ids:
         db.flush()
-        existing = db.query(Transaction.external_id).filter(
-            Transaction.user_id == user_id,
-            Transaction.external_id.in_(incoming_external_ids)
-        ).all()
+        existing = (
+            db.query(Transaction.external_id)
+            .filter(
+                Transaction.user_id == user_id, Transaction.external_id.in_(incoming_external_ids)
+            )
+            .all()
+        )
         duplicate_external_ids = set(ext_id[0] for ext_id in existing if ext_id and ext_id[0])
 
     # Categorize transactions that don't have pre-assigned categories
@@ -175,13 +180,19 @@ def _process_transaction_batch(
                     description=txn["description"],
                     merchant=txn["merchant"],
                     amount=Decimal(str(txn["amount"])),
-                    transaction_type=txn.get("transaction_type")  # Pass transaction_type for correct categorization
+                    transaction_type=txn.get(
+                        "transaction_type"
+                    ),  # Pass transaction_type for correct categorization
                 )
                 for txn in transactions_needing_categorization
             ],
             use_llm=True,
-            user_overrides=[UserOverride(**override) for override in user_overrides] if user_overrides else None,
-            additional_instructions=categorization_instructions if categorization_instructions else None
+            user_overrides=[UserOverride(**override) for override in user_overrides]
+            if user_overrides
+            else None,
+            additional_instructions=categorization_instructions
+            if categorization_instructions
+            else None,
         )
 
         categorization_result: BatchCategorizeResponse = categorize_transactions_batch(
@@ -221,7 +232,9 @@ def _process_transaction_batch(
 
             # Check for duplicates by amount/description/date
             if txn_data.get("description") and txn_data.get("booked_at"):
-                normalized_description = txn_data["description"].strip() if txn_data["description"] else None
+                normalized_description = (
+                    txn_data["description"].strip() if txn_data["description"] else None
+                )
                 booked_at = txn_data["booked_at"]
                 if isinstance(booked_at, str):
                     booked_at = datetime.fromisoformat(booked_at.replace("Z", "+00:00"))
@@ -230,17 +243,16 @@ def _process_transaction_batch(
                 query = db.query(Transaction).filter(
                     Transaction.account_id == txn_data["account_id"],
                     Transaction.user_id == user_id,
-                    Transaction.amount == Decimal(str(txn_data["amount"]))
+                    Transaction.amount == Decimal(str(txn_data["amount"])),
                 )
 
                 if normalized_description:
                     query = query.filter(
-                        func.lower(func.trim(Transaction.description)) == normalized_description.lower().strip()
+                        func.lower(func.trim(Transaction.description))
+                        == normalized_description.lower().strip()
                     )
 
-                query = query.filter(
-                    cast(Transaction.booked_at, Date) == booked_date
-                )
+                query = query.filter(cast(Transaction.booked_at, Date) == booked_date)
 
                 if query.first():
                     skipped_count += 1
@@ -343,7 +355,7 @@ def process_csv_import(
         aggregated_categorization_summary = None
 
         for i in range(0, total_rows, batch_size):
-            batch = transactions_data[i:i + batch_size]
+            batch = transactions_data[i : i + batch_size]
 
             result = _process_transaction_batch(
                 db=db,
@@ -363,9 +375,20 @@ def process_csv_import(
                 if not aggregated_categorization_summary:
                     aggregated_categorization_summary = result["categorization_summary"].copy()
                 else:
-                    for key in ["total", "categorized", "deterministic", "llm", "uncategorized", "tokens_used"]:
-                        aggregated_categorization_summary[key] += result["categorization_summary"].get(key, 0)
-                    aggregated_categorization_summary["cost_usd"] += result["categorization_summary"].get("cost_usd", 0.0)
+                    for key in [
+                        "total",
+                        "categorized",
+                        "deterministic",
+                        "llm",
+                        "uncategorized",
+                        "tokens_used",
+                    ]:
+                        aggregated_categorization_summary[key] += result[
+                            "categorization_summary"
+                        ].get(key, 0)
+                    aggregated_categorization_summary["cost_usd"] += result[
+                        "categorization_summary"
+                    ].get("cost_usd", 0.0)
 
             # Update progress
             processed = min(i + batch_size, total_rows)
@@ -380,7 +403,9 @@ def process_csv_import(
 
         # Post-import operations
         if all_inserted_transactions:
-            affected_account_ids = list(set([str(txn.account_id) for txn in all_inserted_transactions]))
+            affected_account_ids = list(
+                set([str(txn.account_id) for txn in all_inserted_transactions])
+            )
             inserted_ids = [str(txn.id) for txn in all_inserted_transactions]
             all_inserted_transaction_ids = inserted_ids
 
@@ -403,7 +428,7 @@ def process_csv_import(
                     balance_service.import_daily_balances(
                         account_id=account_id,
                         daily_balances=daily_balances,
-                        functional_currency=functional_currency
+                        functional_currency=functional_currency,
                     )
 
             # Chain to shared post-processing pipeline
@@ -444,6 +469,7 @@ def process_csv_import(
     except Exception as e:
         logger.error(f"[CSV_IMPORT_TASK] Import {csv_import_id} failed: {e}")
         import traceback
+
         logger.error(traceback.format_exc())
 
         # Update CSV import record with error
@@ -463,7 +489,3 @@ def process_csv_import(
         db.close()
         publisher.close()
         clear_request_user_id(request_token)
-
-
-
-

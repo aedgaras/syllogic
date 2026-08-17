@@ -2,6 +2,7 @@
 Redis Pub/Sub event publisher for real-time import status updates.
 Publishes events that are consumed by SSE endpoints for client notifications.
 """
+
 import json
 import os
 import logging
@@ -79,12 +80,7 @@ class EventPublisher:
         except Exception as e:
             logger.error(f"Failed to publish event: {e}")
 
-    def publish_import_started(
-        self,
-        user_id: str,
-        import_id: str,
-        total_rows: int
-    ) -> None:
+    def publish_import_started(self, user_id: str, import_id: str, total_rows: int) -> None:
         """
         Publish an import_started event.
 
@@ -93,20 +89,20 @@ class EventPublisher:
             import_id: The CSV import ID
             total_rows: Total number of transactions to import
         """
-        self._publish(user_id, import_id, {
-            "type": "import_started",
-            "import_id": import_id,
-            "total_rows": total_rows,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self._publish(
+            user_id,
+            import_id,
+            {
+                "type": "import_started",
+                "import_id": import_id,
+                "total_rows": total_rows,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
         logger.info(f"Import started: {import_id} with {total_rows} rows")
 
     def publish_import_progress(
-        self,
-        user_id: str,
-        import_id: str,
-        processed_rows: int,
-        total_rows: int
+        self, user_id: str, import_id: str, processed_rows: int, total_rows: int
     ) -> None:
         """
         Publish an import_progress event.
@@ -118,15 +114,21 @@ class EventPublisher:
             total_rows: Total number of rows to process
         """
         percentage = int((processed_rows / total_rows) * 100) if total_rows > 0 else 0
-        self._publish(user_id, import_id, {
-            "type": "import_progress",
-            "import_id": import_id,
-            "processed_rows": processed_rows,
-            "total_rows": total_rows,
-            "percentage": percentage,
-            "timestamp": datetime.utcnow().isoformat()
-        })
-        logger.debug(f"Import progress: {import_id} - {processed_rows}/{total_rows} ({percentage}%)")
+        self._publish(
+            user_id,
+            import_id,
+            {
+                "type": "import_progress",
+                "import_id": import_id,
+                "processed_rows": processed_rows,
+                "total_rows": total_rows,
+                "percentage": percentage,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
+        logger.debug(
+            f"Import progress: {import_id} - {processed_rows}/{total_rows} ({percentage}%)"
+        )
 
     def publish_import_completed(
         self,
@@ -134,7 +136,7 @@ class EventPublisher:
         import_id: str,
         imported_count: int,
         skipped_count: int,
-        categorization_summary: Optional[dict] = None
+        categorization_summary: Optional[dict] = None,
     ) -> None:
         """
         Publish an import_completed event.
@@ -146,22 +148,23 @@ class EventPublisher:
             skipped_count: Number of transactions skipped (duplicates)
             categorization_summary: Optional categorization statistics
         """
-        self._publish(user_id, import_id, {
-            "type": "import_completed",
-            "import_id": import_id,
-            "imported_count": imported_count,
-            "skipped_count": skipped_count,
-            "categorization_summary": categorization_summary,
-            "timestamp": datetime.utcnow().isoformat()
-        })
-        logger.info(f"Import completed: {import_id} - {imported_count} imported, {skipped_count} skipped")
+        self._publish(
+            user_id,
+            import_id,
+            {
+                "type": "import_completed",
+                "import_id": import_id,
+                "imported_count": imported_count,
+                "skipped_count": skipped_count,
+                "categorization_summary": categorization_summary,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
+        logger.info(
+            f"Import completed: {import_id} - {imported_count} imported, {skipped_count} skipped"
+        )
 
-    def publish_import_failed(
-        self,
-        user_id: str,
-        import_id: str,
-        error: str
-    ) -> None:
+    def publish_import_failed(self, user_id: str, import_id: str, error: str) -> None:
         """
         Publish an import_failed event.
 
@@ -170,19 +173,19 @@ class EventPublisher:
             import_id: The CSV import ID
             error: Error message describing the failure
         """
-        self._publish(user_id, import_id, {
-            "type": "import_failed",
-            "import_id": import_id,
-            "error": error,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self._publish(
+            user_id,
+            import_id,
+            {
+                "type": "import_failed",
+                "import_id": import_id,
+                "error": error,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
         logger.error(f"Import failed: {import_id} - {error}")
 
-    def publish_subscriptions_started(
-        self,
-        user_id: str,
-        import_id: str
-    ) -> None:
+    def publish_subscriptions_started(self, user_id: str, import_id: str) -> None:
         """
         Publish a subscriptions_started event.
 
@@ -190,19 +193,19 @@ class EventPublisher:
             user_id: The user ID
             import_id: The CSV import ID
         """
-        self._publish(user_id, import_id, {
-            "type": "subscriptions_started",
-            "import_id": import_id,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self._publish(
+            user_id,
+            import_id,
+            {
+                "type": "subscriptions_started",
+                "import_id": import_id,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
         logger.info(f"Subscription processing started for import: {import_id}")
 
     def publish_subscriptions_completed(
-        self,
-        user_id: str,
-        import_id: str,
-        matched_count: int,
-        detected_count: int
+        self, user_id: str, import_id: str, matched_count: int, detected_count: int
     ) -> None:
         """
         Publish a subscriptions_completed event.
@@ -213,13 +216,17 @@ class EventPublisher:
             matched_count: Number of transactions matched to existing subscriptions
             detected_count: Number of new subscriptions detected
         """
-        self._publish(user_id, import_id, {
-            "type": "subscriptions_completed",
-            "import_id": import_id,
-            "matched_count": matched_count,
-            "detected_count": detected_count,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        self._publish(
+            user_id,
+            import_id,
+            {
+                "type": "subscriptions_completed",
+                "import_id": import_id,
+                "matched_count": matched_count,
+                "detected_count": detected_count,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
         logger.info(
             f"Subscription processing completed for import: {import_id} - "
             f"{matched_count} matched, {detected_count} detected"

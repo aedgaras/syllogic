@@ -1,10 +1,12 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { groupAccounts, type PickerAccount } from "@/lib/reports/account-groups";
+import {
+  groupAccounts,
+  type PickerAccount,
+} from "@/lib/reports/account-groups";
 import { listOwners, listPeople } from "@/lib/reports/api";
 
 export function AccountPicker({
@@ -42,10 +44,17 @@ export function AccountPicker({
     retry: false,
   });
 
-  if (loading) return <p className="text-sm text-muted-foreground">{translate("loadingAccounts")}</p>;
+  if (loading)
+    return (
+      <p className="text-sm text-muted-foreground">
+        {translate("loadingAccounts")}
+      </p>
+    );
   if (error) {
     return (
-      <p className="text-sm text-destructive">{translate("failedToLoadAccountsPleaseRefreshAndTryAgain")}</p>
+      <p className="text-sm text-destructive">
+        {translate("failedToLoadAccountsPleaseRefreshAndTryAgain")}
+      </p>
     );
   }
 
@@ -53,11 +62,15 @@ export function AccountPicker({
   // report's saved account_ids may reference one deactivated after the fact.
   // Always keep those visible (marked inactive) so the checked state stays
   // truthful and can still be unticked.
-  const visibleAccounts = accounts.filter((a) => a.is_active || selectedIds.includes(a.id));
+  const visibleAccounts = accounts.filter(
+    (a) => a.is_active || selectedIds.includes(a.id),
+  );
   const groups = groupAccounts(visibleAccounts);
 
   const toggle = (id: string, checked: boolean) =>
-    onChange(checked ? [...selectedIds, id] : selectedIds.filter((x) => x !== id));
+    onChange(
+      checked ? [...selectedIds, id] : selectedIds.filter((x) => x !== id),
+    );
 
   return (
     <div className="space-y-3 border border-border rounded p-2 max-h-64 overflow-y-auto">
@@ -68,7 +81,10 @@ export function AccountPicker({
           </p>
           <div className="space-y-1">
             {group.accounts.map((a) => (
-              <label key={a.id} className="flex items-start gap-2 text-sm text-foreground">
+              <label
+                key={a.id}
+                className="flex items-start gap-2 text-sm text-foreground"
+              >
                 <input
                   type="checkbox"
                   className="mt-1"
@@ -78,7 +94,10 @@ export function AccountPicker({
                 <span>
                   {a.name}
                   {!a.is_active && (
-                    <span className="text-xs text-muted-foreground"> {translate("inactive")}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {" "}
+                      {translate("inactive")}
+                    </span>
                   )}
                   {ownerNames[a.id] && (
                     <span className="block text-xs text-muted-foreground">

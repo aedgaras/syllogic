@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { type ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,7 +21,11 @@ function CategoryCell({
   const displayCategory = transaction.category ?? transaction.categorySystem;
 
   if (!displayCategory) {
-    return <span className="text-muted-foreground">{translate("uncategorized")}</span>;
+    return (
+      <span className="text-muted-foreground">
+        {translate("uncategorized")}
+      </span>
+    );
   }
 
   return (
@@ -40,7 +43,9 @@ function CategoryCell({
           categoryId: displayCategory.id,
           accountIds: [transaction.accountId],
         });
-        router.push(query ? `/category-spending?${query}` : "/category-spending");
+        router.push(
+          query ? `/category-spending?${query}` : "/category-spending",
+        );
       }}
     >
       {displayCategory.name}
@@ -48,269 +53,295 @@ function CategoryCell({
   );
 }
 
-export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = [
-  {
-    id: "select",
-    header: ({ table }) => {
-      const allRowsSelected = table.getIsAllRowsSelected();
-      const allPageRowsSelected = table.getIsAllPageRowsSelected();
-      const someRowsSelected = table.getIsSomeRowsSelected();
+export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] =
+  [
+    {
+      id: "select",
+      header: ({ table }) => {
+        const allRowsSelected = table.getIsAllRowsSelected();
+        const allPageRowsSelected = table.getIsAllPageRowsSelected();
+        const someRowsSelected = table.getIsSomeRowsSelected();
 
-      const isChecked = allRowsSelected;
-      const isIndeterminate = !allRowsSelected && (allPageRowsSelected || someRowsSelected);
+        const isChecked = allRowsSelected;
+        const isIndeterminate =
+          !allRowsSelected && (allPageRowsSelected || someRowsSelected);
 
-      const handleClick = () => {
-        if (allRowsSelected) {
-          table.toggleAllRowsSelected(false);
-        } else if (allPageRowsSelected) {
-          table.toggleAllRowsSelected(true);
-        } else {
-          table.toggleAllPageRowsSelected(true);
+        const handleClick = () => {
+          if (allRowsSelected) {
+            table.toggleAllRowsSelected(false);
+          } else if (allPageRowsSelected) {
+            table.toggleAllRowsSelected(true);
+          } else {
+            table.toggleAllPageRowsSelected(true);
+          }
+        };
+
+        return (
+          <Checkbox
+            checked={isChecked}
+            indeterminate={isIndeterminate}
+            onCheckedChange={handleClick}
+            aria-label={translate("selectAll")}
+          />
+        );
+      },
+      cell: ({ row }) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label={translate("selectRow")}
+          />
+        </div>
+      ),
+      size: 50,
+      enableSorting: false,
+      enableHiding: false,
+      enableResizing: false,
+      meta: {
+        mobilePriority: "primary",
+        mobileClassName: "shrink-0 pt-0.5",
+      },
+    },
+    {
+      accessorKey: "bookedAt",
+      header: ({ column }) => {
+        const sorted = column.getIsSorted();
+        return (
+          <div
+            className="flex items-center gap-1 cursor-pointer"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            {translate("date")}
+            {sorted === "asc" ? (
+              <RiArrowUpLine className="h-4 w-4" />
+            ) : sorted === "desc" ? (
+              <RiArrowDownLine className="h-4 w-4" />
+            ) : null}
+          </div>
+        );
+      },
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap">
+          {format(new Date(row.getValue("bookedAt")), "MMM d, yyyy")}
+        </span>
+      ),
+      size: 120,
+      meta: {
+        mobileLabel: "Date",
+        mobilePriority: "secondary",
+      },
+      sortingFn: "datetime",
+      filterFn: (row, id, filterValue) => {
+        if (!filterValue || !filterValue.from) return true;
+        const rowDate = row.getValue("bookedAt") as Date;
+        const from = new Date(filterValue.from);
+        const to = filterValue.to ? new Date(filterValue.to) : from;
+        from.setHours(0, 0, 0, 0);
+        to.setHours(23, 59, 59, 999);
+        return rowDate >= from && rowDate <= to;
+      },
+    },
+    {
+      accessorKey: "description",
+      header: "Description",
+      cell: ({ row, column }) => {
+        const columnSize = column.getSize();
+        return (
+          <div
+            className="truncate"
+            style={{ maxWidth: `${columnSize}px` }}
+            title={row.getValue("description") || ""}
+          >
+            {row.getValue("description")}
+          </div>
+        );
+      },
+      size: 300,
+      meta: {
+        mobilePriority: "primary",
+        mobileClassName: "flex-1",
+      },
+      filterFn: "includesString",
+    },
+    {
+      accessorKey: "merchant",
+      header: "Merchant",
+      cell: ({ row, column }) => {
+        const merchant = row.original.merchant;
+        const columnSize = column.getSize();
+        return merchant ? (
+          <div
+            className="truncate"
+            style={{ maxWidth: `${columnSize}px` }}
+            title={merchant}
+          >
+            {merchant}
+          </div>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        );
+      },
+      size: 150,
+      meta: {
+        mobileLabel: "Merchant",
+        mobilePriority: "secondary",
+      },
+    },
+    {
+      accessorKey: "category",
+      header: "Category",
+      cell: ({ row, column }) => {
+        const columnSize = column.getSize();
+        return (
+          <CategoryCell transaction={row.original} maxWidth={columnSize} />
+        );
+      },
+      size: 140,
+      meta: {
+        mobileLabel: "Category",
+        mobilePriority: "secondary",
+      },
+      filterFn: (row, id, filterValue) => {
+        if (
+          !filterValue ||
+          !Array.isArray(filterValue) ||
+          filterValue.length === 0
+        )
+          return true;
+        if (filterValue.includes("uncategorized") && !row.original.category)
+          return true;
+        return filterValue.includes(row.original.category?.id);
+      },
+    },
+    {
+      accessorKey: "transactionType",
+      header: "Type",
+      cell: ({ row }) => {
+        const type = row.original.transactionType;
+        const amount = row.original.amount;
+        const isCredit = type === "credit" || amount > 0;
+        return (
+          <Badge variant={isCredit ? "default" : "secondary"}>
+            {isCredit ? translate("income1c89b1") : translate("expense")}
+          </Badge>
+        );
+      },
+      size: 100,
+      meta: {
+        mobileLabel: "Type",
+        mobilePriority: "secondary",
+      },
+    },
+    {
+      accessorKey: "amount",
+      header: ({ column }) => {
+        const sorted = column.getIsSorted();
+        return (
+          <div
+            className="flex items-center justify-end gap-1 cursor-pointer"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            {translate("amount")}
+            {sorted === "asc" ? (
+              <RiArrowUpLine className="h-4 w-4" />
+            ) : sorted === "desc" ? (
+              <RiArrowDownLine className="h-4 w-4" />
+            ) : null}
+          </div>
+        );
+      },
+      cell: ({ row }) => {
+        const amount = row.getValue("amount") as number;
+        const type = row.original.transactionType;
+        const isCredit = type === "credit" || amount > 0;
+        return (
+          <span className="whitespace-nowrap text-right font-mono block">
+            {isCredit ? "+" : "-"}
+            {Math.abs(amount).toFixed(2)}
+          </span>
+        );
+      },
+      size: 120,
+      meta: {
+        mobilePriority: "primary",
+        mobileClassName: "shrink-0 text-right",
+      },
+      filterFn: (row, id, filterValue) => {
+        if (!filterValue || (!filterValue.min && !filterValue.max)) return true;
+        const amount = Math.abs(row.getValue("amount") as number);
+        const min = filterValue.min ? parseFloat(filterValue.min) : -Infinity;
+        const max = filterValue.max ? parseFloat(filterValue.max) : Infinity;
+        return amount >= min && amount <= max;
+      },
+    },
+    {
+      accessorKey: "recurringTransaction",
+      header: "Sub",
+      cell: ({ row }) => {
+        const recurring = row.original.recurringTransaction;
+        if (!recurring) {
+          return <span className="text-muted-foreground">-</span>;
         }
-      };
-
-      return (
-        <Checkbox
-          checked={isChecked}
-          indeterminate={isIndeterminate}
-          onCheckedChange={handleClick}
-          aria-label={translate("selectAll")}
-        />
-      );
+        return (
+          <span
+            title={translate("message", {
+              value1: recurring.name,
+              value2: recurring.frequency,
+            })}
+          >
+            <RiCheckLine className="h-4 w-4 text-emerald-600" />
+          </span>
+        );
+      },
+      size: 60,
+      meta: {
+        mobilePriority: "hidden",
+      },
+      filterFn: (row, id, filterValue) => {
+        if (
+          !filterValue ||
+          !Array.isArray(filterValue) ||
+          filterValue.length === 0
+        )
+          return true;
+        if (
+          filterValue.includes("no_subscription") &&
+          !row.original.recurringTransaction
+        )
+          return true;
+        if (row.original.recurringTransaction) {
+          return filterValue.includes(row.original.recurringTransaction.id);
+        }
+        return false;
+      },
     },
-    cell: ({ row }) => (
-      <div onClick={(e) => e.stopPropagation()}>
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label={translate("selectRow")}
-        />
-      </div>
-    ),
-    size: 50,
-    enableSorting: false,
-    enableHiding: false,
-    enableResizing: false,
-    meta: {
-      mobilePriority: "primary",
-      mobileClassName: "shrink-0 pt-0.5",
+    {
+      accessorKey: "pending",
+      header: "Status",
+      cell: ({ row }) => {
+        const pending = row.getValue("pending") as boolean;
+        return pending ? (
+          <Badge variant="outline">{translate("pending")}</Badge>
+        ) : null;
+      },
+      size: 80,
+      meta: {
+        mobileLabel: "Status",
+        mobilePriority: "secondary",
+      },
+      filterFn: (row, id, filterValue) => {
+        if (
+          !filterValue ||
+          !Array.isArray(filterValue) ||
+          filterValue.length === 0
+        )
+          return true;
+        if (filterValue.includes("pending") && row.original.pending)
+          return true;
+        if (filterValue.includes("completed") && !row.original.pending)
+          return true;
+        return false;
+      },
     },
-  },
-  {
-    accessorKey: "bookedAt",
-    header: ({ column }) => {
-      const sorted = column.getIsSorted();
-      return (
-        <div
-          className="flex items-center gap-1 cursor-pointer"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          {translate("date")}
-          {sorted === "asc" ? (
-            <RiArrowUpLine className="h-4 w-4" />
-          ) : sorted === "desc" ? (
-            <RiArrowDownLine className="h-4 w-4" />
-          ) : null}
-        </div>
-      );
-    },
-    cell: ({ row }) => (
-      <span className="whitespace-nowrap">
-        {format(new Date(row.getValue("bookedAt")), "MMM d, yyyy")}
-      </span>
-    ),
-    size: 120,
-    meta: {
-      mobileLabel: "Date",
-      mobilePriority: "secondary",
-    },
-    sortingFn: "datetime",
-    filterFn: (row, id, filterValue) => {
-      if (!filterValue || !filterValue.from) return true;
-      const rowDate = row.getValue("bookedAt") as Date;
-      const from = new Date(filterValue.from);
-      const to = filterValue.to ? new Date(filterValue.to) : from;
-      from.setHours(0, 0, 0, 0);
-      to.setHours(23, 59, 59, 999);
-      return rowDate >= from && rowDate <= to;
-    },
-  },
-  {
-    accessorKey: "description",
-    header: "Description",
-    cell: ({ row, column }) => {
-      const columnSize = column.getSize();
-      return (
-        <div
-          className="truncate"
-          style={{ maxWidth: `${columnSize}px` }}
-          title={row.getValue("description") || ""}
-        >
-          {row.getValue("description")}
-        </div>
-      );
-    },
-    size: 300,
-    meta: {
-      mobilePriority: "primary",
-      mobileClassName: "flex-1",
-    },
-    filterFn: "includesString",
-  },
-  {
-    accessorKey: "merchant",
-    header: "Merchant",
-    cell: ({ row, column }) => {
-      const merchant = row.original.merchant;
-      const columnSize = column.getSize();
-      return merchant ? (
-        <div
-          className="truncate"
-          style={{ maxWidth: `${columnSize}px` }}
-          title={merchant}
-        >
-          {merchant}
-        </div>
-      ) : (
-        <span className="text-muted-foreground">-</span>
-      );
-    },
-    size: 150,
-    meta: {
-      mobileLabel: "Merchant",
-      mobilePriority: "secondary",
-    },
-  },
-  {
-    accessorKey: "category",
-    header: "Category",
-    cell: ({ row, column }) => {
-      const columnSize = column.getSize();
-      return (
-        <CategoryCell
-          transaction={row.original}
-          maxWidth={columnSize}
-        />
-      );
-    },
-    size: 140,
-    meta: {
-      mobileLabel: "Category",
-      mobilePriority: "secondary",
-    },
-    filterFn: (row, id, filterValue) => {
-      if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
-      if (filterValue.includes("uncategorized") && !row.original.category) return true;
-      return filterValue.includes(row.original.category?.id);
-    },
-  },
-  {
-    accessorKey: "transactionType",
-    header: "Type",
-    cell: ({ row }) => {
-      const type = row.original.transactionType;
-      const amount = row.original.amount;
-      const isCredit = type === "credit" || amount > 0;
-      return (
-        <Badge variant={isCredit ? "default" : "secondary"}>
-          {isCredit ? translate("income1c89b1") : translate("expense")}
-        </Badge>
-      );
-    },
-    size: 100,
-    meta: {
-      mobileLabel: "Type",
-      mobilePriority: "secondary",
-    },
-  },
-  {
-    accessorKey: "amount",
-    header: ({ column }) => {
-      const sorted = column.getIsSorted();
-      return (
-        <div
-          className="flex items-center justify-end gap-1 cursor-pointer"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          {translate("amount")}
-          {sorted === "asc" ? (
-            <RiArrowUpLine className="h-4 w-4" />
-          ) : sorted === "desc" ? (
-            <RiArrowDownLine className="h-4 w-4" />
-          ) : null}
-        </div>
-      );
-    },
-    cell: ({ row }) => {
-      const amount = row.getValue("amount") as number;
-      const type = row.original.transactionType;
-      const isCredit = type === "credit" || amount > 0;
-      return (
-        <span className="whitespace-nowrap text-right font-mono block">
-          {isCredit ? "+" : "-"}
-          {Math.abs(amount).toFixed(2)}
-        </span>
-      );
-    },
-    size: 120,
-    meta: {
-      mobilePriority: "primary",
-      mobileClassName: "shrink-0 text-right",
-    },
-    filterFn: (row, id, filterValue) => {
-      if (!filterValue || (!filterValue.min && !filterValue.max)) return true;
-      const amount = Math.abs(row.getValue("amount") as number);
-      const min = filterValue.min ? parseFloat(filterValue.min) : -Infinity;
-      const max = filterValue.max ? parseFloat(filterValue.max) : Infinity;
-      return amount >= min && amount <= max;
-    },
-  },
-  {
-    accessorKey: "recurringTransaction",
-    header: "Sub",
-    cell: ({ row }) => {
-      const recurring = row.original.recurringTransaction;
-      if (!recurring) {
-        return <span className="text-muted-foreground">-</span>;
-      }
-      return (
-        <span title={translate("message", { value1: recurring.name, value2: recurring.frequency })}>
-          <RiCheckLine className="h-4 w-4 text-emerald-600" />
-        </span>
-      );
-    },
-    size: 60,
-    meta: {
-      mobilePriority: "hidden",
-    },
-    filterFn: (row, id, filterValue) => {
-      if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
-      if (filterValue.includes("no_subscription") && !row.original.recurringTransaction) return true;
-      if (row.original.recurringTransaction) {
-        return filterValue.includes(row.original.recurringTransaction.id);
-      }
-      return false;
-    },
-  },
-  {
-    accessorKey: "pending",
-    header: "Status",
-    cell: ({ row }) => {
-      const pending = row.getValue("pending") as boolean;
-      return pending ? (
-        <Badge variant="outline">{translate("pending")}</Badge>
-      ) : null;
-    },
-    size: 80,
-    meta: {
-      mobileLabel: "Status",
-      mobilePriority: "secondary",
-    },
-    filterFn: (row, id, filterValue) => {
-      if (!filterValue || !Array.isArray(filterValue) || filterValue.length === 0) return true;
-      if (filterValue.includes("pending") && row.original.pending) return true;
-      if (filterValue.includes("completed") && !row.original.pending) return true;
-      return false;
-    },
-  },
-];
+  ];

@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +15,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { RiLink, RiAddLine, RiCloseLine, RiLoader4Line, RiArrowDownSLine, RiArrowUpSLine } from "@remixicon/react";
+import {
+  RiLink,
+  RiAddLine,
+  RiCloseLine,
+  RiLoader4Line,
+  RiArrowDownSLine,
+  RiArrowUpSLine,
+} from "@remixicon/react";
 import { format } from "date-fns";
 import { cn, formatAmount } from "@/lib/utils";
 import type { TransactionLinkGroup } from "@/features/transactions/public";
@@ -93,7 +99,9 @@ export function LinkedTransactionsSection({
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <RiLink className="h-4 w-4" />
-          <span className="text-sm font-medium">{translate("linkedTransactionsc39891")}</span>
+          <span className="text-sm font-medium">
+            {translate("linkedTransactionsc39891")}
+          </span>
         </div>
         <div className="flex items-center justify-center py-4">
           <RiLoader4Line className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -108,7 +116,9 @@ export function LinkedTransactionsSection({
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <RiLink className="h-4 w-4" />
-          <span className="text-sm font-medium">{translate("linkedTransactionsc39891")}</span>
+          <span className="text-sm font-medium">
+            {translate("linkedTransactionsc39891")}
+          </span>
         </div>
         <Button variant="outline" className="w-full" onClick={onLinkClick}>
           <RiLink className="h-4 w-4 mr-2" />
@@ -119,7 +129,10 @@ export function LinkedTransactionsSection({
   }
 
   // Linked - show group details
-  const allLinked = [...(linkGroup.primary ? [linkGroup.primary] : []), ...linkGroup.linked];
+  const allLinked = [
+    ...(linkGroup.primary ? [linkGroup.primary] : []),
+    ...linkGroup.linked,
+  ];
 
   return (
     <div>
@@ -131,13 +144,16 @@ export function LinkedTransactionsSection({
       >
         <div className="flex items-center gap-2">
           <RiLink className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">{translate("linked")}{allLinked.length})</span>
+          <span className="text-sm font-medium">
+            {translate("linked")}
+            {allLinked.length})
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <span
             className={cn(
               "text-sm font-mono font-medium",
-              linkGroup.netAmount > 0 ? "text-emerald-600" : "text-foreground"
+              linkGroup.netAmount > 0 ? "text-emerald-600" : "text-foreground",
             )}
           >
             {formatAmount(linkGroup.netAmount, currency)}
@@ -160,7 +176,7 @@ export function LinkedTransactionsSection({
                 key={txn.id}
                 className={cn(
                   "flex items-center gap-2 text-sm",
-                  txn.id === transactionId && "font-medium"
+                  txn.id === transactionId && "font-medium",
                 )}
               >
                 {txn.linkRole === "primary" && (
@@ -171,14 +187,16 @@ export function LinkedTransactionsSection({
                 <span
                   className={cn(
                     "font-mono shrink-0",
-                    txn.amount > 0 && "text-emerald-600"
+                    txn.amount > 0 && "text-emerald-600",
                   )}
                 >
                   {txn.amount > 0 ? "+" : ""}
                   {Math.abs(txn.amount).toFixed(2)}
                 </span>
                 <span className="truncate flex-1 text-muted-foreground">
-                  {txn.merchant || txn.description || format(new Date(txn.bookedAt), "MMM d")}
+                  {txn.merchant ||
+                    txn.description ||
+                    format(new Date(txn.bookedAt), "MMM d")}
                 </span>
                 {txn.id !== transactionId && txn.linkRole !== "primary" && (
                   <Button
@@ -230,14 +248,20 @@ export function LinkedTransactionsSection({
               />
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>{translate("unlinkAllTransactions")}</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    {translate("unlinkAllTransactions")}
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    {translate("thisWillRemoveAllLinksBetweenTheseTransactionsThey")}
+                    {translate(
+                      "thisWillRemoveAllLinksBetweenTheseTransactionsThey",
+                    )}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>{translate("cancel")}</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleUnlinkAll}>{translate("unlinkAll")}</AlertDialogAction>
+                  <AlertDialogAction onClick={handleUnlinkAll}>
+                    {translate("unlinkAll")}
+                  </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

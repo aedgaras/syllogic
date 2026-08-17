@@ -5,11 +5,16 @@ raising, following the established pattern in categories.py/investments.py
 — get_db() does not auto-rollback on exception, so every mutation path
 here explicitly rolls back on failure before returning an error dict.
 """
+
 from __future__ import annotations
 
 from app.mcp.dependencies import get_db
 from app.services import report_service
-from app.services.report_service import ReportDispatchError, ReportNotFoundError, ReportValidationError
+from app.services.report_service import (
+    ReportDispatchError,
+    ReportNotFoundError,
+    ReportValidationError,
+)
 
 
 def _serialize_report(report) -> dict:
@@ -188,6 +193,8 @@ def send_test_report(user_id: str, report_id: str) -> dict:
 def list_report_runs(user_id: str, report_id: str) -> list[dict]:
     with get_db() as db:
         try:
-            return [_serialize_run(r) for r in report_service.list_report_runs(db, user_id, report_id)]
+            return [
+                _serialize_run(r) for r in report_service.list_report_runs(db, user_id, report_id)
+            ]
         except ReportNotFoundError:
             return []

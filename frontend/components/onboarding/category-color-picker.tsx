@@ -15,7 +15,11 @@ interface CategoryColorPickerProps {
   disabled?: boolean;
 }
 
-export function CategoryColorPicker({ value, onChange, disabled = false }: CategoryColorPickerProps) {
+export function CategoryColorPicker({
+  value,
+  onChange,
+  disabled = false,
+}: CategoryColorPickerProps) {
   return (
     <Popover>
       <PopoverTrigger
@@ -41,7 +45,7 @@ export function CategoryColorPicker({ value, onChange, disabled = false }: Categ
               type="button"
               className={cn(
                 "h-8 w-8 rounded-full transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2",
-                value === color.value && "ring-2 ring-offset-2 ring-primary"
+                value === color.value && "ring-2 ring-offset-2 ring-primary",
               )}
               style={{ backgroundColor: color.value }}
               onClick={() => onChange(color.value)}

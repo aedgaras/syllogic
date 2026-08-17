@@ -7,17 +7,25 @@ import {
   getSubscriptionCostAggregations,
   matchTransactionsToSubscription,
 } from "../client/actions";
-import type { LinkedSubscriptionTransaction, SubscriptionViewModel } from "../public";
+import type {
+  LinkedSubscriptionTransaction,
+  SubscriptionViewModel,
+} from "../public";
 
 export function useSubscriptionDetailController(
   subscription: SubscriptionViewModel | null,
   open: boolean,
-  onRefresh: () => void
+  onRefresh: () => void,
 ) {
   const [isLoading, setIsLoading] = useState(true);
   const [isMatching, setIsMatching] = useState(false);
-  const [costAggregations, setCostAggregations] = useState({ thisYear: 0, allTime: 0 });
-  const [linkedTransactions, setLinkedTransactions] = useState<LinkedSubscriptionTransaction[]>([]);
+  const [costAggregations, setCostAggregations] = useState({
+    thisYear: 0,
+    allTime: 0,
+  });
+  const [linkedTransactions, setLinkedTransactions] = useState<
+    LinkedSubscriptionTransaction[]
+  >([]);
 
   const load = useCallback(async () => {
     if (!subscription) return;
@@ -50,9 +58,14 @@ export function useSubscriptionDetailController(
         return;
       }
       const count = result.matchedCount ?? 0;
-      if (count > 0) toast.success(`Matched ${count} new transaction(s) to "${subscription.name}"`);
+      if (count > 0)
+        toast.success(
+          `Matched ${count} new transaction(s) to "${subscription.name}"`,
+        );
       else if (linkedTransactions.length > 0) {
-        toast.info(`All ${linkedTransactions.length} transaction(s) are already linked to "${subscription.name}"`);
+        toast.info(
+          `All ${linkedTransactions.length} transaction(s) are already linked to "${subscription.name}"`,
+        );
       } else toast.info("No matching transactions found");
       await load();
       onRefresh();
@@ -63,5 +76,11 @@ export function useSubscriptionDetailController(
     }
   }
 
-  return { costAggregations, isLoading, isMatching, linkedTransactions, matchTransactions };
+  return {
+    costAggregations,
+    isLoading,
+    isMatching,
+    linkedTransactions,
+    matchTransactions,
+  };
 }

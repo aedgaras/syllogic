@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -42,7 +41,8 @@ export function CategoryFormDialog({
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(CATEGORY_COLORS[0].value);
   const [description, setDescription] = useState("");
-  const [categorizationInstructions, setCategorizationInstructions] = useState("");
+  const [categorizationInstructions, setCategorizationInstructions] =
+    useState("");
 
   // Reset form when dialog opens or category changes
   useEffect(() => {
@@ -51,7 +51,9 @@ export function CategoryFormDialog({
         setName(category.name);
         setColor(category.color);
         setDescription(category.description || "");
-        setCategorizationInstructions(category.categorizationInstructions || "");
+        setCategorizationInstructions(
+          category.categorizationInstructions || "",
+        );
       } else {
         // New category - reset form with default color based on existing count
         setName("");
@@ -71,7 +73,8 @@ export function CategoryFormDialog({
       color: isSystem && category ? category.color : color,
       icon: category?.icon || "RiFolderLine",
       description: description.trim(),
-      categorizationInstructions: categorizationInstructions.trim() || undefined,
+      categorizationInstructions:
+        categorizationInstructions.trim() || undefined,
       isSystem: category?.isSystem,
     };
 
@@ -95,21 +98,32 @@ export function CategoryFormDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? translate("editCategory") : translate("addCategory", { value1: getCategoryTypeLabel() })}
+            {isEditing
+              ? translate("editCategory")
+              : translate("addCategory", { value1: getCategoryTypeLabel() })}
           </DialogTitle>
           <DialogDescription>
             {isSystem
-              ? translate("systemCategoryOnlyDescriptionAndCategorizationInstructionsCanBe")
+              ? translate(
+                  "systemCategoryOnlyDescriptionAndCategorizationInstructionsCanBe",
+                )
               : isEditing
-              ? translate("updateTheCategoryDetailsBelow")
-              : translate("createANewCategoryToOrganizeYourTransactions")}
+                ? translate("updateTheCategoryDetailsBelow")
+                : translate("createANewCategoryToOrganizeYourTransactions")}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name">{translate("name")}{isSystem ? "" : " *"}</Label>
+            <Label htmlFor="name">
+              {translate("name")}
+              {isSystem ? "" : " *"}
+            </Label>
             <div className="flex items-center gap-3">
-              <CategoryColorPicker value={color} onChange={setColor} disabled={isSystem} />
+              <CategoryColorPicker
+                value={color}
+                onChange={setColor}
+                disabled={isSystem}
+              />
               <Input
                 id="name"
                 value={name}
@@ -122,7 +136,9 @@ export function CategoryFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">{translate("descriptionb5bba3")}</Label>
+            <Label htmlFor="description">
+              {translate("descriptionb5bba3")}
+            </Label>
             <Input
               id="description"
               value={description}
@@ -132,12 +148,16 @@ export function CategoryFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="categorizationInstructions">{translate("categorizationInstructions")}</Label>
+            <Label htmlFor="categorizationInstructions">
+              {translate("categorizationInstructions")}
+            </Label>
             <Textarea
               id="categorizationInstructions"
               value={categorizationInstructions}
               onChange={(e) => setCategorizationInstructions(e.target.value)}
-              placeholder={translate("instructionsForAiToCategorizeTransactionsIntoThisCategory")}
+              placeholder={translate(
+                "instructionsForAiToCategorizeTransactionsIntoThisCategory",
+              )}
               rows={3}
             />
             <p className="text-xs text-muted-foreground">
@@ -146,11 +166,20 @@ export function CategoryFormDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
             {translate("cancel")}
           </Button>
-          <Button onClick={handleSave} disabled={!name.trim() || !description.trim()}>
-            {isEditing ? translate("saveChangesfa2984") : translate("addCategory9c4eb0")}
+          <Button
+            onClick={handleSave}
+            disabled={!name.trim() || !description.trim()}
+          >
+            {isEditing
+              ? translate("saveChangesfa2984")
+              : translate("addCategory9c4eb0")}
           </Button>
         </DialogFooter>
       </DialogContent>

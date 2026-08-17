@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useRef, useState, useEffect, useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -32,18 +31,53 @@ import type { BalanceHistoryPoint } from "@/features/accounts/public";
 
 type Horizon = "7D" | "LM" | "30D" | "90D" | "6M" | "1Y" | "5Y" | "ALL";
 
-const horizonOptions: { value: Horizon; label: string; description: string }[] = [
-  { value: "7D", label: translate("message7d"), description: translate("last7Days") },
-  { value: "LM", label: translate("lm"), description: translate("lastMonth") },
-  { value: "30D", label: translate("message30d"), description: translate("last30Days") },
-  { value: "90D", label: translate("message90d"), description: translate("last90Days") },
-  { value: "6M", label: translate("message6m"), description: translate("last6Months") },
-  { value: "1Y", label: translate("message1y"), description: translate("last1Year") },
-  { value: "5Y", label: translate("message5y"), description: translate("message5Years") },
-  { value: "ALL", label: translate("all"), description: translate("allTime") },
-];
+const horizonOptions: { value: Horizon; label: string; description: string }[] =
+  [
+    {
+      value: "7D",
+      label: translate("message7d"),
+      description: translate("last7Days"),
+    },
+    {
+      value: "LM",
+      label: translate("lm"),
+      description: translate("lastMonth"),
+    },
+    {
+      value: "30D",
+      label: translate("message30d"),
+      description: translate("last30Days"),
+    },
+    {
+      value: "90D",
+      label: translate("message90d"),
+      description: translate("last90Days"),
+    },
+    {
+      value: "6M",
+      label: translate("message6m"),
+      description: translate("last6Months"),
+    },
+    {
+      value: "1Y",
+      label: translate("message1y"),
+      description: translate("last1Year"),
+    },
+    {
+      value: "5Y",
+      label: translate("message5y"),
+      description: translate("message5Years"),
+    },
+    {
+      value: "ALL",
+      label: translate("all"),
+      description: translate("allTime"),
+    },
+  ];
 
-const horizonValueSet = new Set<Horizon>(horizonOptions.map((option) => option.value));
+const horizonValueSet = new Set<Horizon>(
+  horizonOptions.map((option) => option.value),
+);
 
 // Get appropriate date format based on the data range
 function getDateFormat(startDate: Date, endDate: Date): string {
@@ -147,7 +181,7 @@ export function AccountBalanceChart({
 
     // Find earliest data point
     const sortedData = [...data].sort(
-      (a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()
+      (a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime(),
     );
     const earliestDataDate = startOfDay(parseISO(sortedData[0].date));
 
@@ -214,7 +248,7 @@ export function AccountBalanceChart({
           seenYears.add(year);
           // Find the first date of this year in our data
           const firstOfYear = filledData.find(
-            (p) => format(parseISO(p.date), "yyyy") === year
+            (p) => format(parseISO(p.date), "yyyy") === year,
           );
           if (firstOfYear) {
             yearTicks.push(firstOfYear.date);
@@ -267,7 +301,9 @@ export function AccountBalanceChart({
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold">{translate("balance")}</h3>
-            <p className="text-sm text-muted-foreground">{translate("noDataAvailable")}</p>
+            <p className="text-sm text-muted-foreground">
+              {translate("noDataAvailable")}
+            </p>
           </div>
         </CardHeader>
         <CardContent>
@@ -307,136 +343,130 @@ export function AccountBalanceChart({
             {translate("noDataAvailableForThisPeriod")}
           </div>
         ) : (
-        <div className="relative">
-          {/* Floating badge and vertical line */}
-          {isInitialized && (
-            <>
-              {/* Vertical line */}
-              <div
-                className="absolute pointer-events-none"
-                style={{
-                  left: axis,
-                  top: 29,
-                  bottom: 30,
-                  width: 1,
-                  borderLeft: "1px dashed #10B981",
-                  opacity: 0.5,
-                }}
-              />
-              {/* Badge */}
-              <div
-                className="absolute z-10 pointer-events-none"
-                style={{
-                  left: axis,
-                  top: 8,
-                  transform: "translateX(-98%)",
-                }}
-              >
+          <div className="relative">
+            {/* Floating badge and vertical line */}
+            {isInitialized && (
+              <>
+                {/* Vertical line */}
                 <div
-                  className="text-white text-xs font-semibold px-2 py-1 font-mono min-w-16 text-right"
-                  style={{ backgroundColor: "#047857" }}
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: axis,
+                    top: 29,
+                    bottom: 30,
+                    width: 1,
+                    borderLeft: "1px dashed #10B981",
+                    opacity: 0.5,
+                  }}
+                />
+                {/* Badge */}
+                <div
+                  className="absolute z-10 pointer-events-none"
+                  style={{
+                    left: axis,
+                    top: 8,
+                    transform: "translateX(-98%)",
+                  }}
                 >
-                  {formatCurrencyValue(springY.get())}
-                </div>
-                {currentDate && (
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
-                    {format(parseISO(currentDate), "MMM d")}
+                  <div
+                    className="text-white text-xs font-semibold px-2 py-1 font-mono min-w-16 text-right"
+                    style={{ backgroundColor: "#047857" }}
+                  >
+                    {formatCurrencyValue(springY.get())}
                   </div>
-                )}
-              </div>
-            </>
-          )}
+                  {currentDate && (
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      {format(parseISO(currentDate), "MMM d")}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
-          <ChartContainer
-            ref={chartRef}
-            className="h-64 w-full"
-            config={chartConfig}
-          >
-            <AreaChart
-              accessibilityLayer
-              data={chartData}
-              onMouseMove={(state) => {
-                const x = state.activeCoordinate?.x;
-                const dataValue = state.activePayload?.[0]?.value;
-                const dataDate = state.activePayload?.[0]?.payload?.date;
-                if (x && dataValue !== undefined) {
-                  springX.set(x);
-                  springY.set(dataValue as number);
-                  if (dataDate) setCurrentDate(dataDate);
-                }
-              }}
-              onMouseLeave={() => {
-                if (chartRef.current && chartData.length > 0) {
-                  springX.set(chartRef.current.getBoundingClientRect().width);
-                  springY.jump(chartData[chartData.length - 1].balance);
-                  setCurrentDate(chartData[chartData.length - 1].date);
-                }
-              }}
-              margin={{ top: 30, right: 0, left: 0, bottom: 0 }}
+            <ChartContainer
+              ref={chartRef}
+              className="h-64 w-full"
+              config={chartConfig}
             >
-              <defs>
-                <linearGradient
-                  id="gradient-clipped-area-balance"
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
-                  <stop
-                    offset="5%"
-                    stopColor="#10B981"
-                    stopOpacity={0.3}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor="#10B981"
-                    stopOpacity={0}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                vertical={false}
-                strokeDasharray="3 3"
-                horizontalCoordinatesGenerator={(props) => {
-                  const { height } = props;
-                  return [0, height - 30];
+              <AreaChart
+                accessibilityLayer
+                data={chartData}
+                onMouseMove={(state) => {
+                  const x = state.activeCoordinate?.x;
+                  const dataValue = state.activePayload?.[0]?.value;
+                  const dataDate = state.activePayload?.[0]?.payload?.date;
+                  if (x && dataValue !== undefined) {
+                    springX.set(x);
+                    springY.set(dataValue as number);
+                    if (dataDate) setCurrentDate(dataDate);
+                  }
                 }}
-              />
-              <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                minTickGap={50}
-                ticks={yearTicks}
-                tickFormatter={(value) => format(parseISO(value), dateFormat)}
-              />
-              {/* Ghost line behind the graph */}
-              <Area
-                dataKey="balance"
-                type="monotone"
-                fill="none"
-                stroke="#10B981"
-                strokeOpacity={0.15}
-                strokeWidth={2}
-              />
-              {/* Main animated area */}
-              <Area
-                dataKey="balance"
-                type="monotone"
-                fill="url(#gradient-clipped-area-balance)"
-                fillOpacity={1}
-                stroke="#10B981"
-                strokeWidth={2}
-                style={{
-                  clipPath: `inset(0 ${
-                    Number(chartRef.current?.getBoundingClientRect().width || 0) - axis
-                  }px 0 0)`,
+                onMouseLeave={() => {
+                  if (chartRef.current && chartData.length > 0) {
+                    springX.set(chartRef.current.getBoundingClientRect().width);
+                    springY.jump(chartData[chartData.length - 1].balance);
+                    setCurrentDate(chartData[chartData.length - 1].date);
+                  }
                 }}
-              />
-            </AreaChart>
-          </ChartContainer>
-        </div>
+                margin={{ top: 30, right: 0, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient
+                    id="gradient-clipped-area-balance"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  vertical={false}
+                  strokeDasharray="3 3"
+                  horizontalCoordinatesGenerator={(props) => {
+                    const { height } = props;
+                    return [0, height - 30];
+                  }}
+                />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  minTickGap={50}
+                  ticks={yearTicks}
+                  tickFormatter={(value) => format(parseISO(value), dateFormat)}
+                />
+                {/* Ghost line behind the graph */}
+                <Area
+                  dataKey="balance"
+                  type="monotone"
+                  fill="none"
+                  stroke="#10B981"
+                  strokeOpacity={0.15}
+                  strokeWidth={2}
+                />
+                {/* Main animated area */}
+                <Area
+                  dataKey="balance"
+                  type="monotone"
+                  fill="url(#gradient-clipped-area-balance)"
+                  fillOpacity={1}
+                  stroke="#10B981"
+                  strokeWidth={2}
+                  style={{
+                    clipPath: `inset(0 ${
+                      Number(
+                        chartRef.current?.getBoundingClientRect().width || 0,
+                      ) - axis
+                    }px 0 0)`,
+                  }}
+                />
+              </AreaChart>
+            </ChartContainer>
+          </div>
         )}
       </CardContent>
     </Card>

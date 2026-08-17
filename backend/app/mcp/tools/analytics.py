@@ -1,13 +1,13 @@
 """
 Analytics tools for the MCP server.
 """
+
 from typing import Optional
 
-from sqlalchemy import func, extract, case, or_, and_, text
-from sqlalchemy.orm import aliased
+from sqlalchemy import func, or_, and_, text
 
 from app.mcp.dependencies import get_db, validate_uuid, validate_date
-from app.models import Transaction, Category, Account, TransactionLink
+from app.models import Transaction, Account
 from app.services.ownership_service import attribute_amount, entity_ids_for_people, get_owners
 
 
@@ -375,7 +375,9 @@ def get_financial_summary(
     _person_ids_filter_summary = ""
     if filter_by_person:
         with get_db() as _db:
-            _allowed_account_ids = [str(uid) for uid in entity_ids_for_people(_db, "account", person_ids)]
+            _allowed_account_ids = [
+                str(uid) for uid in entity_ids_for_people(_db, "account", person_ids)
+            ]
         if not _allowed_account_ids:
             return {
                 "period": {"from_date": from_date, "to_date": to_date},
@@ -434,8 +436,7 @@ def get_financial_summary(
 
         # Get account balances (current)
         accounts_query = db.query(Account).filter(
-            Account.user_id == user_id,
-            Account.is_active == True
+            Account.user_id == user_id, Account.is_active == True
         )
         if filter_by_person and _allowed_account_ids:
             accounts_query = accounts_query.filter(Account.id.in_(_allowed_account_ids))
@@ -474,7 +475,9 @@ def get_financial_summary(
             "total_income": total_income,
             "total_expenses": total_expenses,
             "net_cashflow": total_income - total_expenses,
-            "savings_rate": round((total_income - total_expenses) / total_income * 100, 1) if total_income > 0 else 0,
+            "savings_rate": round((total_income - total_expenses) / total_income * 100, 1)
+            if total_income > 0
+            else 0,
             "total_balance": total_balance,
             "accounts": account_balances,
         }
@@ -524,7 +527,7 @@ def get_top_merchants(
             Transaction.amount < 0,  # Only expenses
             Transaction.merchant.isnot(None),
             Transaction.merchant != "",
-            Transaction.include_in_analytics == True
+            Transaction.include_in_analytics == True,
         )
 
         if cat_uuid:

@@ -1,5 +1,10 @@
 import { t as translate } from "@/i18n/translate";
-import { HeaderSkeleton, CardGridSkeleton, ChartSkeleton, DetailListSkeleton } from "@/components/skeletons/page-skeletons";
+import {
+  HeaderSkeleton,
+  CardGridSkeleton,
+  ChartSkeleton,
+  DetailListSkeleton,
+} from "@/components/skeletons/page-skeletons";
 
 export default function Loading() {
   return (

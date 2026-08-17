@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -59,7 +58,7 @@ function LoginPageContent() {
   const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD || "";
 
   const prefillEmail = demoModeRequested
-    ? (demoEmail || emailFromQuery)
+    ? demoEmail || emailFromQuery
     : emailFromQuery;
   const prefillPassword = demoModeRequested ? demoPassword : "";
 
@@ -221,12 +220,18 @@ function LoginPageContent() {
             )}
             {demoModeRequested && demoEmail && demoPassword && (
               <div className="bg-muted border border-border p-3 text-sm space-y-1">
-                <p className="font-medium text-foreground">{translate("demoAccountCredentials")}</p>
-                <p className="text-muted-foreground">
-                  {translate("email")} <span className="text-foreground font-mono">{demoEmail}</span>
+                <p className="font-medium text-foreground">
+                  {translate("demoAccountCredentials")}
                 </p>
                 <p className="text-muted-foreground">
-                  {translate("password")} <span className="text-foreground font-mono">{demoPassword}</span>
+                  {translate("email")}{" "}
+                  <span className="text-foreground font-mono">{demoEmail}</span>
+                </p>
+                <p className="text-muted-foreground">
+                  {translate("password")}{" "}
+                  <span className="text-foreground font-mono">
+                    {demoPassword}
+                  </span>
                 </p>
               </div>
             )}
@@ -236,7 +241,9 @@ function LoginPageContent() {
               </div>
             )}
             <Field>
-              <FieldLabel htmlFor="email">{translate("email84add5")}</FieldLabel>
+              <FieldLabel htmlFor="email">
+                {translate("email84add5")}
+              </FieldLabel>
               <Input
                 id="email"
                 type="email"
@@ -244,13 +251,13 @@ function LoginPageContent() {
                 {...register("email")}
                 disabled={isLoading}
               />
-              {errors.email && (
-                <FieldError>{errors.email.message}</FieldError>
-              )}
+              {errors.email && <FieldError>{errors.email.message}</FieldError>}
             </Field>
             <Field>
               <div className="flex items-center">
-                <FieldLabel htmlFor="password">{translate("password8be3c9")}</FieldLabel>
+                <FieldLabel htmlFor="password">
+                  {translate("password8be3c9")}
+                </FieldLabel>
               </div>
               <Input
                 id="password"
@@ -269,7 +276,10 @@ function LoginPageContent() {
               {signUpsEnabled && (
                 <FieldDescription className="text-center">
                   {translate("donTHaveAnAccount")}{" "}
-                  <Link href="/register" className="underline underline-offset-4">
+                  <Link
+                    href="/register"
+                    className="underline underline-offset-4"
+                  >
                     {translate("signUp")}
                   </Link>
                 </FieldDescription>

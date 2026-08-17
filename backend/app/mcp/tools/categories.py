@@ -1,6 +1,7 @@
 """
 Category tools for the MCP server.
 """
+
 from typing import Optional
 
 from app.mcp.dependencies import get_db, validate_uuid
@@ -58,10 +59,11 @@ def get_category(user_id: str, category_id: str) -> dict | None:
         return None
 
     with get_db() as db:
-        category = db.query(Category).filter(
-            Category.id == category_uuid,
-            Category.user_id == user_id
-        ).first()
+        category = (
+            db.query(Category)
+            .filter(Category.id == category_uuid, Category.user_id == user_id)
+            .first()
+        )
 
         if not category:
             return None
@@ -116,10 +118,14 @@ def update_category(
         return {"success": False, "error": "Invalid category ID format"}
 
     with get_db() as db:
-        category = db.query(Category).filter(
-            Category.id == category_uuid,
-            Category.user_id == user_id,
-        ).first()
+        category = (
+            db.query(Category)
+            .filter(
+                Category.id == category_uuid,
+                Category.user_id == user_id,
+            )
+            .first()
+        )
 
         if not category:
             return {"success": False, "error": "Category not found"}
@@ -162,9 +168,9 @@ def get_category_tree(user_id: str) -> list[dict]:
         List of root categories, each with nested 'children' list
     """
     with get_db() as db:
-        categories = db.query(Category).filter(
-            Category.user_id == user_id
-        ).order_by(Category.name).all()
+        categories = (
+            db.query(Category).filter(Category.user_id == user_id).order_by(Category.name).all()
+        )
 
         # Build lookup map
         cat_map = {}
@@ -178,7 +184,7 @@ def get_category_tree(user_id: str) -> list[dict]:
                 "description": cat.description,
                 "parent_id": str(cat.parent_id) if cat.parent_id else None,
                 "is_system": cat.is_system,
-                "children": []
+                "children": [],
             }
 
         # Build tree structure

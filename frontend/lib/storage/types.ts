@@ -19,7 +19,11 @@ export interface StorageProvider {
    * @param options - Upload options
    * @returns The stored file info
    */
-  upload(path: string, data: Buffer | Blob, options?: UploadOptions): Promise<StorageFile>;
+  upload(
+    path: string,
+    data: Buffer | Blob,
+    options?: UploadOptions,
+  ): Promise<StorageFile>;
 
   /**
    * Download a file from storage

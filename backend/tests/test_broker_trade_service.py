@@ -1,4 +1,5 @@
 """Tests for the broker trade import service."""
+
 from datetime import date
 from decimal import Decimal
 
@@ -153,15 +154,49 @@ def test_import_trades_rejects_non_investment_account(db_session):
 def test_import_trades_validates_each_trade(db_session, investment_account):
     bad_trades = [
         # Missing side
-        {"symbol": "AAPL", "trade_date": "2024-01-10", "quantity": "10", "price": "150", "currency": "USD"},
+        {
+            "symbol": "AAPL",
+            "trade_date": "2024-01-10",
+            "quantity": "10",
+            "price": "150",
+            "currency": "USD",
+        },
         # Negative quantity
-        {"symbol": "MSFT", "trade_date": "2024-01-10", "side": "buy", "quantity": "-1", "price": "100", "currency": "USD"},
+        {
+            "symbol": "MSFT",
+            "trade_date": "2024-01-10",
+            "side": "buy",
+            "quantity": "-1",
+            "price": "100",
+            "currency": "USD",
+        },
         # Bad currency length
-        {"symbol": "VWRA", "trade_date": "2024-01-10", "side": "buy", "quantity": "1", "price": "100", "currency": "USDD"},
+        {
+            "symbol": "VWRA",
+            "trade_date": "2024-01-10",
+            "side": "buy",
+            "quantity": "1",
+            "price": "100",
+            "currency": "USDD",
+        },
         # Bad side
-        {"symbol": "BTC", "trade_date": "2024-01-10", "side": "short", "quantity": "1", "price": "30000", "currency": "USD"},
+        {
+            "symbol": "BTC",
+            "trade_date": "2024-01-10",
+            "side": "short",
+            "quantity": "1",
+            "price": "30000",
+            "currency": "USD",
+        },
         # Bad date
-        {"symbol": "AAPL", "trade_date": "not-a-date", "side": "buy", "quantity": "1", "price": "100", "currency": "USD"},
+        {
+            "symbol": "AAPL",
+            "trade_date": "not-a-date",
+            "side": "buy",
+            "quantity": "1",
+            "price": "100",
+            "currency": "USD",
+        },
     ]
     result = import_trades(
         db_session,
@@ -295,7 +330,7 @@ def test_import_trades_recomputes_holding_quantity_and_avg_cost(db_session, inve
     """After import, Holding.quantity = sum(buys) - sum(sells); avg_cost = weighted avg of open lots."""
     payload = [
         _trade("AAPL", "2024-01-10", "buy", "10", "100"),  # cost 1000
-        _trade("AAPL", "2024-02-10", "buy", "5", "120"),   # cost 600
+        _trade("AAPL", "2024-02-10", "buy", "5", "120"),  # cost 600
         _trade("AAPL", "2024-06-01", "sell", "8", "150"),  # consumes 8 from first lot
     ]
     result = import_trades(
@@ -322,7 +357,9 @@ def test_import_trades_recomputes_holding_quantity_and_avg_cost(db_session, inve
     assert holding.source == "trade_import"
 
 
-def test_import_trades_cross_batch_same_key_assigns_distinct_ordinal(db_session, investment_account):
+def test_import_trades_cross_batch_same_key_assigns_distinct_ordinal(
+    db_session, investment_account
+):
     """A second batch with a genuine same-key trade must NOT collide with the first batch's #0."""
     payload = [_trade("AAPL", "2024-01-10", "buy", "10", "150")]
 

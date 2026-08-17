@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -69,7 +68,9 @@ export function BankPicker() {
     },
   });
 
-  const loadError = fetchError ?? (isError ? translate("failedToLoadAvailableBanksPleaseTryAgain") : null);
+  const loadError =
+    fetchError ??
+    (isError ? translate("failedToLoadAvailableBanksPleaseTryAgain") : null);
 
   const filtered = useMemo(() => {
     if (!search) return aspsps;
@@ -157,7 +158,11 @@ export function BankPicker() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          {translate("noBanksFound")}{search ? translate("matching", { search: search }) : translate("for", { country: country })}.
+          {translate("noBanksFound")}
+          {search
+            ? translate("matching", { search: search })
+            : translate("for", { country: country })}
+          .
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -179,7 +184,9 @@ export function BankPicker() {
                   )}
                 </p>
                 {aspsp.beta && (
-                  <span className="text-xs text-muted-foreground">{translate("beta")}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {translate("beta")}
+                  </span>
                 )}
               </div>
             </button>

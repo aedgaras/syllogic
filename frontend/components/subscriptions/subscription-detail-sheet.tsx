@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import {
   Sheet,
   SheetContent,
@@ -54,8 +53,13 @@ export function SubscriptionDetailSheet({
   onEdit,
   onRefresh,
 }: SubscriptionDetailSheetProps) {
-  const { costAggregations, isLoading, isMatching, linkedTransactions, matchTransactions } =
-    useSubscriptionDetailController(subscription, open, onRefresh);
+  const {
+    costAggregations,
+    isLoading,
+    isMatching,
+    linkedTransactions,
+    matchTransactions,
+  } = useSubscriptionDetailController(subscription, open, onRefresh);
 
   const handleEdit = () => {
     if (subscription) {
@@ -80,13 +84,16 @@ export function SubscriptionDetailSheet({
               className={frequencyColors[subscription.frequency]}
             >
               <RiRepeatLine className="mr-1 h-3 w-3" />
-              {frequencyLabels[subscription.frequency] || subscription.frequency}
+              {frequencyLabels[subscription.frequency] ||
+                subscription.frequency}
             </Badge>
             {subscription.category && (
               <Badge
                 variant="secondary"
                 className="text-white"
-                style={{ backgroundColor: subscription.category.color ?? "#6B7280" }}
+                style={{
+                  backgroundColor: subscription.category.color ?? "#6B7280",
+                }}
               >
                 {subscription.category.name}
               </Badge>
@@ -103,7 +110,13 @@ export function SubscriptionDetailSheet({
             {/* Importance blocks */}
             <div
               className="flex items-center gap-1 cursor-default"
-              title={importance === 3 ? translate("highImportance") : importance === 2 ? translate("mediumImportance") : translate("lowImportance")}
+              title={
+                importance === 3
+                  ? translate("highImportance")
+                  : importance === 2
+                    ? translate("mediumImportance")
+                    : translate("lowImportance")
+              }
             >
               {Array.from({ length: 3 }).map((_, i) => (
                 <div
@@ -154,7 +167,9 @@ export function SubscriptionDetailSheet({
                 disabled={isMatching}
               >
                 <RiLink className="mr-2 h-4 w-4" />
-                {isMatching ? translate("matching11cb2a") : translate("matchTransactions")}
+                {isMatching
+                  ? translate("matching11cb2a")
+                  : translate("matchTransactions")}
               </Button>
               <Button variant="outline" onClick={handleEdit}>
                 <RiEditLine className="mr-2 h-4 w-4" />
@@ -168,7 +183,8 @@ export function SubscriptionDetailSheet({
             <div className="flex-1 flex flex-col min-h-0">
               <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-sm font-medium">
-                  {translate("linkedTransactions")}{linkedTransactions.length})
+                  {translate("linkedTransactions")}
+                  {linkedTransactions.length})
                 </h3>
               </div>
 
@@ -186,14 +202,17 @@ export function SubscriptionDetailSheet({
                       >
                         <div className="min-w-0 flex-1">
                           <div className="text-sm truncate">
-                            {txn.merchant || txn.description || translate("transaction")}
+                            {txn.merchant ||
+                              txn.description ||
+                              translate("transaction")}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {format(new Date(txn.bookedAt), "MMM d, yyyy")}
                           </div>
                         </div>
                         <div className="shrink-0 text-sm font-mono sm:ml-4">
-                          {Math.abs(parseFloat(txn.amount)).toFixed(2)} {currency}
+                          {Math.abs(parseFloat(txn.amount)).toFixed(2)}{" "}
+                          {currency}
                         </div>
                       </div>
                     ))}

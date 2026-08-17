@@ -2,13 +2,13 @@
 Service for automatically categorizing transactions based on description/merchant.
 Uses deterministic keyword matching first, then falls back to LLM if needed.
 """
+
 import os
 import re
 import logging
 from typing import Optional, List, Dict, Tuple
 from sqlalchemy.orm import Session
 from decimal import Decimal
-from functools import lru_cache
 import time
 from difflib import SequenceMatcher
 from dataclasses import dataclass
@@ -45,6 +45,7 @@ class CategoryMatchResult:
         cost_usd: Estimated cost in USD (only for LLM, None otherwise)
         matched_keywords: List of keywords that matched (for deterministic method)
     """
+
     category: Optional[Category]
     method: str  # 'deterministic', 'llm', 'none'
     confidence_score: Optional[float] = None
@@ -85,9 +86,7 @@ class CategoryMatcher:
     Example:
         >>> matcher = CategoryMatcher(db_session)
         >>> category = matcher.match_category(
-        ...     description="TESCO SUPERMARKET",
-        ...     merchant="Tesco",
-        ...     amount=Decimal("-25.50")
+        ...     description="TESCO SUPERMARKET", merchant="Tesco", amount=Decimal("-25.50")
         ... )
         >>> print(category.name)  # "groceries"
     """
@@ -125,7 +124,7 @@ class CategoryMatcher:
         user_id: Optional[str] = None,
         user_overrides: Optional[List[Dict]] = None,
         additional_instructions: Optional[List[str]] = None,
-        auto_load_from_db: bool = True
+        auto_load_from_db: bool = True,
     ):
         """
         Initialize the CategoryMatcher.
@@ -171,7 +170,9 @@ class CategoryMatcher:
             category_instructions = self._get_category_instructions_from_db()
             if category_instructions:
                 self.additional_instructions.extend(category_instructions)
-                logger.info(f"Loaded {len(category_instructions)} category instructions from database")
+                logger.info(
+                    f"Loaded {len(category_instructions)} category instructions from database"
+                )
 
             # 2. Load user overrides from transactions
             db_overrides = self._get_user_overrides_from_db()
@@ -218,11 +219,15 @@ class CategoryMatcher:
         """
         instructions = []
         try:
-            categories = self.db.query(Category).filter(
-                Category.user_id == self.user_id,
-                Category.categorization_instructions.isnot(None),
-                Category.categorization_instructions != ""
-            ).all()
+            categories = (
+                self.db.query(Category)
+                .filter(
+                    Category.user_id == self.user_id,
+                    Category.categorization_instructions.isnot(None),
+                    Category.categorization_instructions != "",
+                )
+                .all()
+            )
 
             for cat in categories:
                 if cat.categorization_instructions and cat.categorization_instructions.strip():
@@ -246,14 +251,18 @@ class CategoryMatcher:
         try:
             # Get transactions where user has overridden the category
             # (category_id is set and different from category_system_id)
-            overridden_transactions = self.db.query(Transaction).filter(
-                Transaction.user_id == self.user_id,
-                Transaction.category_id.isnot(None),
-                (
-                    (Transaction.category_system_id.is_(None)) |
-                    (Transaction.category_id != Transaction.category_system_id)
+            overridden_transactions = (
+                self.db.query(Transaction)
+                .filter(
+                    Transaction.user_id == self.user_id,
+                    Transaction.category_id.isnot(None),
+                    (
+                        (Transaction.category_system_id.is_(None))
+                        | (Transaction.category_id != Transaction.category_system_id)
+                    ),
                 )
-            ).all()
+                .all()
+            )
 
             # Load categories for name lookup
             categories = self._load_categories()
@@ -267,12 +276,14 @@ class CategoryMatcher:
                         break
 
                 if category_name:
-                    overrides.append({
-                        "description": tx.description,
-                        "merchant": tx.merchant,
-                        "amount": float(tx.amount) if tx.amount else 0,
-                        "category_name": category_name
-                    })
+                    overrides.append(
+                        {
+                            "description": tx.description,
+                            "merchant": tx.merchant,
+                            "amount": float(tx.amount) if tx.amount else 0,
+                            "category_name": category_name,
+                        }
+                    )
         except Exception as e:
             logger.warning(f"Failed to fetch user overrides from DB: {e}")
 
@@ -287,11 +298,15 @@ class CategoryMatcher:
         """
         instructions = []
         try:
-            transactions = self.db.query(Transaction).filter(
-                Transaction.user_id == self.user_id,
-                Transaction.categorization_instructions.isnot(None),
-                Transaction.categorization_instructions != ""
-            ).all()
+            transactions = (
+                self.db.query(Transaction)
+                .filter(
+                    Transaction.user_id == self.user_id,
+                    Transaction.categorization_instructions.isnot(None),
+                    Transaction.categorization_instructions != "",
+                )
+                .all()
+            )
 
             # Load categories for name lookup
             categories = self._load_categories()
@@ -332,15 +347,19 @@ class CategoryMatcher:
         if self._category_cache is None:
             logger.debug(f"[CATEGORY_MATCHER] Loading categories for user_id: {self.user_id}")
             categories = self.db.query(Category).filter(Category.user_id == self.user_id).all()
-            logger.debug(f"[CATEGORY_MATCHER] Found {len(categories)} categories for user_id: {self.user_id}")
-            
+            logger.debug(
+                f"[CATEGORY_MATCHER] Found {len(categories)} categories for user_id: {self.user_id}"
+            )
+
             if not categories:
                 # Debug: Check if there are any categories in the database at all
                 all_categories_count = self.db.query(Category).count()
                 # Get distinct user_ids from categories table to see what's actually stored
                 distinct_user_ids = self.db.query(Category.user_id).distinct().all()
-                user_ids_list = [str(uid[0]) for uid in distinct_user_ids] if distinct_user_ids else []
-                
+                user_ids_list = (
+                    [str(uid[0]) for uid in distinct_user_ids] if distinct_user_ids else []
+                )
+
                 logger.warning(
                     f"[CATEGORY_MATCHER] No categories found for user_id '{self.user_id}'. "
                     f"Total categories in database: {all_categories_count}. "
@@ -354,34 +373,34 @@ class CategoryMatcher:
                 logger.debug(f"[CATEGORY_MATCHER] Loaded categories: {', '.join(category_names)}")
                 self._category_cache = {cat.name.lower(): cat for cat in categories}
         return self._category_cache
-    
+
     def get_overridden_transactions(self, account_id: Optional[str] = None) -> List[Transaction]:
         """
         Get transactions that have been overridden by the user.
-        
+
         A transaction is considered overridden if:
         - category_system_id != category_id (user changed the AI-assigned category), OR
         - categorization_instructions != NULL (user provided custom instructions)
-        
+
         Args:
             account_id: Optional account ID to filter by
-            
+
         Returns:
             List of Transaction objects that have been overridden
         """
         query = self.db.query(Transaction).filter(
             Transaction.user_id == self.user_id,
             (
-                (Transaction.category_system_id != Transaction.category_id) |
-                (Transaction.categorization_instructions.isnot(None))
-            )
+                (Transaction.category_system_id != Transaction.category_id)
+                | (Transaction.categorization_instructions.isnot(None))
+            ),
         )
-        
+
         if account_id:
             query = query.filter(Transaction.account_id == account_id)
-        
+
         return query.all()
-    
+
     def _get_keyword_rules(self) -> Dict[str, List[str]]:
         """
         Get keyword matching rules for each category.
@@ -394,72 +413,228 @@ class CategoryMatcher:
             self._keyword_rules = {
                 # Expenses
                 "groceries": [
-                    "supermarket", "grocery", "tesco", "sainsbury", "asda", "waitrose",
-                    "aldi", "lidl", "co-op", "coop", "morrisons", "food", "market",
-                    "spar", "iceland", "m&s food", "marks & spencer food"
+                    "supermarket",
+                    "grocery",
+                    "tesco",
+                    "sainsbury",
+                    "asda",
+                    "waitrose",
+                    "aldi",
+                    "lidl",
+                    "co-op",
+                    "coop",
+                    "morrisons",
+                    "food",
+                    "market",
+                    "spar",
+                    "iceland",
+                    "m&s food",
+                    "marks & spencer food",
                 ],
                 "transport": [
-                    "uber", "lyft", "taxi", "bus", "train", "tube", "metro", "subway",
-                    "transport for london", "tfl", "london underground", "national rail",
-                    "railway", "station", "parking", "petrol", "gas station", "fuel",
-                    "shell", "bp", "esso", "exxon", "chevron", "car rental", "hertz",
-                    "avis", "europcar", "zipcar", "lime", "bird", "bolt"
+                    "uber",
+                    "lyft",
+                    "taxi",
+                    "bus",
+                    "train",
+                    "tube",
+                    "metro",
+                    "subway",
+                    "transport for london",
+                    "tfl",
+                    "london underground",
+                    "national rail",
+                    "railway",
+                    "station",
+                    "parking",
+                    "petrol",
+                    "gas station",
+                    "fuel",
+                    "shell",
+                    "bp",
+                    "esso",
+                    "exxon",
+                    "chevron",
+                    "car rental",
+                    "hertz",
+                    "avis",
+                    "europcar",
+                    "zipcar",
+                    "lime",
+                    "bird",
+                    "bolt",
                 ],
                 "utilities": [
-                    "electric", "gas", "water", "utility", "energy", "power", "heating",
-                    "internet", "broadband", "wifi", "phone", "mobile", "telecom",
-                    "bt", "sky", "virgin", "ee", "vodafone", "o2", "three", "giffgaff"
+                    "electric",
+                    "gas",
+                    "water",
+                    "utility",
+                    "energy",
+                    "power",
+                    "heating",
+                    "internet",
+                    "broadband",
+                    "wifi",
+                    "phone",
+                    "mobile",
+                    "telecom",
+                    "bt",
+                    "sky",
+                    "virgin",
+                    "ee",
+                    "vodafone",
+                    "o2",
+                    "three",
+                    "giffgaff",
                 ],
                 "entertainment": [
-                    "netflix", "spotify", "disney", "hulu", "prime video", "cinema",
-                    "movie", "theater", "theatre", "concert", "ticket", "event",
-                    "cinobo", "youtube premium", "twitch", "gaming", "playstation",
-                    "xbox", "nintendo", "steam"
+                    "netflix",
+                    "spotify",
+                    "disney",
+                    "hulu",
+                    "prime video",
+                    "cinema",
+                    "movie",
+                    "theater",
+                    "theatre",
+                    "concert",
+                    "ticket",
+                    "event",
+                    "cinobo",
+                    "youtube premium",
+                    "twitch",
+                    "gaming",
+                    "playstation",
+                    "xbox",
+                    "nintendo",
+                    "steam",
                 ],
                 "dining out": [
-                    "restaurant", "cafe", "coffee", "starbucks", "costa", "nero",
-                    "pret", "mcdonald", "kfc", "burger king", "pizza", "pub", "bar",
-                    "wetherspoon", "simmons", "pregio", "deliveroo", "ubereats",
-                    "just eat", "doordash", "grubhub", "takeaway", "take away"
+                    "restaurant",
+                    "cafe",
+                    "coffee",
+                    "starbucks",
+                    "costa",
+                    "nero",
+                    "pret",
+                    "mcdonald",
+                    "kfc",
+                    "burger king",
+                    "pizza",
+                    "pub",
+                    "bar",
+                    "wetherspoon",
+                    "simmons",
+                    "pregio",
+                    "deliveroo",
+                    "ubereats",
+                    "just eat",
+                    "doordash",
+                    "grubhub",
+                    "takeaway",
+                    "take away",
                 ],
                 "shopping": [
-                    "amazon", "ebay", "etsy", "asos", "zara", "h&m", "primark",
-                    "next", "m&s", "john lewis", "debenhams", "argos", "currys",
-                    "pc world", "apple store", "nike", "adidas", "retail", "store"
+                    "amazon",
+                    "ebay",
+                    "etsy",
+                    "asos",
+                    "zara",
+                    "h&m",
+                    "primark",
+                    "next",
+                    "m&s",
+                    "john lewis",
+                    "debenhams",
+                    "argos",
+                    "currys",
+                    "pc world",
+                    "apple store",
+                    "nike",
+                    "adidas",
+                    "retail",
+                    "store",
                 ],
                 "healthcare": [
-                    "pharmacy", "pharmacist", "chemist", "boots", "superdrug",
-                    "doctor", "dentist", "hospital", "clinic", "medical", "health",
-                    "gym", "fitness", "puregym", "virgin active", "nuffield"
+                    "pharmacy",
+                    "pharmacist",
+                    "chemist",
+                    "boots",
+                    "superdrug",
+                    "doctor",
+                    "dentist",
+                    "hospital",
+                    "clinic",
+                    "medical",
+                    "health",
+                    "gym",
+                    "fitness",
+                    "puregym",
+                    "virgin active",
+                    "nuffield",
                 ],
                 "subscriptions": [
-                    "subscription", "membership", "recurring", "monthly", "annual",
-                    "aws", "amazon web services", "openai", "anthropic", "github",
-                    "adobe", "microsoft", "office 365", "dropbox", "icloud",
-                    "hiwell", "software", "saas"
+                    "subscription",
+                    "membership",
+                    "recurring",
+                    "monthly",
+                    "annual",
+                    "aws",
+                    "amazon web services",
+                    "openai",
+                    "anthropic",
+                    "github",
+                    "adobe",
+                    "microsoft",
+                    "office 365",
+                    "dropbox",
+                    "icloud",
+                    "hiwell",
+                    "software",
+                    "saas",
                 ],
                 "education": [
-                    "university", "college", "school", "tuition", "course", "training",
-                    "education", "book", "textbook", "library"
+                    "university",
+                    "college",
+                    "school",
+                    "tuition",
+                    "course",
+                    "training",
+                    "education",
+                    "book",
+                    "textbook",
+                    "library",
                 ],
                 "housing": [
-                    "rent", "mortgage", "landlord", "property", "real estate",
-                    "housing", "accommodation", "hotel", "airbnb", "booking.com"
+                    "rent",
+                    "mortgage",
+                    "landlord",
+                    "property",
+                    "real estate",
+                    "housing",
+                    "accommodation",
+                    "hotel",
+                    "airbnb",
+                    "booking.com",
                 ],
                 # Income
-                "salary": [
-                    "salary", "payroll", "wages", "income", "employment"
-                ],
+                "salary": ["salary", "payroll", "wages", "income", "employment"],
                 "freelance": [
-                    "freelance", "contractor", "consulting", "invoice", "payment received"
+                    "freelance",
+                    "contractor",
+                    "consulting",
+                    "invoice",
+                    "payment received",
                 ],
                 "investment income": [
-                    "dividend", "interest", "investment", "return", "capital gain"
+                    "dividend",
+                    "interest",
+                    "investment",
+                    "return",
+                    "capital gain",
                 ],
                 # Transfer
-                "transfer": [
-                    "transfer", "payment from", "payment to", "sent to", "received from"
-                ],
+                "transfer": ["transfer", "payment from", "payment to", "sent to", "received from"],
             }
         return self._keyword_rules
 
@@ -475,7 +650,9 @@ class CategoryMatcher:
             try:
                 api_key = self._get_openai_api_key()
                 if not api_key:
-                    logger.warning("LLM API configuration not found, LLM categorization will be unavailable")
+                    logger.warning(
+                        "LLM API configuration not found, LLM categorization will be unavailable"
+                    )
                     return None
                 base_url = get_llm_base_url()
                 self._openai_client = create_llm_client(self.db)
@@ -492,28 +669,25 @@ class CategoryMatcher:
         return self._openai_client
 
     def _check_user_override(
-        self,
-        description: Optional[str],
-        merchant: Optional[str],
-        amount: Decimal
+        self, description: Optional[str], merchant: Optional[str], amount: Decimal
     ) -> Optional[Category]:
         """
         Check if there's a user override for this transaction.
-        
+
         Args:
             description: Transaction description
             merchant: Merchant name
             amount: Transaction amount
-            
+
         Returns:
             Category if override found, None otherwise
         """
         if not self.user_overrides:
             return None
-        
+
         normalized_desc = self._normalize_text(description)
         normalized_merchant = self._normalize_text(merchant)
-        
+
         for override in self.user_overrides:
             override_desc = self._normalize_text(override.get("description"))
             override_merchant = self._normalize_text(override.get("merchant"))
@@ -527,15 +701,19 @@ class CategoryMatcher:
 
             # Match if description and merchant match (case-insensitive, normalized)
             # Skip if the transaction has no description/merchant — avoid catch-all matches
-            desc_match = (not override_desc) or (normalized_desc and override_desc == normalized_desc)
-            merchant_match = (not override_merchant) or (normalized_merchant and override_merchant == normalized_merchant)
+            desc_match = (not override_desc) or (
+                normalized_desc and override_desc == normalized_desc
+            )
+            merchant_match = (not override_merchant) or (
+                normalized_merchant and override_merchant == normalized_merchant
+            )
             # Require at least one non-empty field to match
             if not normalized_desc and not normalized_merchant:
                 continue
-            
+
             # Don't check for amount match. It's not always accurate.
-            amount_match = True # Ignore amount match
-            
+            amount_match = True  # Ignore amount match
+
             if desc_match and merchant_match and amount_match and override_category:
                 # Find the category by name
                 categories = self._load_categories()
@@ -543,7 +721,7 @@ class CategoryMatcher:
                 if category:
                     logger.info(f"User override matched: '{description}' -> '{category.name}'")
                     return category
-        
+
         return None
 
     @staticmethod
@@ -563,19 +741,26 @@ class CategoryMatcher:
 
         # Remove common transaction prefixes
         prefixes_to_remove = [
-            "payment to ", "payment from ", "transfer to ", "transfer from ",
-            "sent to ", "received from ", "from ", "to ", "paid to "
+            "payment to ",
+            "payment from ",
+            "transfer to ",
+            "transfer from ",
+            "sent to ",
+            "received from ",
+            "from ",
+            "to ",
+            "paid to ",
         ]
         for prefix in prefixes_to_remove:
             if text.startswith(prefix):
-                text = text[len(prefix):]
+                text = text[len(prefix) :]
                 break
 
         # Remove special characters except spaces, hyphens, and ampersands
-        text = re.sub(r'[^a-z0-9\s\-&]', ' ', text)
+        text = re.sub(r"[^a-z0-9\s\-&]", " ", text)
 
         # Normalize whitespace
-        text = re.sub(r'\s+', ' ', text).strip()
+        text = re.sub(r"\s+", " ", text).strip()
 
         return text
 
@@ -596,6 +781,7 @@ class CategoryMatcher:
         if self._account_cache is not None:
             return self._account_cache
         from app.models import Account  # local import if global causes circularity
+
         accounts = (
             self.db.query(Account)
             .filter(Account.user_id == self.user_id, Account.is_active == True)
@@ -632,6 +818,7 @@ class CategoryMatcher:
         2. Drop alias_patterns from accounts (keep name + ends-in).
         3. Drop all descriptions; names only.
         """
+
         def _wrapped_len(block: str) -> int:
             """Length of block after adding the '\n\n...\n' wrapper used at return time."""
             return len(block) + 3 if block else 0
@@ -725,17 +912,17 @@ class CategoryMatcher:
         description: Optional[str],
         merchant: Optional[str],
         amount: Decimal,
-        transaction_type: Optional[str] = None
+        transaction_type: Optional[str] = None,
     ) -> Optional[Category]:
         """
         Try to match category using deterministic keyword rules.
-        
+
         Args:
             description: Transaction description
             merchant: Merchant name
             amount: Transaction amount (positive for income, negative for expense)
             transaction_type: Transaction type (debit/credit)
-            
+
         Returns:
             Matched Category or None if no match found
         """
@@ -761,22 +948,24 @@ class CategoryMatcher:
         else:
             # Infer from amount sign if transaction_type not provided
             is_income = amount > 0
-        
+
         is_transfer = "transfer" in search_text
 
-        logger.debug(f"Matching transaction: '{search_text}' (amount: {amount}, transaction_type: {transaction_type}, is_income: {is_income})")
-        
+        logger.debug(
+            f"Matching transaction: '{search_text}' (amount: {amount}, transaction_type: {transaction_type}, is_income: {is_income})"
+        )
+
         # Load categories and rules
         categories = self._load_categories()
         rules = self._get_keyword_rules()
-        
+
         # Check for transfer first (highest priority)
         if is_transfer:
             transfer_cat = categories.get("transfer")
             if transfer_cat:
                 logger.info(f"Matched transfer transaction to category '{transfer_cat.name}'")
                 return transfer_cat
-        
+
         # Match against keyword rules using exact matching only
         best_match = None
         best_confidence = 0.0
@@ -827,14 +1016,14 @@ class CategoryMatcher:
 
         logger.debug(f"No deterministic match found for transaction: '{search_text}'")
         return None
-    
+
     def match_category_llm(
         self,
         description: Optional[str],
         merchant: Optional[str],
         amount: Decimal,
         available_categories: List[Category],
-        transaction_type: Optional[str] = None
+        transaction_type: Optional[str] = None,
     ) -> Optional[Category]:
         """
         Use LLM to suggest a category when deterministic matching fails.
@@ -868,12 +1057,13 @@ class CategoryMatcher:
         else:
             # Infer from amount sign if transaction_type not provided
             is_income = amount > 0
-        
+
         transaction_type_str = "income" if is_income else "expense"
 
         # Filter categories by type
         relevant_categories = [
-            cat for cat in available_categories
+            cat
+            for cat in available_categories
             if cat.category_type == transaction_type_str or cat.category_type == "transfer"
         ]
 
@@ -890,7 +1080,8 @@ class CategoryMatcher:
 
         logger.debug(
             "categorizer.prompt_context chars: categories=%d accounts=%d total=%d",
-            len(category_list), len(account_block),
+            len(category_list),
+            len(account_block),
             len(category_list) + len(account_block),
         )
         if len(category_list) + len(account_block) > self.PROMPT_CONTEXT_BUDGET:
@@ -899,23 +1090,33 @@ class CategoryMatcher:
         # Build enhanced prompt with additional instructions and user overrides
         instructions_text = ""
         if self.additional_instructions:
-            instructions_text = "\n\nUser-specific categorization guidelines:\n" + "\n".join([f"- {inst}" for inst in self.additional_instructions]) + "\n"
+            instructions_text = (
+                "\n\nUser-specific categorization guidelines:\n"
+                + "\n".join([f"- {inst}" for inst in self.additional_instructions])
+                + "\n"
+            )
 
         overrides_text = ""
         if self.user_overrides:
-            overrides_text = "\n\nUser-defined category overrides (use these patterns as examples):\n"
+            overrides_text = (
+                "\n\nUser-defined category overrides (use these patterns as examples):\n"
+            )
             for override in self.user_overrides:
                 desc = override.get("description", "N/A")
                 merch = override.get("merchant", "N/A")
                 cat = override.get("category_name", "N/A")
-                overrides_text += f"- Description: '{desc}', Merchant: '{merch}' → Category: '{cat}'\n"
+                overrides_text += (
+                    f"- Description: '{desc}', Merchant: '{merch}' → Category: '{cat}'\n"
+                )
             overrides_text += "\n"
 
         # Build transfer rule (only when account context is present)
         transfer_rule = (
             "If the transaction description, merchant, or counterparty references any of the "
-            "accounts listed in \"Your accounts\", treat it as an internal transfer and pick the "
-            "transfer category." if ENRICHED_PROMPT_ENABLED and account_block else ""
+            'accounts listed in "Your accounts", treat it as an internal transfer and pick the '
+            "transfer category."
+            if ENRICHED_PROMPT_ENABLED and account_block
+            else ""
         )
 
         # Build numbered instructions list dynamically so numbering is always correct
@@ -931,14 +1132,14 @@ class CategoryMatcher:
             "Respond with ONLY the exact category name from the list",
             'If no category fits well, respond with "UNKNOWN"',
         ]
-        instructions_block = "\n".join(f"{i+1}. {step}" for i, step in enumerate(instructions))
+        instructions_block = "\n".join(f"{i + 1}. {step}" for i, step in enumerate(instructions))
 
         # Build enhanced prompt
         prompt = f"""Categorize this financial transaction by selecting the most appropriate category.
 
 Transaction details:
-- Description: {description or 'N/A'}
-- Merchant: {merchant or 'N/A'}
+- Description: {description or "N/A"}
+- Merchant: {merchant or "N/A"}
 - Amount: {abs(amount)} {transaction_type_str.upper()}
 - Type: {transaction_type_str}
 
@@ -961,12 +1162,12 @@ Category name:"""
                     messages=[
                         {
                             "role": "system",
-                            "content": "You are a financial transaction categorization expert. Always respond with only the category name, nothing else."
+                            "content": "You are a financial transaction categorization expert. Always respond with only the category name, nothing else.",
                         },
-                        {"role": "user", "content": prompt}
+                        {"role": "user", "content": prompt},
                     ],
                     temperature=self.LLM_TEMPERATURE,
-                    max_tokens=self.LLM_MAX_TOKENS
+                    max_tokens=self.LLM_MAX_TOKENS,
                 )
 
                 suggested_name = response.choices[0].message.content.strip()
@@ -983,25 +1184,35 @@ Category name:"""
                         logger.info(f"LLM matched transaction to category '{cat.name}'")
                         return cat
 
-                logger.warning(f"LLM suggested '{suggested_name}' but it doesn't match any available category")
+                logger.warning(
+                    f"LLM suggested '{suggested_name}' but it doesn't match any available category"
+                )
                 return None
 
             except Exception as e:
                 last_error = e
                 error_type = type(e).__name__
                 error_msg = str(e)
-                logger.warning(f"LLM categorization attempt {attempt + 1} failed: {error_type}: {error_msg}")
+                logger.warning(
+                    f"LLM categorization attempt {attempt + 1} failed: {error_type}: {error_msg}"
+                )
 
                 # Provide diagnostics for common error types
                 error_lower = error_msg.lower()
-                if "401" in error_msg or "authentication" in error_lower or "api key" in error_lower:
-                    logger.error(f"[LLM] DIAGNOSIS: Authentication error - API key may be invalid or expired")
+                if (
+                    "401" in error_msg
+                    or "authentication" in error_lower
+                    or "api key" in error_lower
+                ):
+                    logger.error(
+                        "[LLM] DIAGNOSIS: Authentication error - API key may be invalid or expired"
+                    )
                 elif "429" in error_msg or "rate limit" in error_lower:
-                    logger.error(f"[LLM] DIAGNOSIS: Rate limit exceeded - wait before retrying")
+                    logger.error("[LLM] DIAGNOSIS: Rate limit exceeded - wait before retrying")
                 elif "timeout" in error_lower:
-                    logger.error(f"[LLM] DIAGNOSIS: Request timeout")
+                    logger.error("[LLM] DIAGNOSIS: Request timeout")
                 elif "network" in error_lower or "connection" in error_lower:
-                    logger.error(f"[LLM] DIAGNOSIS: Network connectivity issue")
+                    logger.error("[LLM] DIAGNOSIS: Network connectivity issue")
 
                 if attempt < self.LLM_MAX_RETRIES - 1:
                     delay = self.LLM_RETRY_DELAY * (attempt + 1)
@@ -1009,8 +1220,11 @@ Category name:"""
                     time.sleep(delay)  # Exponential backoff
                     continue
                 else:
-                    logger.error(f"LLM categorization failed after {self.LLM_MAX_RETRIES} attempts: {error_type}: {error_msg}")
+                    logger.error(
+                        f"LLM categorization failed after {self.LLM_MAX_RETRIES} attempts: {error_type}: {error_msg}"
+                    )
                     import traceback
+
                     logger.debug(f"[LLM] Final error traceback:\n{traceback.format_exc()}")
                     return None
 
@@ -1022,7 +1236,7 @@ Category name:"""
         merchant: Optional[str],
         amount: Decimal,
         available_categories: List[Category],
-        transaction_type: Optional[str] = None
+        transaction_type: Optional[str] = None,
     ) -> Tuple[Optional[Category], int, float]:
         """
         Use LLM to suggest a category with detailed token usage information.
@@ -1055,12 +1269,13 @@ Category name:"""
         else:
             # Infer from amount sign if transaction_type not provided
             is_income = amount > 0
-        
+
         transaction_type_str = "income" if is_income else "expense"
 
         # Filter categories by type
         relevant_categories = [
-            cat for cat in available_categories
+            cat
+            for cat in available_categories
             if cat.category_type == transaction_type_str or cat.category_type == "transfer"
         ]
 
@@ -1077,7 +1292,8 @@ Category name:"""
 
         logger.debug(
             "categorizer.prompt_context chars: categories=%d accounts=%d total=%d",
-            len(category_list), len(account_block),
+            len(category_list),
+            len(account_block),
             len(category_list) + len(account_block),
         )
         if len(category_list) + len(account_block) > self.PROMPT_CONTEXT_BUDGET:
@@ -1086,23 +1302,33 @@ Category name:"""
         # Build enhanced prompt with additional instructions and user overrides
         instructions_text = ""
         if self.additional_instructions:
-            instructions_text = "\n\nUser-specific categorization guidelines:\n" + "\n".join([f"- {inst}" for inst in self.additional_instructions]) + "\n"
+            instructions_text = (
+                "\n\nUser-specific categorization guidelines:\n"
+                + "\n".join([f"- {inst}" for inst in self.additional_instructions])
+                + "\n"
+            )
 
         overrides_text = ""
         if self.user_overrides:
-            overrides_text = "\n\nUser-defined category overrides (use these patterns as examples):\n"
+            overrides_text = (
+                "\n\nUser-defined category overrides (use these patterns as examples):\n"
+            )
             for override in self.user_overrides:
                 desc = override.get("description", "N/A")
                 merch = override.get("merchant", "N/A")
                 cat = override.get("category_name", "N/A")
-                overrides_text += f"- Description: '{desc}', Merchant: '{merch}' → Category: '{cat}'\n"
+                overrides_text += (
+                    f"- Description: '{desc}', Merchant: '{merch}' → Category: '{cat}'\n"
+                )
             overrides_text += "\n"
 
         # Build transfer rule (only when account context is present)
         transfer_rule = (
             "If the transaction description, merchant, or counterparty references any of the "
-            "accounts listed in \"Your accounts\", treat it as an internal transfer and pick the "
-            "transfer category." if ENRICHED_PROMPT_ENABLED and account_block else ""
+            'accounts listed in "Your accounts", treat it as an internal transfer and pick the '
+            "transfer category."
+            if ENRICHED_PROMPT_ENABLED and account_block
+            else ""
         )
 
         # Build numbered instructions list dynamically so numbering is always correct
@@ -1118,14 +1344,14 @@ Category name:"""
             "Respond with ONLY the exact category name from the list",
             'If no category fits well, respond with "UNKNOWN"',
         ]
-        instructions_block = "\n".join(f"{i+1}. {step}" for i, step in enumerate(instructions))
+        instructions_block = "\n".join(f"{i + 1}. {step}" for i, step in enumerate(instructions))
 
         # Build enhanced prompt
         prompt = f"""Categorize this financial transaction by selecting the most appropriate category.
 
 Transaction details:
-- Description: {description or 'N/A'}
-- Merchant: {merchant or 'N/A'}
+- Description: {description or "N/A"}
+- Merchant: {merchant or "N/A"}
 - Amount: {abs(amount)} {transaction_type_str.upper()}
 - Type: {transaction_type_str}
 
@@ -1148,12 +1374,12 @@ Category name:"""
                     messages=[
                         {
                             "role": "system",
-                            "content": "You are a financial transaction categorization expert. Always respond with only the category name, nothing else."
+                            "content": "You are a financial transaction categorization expert. Always respond with only the category name, nothing else.",
                         },
-                        {"role": "user", "content": prompt}
+                        {"role": "user", "content": prompt},
                     ],
                     temperature=self.LLM_TEMPERATURE,
-                    max_tokens=self.LLM_MAX_TOKENS
+                    max_tokens=self.LLM_MAX_TOKENS,
                 )
 
                 # Extract token usage
@@ -1182,25 +1408,35 @@ Category name:"""
                         )
                         return cat, total_tokens, cost
 
-                logger.warning(f"LLM suggested '{suggested_name}' but it doesn't match any available category")
+                logger.warning(
+                    f"LLM suggested '{suggested_name}' but it doesn't match any available category"
+                )
                 return None, total_tokens, cost
 
             except Exception as e:
                 last_error = e
                 error_type = type(e).__name__
                 error_msg = str(e)
-                logger.warning(f"LLM categorization attempt {attempt + 1} failed: {error_type}: {error_msg}")
+                logger.warning(
+                    f"LLM categorization attempt {attempt + 1} failed: {error_type}: {error_msg}"
+                )
 
                 # Provide diagnostics for common error types
                 error_lower = error_msg.lower()
-                if "401" in error_msg or "authentication" in error_lower or "api key" in error_lower:
-                    logger.error(f"[LLM] DIAGNOSIS: Authentication error - API key may be invalid or expired")
+                if (
+                    "401" in error_msg
+                    or "authentication" in error_lower
+                    or "api key" in error_lower
+                ):
+                    logger.error(
+                        "[LLM] DIAGNOSIS: Authentication error - API key may be invalid or expired"
+                    )
                 elif "429" in error_msg or "rate limit" in error_lower:
-                    logger.error(f"[LLM] DIAGNOSIS: Rate limit exceeded - wait before retrying")
+                    logger.error("[LLM] DIAGNOSIS: Rate limit exceeded - wait before retrying")
                 elif "timeout" in error_lower:
-                    logger.error(f"[LLM] DIAGNOSIS: Request timeout")
+                    logger.error("[LLM] DIAGNOSIS: Request timeout")
                 elif "network" in error_lower or "connection" in error_lower:
-                    logger.error(f"[LLM] DIAGNOSIS: Network connectivity issue")
+                    logger.error("[LLM] DIAGNOSIS: Network connectivity issue")
 
                 if attempt < self.LLM_MAX_RETRIES - 1:
                     delay = self.LLM_RETRY_DELAY * (attempt + 1)
@@ -1208,8 +1444,11 @@ Category name:"""
                     time.sleep(delay)  # Exponential backoff
                     continue
                 else:
-                    logger.error(f"LLM categorization failed after {self.LLM_MAX_RETRIES} attempts: {error_type}: {error_msg}")
+                    logger.error(
+                        f"LLM categorization failed after {self.LLM_MAX_RETRIES} attempts: {error_type}: {error_msg}"
+                    )
                     import traceback
+
                     logger.debug(f"[LLM] Final error traceback:\n{traceback.format_exc()}")
                     return None, 0, 0.0
 
@@ -1221,19 +1460,19 @@ Category name:"""
         merchant: Optional[str],
         amount: Decimal,
         transaction_type: Optional[str] = None,
-        use_llm: bool = True
+        use_llm: bool = True,
     ) -> Optional[Category]:
         """
         Match a transaction to a category.
         Checks user overrides first, then tries deterministic matching, then LLM if enabled.
-        
+
         Args:
             description: Transaction description
             merchant: Merchant name
             amount: Transaction amount
             transaction_type: Transaction type (debit/credit)
             use_llm: Whether to use LLM fallback if deterministic matching fails
-            
+
         Returns:
             Matched Category or None
         """
@@ -1241,18 +1480,18 @@ Category name:"""
         override_category = self._check_user_override(description, merchant, amount)
         if override_category:
             return override_category
-        
+
         # Try deterministic matching
         category = self.match_category_deterministic(
             description=description,
             merchant=merchant,
             amount=amount,
-            transaction_type=transaction_type
+            transaction_type=transaction_type,
         )
-        
+
         if category:
             return category
-        
+
         # Fall back to LLM if enabled
         if use_llm:
             categories = list(self._load_categories().values())
@@ -1261,7 +1500,7 @@ Category name:"""
                 merchant=merchant,
                 amount=amount,
                 available_categories=categories,
-                transaction_type=transaction_type
+                transaction_type=transaction_type,
             )
             if category:
                 return category
@@ -1274,7 +1513,7 @@ Category name:"""
         merchant: Optional[str],
         amount: Decimal,
         transaction_type: Optional[str] = None,
-        use_llm: bool = True
+        use_llm: bool = True,
     ) -> CategoryMatchResult:
         """
         Match a transaction to a category with detailed metadata.
@@ -1292,11 +1531,7 @@ Category name:"""
         """
         # Try deterministic matching first
         if not description and not merchant:
-            return CategoryMatchResult(
-                category=None,
-                method="none",
-                confidence_score=0.0
-            )
+            return CategoryMatchResult(category=None, method="none", confidence_score=0.0)
 
         # Check user overrides first (highest priority)
         override_category = self._check_user_override(description, merchant, amount)
@@ -1306,9 +1541,9 @@ Category name:"""
                 category=override_category,
                 method="override",
                 confidence_score=100.0,
-                matched_keywords=["user_override"]
+                matched_keywords=["user_override"],
             )
-        
+
         # Normalize and combine description and merchant for matching
         normalized_desc = self._normalize_text(description)
         normalized_merchant = self._normalize_text(merchant)
@@ -1328,10 +1563,12 @@ Category name:"""
         else:
             # Infer from amount sign if transaction_type not provided
             is_income = amount > 0
-        
+
         is_transfer = "transfer" in search_text
 
-        logger.debug(f"Matching transaction with details: '{search_text}' (amount: {amount}, transaction_type: {transaction_type}, is_income: {is_income})")
+        logger.debug(
+            f"Matching transaction with details: '{search_text}' (amount: {amount}, transaction_type: {transaction_type}, is_income: {is_income})"
+        )
 
         # Load categories and rules
         categories = self._load_categories()
@@ -1346,7 +1583,7 @@ Category name:"""
                     category=transfer_cat,
                     method="deterministic",
                     confidence_score=100.0,
-                    matched_keywords=["transfer"]
+                    matched_keywords=["transfer"],
                 )
 
         # Match against keyword rules using exact matching only
@@ -1393,7 +1630,7 @@ Category name:"""
                 category=best_match,
                 method="deterministic",
                 confidence_score=best_confidence,
-                matched_keywords=matched_keywords
+                matched_keywords=matched_keywords,
             )
 
         if best_match and matched_keywords:
@@ -1412,36 +1649,24 @@ Category name:"""
                 merchant=merchant,
                 amount=amount,
                 available_categories=all_categories,
-                transaction_type=transaction_type
+                transaction_type=transaction_type,
             )
 
             if category:
                 return CategoryMatchResult(
-                    category=category,
-                    method="llm",
-                    tokens_used=tokens,
-                    cost_usd=cost
+                    category=category, method="llm", tokens_used=tokens, cost_usd=cost
                 )
             elif tokens > 0:
                 # LLM was called but couldn't categorize
                 return CategoryMatchResult(
-                    category=None,
-                    method="llm",
-                    tokens_used=tokens,
-                    cost_usd=cost
+                    category=None, method="llm", tokens_used=tokens, cost_usd=cost
                 )
 
         # No match found
-        return CategoryMatchResult(
-            category=None,
-            method="none",
-            confidence_score=0.0
-        )
+        return CategoryMatchResult(category=None, method="none", confidence_score=0.0)
 
     def match_categories_batch_llm(
-        self,
-        transactions: List[Dict],
-        max_batch_size: int = 50
+        self, transactions: List[Dict], max_batch_size: int = 50
     ) -> Tuple[Dict[int, Tuple[Category, float]], int, float]:
         """
         Batch categorize multiple transactions in a single LLM call.
@@ -1453,7 +1678,9 @@ Category name:"""
         Returns:
             Tuple of (dict mapping index to (Category, confidence), total_tokens, total_cost)
         """
-        logger.info(f"[BATCH LLM] Starting batch categorization for {len(transactions)} transactions")
+        logger.info(
+            f"[BATCH LLM] Starting batch categorization for {len(transactions)} transactions"
+        )
 
         client = self._get_openai_client()
         if not client:
@@ -1469,34 +1696,40 @@ Category name:"""
         all_categories = list(categories.values())
 
         # Separate expense and income categories
-        expense_categories = [c for c in all_categories if c.category_type in ("expense", "transfer")]
+        expense_categories = [
+            c for c in all_categories if c.category_type in ("expense", "transfer")
+        ]
         income_categories = [c for c in all_categories if c.category_type in ("income", "transfer")]
 
         expense_list = "\n".join([f"- {c.name}" for c in expense_categories])
         income_list = "\n".join([f"- {c.name}" for c in income_categories])
-        
-        logger.info(f"[BATCH LLM] Expense categories ({len(expense_categories)}): {[c.name for c in expense_categories[:10]]}...")
-        logger.info(f"[BATCH LLM] Income categories ({len(income_categories)}): {[c.name for c in income_categories[:10]]}...")
+
+        logger.info(
+            f"[BATCH LLM] Expense categories ({len(expense_categories)}): {[c.name for c in expense_categories[:10]]}..."
+        )
+        logger.info(
+            f"[BATCH LLM] Income categories ({len(income_categories)}): {[c.name for c in income_categories[:10]]}..."
+        )
 
         # Check user overrides first and filter them out from LLM batch
         override_results = {}
         llm_transactions = []
-        
+
         for txn in transactions:
             idx = txn["index"]
             override_category = self._check_user_override(
-                txn.get("description"),
-                txn.get("merchant"),
-                Decimal(str(txn["amount"]))
+                txn.get("description"), txn.get("merchant"), Decimal(str(txn["amount"]))
             )
             if override_category:
                 override_results[idx] = (override_category, 100.0)  # 100% confidence for overrides
-                logger.debug(f"User override matched transaction {idx} to '{override_category.name}'")
+                logger.debug(
+                    f"User override matched transaction {idx} to '{override_category.name}'"
+                )
             else:
                 llm_transactions.append(txn)
-        
+
         if not llm_transactions:
-            logger.info(f"[BATCH LLM] All transactions matched via user overrides")
+            logger.info("[BATCH LLM] All transactions matched via user overrides")
             return override_results, 0, 0.0
 
         results = override_results.copy()  # Start with override results
@@ -1505,60 +1738,86 @@ Category name:"""
 
         # Process remaining transactions (not matched by overrides) in batches
         for batch_start in range(0, len(llm_transactions), max_batch_size):
-            batch = llm_transactions[batch_start:batch_start + max_batch_size]
-            logger.info(f"[BATCH LLM] Processing batch {batch_start // max_batch_size + 1}, size: {len(batch)}")
+            batch = llm_transactions[batch_start : batch_start + max_batch_size]
+            logger.info(
+                f"[BATCH LLM] Processing batch {batch_start // max_batch_size + 1}, size: {len(batch)}"
+            )
 
             # Build transaction list for prompt
             txn_lines = []
-            logger.info(f"[BATCH LLM] Processing {len(batch)} transactions. First transaction keys: {list(batch[0].keys()) if batch else 'empty'}")
+            logger.info(
+                f"[BATCH LLM] Processing {len(batch)} transactions. First transaction keys: {list(batch[0].keys()) if batch else 'empty'}"
+            )
             for txn in batch:
                 # Log raw transaction data
                 logger.info(f"[BATCH LLM] Raw transaction {txn['index']}: {txn}")
-                
+
                 # Use transaction_type if provided, otherwise infer from amount sign
                 if txn.get("transaction_type"):
                     transaction_type_lower = str(txn["transaction_type"]).lower()
-                    logger.info(f"[BATCH LLM] Transaction {txn['index']} has transaction_type: '{txn.get('transaction_type')}' (lowercase: '{transaction_type_lower}')")
+                    logger.info(
+                        f"[BATCH LLM] Transaction {txn['index']} has transaction_type: '{txn.get('transaction_type')}' (lowercase: '{transaction_type_lower}')"
+                    )
                     # Handle aliases
                     if transaction_type_lower in ["expense", "expenses", "debit"]:
                         txn_type = "EXPENSE"
-                        logger.info(f"[BATCH LLM] Transaction {txn['index']}: Mapped '{transaction_type_lower}' -> EXPENSE")
+                        logger.info(
+                            f"[BATCH LLM] Transaction {txn['index']}: Mapped '{transaction_type_lower}' -> EXPENSE"
+                        )
                     elif transaction_type_lower in ["income", "revenue", "credit"]:
                         txn_type = "INCOME"
-                        logger.info(f"[BATCH LLM] Transaction {txn['index']}: Mapped '{transaction_type_lower}' -> INCOME")
+                        logger.info(
+                            f"[BATCH LLM] Transaction {txn['index']}: Mapped '{transaction_type_lower}' -> INCOME"
+                        )
                     else:
                         # Fallback to amount sign if transaction_type is invalid
                         txn_type = "INCOME" if txn["amount"] > 0 else "EXPENSE"
-                        logger.warning(f"[BATCH LLM] Transaction {txn['index']}: Invalid transaction_type '{txn.get('transaction_type')}', inferred '{txn_type}' from amount {txn['amount']}")
+                        logger.warning(
+                            f"[BATCH LLM] Transaction {txn['index']}: Invalid transaction_type '{txn.get('transaction_type')}', inferred '{txn_type}' from amount {txn['amount']}"
+                        )
                 else:
                     # Infer from amount sign if transaction_type not provided
                     txn_type = "INCOME" if txn["amount"] > 0 else "EXPENSE"
-                    logger.warning(f"[BATCH LLM] Transaction {txn['index']}: No transaction_type provided, inferred '{txn_type}' from amount {txn['amount']}")
-                
-                logger.info(f"[BATCH LLM] Transaction {txn['index']}: Final determined_type='{txn_type}'")
-                
+                    logger.warning(
+                        f"[BATCH LLM] Transaction {txn['index']}: No transaction_type provided, inferred '{txn_type}' from amount {txn['amount']}"
+                    )
+
+                logger.info(
+                    f"[BATCH LLM] Transaction {txn['index']}: Final determined_type='{txn_type}'"
+                )
+
                 txn_lines.append(
                     f"{txn['index']}|{txn.get('description', 'N/A')}|{txn.get('merchant', 'N/A')}|{abs(txn['amount'])}|{txn_type}"
                 )
 
             transactions_text = "\n".join(txn_lines)
-            logger.info(f"[BATCH LLM] Transactions text (first 500 chars):\n{transactions_text[:500]}...")
+            logger.info(
+                f"[BATCH LLM] Transactions text (first 500 chars):\n{transactions_text[:500]}..."
+            )
 
             # Build instructions text if provided
             instructions_text = ""
             if self.additional_instructions:
-                instructions_text = "\n\nUser-specific categorization guidelines:\n" + "\n".join([f"- {inst}" for inst in self.additional_instructions]) + "\n"
-            
+                instructions_text = (
+                    "\n\nUser-specific categorization guidelines:\n"
+                    + "\n".join([f"- {inst}" for inst in self.additional_instructions])
+                    + "\n"
+                )
+
             overrides_text = ""
             if self.user_overrides:
-                overrides_text = "\n\nUser-defined category overrides (use these patterns as examples):\n"
+                overrides_text = (
+                    "\n\nUser-defined category overrides (use these patterns as examples):\n"
+                )
                 for override in self.user_overrides:
                     desc = override.get("description", "N/A")
                     merch = override.get("merchant", "N/A")
                     cat = override.get("category_name", "N/A")
-                    overrides_text += f"- Description: '{desc}', Merchant: '{merch}' → Category: '{cat}'\n"
+                    overrides_text += (
+                        f"- Description: '{desc}', Merchant: '{merch}' → Category: '{cat}'\n"
+                    )
                 overrides_text += "\n"
-            
+
             prompt = f"""Categorize each financial transaction below. Each line is: INDEX|DESCRIPTION|MERCHANT|AMOUNT|TYPE
 
 Transactions:
@@ -1599,13 +1858,15 @@ Response:"""
                     messages=[
                         {
                             "role": "system",
-                            "content": "You are a financial transaction categorization expert. Respond only in the specified format, one line per transaction: INDEX|CATEGORY_NAME|CONFIDENCE"
+                            "content": "You are a financial transaction categorization expert. Respond only in the specified format, one line per transaction: INDEX|CATEGORY_NAME|CONFIDENCE",
                         },
-                        {"role": "user", "content": prompt}
+                        {"role": "user", "content": prompt},
                     ],
                     temperature=self.LLM_TEMPERATURE,
-                    max_tokens=max(150, len(batch) * 25),  # ~25 tokens per response line (includes confidence)
-                    timeout=30.0  # 30 second timeout
+                    max_tokens=max(
+                        150, len(batch) * 25
+                    ),  # ~25 tokens per response line (includes confidence)
+                    timeout=30.0,  # 30 second timeout
                 )
 
                 logger.info("[BATCH LLM] Received response from LLM API")
@@ -1614,7 +1875,9 @@ Response:"""
                 input_tokens, output_tokens, batch_tokens = self._extract_token_usage(response)
                 batch_cost = self._calculate_llm_cost(input_tokens, output_tokens, self.LLM_MODEL)
 
-                logger.info(f"[BATCH LLM] Tokens used - input: {input_tokens}, output: {output_tokens}, total: {batch_tokens}, cost: ${batch_cost:.6f}")
+                logger.info(
+                    f"[BATCH LLM] Tokens used - input: {input_tokens}, output: {output_tokens}, total: {batch_tokens}, cost: ${batch_cost:.6f}"
+                )
 
                 total_tokens += batch_tokens
                 total_cost += batch_cost
@@ -1625,7 +1888,7 @@ Response:"""
 
                 unknown_count = 0
                 parsed_count = 0
-                
+
                 for line in response_text.split("\n"):
                     line = line.strip()
                     if not line or "|" not in line:
@@ -1642,7 +1905,9 @@ Response:"""
 
                         if cat_name.upper() == "UNKNOWN":
                             unknown_count += 1
-                            logger.debug(f"Batch LLM returned UNKNOWN for transaction {idx} (LLM couldn't confidently categorize)")
+                            logger.debug(
+                                f"Batch LLM returned UNKNOWN for transaction {idx} (LLM couldn't confidently categorize)"
+                            )
                             continue
 
                         # Parse confidence (default to 50 if not provided)
@@ -1658,19 +1923,27 @@ Response:"""
                         matched_cat = categories.get(cat_name.lower())
                         if matched_cat:
                             results[idx] = (matched_cat, confidence)
-                            logger.debug(f"Batch LLM matched transaction {idx} to '{matched_cat.name}' (confidence: {confidence}%)")
+                            logger.debug(
+                                f"Batch LLM matched transaction {idx} to '{matched_cat.name}' (confidence: {confidence}%)"
+                            )
                         else:
-                            logger.warning(f"Batch LLM suggested '{cat_name}' for index {idx} but category not found")
+                            logger.warning(
+                                f"Batch LLM suggested '{cat_name}' for index {idx} but category not found"
+                            )
 
                     except (ValueError, IndexError) as e:
                         logger.warning(f"Failed to parse batch LLM response line '{line}': {e}")
                         continue
-                
+
                 # Log summary of parsing
                 if unknown_count > 0:
-                    logger.info(f"[BATCH LLM] LLM returned UNKNOWN for {unknown_count} out of {parsed_count} transactions (this is normal for vague/unclear transactions)")
+                    logger.info(
+                        f"[BATCH LLM] LLM returned UNKNOWN for {unknown_count} out of {parsed_count} transactions (this is normal for vague/unclear transactions)"
+                    )
                 if parsed_count == 0:
-                    logger.warning(f"[BATCH LLM] No valid response lines parsed from LLM response. Response was: {response_text[:200]}")
+                    logger.warning(
+                        f"[BATCH LLM] No valid response lines parsed from LLM response. Response was: {response_text[:200]}"
+                    )
 
                 logger.info(
                     f"Batch LLM categorized {len(results)} transactions "
@@ -1681,33 +1954,60 @@ Response:"""
                 error_type = type(e).__name__
                 error_msg = str(e)
                 logger.error(f"[BATCH LLM] API call failed with error: {error_type}: {error_msg}")
-                
+
                 # Provide detailed diagnostics based on error type
                 error_lower = error_msg.lower()
-                if "401" in error_msg or "authentication" in error_lower or "api key" in error_lower:
-                    logger.error("[BATCH LLM] DIAGNOSIS: Authentication error - API key may be invalid, expired, or missing")
+                if (
+                    "401" in error_msg
+                    or "authentication" in error_lower
+                    or "api key" in error_lower
+                ):
+                    logger.error(
+                        "[BATCH LLM] DIAGNOSIS: Authentication error - API key may be invalid, expired, or missing"
+                    )
                 elif "429" in error_msg or "rate limit" in error_lower:
-                    logger.error("[BATCH LLM] DIAGNOSIS: Rate limit exceeded - API quota may be exceeded, wait and retry")
+                    logger.error(
+                        "[BATCH LLM] DIAGNOSIS: Rate limit exceeded - API quota may be exceeded, wait and retry"
+                    )
                 elif "timeout" in error_lower:
-                    logger.error(f"[BATCH LLM] DIAGNOSIS: Request timeout - API call took longer than 30 seconds")
-                    logger.error(f"[BATCH LLM] Consider reducing batch size (current: {len(batch)} transactions)")
-                elif "network" in error_lower or "connection" in error_lower or "dns" in error_lower:
-                    logger.error("[BATCH LLM] DIAGNOSIS: Network connectivity issue - check internet connection")
+                    logger.error(
+                        "[BATCH LLM] DIAGNOSIS: Request timeout - API call took longer than 30 seconds"
+                    )
+                    logger.error(
+                        f"[BATCH LLM] Consider reducing batch size (current: {len(batch)} transactions)"
+                    )
+                elif (
+                    "network" in error_lower or "connection" in error_lower or "dns" in error_lower
+                ):
+                    logger.error(
+                        "[BATCH LLM] DIAGNOSIS: Network connectivity issue - check internet connection"
+                    )
                 elif "invalid" in error_lower and "model" in error_lower:
-                    logger.error(f"[BATCH LLM] DIAGNOSIS: Invalid model - check that {self.LLM_MODEL} is available")
+                    logger.error(
+                        f"[BATCH LLM] DIAGNOSIS: Invalid model - check that {self.LLM_MODEL} is available"
+                    )
                 elif "context length" in error_lower or "token" in error_lower:
-                    logger.error(f"[BATCH LLM] DIAGNOSIS: Context length exceeded - batch too large, reduce max_batch_size")
+                    logger.error(
+                        "[BATCH LLM] DIAGNOSIS: Context length exceeded - batch too large, reduce max_batch_size"
+                    )
                 else:
-                    logger.error(f"[BATCH LLM] DIAGNOSIS: Unknown error type - see traceback for details")
-                
+                    logger.error(
+                        "[BATCH LLM] DIAGNOSIS: Unknown error type - see traceback for details"
+                    )
+
                 import traceback
+
                 logger.error(f"[BATCH LLM] Traceback:\n{traceback.format_exc()}")
-                
+
                 # Log request details for debugging (without sensitive data)
-                logger.debug(f"[BATCH LLM] Request details - Model: {self.LLM_MODEL}, Batch size: {len(batch)}, "
-                           f"Max tokens: {max(150, len(batch) * 25)}, Temperature: {self.LLM_TEMPERATURE}")
-                
+                logger.debug(
+                    f"[BATCH LLM] Request details - Model: {self.LLM_MODEL}, Batch size: {len(batch)}, "
+                    f"Max tokens: {max(150, len(batch) * 25)}, Temperature: {self.LLM_TEMPERATURE}"
+                )
+
                 continue
 
-        logger.info(f"[BATCH LLM] Completed. Total results: {len(results)}, tokens: {total_tokens}, cost: ${total_cost:.6f}")
+        logger.info(
+            f"[BATCH LLM] Completed. Total results: {len(results)}, tokens: {total_tokens}, cost: ${total_cost:.6f}"
+        )
         return results, total_tokens, total_cost

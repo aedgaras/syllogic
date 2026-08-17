@@ -3,6 +3,7 @@
 Run with:
     cd backend && .venv/bin/pytest tests/test_report_tasks.py -v
 """
+
 from __future__ import annotations
 
 import base64
@@ -45,8 +46,10 @@ def test_report_renderer_command_falls_back_to_typescript_source(tmp_path):
     source = tmp_path / "emails" / "render-report.ts"
     source.parent.mkdir()
 
-    with patch.object(report_tasks, "_COMPILED_RENDER_SCRIPT", tmp_path / "missing.cjs"), \
-         patch.object(report_tasks, "_RENDER_SCRIPT", source):
+    with (
+        patch.object(report_tasks, "_COMPILED_RENDER_SCRIPT", tmp_path / "missing.cjs"),
+        patch.object(report_tasks, "_RENDER_SCRIPT", source),
+    ):
         command, cwd = report_tasks._report_renderer_command()
 
     assert command == ["npx", "tsx", str(source)]
@@ -114,15 +117,21 @@ def test_send_report_run_success_marks_succeeded():
     try:
         report = _seed_due_report(db)
         user_id = report.user_id
-        run = ReportRun(report_id=report.id, status="SCHEDULED", recipient_emails=report.recipient_emails)
+        run = ReportRun(
+            report_id=report.id, status="SCHEDULED", recipient_emails=report.recipient_emails
+        )
         db.add(run)
         db.commit()
         run_id = str(run.id)
 
-        fake_render = MagicMock(returncode=0, stdout='{"html": "<p>hi</p>", "text": "hi"}', stderr="")
+        fake_render = MagicMock(
+            returncode=0, stdout='{"html": "<p>hi</p>", "text": "hi"}', stderr=""
+        )
         mock_adapter = MagicMock()
-        with patch.object(report_tasks.subprocess, "run", return_value=fake_render), \
-             patch.object(report_tasks, "get_mail_adapter", return_value=mock_adapter):
+        with (
+            patch.object(report_tasks.subprocess, "run", return_value=fake_render),
+            patch.object(report_tasks, "get_mail_adapter", return_value=mock_adapter),
+        ):
             report_tasks.send_report_run(run_id)
 
         db.refresh(run)
@@ -142,16 +151,22 @@ def test_send_report_run_sets_real_manage_url():
     try:
         report = _seed_due_report(db)
         user_id = report.user_id
-        run = ReportRun(report_id=report.id, status="SCHEDULED", recipient_emails=report.recipient_emails)
+        run = ReportRun(
+            report_id=report.id, status="SCHEDULED", recipient_emails=report.recipient_emails
+        )
         db.add(run)
         db.commit()
         run_id = str(run.id)
 
-        fake_render = MagicMock(returncode=0, stdout='{"html": "<p>hi</p>", "text": "hi"}', stderr="")
+        fake_render = MagicMock(
+            returncode=0, stdout='{"html": "<p>hi</p>", "text": "hi"}', stderr=""
+        )
         mock_adapter = MagicMock()
-        with patch.dict(os.environ, {"FRONTEND_URL": "https://app.example.com"}), \
-             patch.object(report_tasks.subprocess, "run", return_value=fake_render) as mock_run, \
-             patch.object(report_tasks, "get_mail_adapter", return_value=mock_adapter):
+        with (
+            patch.dict(os.environ, {"FRONTEND_URL": "https://app.example.com"}),
+            patch.object(report_tasks.subprocess, "run", return_value=fake_render) as mock_run,
+            patch.object(report_tasks, "get_mail_adapter", return_value=mock_adapter),
+        ):
             report_tasks.send_report_run(run_id)
 
         mock_run.assert_called_once()
@@ -171,14 +186,20 @@ def test_send_report_run_failure_marks_failed_without_raising():
     try:
         report = _seed_due_report(db)
         user_id = report.user_id
-        run = ReportRun(report_id=report.id, status="SCHEDULED", recipient_emails=report.recipient_emails)
+        run = ReportRun(
+            report_id=report.id, status="SCHEDULED", recipient_emails=report.recipient_emails
+        )
         db.add(run)
         db.commit()
         run_id = str(run.id)
 
-        fake_render = MagicMock(returncode=0, stdout='{"html": "<p>hi</p>", "text": "hi"}', stderr="")
-        with patch.object(report_tasks.subprocess, "run", return_value=fake_render), \
-             patch.object(report_tasks, "get_mail_adapter", side_effect=RuntimeError("no provider")):
+        fake_render = MagicMock(
+            returncode=0, stdout='{"html": "<p>hi</p>", "text": "hi"}', stderr=""
+        )
+        with (
+            patch.object(report_tasks.subprocess, "run", return_value=fake_render),
+            patch.object(report_tasks, "get_mail_adapter", side_effect=RuntimeError("no provider")),
+        ):
             report_tasks.send_report_run(run_id)  # must not raise
 
         db.refresh(run)
@@ -197,7 +218,9 @@ def test_send_report_run_db_failure_during_transition_does_not_raise():
     try:
         report = _seed_due_report(db)
         user_id = report.user_id
-        run = ReportRun(report_id=report.id, status="SCHEDULED", recipient_emails=report.recipient_emails)
+        run = ReportRun(
+            report_id=report.id, status="SCHEDULED", recipient_emails=report.recipient_emails
+        )
         db.add(run)
         db.commit()
         run_id = str(run.id)

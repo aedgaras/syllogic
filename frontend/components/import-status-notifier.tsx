@@ -47,7 +47,10 @@ export function ImportStatusNotifier() {
       setPendingImport(null);
     },
     onSubscriptionsCompleted: (event) => {
-      console.log("[ImportStatusNotifier] subscriptions_completed callback", event);
+      console.log(
+        "[ImportStatusNotifier] subscriptions_completed callback",
+        event,
+      );
       // Full flow complete (import + subscriptions)
       clearPendingImport();
       setPendingImport(null);

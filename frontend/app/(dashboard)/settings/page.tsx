@@ -2,7 +2,12 @@ import { t as translate } from "@/i18n/translate";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
-import { getCurrentUserProfile, getOidcSettings, getOpenAiSettings, getSignupSettings } from "@/lib/actions/settings";
+import {
+  getCurrentUserProfile,
+  getOidcSettings,
+  getOpenAiSettings,
+  getSignupSettings,
+} from "@/lib/actions/settings";
 import { getCategories } from "@/lib/actions/categories";
 import { listApiKeys } from "@/lib/actions/api-keys";
 import { getCsvImportHistory } from "@/lib/actions/csv-import";
@@ -33,18 +38,17 @@ export default async function SettingsPage({
     resolvedSearchParams,
     oidcSettings,
     signupSettings,
-  ] =
-    await Promise.all([
-      getCategories(),
-      listApiKeys(),
-      getCsvImportHistory(),
-      getBankConnections(),
-      getPeople(user.id),
-      getOpenAiSettings(),
-      searchParams,
-      user.role === "admin" ? getOidcSettings() : Promise.resolve(undefined),
-      user.role === "admin" ? getSignupSettings() : Promise.resolve(undefined),
-    ]);
+  ] = await Promise.all([
+    getCategories(),
+    listApiKeys(),
+    getCsvImportHistory(),
+    getBankConnections(),
+    getPeople(user.id),
+    getOpenAiSettings(),
+    searchParams,
+    user.role === "admin" ? getOidcSettings() : Promise.resolve(undefined),
+    user.role === "admin" ? getSignupSettings() : Promise.resolve(undefined),
+  ]);
 
   const people = peopleRows.map((p) => ({
     id: p.id,
@@ -54,13 +58,15 @@ export default async function SettingsPage({
     avatarUrl: avatarUrl(p.avatarPath),
   }));
 
-  const apiKeys = apiKeysResult.success && apiKeysResult.keys ? apiKeysResult.keys : [];
+  const apiKeys =
+    apiKeysResult.success && apiKeysResult.keys ? apiKeysResult.keys : [];
   const isDemoUser = isDemoRestrictedUserEmail(user.email);
   const canCreateApiKeys = !isDemoUser;
   const canDelete = !isDemoUser;
   const mcpServerUrl = resolveMcpServerUrlForSnippet({
     mcpServerUrl: process.env.MCP_SERVER_URL,
-    betterAuthUrl: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
+    betterAuthUrl:
+      process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
     appUrl: process.env.APP_URL,
   });
   const appBaseUrl = (

@@ -151,7 +151,9 @@ def _resolve_amount_format(
     return None
 
 
-def _normalize_with_decimal_separator(token: str, decimal_separator: Literal[".", ","]) -> Optional[str]:
+def _normalize_with_decimal_separator(
+    token: str, decimal_separator: Literal[".", ","]
+) -> Optional[str]:
     decimal_index = token.rfind(decimal_separator)
     normalized: list[str] = []
 

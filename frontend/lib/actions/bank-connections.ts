@@ -7,7 +7,10 @@ import { bankConnections, accounts } from "@/lib/db/schema";
 import { requireAuth, getAuthenticatedSession } from "@/lib/auth-helpers";
 import { getBackendBaseUrl } from "@/lib/backend-url";
 import { createInternalAuthHeaders } from "@/lib/internal-auth";
-import { isDemoRestrictedUserEmail, DEMO_RESTRICTED_ACTION_ERROR } from "@/lib/demo-access";
+import {
+  isDemoRestrictedUserEmail,
+  DEMO_RESTRICTED_ACTION_ERROR,
+} from "@/lib/demo-access";
 
 export async function getBankConnections() {
   const userId = await requireAuth();
@@ -33,7 +36,12 @@ export async function getBankConnections() {
 }
 
 export async function getActiveBankConnectionsWithExpiry(): Promise<
-  Array<{ id: string; aspspName: string; consentExpiresAt: Date | null; status: string }>
+  Array<{
+    id: string;
+    aspspName: string;
+    consentExpiresAt: Date | null;
+    status: string;
+  }>
 > {
   const userId = await requireAuth();
   if (!userId) return [];
@@ -50,14 +58,14 @@ export async function getActiveBankConnectionsWithExpiry(): Promise<
       and(
         eq(bankConnections.userId, userId),
         eq(bankConnections.status, "active"),
-      )
+      ),
     );
 
   return connections;
 }
 
 export async function triggerSync(
-  connectionId: string
+  connectionId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const session = await getAuthenticatedSession();
   const userId = session?.user?.id;
@@ -97,7 +105,7 @@ export async function triggerSync(
 }
 
 export async function disconnectBank(
-  connectionId: string
+  connectionId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const session = await getAuthenticatedSession();
   const userId = session?.user?.id;
@@ -122,7 +130,9 @@ export async function disconnectBank(
     });
 
     if (!resp.ok) {
-      const data = await resp.json().catch(() => ({ detail: "Disconnect failed" }));
+      const data = await resp
+        .json()
+        .catch(() => ({ detail: "Disconnect failed" }));
       return { success: false, error: data.detail || "Disconnect failed" };
     }
 
@@ -136,7 +146,7 @@ export async function disconnectBank(
 export async function initiateAuth(
   aspspName: string,
   aspspCountry: string,
-  connectionId?: string
+  connectionId?: string,
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   const session = await getAuthenticatedSession();
   const userId = session?.user?.id;
@@ -199,8 +209,8 @@ export async function getConnectionForMapping(connectionId: string) {
       and(
         eq(bankConnections.id, connectionId),
         eq(bankConnections.userId, userId),
-        eq(bankConnections.status, "pending_setup")
-      )
+        eq(bankConnections.status, "pending_setup"),
+      ),
     )
     .then((rows) => rows[0] || null);
 
@@ -221,12 +231,7 @@ export async function getLinkableAccounts() {
       bankConnectionId: accounts.bankConnectionId,
     })
     .from(accounts)
-    .where(
-      and(
-        eq(accounts.userId, userId),
-        isNull(accounts.bankConnectionId)
-      )
-    )
+    .where(and(eq(accounts.userId, userId), isNull(accounts.bankConnectionId)))
     .orderBy(accounts.name);
 }
 
@@ -238,7 +243,7 @@ export async function submitAccountMappings(
     name?: string;
     existing_account_id?: string;
   }>,
-  initialSyncDays: number
+  initialSyncDays: number,
 ): Promise<{ success: boolean; error?: string }> {
   const session = await getAuthenticatedSession();
   const userId = session?.user?.id;
@@ -273,7 +278,9 @@ export async function submitAccountMappings(
     });
 
     if (!resp.ok) {
-      const data = await resp.json().catch(() => ({ detail: "Mapping failed" }));
+      const data = await resp
+        .json()
+        .catch(() => ({ detail: "Mapping failed" }));
       return { success: false, error: data.detail || "Mapping failed" };
     }
 
@@ -285,7 +292,7 @@ export async function submitAccountMappings(
 }
 
 export async function triggerRecategorize(
-  connectionId: string
+  connectionId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const session = await getAuthenticatedSession();
   const userId = session?.user?.id;
@@ -314,8 +321,13 @@ export async function triggerRecategorize(
     });
 
     if (!resp.ok) {
-      const data = await resp.json().catch(() => ({ detail: "Re-categorization failed" }));
-      return { success: false, error: data.detail || "Re-categorization failed" };
+      const data = await resp
+        .json()
+        .catch(() => ({ detail: "Re-categorization failed" }));
+      return {
+        success: false,
+        error: data.detail || "Re-categorization failed",
+      };
     }
 
     return { success: true };
@@ -324,9 +336,7 @@ export async function triggerRecategorize(
   }
 }
 
-export async function getConnectionStatus(
-  connectionId: string
-): Promise<{
+export async function getConnectionStatus(connectionId: string): Promise<{
   lastSyncedAt: string | null;
   lastSyncError: string | null;
   status: string;
@@ -372,7 +382,7 @@ export type SuggestedMapping = {
 };
 
 export async function getSuggestedMappings(
-  connectionId: string
+  connectionId: string,
 ): Promise<SuggestedMapping[]> {
   const session = await getAuthenticatedSession();
   const userId = session?.user?.id;
@@ -395,7 +405,9 @@ export async function getSuggestedMappings(
     });
 
     if (!resp.ok) {
-      console.warn(`getSuggestedMappings: backend returned ${resp.status} for ${connectionId}`);
+      console.warn(
+        `getSuggestedMappings: backend returned ${resp.status} for ${connectionId}`,
+      );
       return [];
     }
     return await resp.json();

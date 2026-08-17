@@ -297,7 +297,7 @@ CATEGORY_SPECS: tuple[CategorySpec, ...] = (
         icon="RiExchangeLine",
         description="Transfers between own accounts",
         categorization_instructions=(
-            "Use for money moved between the user\'s own accounts. "
+            "Use for money moved between the user's own accounts. "
             "Do not use for salary or external cash deposits."
         ),
         is_system=True,
@@ -422,16 +422,53 @@ INVESTMENT_ACCOUNT_SPECS: Tuple[InvestmentAccountSpec, ...] = (
         source="ibkr_flex",
         has_broker_connection=True,
         holdings=(
-            HoldingSpec("AAPL", "Apple Inc.", "equity", "USD",
-                        Decimal("40"), Decimal("185.00"), 0.14, 0.012, Decimal("164.20")),
-            HoldingSpec("MSFT", "Microsoft Corp.", "equity", "USD",
-                        Decimal("22"), Decimal("372.00"), 0.16, 0.011, Decimal("328.50")),
-            HoldingSpec("NVDA", "NVIDIA Corp.", "equity", "USD",
-                        Decimal("18"), Decimal("48.00"), 0.55, 0.022, Decimal("21.40")),
-            HoldingSpec("VWRA", "Vanguard FTSE All-World UCITS ETF", "etf", "USD",
-                        Decimal("60"), Decimal("108.00"), 0.10, 0.008, Decimal("95.30")),
-            HoldingSpec("USD", "Cash (USD)", "cash", "USD",
-                        Decimal("3150.00"), Decimal("1"), 0.0, 0.0, None),
+            HoldingSpec(
+                "AAPL",
+                "Apple Inc.",
+                "equity",
+                "USD",
+                Decimal("40"),
+                Decimal("185.00"),
+                0.14,
+                0.012,
+                Decimal("164.20"),
+            ),
+            HoldingSpec(
+                "MSFT",
+                "Microsoft Corp.",
+                "equity",
+                "USD",
+                Decimal("22"),
+                Decimal("372.00"),
+                0.16,
+                0.011,
+                Decimal("328.50"),
+            ),
+            HoldingSpec(
+                "NVDA",
+                "NVIDIA Corp.",
+                "equity",
+                "USD",
+                Decimal("18"),
+                Decimal("48.00"),
+                0.55,
+                0.022,
+                Decimal("21.40"),
+            ),
+            HoldingSpec(
+                "VWRA",
+                "Vanguard FTSE All-World UCITS ETF",
+                "etf",
+                "USD",
+                Decimal("60"),
+                Decimal("108.00"),
+                0.10,
+                0.008,
+                Decimal("95.30"),
+            ),
+            HoldingSpec(
+                "USD", "Cash (USD)", "cash", "USD", Decimal("3150.00"), Decimal("1"), 0.0, 0.0, None
+            ),
         ),
     ),
     InvestmentAccountSpec(
@@ -443,12 +480,31 @@ INVESTMENT_ACCOUNT_SPECS: Tuple[InvestmentAccountSpec, ...] = (
         source="manual",
         has_broker_connection=False,
         holdings=(
-            HoldingSpec("IWDA", "iShares Core MSCI World UCITS ETF", "etf", "EUR",
-                        Decimal("85"), Decimal("82.00"), 0.11, 0.008, Decimal("71.90")),
-            HoldingSpec("VWCE", "Vanguard FTSE All-World UCITS ETF (Acc)", "etf", "EUR",
-                        Decimal("45"), Decimal("112.00"), 0.10, 0.008, Decimal("99.40")),
-            HoldingSpec("EUR", "Cash (EUR)", "cash", "EUR",
-                        Decimal("1850.00"), Decimal("1"), 0.0, 0.0, None),
+            HoldingSpec(
+                "IWDA",
+                "iShares Core MSCI World UCITS ETF",
+                "etf",
+                "EUR",
+                Decimal("85"),
+                Decimal("82.00"),
+                0.11,
+                0.008,
+                Decimal("71.90"),
+            ),
+            HoldingSpec(
+                "VWCE",
+                "Vanguard FTSE All-World UCITS ETF (Acc)",
+                "etf",
+                "EUR",
+                Decimal("45"),
+                Decimal("112.00"),
+                0.10,
+                0.008,
+                Decimal("99.40"),
+            ),
+            HoldingSpec(
+                "EUR", "Cash (EUR)", "cash", "EUR", Decimal("1850.00"), Decimal("1"), 0.0, 0.0, None
+            ),
         ),
     ),
 )
@@ -537,8 +593,12 @@ class DemoSeedService:
 
         balance_service = AccountBalanceService(self.db)
         account_ids = [account.id for account in accounts]
-        balances_result = balance_service.calculate_account_balances(user.id, account_ids=account_ids)
-        timeseries_result = balance_service.calculate_account_timeseries(user.id, account_ids=account_ids)
+        balances_result = balance_service.calculate_account_balances(
+            user.id, account_ids=account_ids
+        )
+        timeseries_result = balance_service.calculate_account_timeseries(
+            user.id, account_ids=account_ids
+        )
 
         investments_result = self._seed_investments(
             user=user,
@@ -599,10 +659,15 @@ class DemoSeedService:
 
         self._prepare_user_for_demo(user)
 
-        existing_for_day = self.db.query(func.count(Transaction.id)).filter(
-            Transaction.user_id == user.id,
-            cast(Transaction.booked_at, Date) == day,
-        ).scalar() or 0
+        existing_for_day = (
+            self.db.query(func.count(Transaction.id))
+            .filter(
+                Transaction.user_id == user.id,
+                cast(Transaction.booked_at, Date) == day,
+            )
+            .scalar()
+            or 0
+        )
 
         if existing_for_day > 0:
             return {
@@ -612,10 +677,14 @@ class DemoSeedService:
                 "existing_records": int(existing_for_day),
             }
 
-        accounts = self.db.query(Account).filter(
-            Account.user_id == user.id,
-            Account.is_active == True,
-        ).all()
+        accounts = (
+            self.db.query(Account)
+            .filter(
+                Account.user_id == user.id,
+                Account.is_active == True,
+            )
+            .all()
+        )
         account_by_name = {account.name: account for account in accounts}
         required_accounts = ["Main Checking", "Savings Vault", "Travel Card"]
         missing_accounts = [name for name in required_accounts if name not in account_by_name]
@@ -643,11 +712,15 @@ class DemoSeedService:
 
         # Enforce month-to-date financial constraints after appending this day.
         month_start = date(day.year, day.month, 1)
-        existing_month_transactions = self.db.query(Transaction).filter(
-            Transaction.user_id == user.id,
-            cast(Transaction.booked_at, Date) >= month_start,
-            cast(Transaction.booked_at, Date) <= day,
-        ).all()
+        existing_month_transactions = (
+            self.db.query(Transaction)
+            .filter(
+                Transaction.user_id == user.id,
+                cast(Transaction.booked_at, Date) >= month_start,
+                cast(Transaction.booked_at, Date) <= day,
+            )
+            .all()
+        )
 
         combined_month_transactions = list(existing_month_transactions) + list(daily_transactions)
         self._enforce_monthly_financial_constraints(
@@ -661,7 +734,9 @@ class DemoSeedService:
             adjustment_posted_at=day,
         )
 
-        additional_adjustments = combined_month_transactions[len(existing_month_transactions) + len(daily_transactions):]
+        additional_adjustments = combined_month_transactions[
+            len(existing_month_transactions) + len(daily_transactions) :
+        ]
         if additional_adjustments:
             daily_transactions.extend(additional_adjustments)
 
@@ -684,8 +759,12 @@ class DemoSeedService:
 
         balance_service = AccountBalanceService(self.db)
         touched_account_ids = sorted({transaction.account_id for transaction in daily_transactions})
-        balances_result = balance_service.calculate_account_balances(user.id, account_ids=touched_account_ids)
-        timeseries_result = balance_service.calculate_account_timeseries(user.id, account_ids=touched_account_ids)
+        balances_result = balance_service.calculate_account_balances(
+            user.id, account_ids=touched_account_ids
+        )
+        timeseries_result = balance_service.calculate_account_timeseries(
+            user.id, account_ids=touched_account_ids
+        )
 
         investments_result = self._append_investment_valuations_for_day(user=user, day=day)
 
@@ -732,10 +811,14 @@ class DemoSeedService:
 
         self._prepare_user_for_demo(user)
 
-        accounts = self.db.query(Account).filter(
-            Account.user_id == user.id,
-            Account.is_active == True,
-        ).all()
+        accounts = (
+            self.db.query(Account)
+            .filter(
+                Account.user_id == user.id,
+                Account.is_active == True,
+            )
+            .all()
+        )
         categories = self.db.query(Category).filter(Category.user_id == user.id).all()
 
         account_names = {account.name for account in accounts}
@@ -792,8 +875,7 @@ class DemoSeedService:
             }
 
         missing_days = [
-            day for day in _iter_dates(start_date, coverage_end)
-            if day not in existing_dates
+            day for day in _iter_dates(start_date, coverage_end) if day not in existing_dates
         ]
 
         if not missing_days:
@@ -852,45 +934,65 @@ class DemoSeedService:
         """Delete user financial data only, preserving auth/session records."""
         deleted: Dict[str, int] = {}
 
-        deleted["transaction_links"] = self.db.query(TransactionLink).filter(
-            TransactionLink.user_id == user_id
-        ).delete(synchronize_session=False)
+        deleted["transaction_links"] = (
+            self.db.query(TransactionLink)
+            .filter(TransactionLink.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
 
-        deleted["subscription_suggestions"] = self.db.query(SubscriptionSuggestion).filter(
-            SubscriptionSuggestion.user_id == user_id
-        ).delete(synchronize_session=False)
+        deleted["subscription_suggestions"] = (
+            self.db.query(SubscriptionSuggestion)
+            .filter(SubscriptionSuggestion.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
 
-        deleted["csv_imports"] = self.db.query(CsvImport).filter(
-            CsvImport.user_id == user_id
-        ).delete(synchronize_session=False)
+        deleted["csv_imports"] = (
+            self.db.query(CsvImport)
+            .filter(CsvImport.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
 
-        deleted["transactions"] = self.db.query(Transaction).filter(
-            Transaction.user_id == user_id
-        ).delete(synchronize_session=False)
+        deleted["transactions"] = (
+            self.db.query(Transaction)
+            .filter(Transaction.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
 
-        deleted["recurring_transactions"] = self.db.query(RecurringTransaction).filter(
-            RecurringTransaction.user_id == user_id
-        ).delete(synchronize_session=False)
+        deleted["recurring_transactions"] = (
+            self.db.query(RecurringTransaction)
+            .filter(RecurringTransaction.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
 
-        deleted["categorization_rules"] = self.db.query(CategorizationRule).filter(
-            CategorizationRule.user_id == user_id
-        ).delete(synchronize_session=False)
+        deleted["categorization_rules"] = (
+            self.db.query(CategorizationRule)
+            .filter(CategorizationRule.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
 
-        deleted["accounts"] = self.db.query(Account).filter(
-            Account.user_id == user_id
-        ).delete(synchronize_session=False)
+        deleted["accounts"] = (
+            self.db.query(Account)
+            .filter(Account.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
 
-        deleted["categories"] = self.db.query(Category).filter(
-            Category.user_id == user_id
-        ).delete(synchronize_session=False)
+        deleted["categories"] = (
+            self.db.query(Category)
+            .filter(Category.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
 
-        deleted["properties"] = self.db.query(Property).filter(
-            Property.user_id == user_id
-        ).delete(synchronize_session=False)
+        deleted["properties"] = (
+            self.db.query(Property)
+            .filter(Property.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
 
-        deleted["vehicles"] = self.db.query(Vehicle).filter(
-            Vehicle.user_id == user_id
-        ).delete(synchronize_session=False)
+        deleted["vehicles"] = (
+            self.db.query(Vehicle)
+            .filter(Vehicle.user_id == user_id)
+            .delete(synchronize_session=False)
+        )
 
         self.db.commit()
         return deleted
@@ -994,19 +1096,21 @@ class DemoSeedService:
         holdings: List[Tuple[Holding, HoldingSpec, Account]] = []
         for account, acct_spec in accounts:
             if acct_spec.has_broker_connection:
-                self.db.add(BrokerConnection(
-                    user_id=user.id,
-                    account_id=account.id,
-                    provider=acct_spec.provider,
-                    # Demo accounts are excluded from the real investment sync,
-                    # so these credentials are never decrypted. A sentinel keeps
-                    # the NOT NULL column populated without SYLLOGIC_SECRET_KEY.
-                    credentials_encrypted="demo-disabled",
-                    last_sync_status="ok",
-                    last_sync_at=now,
-                    created_at=now,
-                    updated_at=now,
-                ))
+                self.db.add(
+                    BrokerConnection(
+                        user_id=user.id,
+                        account_id=account.id,
+                        provider=acct_spec.provider,
+                        # Demo accounts are excluded from the real investment sync,
+                        # so these credentials are never decrypted. A sentinel keeps
+                        # the NOT NULL column populated without SYLLOGIC_SECRET_KEY.
+                        credentials_encrypted="demo-disabled",
+                        last_sync_status="ok",
+                        last_sync_at=now,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
             for h_spec in acct_spec.holdings:
                 holding = Holding(
                     user_id=user.id,
@@ -1085,17 +1189,19 @@ class DemoSeedService:
                 if qty <= 0:
                     continue
                 lot_n += 1
-                self.db.add(BrokerTrade(
-                    account_id=account.id,
-                    symbol=h_spec.symbol,
-                    trade_date=start_date + timedelta(days=day_offset),
-                    side="buy",
-                    quantity=qty,
-                    price=(Decimal(h_spec.avg_cost) * price_mult).quantize(Decimal("0.0001")),
-                    currency=h_spec.currency,
-                    fees=Decimal("1.00"),
-                    external_id=f"demo-trade-{h_spec.symbol}-{lot_n}",
-                ))
+                self.db.add(
+                    BrokerTrade(
+                        account_id=account.id,
+                        symbol=h_spec.symbol,
+                        trade_date=start_date + timedelta(days=day_offset),
+                        side="buy",
+                        quantity=qty,
+                        price=(Decimal(h_spec.avg_cost) * price_mult).quantize(Decimal("0.0001")),
+                        currency=h_spec.currency,
+                        fees=Decimal("1.00"),
+                        external_id=f"demo-trade-{h_spec.symbol}-{lot_n}",
+                    )
+                )
                 created += 1
         self.db.commit()
         return created
@@ -1120,26 +1226,36 @@ class DemoSeedService:
                 total_acct = Decimal("0")
                 for holding, h_spec in holdings_by_account.get(str(account.id), []):
                     price = self._demo_holding_price(h_spec, start_date, day)
-                    value_native = (Decimal(h_spec.quantity) * price).quantize(Decimal("0.00000001"))
-                    value_user = self._convert_currency(value_native, h_spec.currency, "EUR", rate_usd_eur)
-                    value_acct = self._convert_currency(value_native, h_spec.currency, acct_spec.currency, rate_usd_eur)
-                    self.db.add(HoldingValuation(
-                        holding_id=holding.id,
-                        date=day,
-                        quantity=h_spec.quantity,
-                        price=price,
-                        value_user_currency=value_user,
-                        is_stale=False,
-                    ))
+                    value_native = (Decimal(h_spec.quantity) * price).quantize(
+                        Decimal("0.00000001")
+                    )
+                    value_user = self._convert_currency(
+                        value_native, h_spec.currency, "EUR", rate_usd_eur
+                    )
+                    value_acct = self._convert_currency(
+                        value_native, h_spec.currency, acct_spec.currency, rate_usd_eur
+                    )
+                    self.db.add(
+                        HoldingValuation(
+                            holding_id=holding.id,
+                            date=day,
+                            quantity=h_spec.quantity,
+                            price=price,
+                            value_user_currency=value_user,
+                            is_stale=False,
+                        )
+                    )
                     valuations += 1
                     total_user += value_user
                     total_acct += value_acct
-                self.db.add(AccountBalance(
-                    account_id=account.id,
-                    date=day,
-                    balance_in_account_currency=total_acct,
-                    balance_in_functional_currency=total_user,
-                ))
+                self.db.add(
+                    AccountBalance(
+                        account_id=account.id,
+                        date=day,
+                        balance_in_account_currency=total_acct,
+                        balance_in_functional_currency=total_user,
+                    )
+                )
                 account_balances += 1
 
         # Reflect the most recent valuation on the account headline balance.
@@ -1149,7 +1265,9 @@ class DemoSeedService:
             for holding, h_spec in holdings_by_account.get(str(account.id), []):
                 price = self._demo_holding_price(h_spec, start_date, end_date)
                 value_native = (Decimal(h_spec.quantity) * price).quantize(Decimal("0.00000001"))
-                total_acct += self._convert_currency(value_native, h_spec.currency, acct_spec.currency, last_rate)
+                total_acct += self._convert_currency(
+                    value_native, h_spec.currency, acct_spec.currency, last_rate
+                )
             account.balance_available = total_acct
             account.last_synced_at = datetime.utcnow()
 
@@ -1165,21 +1283,29 @@ class DemoSeedService:
 
         Idempotent: skips when the day is already valued. Safe no-op when the
         demo investment accounts don't exist yet (a full reset creates them)."""
-        accounts = self.db.query(Account).filter(
-            Account.user_id == user.id,
-            Account.is_active == True,
-            Account.account_type.in_(("investment_brokerage", "investment_manual")),
-        ).all()
+        accounts = (
+            self.db.query(Account)
+            .filter(
+                Account.user_id == user.id,
+                Account.is_active == True,
+                Account.account_type.in_(("investment_brokerage", "investment_manual")),
+            )
+            .all()
+        )
         if not accounts:
             return {"skipped": True, "reason": "NO_INVESTMENT_ACCOUNTS"}
 
         holdings = self.db.query(Holding).filter(Holding.user_id == user.id).all()
         holding_ids = [h.id for h in holdings]
         if holding_ids:
-            already = self.db.query(HoldingValuation).filter(
-                HoldingValuation.holding_id.in_(holding_ids),
-                HoldingValuation.date == day,
-            ).first()
+            already = (
+                self.db.query(HoldingValuation)
+                .filter(
+                    HoldingValuation.holding_id.in_(holding_ids),
+                    HoldingValuation.date == day,
+                )
+                .first()
+            )
             if already is not None:
                 return {"skipped": True, "reason": "ALREADY_VALUED", "target_date": day.isoformat()}
 
@@ -1202,24 +1328,30 @@ class DemoSeedService:
                 price = self._demo_holding_price(spec, anchor, day)
                 value_native = (Decimal(h.quantity) * price).quantize(Decimal("0.00000001"))
                 value_user = self._convert_currency(value_native, h.currency, "EUR", rate_usd_eur)
-                value_acct = self._convert_currency(value_native, h.currency, account.currency, rate_usd_eur)
-                self.db.add(HoldingValuation(
-                    holding_id=h.id,
-                    date=day,
-                    quantity=h.quantity,
-                    price=price,
-                    value_user_currency=value_user,
-                    is_stale=False,
-                ))
+                value_acct = self._convert_currency(
+                    value_native, h.currency, account.currency, rate_usd_eur
+                )
+                self.db.add(
+                    HoldingValuation(
+                        holding_id=h.id,
+                        date=day,
+                        quantity=h.quantity,
+                        price=price,
+                        value_user_currency=value_user,
+                        is_stale=False,
+                    )
+                )
                 valuations += 1
                 total_user += value_user
                 total_acct += value_acct
-            self.db.add(AccountBalance(
-                account_id=account.id,
-                date=day,
-                balance_in_account_currency=total_acct,
-                balance_in_functional_currency=total_user,
-            ))
+            self.db.add(
+                AccountBalance(
+                    account_id=account.id,
+                    date=day,
+                    balance_in_account_currency=total_acct,
+                    balance_in_functional_currency=total_user,
+                )
+            )
             account_balances += 1
             account.balance_available = total_acct
             account.last_synced_at = datetime.utcnow()
@@ -1313,7 +1445,9 @@ class DemoSeedService:
             for _ in range(tx_per_day):
                 template = self._choose_daily_template(current_date)
                 account = travel_account if template.currency == "USD" else main_account
-                amount = _decimal_from_range(self.rng, template.min_amount, template.max_amount) * Decimal("-1")
+                amount = _decimal_from_range(
+                    self.rng, template.min_amount, template.max_amount
+                ) * Decimal("-1")
                 transactions.append(
                     self._build_transaction(
                         user_id=user_id,
@@ -1331,7 +1465,9 @@ class DemoSeedService:
             if days_since_start % 10 == 0 and self.rng.random() < 0.68:
                 spike = self.rng.choice(SPIKE_TEMPLATES)
                 spike_account = travel_account if spike.currency == "USD" else main_account
-                spike_amount = _decimal_from_range(self.rng, spike.min_amount, spike.max_amount) * Decimal("-1")
+                spike_amount = _decimal_from_range(
+                    self.rng, spike.min_amount, spike.max_amount
+                ) * Decimal("-1")
                 transactions.append(
                     self._build_transaction(
                         user_id=user_id,
@@ -1586,7 +1722,9 @@ class DemoSeedService:
         for _ in range(tx_per_day):
             template = self._choose_daily_template(day)
             account = travel_account if template.currency == "USD" else main_account
-            amount = _decimal_from_range(self.rng, template.min_amount, template.max_amount) * Decimal("-1")
+            amount = _decimal_from_range(
+                self.rng, template.min_amount, template.max_amount
+            ) * Decimal("-1")
             transactions.append(
                 self._build_transaction(
                     user_id=user_id,
@@ -1603,7 +1741,9 @@ class DemoSeedService:
         if days_since_start >= 0 and days_since_start % 10 == 0 and self.rng.random() < 0.68:
             spike = self.rng.choice(SPIKE_TEMPLATES)
             spike_account = travel_account if spike.currency == "USD" else main_account
-            spike_amount = _decimal_from_range(self.rng, spike.min_amount, spike.max_amount) * Decimal("-1")
+            spike_amount = _decimal_from_range(
+                self.rng, spike.min_amount, spike.max_amount
+            ) * Decimal("-1")
             transactions.append(
                 self._build_transaction(
                     user_id=user_id,
@@ -1881,7 +2021,8 @@ class DemoSeedService:
         return Transaction(
             user_id=user_id,
             account_id=account.id,
-            external_id=external_id or f"demo-{account.currency.lower()}-{self._external_counter:06d}",
+            external_id=external_id
+            or f"demo-{account.currency.lower()}-{self._external_counter:06d}",
             transaction_type=transaction_type,
             amount=normalized_amount,
             currency=account.currency,
@@ -1930,7 +2071,9 @@ class DemoSeedService:
     ) -> None:
         balancing_category = category_by_name["Balancing Transfer"]
         spec_by_name = {spec.name: spec for spec in ACCOUNT_SPECS}
-        transactions_by_account: Dict[str, List[Transaction]] = {str(account.id): [] for account in accounts}
+        transactions_by_account: Dict[str, List[Transaction]] = {
+            str(account.id): [] for account in accounts
+        }
 
         for tx in transactions:
             transactions_by_account.setdefault(str(tx.account_id), []).append(tx)
@@ -2028,15 +2171,15 @@ class DemoSeedService:
                 transactions=candidate_transactions,
                 candidate_date=candidate_date,
             )
-            available_slack = _quantize_currency(
-                minimum_after_candidate - minimum_balance_floor
-            )
+            available_slack = _quantize_currency(minimum_after_candidate - minimum_balance_floor)
             if available_slack <= Decimal("0.01"):
                 continue
 
             remaining_slots = len(candidate_dates) - offset
-            target_slice = remaining_delta if remaining_slots <= 1 else _quantize_currency(
-                remaining_delta / Decimal(remaining_slots)
+            target_slice = (
+                remaining_delta
+                if remaining_slots <= 1
+                else _quantize_currency(remaining_delta / Decimal(remaining_slots))
             )
             adjustment_amount = _quantize_currency(
                 min(remaining_delta, available_slack, target_slice)
@@ -2095,11 +2238,15 @@ class DemoSeedService:
             if not spec:
                 continue
 
-            opening_sum = self.db.query(func.sum(Transaction.amount)).filter(
-                Transaction.user_id == user_id,
-                Transaction.account_id == account.id,
-                Transaction.booked_at < day_start,
-            ).scalar()
+            opening_sum = (
+                self.db.query(func.sum(Transaction.amount))
+                .filter(
+                    Transaction.user_id == user_id,
+                    Transaction.account_id == account.id,
+                    Transaction.booked_at < day_start,
+                )
+                .scalar()
+            )
             opening_balance = _quantize_currency(
                 Decimal(str(account.starting_balance or 0)) + Decimal(str(opening_sum or 0))
             )
@@ -2206,11 +2353,17 @@ class DemoSeedService:
     def _balance_adjustment_dates(self, start_date: date, end_date: date) -> List[date]:
         dates = {start_date, end_date}
         for month_anchor in _iter_month_anchors(start_date, end_date):
-            month_end = date(month_anchor.year, month_anchor.month, _days_in_month(month_anchor.year, month_anchor.month))
+            month_end = date(
+                month_anchor.year,
+                month_anchor.month,
+                _days_in_month(month_anchor.year, month_anchor.month),
+            )
             dates.add(min(month_end, end_date))
         return sorted(dates)
 
-    def _inject_categorization_edge_cases(self, transactions: List[Transaction], categories: List[Category]) -> None:
+    def _inject_categorization_edge_cases(
+        self, transactions: List[Transaction], categories: List[Category]
+    ) -> None:
         """Introduce a small amount of uncategorized and override-like data."""
         if not transactions:
             return
@@ -2233,7 +2386,9 @@ class DemoSeedService:
             return
 
         uncategorized_count = max(1, int(len(eligible_indices) * 0.04))
-        uncategorized_indices = set(self.rng.sample(eligible_indices, k=min(uncategorized_count, len(eligible_indices))))
+        uncategorized_indices = set(
+            self.rng.sample(eligible_indices, k=min(uncategorized_count, len(eligible_indices)))
+        )
 
         for idx in uncategorized_indices:
             transactions[idx].category_id = None
@@ -2245,7 +2400,9 @@ class DemoSeedService:
 
         for idx in override_indices:
             tx = transactions[idx]
-            system_category = categories_by_id.get(str(tx.category_system_id)) if tx.category_system_id else None
+            system_category = (
+                categories_by_id.get(str(tx.category_system_id)) if tx.category_system_id else None
+            )
             if not system_category:
                 continue
 
@@ -2259,9 +2416,7 @@ class DemoSeedService:
 
             override_category = self.rng.choice(same_type)
             tx.category_id = override_category.id
-            tx.categorization_instructions = (
-                f"For similar transactions, prefer '{override_category.name}' over '{system_category.name}'."
-            )
+            tx.categorization_instructions = f"For similar transactions, prefer '{override_category.name}' over '{system_category.name}'."
 
     def _assign_daily_external_ids(
         self,
@@ -2273,10 +2428,12 @@ class DemoSeedService:
         prefix = f"demo-day-{target_date:%Y%m%d}"
         existing_ids = {
             row[0]
-            for row in self.db.query(Transaction.external_id).filter(
+            for row in self.db.query(Transaction.external_id)
+            .filter(
                 Transaction.user_id == user_id,
                 Transaction.external_id.ilike(f"{prefix}-%"),
-            ).all()
+            )
+            .all()
             if row[0]
         }
         assigned = set(existing_ids)
@@ -2335,7 +2492,11 @@ class DemoSeedService:
                 housing_top_up = (
                     monthly["largest_non_housing_expense"] - monthly["housing_expense"]
                 ) + _decimal_from_range(self.rng, 40, 120)
-                if adjustment_posted_at and adjustment_posted_at.year == year and adjustment_posted_at.month == month:
+                if (
+                    adjustment_posted_at
+                    and adjustment_posted_at.year == year
+                    and adjustment_posted_at.month == month
+                ):
                     housing_day = _clamp_allowed_day(adjustment_posted_at.day)
                 else:
                     housing_day = _clamp_allowed_day(min(2, _days_in_month(year, month)))
@@ -2362,8 +2523,14 @@ class DemoSeedService:
                 required_income = _quantize_currency(monthly["expense_total"] / max_expense_ratio)
 
             if monthly["income_total"] < required_income:
-                bonus_amount = (required_income - monthly["income_total"]) + _decimal_from_range(self.rng, 60, 180)
-                if adjustment_posted_at and adjustment_posted_at.year == year and adjustment_posted_at.month == month:
+                bonus_amount = (required_income - monthly["income_total"]) + _decimal_from_range(
+                    self.rng, 60, 180
+                )
+                if (
+                    adjustment_posted_at
+                    and adjustment_posted_at.year == year
+                    and adjustment_posted_at.month == month
+                ):
                     bonus_day = _clamp_allowed_day(adjustment_posted_at.day)
                 else:
                     bonus_day = _clamp_allowed_day(min(26, _days_in_month(year, month)))
@@ -2396,7 +2563,9 @@ class DemoSeedService:
                 continue
 
             effective_category_id = tx.category_id or tx.category_system_id
-            category = categories_by_id.get(str(effective_category_id)) if effective_category_id else None
+            category = (
+                categories_by_id.get(str(effective_category_id)) if effective_category_id else None
+            )
             category_type = category.category_type if category else None
             category_name = category.name if category else None
 
@@ -2416,7 +2585,9 @@ class DemoSeedService:
                 expense_total += spend_amount
 
                 if category and category_type == "expense" and category_name:
-                    expense_by_category[category_name] = expense_by_category.get(category_name, Decimal("0")) + spend_amount
+                    expense_by_category[category_name] = (
+                        expense_by_category.get(category_name, Decimal("0")) + spend_amount
+                    )
 
         housing_expense = expense_by_category.get("Housing", Decimal("0"))
         largest_non_housing_expense = max(
@@ -2442,7 +2613,9 @@ class DemoSeedService:
 
     def _update_functional_amounts(self, user_id: str) -> Dict[str, int]:
         user = self.db.query(User).filter(User.id == user_id).first()
-        functional_currency = user.functional_currency if user and user.functional_currency else "EUR"
+        functional_currency = (
+            user.functional_currency if user and user.functional_currency else "EUR"
+        )
 
         transactions = self.db.query(Transaction).filter(Transaction.user_id == user_id).all()
         if not transactions:
@@ -2451,7 +2624,10 @@ class DemoSeedService:
         try:
             exchange_service = ExchangeRateService(self.db)
         except Exception as exc:  # noqa: BLE001 - preserve full error in summary
-            logger.warning("[DEMO_SEED] Could not initialize ExchangeRateService for functional amounts: %s", exc)
+            logger.warning(
+                "[DEMO_SEED] Could not initialize ExchangeRateService for functional amounts: %s",
+                exc,
+            )
             return {"updated": 0, "skipped": 0, "failed": len(transactions)}
 
         updated = 0

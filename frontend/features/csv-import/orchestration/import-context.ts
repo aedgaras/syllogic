@@ -19,7 +19,8 @@ const policies: Record<ImportContext, ImportContextPolicy> = {
     previewPath: (id) => `/transactions/import/preview?id=${id}`,
     uploadBackPath: "/transactions",
     completionPath: (id) => `/transactions?importing=${id}`,
-    sanitizeMapping: (mapping) => sanitizeMappingForContext(mapping, "dashboard"),
+    sanitizeMapping: (mapping) =>
+      sanitizeMappingForContext(mapping, "dashboard"),
   },
   onboarding: {
     context: "onboarding",
@@ -28,10 +29,13 @@ const policies: Record<ImportContext, ImportContextPolicy> = {
     previewPath: (id) => `/step-4/preview?id=${id}`,
     uploadBackPath: "/step-3",
     completionPath: () => null,
-    sanitizeMapping: (mapping) => sanitizeMappingForContext(mapping, "onboarding"),
+    sanitizeMapping: (mapping) =>
+      sanitizeMappingForContext(mapping, "onboarding"),
   },
 };
 
-export function getImportContextPolicy(context: ImportContext): ImportContextPolicy {
+export function getImportContextPolicy(
+  context: ImportContext,
+): ImportContextPolicy {
   return policies[context];
 }

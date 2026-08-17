@@ -5,7 +5,10 @@ interface WeightBarVisualizerProps {
   color: string;
 }
 
-export function WeightBarVisualizer({ percentage, color }: WeightBarVisualizerProps) {
+export function WeightBarVisualizer({
+  percentage,
+  color,
+}: WeightBarVisualizerProps) {
   const totalBars = 10;
   const filledBars = Math.round((percentage / 100) * totalBars);
 

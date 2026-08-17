@@ -42,7 +42,9 @@ def reset_demo_environment(
     resolved_user_email = user_email or os.getenv("DEMO_SHARED_USER_EMAIL")
 
     if not resolved_user_id and not resolved_user_email:
-        logger.error("[DEMO_RESET] Missing demo user identity (DEMO_SHARED_USER_ID / DEMO_SHARED_USER_EMAIL)")
+        logger.error(
+            "[DEMO_RESET] Missing demo user identity (DEMO_SHARED_USER_ID / DEMO_SHARED_USER_EMAIL)"
+        )
         return {
             "skipped": True,
             "reason": "MISSING_DEMO_USER_IDENTITY",
@@ -80,7 +82,9 @@ def reset_demo_environment(
         session.close()
 
 
-@celery_app.task(bind=True, max_retries=2, name="tasks.demo_tasks.append_previous_day_demo_transactions")
+@celery_app.task(
+    bind=True, max_retries=2, name="tasks.demo_tasks.append_previous_day_demo_transactions"
+)
 def append_previous_day_demo_transactions(
     self,
     user_id: Optional[str] = None,
@@ -99,7 +103,9 @@ def append_previous_day_demo_transactions(
     resolved_user_email = user_email or os.getenv("DEMO_SHARED_USER_EMAIL")
 
     if not resolved_user_id and not resolved_user_email:
-        logger.error("[DEMO_DAILY] Missing demo user identity (DEMO_SHARED_USER_ID / DEMO_SHARED_USER_EMAIL)")
+        logger.error(
+            "[DEMO_DAILY] Missing demo user identity (DEMO_SHARED_USER_ID / DEMO_SHARED_USER_EMAIL)"
+        )
         return {
             "skipped": True,
             "reason": "MISSING_DEMO_USER_IDENTITY",

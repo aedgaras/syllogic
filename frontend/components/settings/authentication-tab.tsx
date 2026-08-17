@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState } from "react";
 import { RiLockLine, RiSave3Line } from "@remixicon/react";
 import { toast } from "sonner";
@@ -29,14 +28,18 @@ export function AuthenticationTab({
 }: AuthenticationTabProps) {
   const [settings, setSettings] = useState(initialSettings);
   const [displayName, setDisplayName] = useState(initialSettings.displayName);
-  const [discoveryUrl, setDiscoveryUrl] = useState(initialSettings.discoveryUrl);
+  const [discoveryUrl, setDiscoveryUrl] = useState(
+    initialSettings.discoveryUrl,
+  );
   const [clientId, setClientId] = useState(initialSettings.clientId);
   const [clientSecret, setClientSecret] = useState("");
   const [enabled, setEnabled] = useState(initialSettings.enabled);
   const [allowSignUp, setAllowSignUp] = useState(initialSettings.allowSignUp);
   const [saving, setSaving] = useState(false);
   const [signupSettings, setSignupSettings] = useState(initialSignupSettings);
-  const [signupsEnabled, setSignupsEnabled] = useState(initialSignupSettings.databaseEnabled);
+  const [signupsEnabled, setSignupsEnabled] = useState(
+    initialSignupSettings.databaseEnabled,
+  );
   const [savingSignups, setSavingSignups] = useState(false);
 
   async function handleSaveSignups() {
@@ -48,7 +51,11 @@ export function AuthenticationTab({
         return;
       }
       setSignupSettings(result.settings);
-      toast.success(signupsEnabled ? translate("newUserSignupsEnabled") : translate("newUserSignupsDisabled"));
+      toast.success(
+        signupsEnabled
+          ? translate("newUserSignupsEnabled")
+          : translate("newUserSignupsDisabled"),
+      );
     } catch {
       toast.error(translate("failedToSaveSignupSettings"));
     } finally {
@@ -73,7 +80,11 @@ export function AuthenticationTab({
       }
       setSettings(result.settings);
       setClientSecret("");
-      toast.success(enabled ? translate("oidcLoginEnabled") : translate("oidcSettingsSaved"));
+      toast.success(
+        enabled
+          ? translate("oidcLoginEnabled")
+          : translate("oidcSettingsSaved"),
+      );
     } catch {
       toast.error(translate("failedToSaveOidcSettings"));
     } finally {
@@ -86,7 +97,9 @@ export function AuthenticationTab({
       <div className="space-y-4 border border-border p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <Label htmlFor="new-user-signups">{translate("newUserRegistration")}</Label>
+            <Label htmlFor="new-user-signups">
+              {translate("newUserRegistration")}
+            </Label>
             <p className="text-xs text-muted-foreground">
               {translate("allowPeopleToCreateNewLocalAccountsExistingUsers")}
             </p>
@@ -111,10 +124,7 @@ export function AuthenticationTab({
         )}
         <Button
           onClick={handleSaveSignups}
-          disabled={
-            savingSignups ||
-            signupSettings.environmentDisabled
-          }
+          disabled={savingSignups || signupSettings.environmentDisabled}
         >
           <RiSave3Line />
           {savingSignups ? translate("saving") : translate("saveSignupPolicy")}
@@ -129,7 +139,9 @@ export function AuthenticationTab({
               {translate("openidConnect")}
             </Label>
             <p className="text-xs text-muted-foreground">
-              {translate("addAnOptionalIdentityProviderSuchAsAuthentikKeycloak")}
+              {translate(
+                "addAnOptionalIdentityProviderSuchAsAuthentikKeycloak",
+              )}
             </p>
           </div>
           <Switch
@@ -163,11 +175,15 @@ export function AuthenticationTab({
             placeholder={translate("companySso")}
             disabled={saving}
           />
-          <p className="text-xs text-muted-foreground">{translate("shownOnTheLoginButton")}</p>
+          <p className="text-xs text-muted-foreground">
+            {translate("shownOnTheLoginButton")}
+          </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="oidc-discovery-url">{translate("discoveryUrl")}</Label>
+          <Label htmlFor="oidc-discovery-url">
+            {translate("discoveryUrl")}
+          </Label>
           <Input
             id="oidc-discovery-url"
             type="url"
@@ -190,14 +206,20 @@ export function AuthenticationTab({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="oidc-client-secret">{translate("clientSecret")}</Label>
+          <Label htmlFor="oidc-client-secret">
+            {translate("clientSecret")}
+          </Label>
           <Input
             id="oidc-client-secret"
             type="password"
             value={clientSecret}
             onChange={(event) => setClientSecret(event.target.value)}
             autoComplete="new-password"
-            placeholder={settings.clientSecretConfigured ? translate("leaveBlankToKeepTheSavedSecret") : translate("enterClientSecret")}
+            placeholder={
+              settings.clientSecretConfigured
+                ? translate("leaveBlankToKeepTheSavedSecret")
+                : translate("enterClientSecret")
+            }
             disabled={saving}
           />
           <p className="text-xs text-muted-foreground">
@@ -230,9 +252,14 @@ export function AuthenticationTab({
           />
         </div>
 
-        <Button onClick={handleSave} disabled={saving || !settings.encryptionConfigured}>
+        <Button
+          onClick={handleSave}
+          disabled={saving || !settings.encryptionConfigured}
+        >
           <RiSave3Line />
-          {saving ? translate("saving") : translate("saveAuthenticationSettings")}
+          {saving
+            ? translate("saving")
+            : translate("saveAuthenticationSettings")}
         </Button>
       </div>
     </div>

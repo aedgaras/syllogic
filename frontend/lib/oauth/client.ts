@@ -18,4 +18,3 @@ export async function submitOAuthConsent(input: {
   const body = await response.json().catch(() => ({}));
   return { response, body };
 }
-

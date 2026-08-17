@@ -1,8 +1,9 @@
 """Tests for bank connectivity audit fixes."""
+
 import sys
 import os
 import unittest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,7 +15,6 @@ class TestDisconnectPreservesExternalId(unittest.TestCase):
     def test_disconnect_does_not_clear_external_id(self):
         """Account.external_id, external_id_ciphertext, external_id_hash are preserved."""
         from unittest.mock import MagicMock, patch
-        from app.routes.enable_banking import router
 
         # Build a minimal fake FastAPI request environment
         mock_db = MagicMock()
@@ -31,6 +31,7 @@ class TestDisconnectPreservesExternalId(unittest.TestCase):
             # Call the disconnect route function directly (FastAPI dependency injection
             # is bypassed by passing parameters explicitly)
             from app.routes.enable_banking import disconnect
+
             result = disconnect(
                 connection_id="conn-1",
                 user_id="user-1",
@@ -44,6 +45,7 @@ class TestDisconnectPreservesExternalId(unittest.TestCase):
 
         # Must clear connection link and provider
         from app.models import Account
+
         self.assertIn(Account.bank_connection_id, update_dict)
         self.assertIsNone(update_dict[Account.bank_connection_id])
         self.assertIn(Account.provider, update_dict)
@@ -72,6 +74,7 @@ class TestSyncIdempotencyGuard(unittest.TestCase):
     def _run_task(self, connection):
         """Run the sync guard logic extracted from the task."""
         from tasks.enable_banking_tasks import _should_skip_sync
+
         return _should_skip_sync(connection)
 
     def test_skips_when_synced_within_5_minutes(self):
@@ -164,6 +167,7 @@ class TestSuggestedMappings(unittest.TestCase):
 
             # We need different first() results per UID — adjust the mock
             call_count = [0]
+
             def first_side_effect():
                 call_count[0] += 1
                 if call_count[0] == 1:

@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import type { SubscriptionKpis } from "@/features/subscriptions/public";
@@ -12,7 +11,10 @@ interface SubscriptionsKpiGridProps {
 
 export function SubscriptionsKpiGrid({ kpis }: SubscriptionsKpiGridProps) {
   return (
-    <div className="grid gap-4 md:grid-cols-3" data-walkthrough="walkthrough-kpis">
+    <div
+      className="grid gap-4 md:grid-cols-3"
+      data-walkthrough="walkthrough-kpis"
+    >
       <Card>
         <CardContent className="flex items-center justify-between gap-3 p-4 sm:p-6">
           <div className="space-y-1">

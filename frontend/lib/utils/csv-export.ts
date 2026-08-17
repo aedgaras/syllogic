@@ -5,7 +5,7 @@ import type { TransactionWithRelations } from "@/features/transactions/public";
  */
 export function exportTransactionsToCSV(
   transactions: TransactionWithRelations[],
-  filename?: string
+  filename?: string,
 ): void {
   if (transactions.length === 0) {
     return;
@@ -36,7 +36,17 @@ export function exportTransactionsToCSV(
     const type = tx.transactionType || (tx.amount < 0 ? "debit" : "credit");
     const status = tx.pending ? "Pending" : "Completed";
 
-    return [date, description, merchant, amount, currency, category, account, type, status];
+    return [
+      date,
+      description,
+      merchant,
+      amount,
+      currency,
+      category,
+      account,
+      type,
+      status,
+    ];
   });
 
   // Combine headers and rows

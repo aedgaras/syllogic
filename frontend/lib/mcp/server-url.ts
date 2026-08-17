@@ -23,9 +23,7 @@ function isIpAddress(hostname: string): boolean {
 
 function isLocalHost(hostname: string): boolean {
   return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "::1"
+    hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
   );
 }
 
@@ -58,7 +56,7 @@ function withMcpSubdomain(url: URL): URL {
 }
 
 export function resolveMcpServerUrlForSnippet(
-  options: ResolveMcpServerUrlOptions = {}
+  options: ResolveMcpServerUrlOptions = {},
 ): string {
   const explicit = parseUrl(options.mcpServerUrl);
   if (explicit) {

@@ -1,9 +1,12 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useCallback } from "react";
-import { RiUploadCloud2Line, RiFileTextLine, RiCloseLine } from "@remixicon/react";
+import {
+  RiUploadCloud2Line,
+  RiFileTextLine,
+  RiCloseLine,
+} from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
@@ -21,7 +24,10 @@ const VALID_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ];
 
-export function CsvUploadDropzone({ onFileSelect, isUploading }: CsvUploadDropzoneProps) {
+export function CsvUploadDropzone({
+  onFileSelect,
+  isUploading,
+}: CsvUploadDropzoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +37,9 @@ export function CsvUploadDropzone({ onFileSelect, isUploading }: CsvUploadDropzo
       setError(null);
 
       // Validate file type
-      const extension = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+      const extension = file.name
+        .toLowerCase()
+        .slice(file.name.lastIndexOf("."));
       const isValidExtension = VALID_EXTENSIONS.includes(extension);
       const isValidType = VALID_TYPES.includes(file.type) || file.type === "";
 
@@ -73,7 +81,7 @@ export function CsvUploadDropzone({ onFileSelect, isUploading }: CsvUploadDropzo
         setError(translate("failedToReadFile"));
       }
     },
-    [onFileSelect]
+    [onFileSelect],
   );
 
   const handleDrop = useCallback(
@@ -86,7 +94,7 @@ export function CsvUploadDropzone({ onFileSelect, isUploading }: CsvUploadDropzo
         processFile(file);
       }
     },
-    [processFile]
+    [processFile],
   );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -106,7 +114,7 @@ export function CsvUploadDropzone({ onFileSelect, isUploading }: CsvUploadDropzo
         processFile(file);
       }
     },
-    [processFile]
+    [processFile],
   );
 
   const handleRemove = () => {
@@ -147,8 +155,10 @@ export function CsvUploadDropzone({ onFileSelect, isUploading }: CsvUploadDropzo
     <div
       className={cn(
         "rounded-lg border-2 border-dashed p-8 text-center transition-colors cursor-pointer",
-        isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25",
-        error && "border-destructive"
+        isDragging
+          ? "border-primary bg-primary/5"
+          : "border-muted-foreground/25",
+        error && "border-destructive",
       )}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
@@ -168,14 +178,18 @@ export function CsvUploadDropzone({ onFileSelect, isUploading }: CsvUploadDropzo
         </div>
         <div>
           <p className="text-lg font-medium">
-            {isDragging ? translate("dropYourFileHere") : translate("uploadYourFile")}
+            {isDragging
+              ? translate("dropYourFileHere")
+              : translate("uploadYourFile")}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {translate("dragAndDropOrClickToBrowse")}
           </p>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <p className="text-xs text-muted-foreground">{translate("csvOrExcelMax10mb")}</p>
+        <p className="text-xs text-muted-foreground">
+          {translate("csvOrExcelMax10mb")}
+        </p>
       </div>
     </div>
   );

@@ -6,7 +6,6 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from app.database import Base
 from app.models import PriceSnapshot
 from app.services.price_service import PriceService
 from app.integrations.price_provider.base import PriceQuote
@@ -22,8 +21,15 @@ def db():
 
 
 def test_returns_cached_snapshot_without_calling_provider(db):
-    db.add(PriceSnapshot(symbol="AAPL", currency="USD", date=date(2026, 4, 18),
-                         close=Decimal("234.56"), provider="yahoo"))
+    db.add(
+        PriceSnapshot(
+            symbol="AAPL",
+            currency="USD",
+            date=date(2026, 4, 18),
+            close=Decimal("234.56"),
+            provider="yahoo",
+        )
+    )
     db.commit()
     provider = MagicMock()
     svc = PriceService(db=db, provider=provider)
@@ -47,8 +53,15 @@ def test_fetches_missing_and_persists(db):
 
 
 def test_partial_miss(db):
-    db.add(PriceSnapshot(symbol="AAPL", currency="USD", date=date(2026, 4, 18),
-                         close=Decimal("234.56"), provider="yahoo"))
+    db.add(
+        PriceSnapshot(
+            symbol="AAPL",
+            currency="USD",
+            date=date(2026, 4, 18),
+            close=Decimal("234.56"),
+            provider="yahoo",
+        )
+    )
     db.commit()
     provider = MagicMock()
     provider.get_daily_closes.return_value = {

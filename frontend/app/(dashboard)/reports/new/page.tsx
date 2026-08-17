@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useQuery } from "@tanstack/react-query";
 import { listAccounts } from "@/lib/reports/api";
 import { Header } from "@/components/layout/header";

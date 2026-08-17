@@ -47,10 +47,15 @@ def assert_demo_account_balance_floors(db, user_id: str) -> None:
 
         balance = Decimal(str(account.starting_balance or 0))
         minimum_balance = balance
-        account_txs = db.query(Transaction).filter(
-            Transaction.user_id == user_id,
-            Transaction.account_id == account.id,
-        ).order_by(Transaction.booked_at.asc()).all()
+        account_txs = (
+            db.query(Transaction)
+            .filter(
+                Transaction.user_id == user_id,
+                Transaction.account_id == account.id,
+            )
+            .order_by(Transaction.booked_at.asc())
+            .all()
+        )
 
         for tx in account_txs:
             balance += Decimal(str(tx.amount or 0))
@@ -76,13 +81,23 @@ def run_checks() -> bool:
 
         assert summary["accounts_created"] >= 3, "Expected at least 3 accounts"
 
-        accounts = db.query(Account).filter(Account.user_id == user.id, Account.is_active == True).all()
+        accounts = (
+            db.query(Account).filter(Account.user_id == user.id, Account.is_active == True).all()
+        )
         assert len(accounts) >= 3, "Seeded account count mismatch"
-        assert any((account.currency or "").upper() != "EUR" for account in accounts), "Expected non-EUR account"
+        assert any((account.currency or "").upper() != "EUR" for account in accounts), (
+            "Expected non-EUR account"
+        )
 
         categories = db.query(Category).filter(Category.user_id == user.id).all()
-        with_instructions = [c for c in categories if c.categorization_instructions and c.categorization_instructions.strip()]
-        assert len(with_instructions) >= 10, "Expected categorization instructions on major categories"
+        with_instructions = [
+            c
+            for c in categories
+            if c.categorization_instructions and c.categorization_instructions.strip()
+        ]
+        assert len(with_instructions) >= 10, (
+            "Expected categorization instructions on major categories"
+        )
 
         txs = db.query(Transaction).filter(Transaction.user_id == user.id).all()
         assert txs, "Expected transactions to be generated"
@@ -114,7 +129,9 @@ def run_checks() -> bool:
                     spend = abs(Decimal(str(tx.amount)))
                     expense_total += spend
                     if category and category.category_type == "expense":
-                        expense_by_category[category.name] = expense_by_category.get(category.name, Decimal("0")) + spend
+                        expense_by_category[category.name] = (
+                            expense_by_category.get(category.name, Decimal("0")) + spend
+                        )
 
         assert income_total > expense_total, "Expected income to be greater than spending"
         assert expense_total <= (income_total * Decimal("0.65")), (
@@ -133,15 +150,21 @@ def run_checks() -> bool:
         # Seed-time balance integrity.
         for account in accounts:
             db.refresh(account)
-            tx_sum = db.query(func.sum(Transaction.amount)).filter(
-                Transaction.user_id == user.id,
-                Transaction.account_id == account.id,
-            ).scalar()
+            tx_sum = (
+                db.query(func.sum(Transaction.amount))
+                .filter(
+                    Transaction.user_id == user.id,
+                    Transaction.account_id == account.id,
+                )
+                .scalar()
+            )
             tx_sum = Decimal(str(tx_sum or 0))
             starting = Decimal(str(account.starting_balance or 0))
             computed = tx_sum + starting
             target = Decimal(str(account.balance_available or 0))
-            assert account.starting_balance is not None, f"Missing starting balance on {account.name}"
+            assert account.starting_balance is not None, (
+                f"Missing starting balance on {account.name}"
+            )
             assert abs(computed - target) <= Decimal("0.01"), (
                 f"Balance mismatch for {account.name}: computed={computed}, target={target}"
             )
@@ -151,14 +174,22 @@ def run_checks() -> bool:
             user=user,
             target_date=date(2025, 2, 1),
         )
-        assert not append_summary.get("skipped"), "Expected first daily append to create transactions"
-        assert append_summary.get("transactions_created", 0) > 0, "Expected created daily transactions"
+        assert not append_summary.get("skipped"), (
+            "Expected first daily append to create transactions"
+        )
+        assert append_summary.get("transactions_created", 0) > 0, (
+            "Expected created daily transactions"
+        )
         assert_demo_account_balance_floors(db, user.id)
 
-        appended_rows = db.query(Transaction).filter(
-            Transaction.user_id == user.id,
-            Transaction.external_id.ilike("demo-day-20250201-%"),
-        ).all()
+        appended_rows = (
+            db.query(Transaction)
+            .filter(
+                Transaction.user_id == user.id,
+                Transaction.external_id.ilike("demo-day-20250201-%"),
+            )
+            .all()
+        )
         assert appended_rows, "Expected rows with daily external-id prefix"
         assert max(tx.booked_at.date() for tx in appended_rows) <= date(2025, 2, 1), (
             "Daily append should not create future-dated transactions"
@@ -185,9 +216,13 @@ def run_checks() -> bool:
             end_date=coverage_end,
             reset=True,
         )
-        reset_max_booked = db.query(func.max(func.date(Transaction.booked_at))).filter(
-            Transaction.user_id == user.id,
-        ).scalar()
+        reset_max_booked = (
+            db.query(func.max(func.date(Transaction.booked_at)))
+            .filter(
+                Transaction.user_id == user.id,
+            )
+            .scalar()
+        )
         assert reset_max_booked == coverage_end, (
             f"Scheduled reset should stop at {coverage_end}, got {reset_max_booked}"
         )
@@ -225,16 +260,26 @@ def run_checks() -> bool:
                     day=day,
                 )
             )
-        feb_freelance = sum(1 for tx in feb_preview if (tx.description or "") == "FREELANCE PROJECT PAYMENT")
+        feb_freelance = sum(
+            1 for tx in feb_preview if (tx.description or "") == "FREELANCE PROJECT PAYMENT"
+        )
         feb_refunds = sum(1 for tx in feb_preview if (tx.description or "") == "CARD REFUND")
-        assert feb_freelance <= 1, f"Expected at most one freelance tx in daily path month, got {feb_freelance}"
-        assert feb_refunds <= 1, f"Expected at most one refund tx in daily path month, got {feb_refunds}"
+        assert feb_freelance <= 1, (
+            f"Expected at most one freelance tx in daily path month, got {feb_freelance}"
+        )
+        assert feb_refunds <= 1, (
+            f"Expected at most one refund tx in daily path month, got {feb_refunds}"
+        )
 
         # Gap backfill should detect and fill missing calendar days.
-        deleted_for_gap = db.query(Transaction).filter(
-            Transaction.user_id == user.id,
-            func.date(Transaction.booked_at) == date(2025, 1, 20),
-        ).delete(synchronize_session=False)
+        deleted_for_gap = (
+            db.query(Transaction)
+            .filter(
+                Transaction.user_id == user.id,
+                func.date(Transaction.booked_at) == date(2025, 1, 20),
+            )
+            .delete(synchronize_session=False)
+        )
         db.commit()
         assert deleted_for_gap > 0, "Expected at least one row deleted for gap test"
 
@@ -246,10 +291,15 @@ def run_checks() -> bool:
         assert coverage.get("action") in {"filled_missing_days", "none"}, (
             f"Unexpected coverage action: {coverage}"
         )
-        restored_for_gap = db.query(func.count(Transaction.id)).filter(
-            Transaction.user_id == user.id,
-            func.date(Transaction.booked_at) == date(2025, 1, 20),
-        ).scalar() or 0
+        restored_for_gap = (
+            db.query(func.count(Transaction.id))
+            .filter(
+                Transaction.user_id == user.id,
+                func.date(Transaction.booked_at) == date(2025, 1, 20),
+            )
+            .scalar()
+            or 0
+        )
         assert restored_for_gap > 0, "Expected gap day to be restored"
 
         # Partial-month seed must never spill beyond requested end_date.

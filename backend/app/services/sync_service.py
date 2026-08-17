@@ -1,6 +1,7 @@
 """
 Service for syncing bank data (accounts and transactions).
 """
+
 import logging as _logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -11,7 +12,7 @@ from decimal import Decimal
 _logger = _logging.getLogger(__name__)
 
 from app.models import Account, Transaction
-from app.integrations.base import BankAdapter, AccountData, TransactionData
+from app.integrations.base import BankAdapter, TransactionData
 from app.services.category_matcher import CategoryMatcher
 from app.services.subscription_matcher import SubscriptionMatcher
 from app.services.subscription_detector import SubscriptionDetector
@@ -28,7 +29,9 @@ from app.security.data_encryption import (
 class SyncService:
     """Service for syncing bank data."""
 
-    def __init__(self, db: Session, user_id: Optional[str] = None, use_llm_categorization: bool = True):
+    def __init__(
+        self, db: Session, user_id: Optional[str] = None, use_llm_categorization: bool = True
+    ):
         self.db = db
         # When called from Celery tasks, user_id is passed explicitly (no HTTP context).
         # Only fall back to get_user_id() when no explicit user_id is provided.
@@ -129,7 +132,7 @@ class SyncService:
         if not iban_candidates:
             return None
         return query.filter(Account.iban_hash.in_(iban_candidates)).first()
-    
+
     def _match_pending_transaction(
         self, account_id: str, amount, booked_at
     ) -> Optional["Transaction"]:
@@ -139,11 +142,13 @@ class SyncService:
         exact amount, booked_at within ±7 days.
         """
         from datetime import timedelta
+
         target_date = booked_at.date() if hasattr(booked_at, "date") else booked_at
         date_min = target_date - timedelta(days=7)
         date_max = target_date + timedelta(days=7)
 
         from sqlalchemy import func as sa_func
+
         return (
             self.db.query(Transaction)
             .filter(
@@ -158,15 +163,14 @@ class SyncService:
             .first()
         )
 
-    def _match_csv_transaction(
-        self, account_id: str, amount, booked_at
-    ) -> Optional["Transaction"]:
+    def _match_csv_transaction(self, account_id: str, amount, booked_at) -> Optional["Transaction"]:
         """
         Find a CSV-sourced transaction that matches on amount + date only.
         No description comparison — cross-source descriptions differ too much.
         Match criteria: same account, external_id IS NULL, exact amount, exact date.
         """
         from sqlalchemy import func as sa_func
+
         target_date = booked_at.date() if hasattr(booked_at, "date") else booked_at
         return (
             self.db.query(Transaction)
@@ -183,23 +187,23 @@ class SyncService:
     def sync_accounts(self, adapter: BankAdapter, provider: str) -> List[Account]:
         """
         Sync accounts from bank adapter to database.
-        
+
         Args:
             adapter: Bank adapter instance
             provider: Provider name (e.g., 'revolut')
-            
+
         Returns:
             List of synced Account objects
         """
         account_data_list = adapter.fetch_accounts()
         synced_accounts = []
-        
+
         for account_data in account_data_list:
             # Check if account already exists
             existing_account = self._find_existing_account(
                 provider, account_data.external_id, account_data.iban
             )
-            
+
             if existing_account:
                 # Update existing account
                 existing_account.name = account_data.name
@@ -229,15 +233,15 @@ class SyncService:
                 self._set_account_iban_fields(new_account, account_data.iban)
                 self.db.add(new_account)
                 synced_accounts.append(new_account)
-        
+
         self.db.commit()
-        
+
         # Refresh all accounts
         for account in synced_accounts:
             self.db.refresh(account)
-        
+
         return synced_accounts
-    
+
     def sync_transactions(
         self,
         adapter: BankAdapter,
@@ -279,7 +283,7 @@ class SyncService:
                 merchant=transaction_data.merchant,
                 amount=transaction_data.amount,
                 transaction_type=transaction_data.transaction_type,
-                use_llm=self.use_llm_categorization
+                use_llm=self.use_llm_categorization,
             )
 
             # Try to extract/improve merchant from description if empty
@@ -298,11 +302,15 @@ class SyncService:
                 )
 
             # Step 1: exact external_id match
-            existing_transaction = self.db.query(Transaction).filter(
-                Transaction.user_id == self.user_id,
-                Transaction.account_id == account.id,
-                Transaction.external_id == transaction_data.external_id,
-            ).first()
+            existing_transaction = (
+                self.db.query(Transaction)
+                .filter(
+                    Transaction.user_id == self.user_id,
+                    Transaction.account_id == account.id,
+                    Transaction.external_id == transaction_data.external_id,
+                )
+                .first()
+            )
 
             if existing_transaction:
                 # Update mutable fields; preserve any existing category
@@ -317,12 +325,20 @@ class SyncService:
                 existing_transaction.transaction_type = transaction_data.transaction_type
                 existing_transaction.pending = transaction_data.pending
                 if transaction_data.counterparty_iban:
-                    existing_transaction.counterparty_iban_ciphertext = encrypt_value(transaction_data.counterparty_iban)
-                    existing_transaction.counterparty_iban_hash = blind_index(transaction_data.counterparty_iban)
+                    existing_transaction.counterparty_iban_ciphertext = encrypt_value(
+                        transaction_data.counterparty_iban
+                    )
+                    existing_transaction.counterparty_iban_hash = blind_index(
+                        transaction_data.counterparty_iban
+                    )
                 else:
                     existing_transaction.counterparty_iban_ciphertext = None
                     existing_transaction.counterparty_iban_hash = None
-                if not existing_transaction.category_id and not existing_transaction.category_system_id and category:
+                if (
+                    not existing_transaction.category_id
+                    and not existing_transaction.category_system_id
+                    and category
+                ):
                     existing_transaction.category_system_id = category.id
                 if not existing_transaction.recurring_transaction_id and matched_subscription:
                     existing_transaction.recurring_transaction_id = matched_subscription.id
@@ -347,12 +363,20 @@ class SyncService:
                     pending_match.creditor = transaction_data.creditor
                     pending_match.debtor = transaction_data.debtor
                     if transaction_data.counterparty_iban:
-                        pending_match.counterparty_iban_ciphertext = encrypt_value(transaction_data.counterparty_iban)
-                        pending_match.counterparty_iban_hash = blind_index(transaction_data.counterparty_iban)
+                        pending_match.counterparty_iban_ciphertext = encrypt_value(
+                            transaction_data.counterparty_iban
+                        )
+                        pending_match.counterparty_iban_hash = blind_index(
+                            transaction_data.counterparty_iban
+                        )
                     else:
                         pending_match.counterparty_iban_ciphertext = None
                         pending_match.counterparty_iban_hash = None
-                    if not pending_match.category_id and not pending_match.category_system_id and category:
+                    if (
+                        not pending_match.category_id
+                        and not pending_match.category_system_id
+                        and category
+                    ):
                         pending_match.category_system_id = category.id
                     if not pending_match.recurring_transaction_id and matched_subscription:
                         pending_match.recurring_transaction_id = matched_subscription.id
@@ -361,7 +385,8 @@ class SyncService:
                     updated_count += 1
                     _logger.info(
                         "Pending→booked: external_id=%s matched pending row %s",
-                        transaction_data.external_id, pending_match.id,
+                        transaction_data.external_id,
+                        pending_match.id,
                     )
                     continue
 
@@ -378,7 +403,8 @@ class SyncService:
                 updated_count += 1
                 _logger.info(
                     "CSV overlap: external_id=%s backfilled onto existing row %s",
-                    transaction_data.external_id, csv_match.id,
+                    transaction_data.external_id,
+                    csv_match.id,
                 )
                 continue
 
@@ -398,8 +424,12 @@ class SyncService:
                 pending=transaction_data.pending,
                 category_system_id=category.id if category else None,
                 recurring_transaction_id=matched_subscription.id if matched_subscription else None,
-                counterparty_iban_ciphertext=encrypt_value(transaction_data.counterparty_iban) if transaction_data.counterparty_iban else None,
-                counterparty_iban_hash=blind_index(transaction_data.counterparty_iban) if transaction_data.counterparty_iban else None,
+                counterparty_iban_ciphertext=encrypt_value(transaction_data.counterparty_iban)
+                if transaction_data.counterparty_iban
+                else None,
+                counterparty_iban_hash=blind_index(transaction_data.counterparty_iban)
+                if transaction_data.counterparty_iban
+                else None,
             )
             self.db.add(new_transaction)
             self.db.flush()
@@ -415,20 +445,20 @@ class SyncService:
 
         if eb_keys:
             from sqlalchemy import func as _sa_func
+
             # Find orphaned CSV rows (external_id IS NULL) in the sync window whose
             # (amount, date) was covered by an EB transaction.
             # Scope to the sync date window so we don't scan the entire account history.
             window_start = (
-                start_date.date() if hasattr(start_date, "date") else start_date
-            ) if start_date is not None else None
+                (start_date.date() if hasattr(start_date, "date") else start_date)
+                if start_date is not None
+                else None
+            )
 
-            orphan_query = (
-                self.db.query(Transaction)
-                .filter(
-                    Transaction.user_id == self.user_id,
-                    Transaction.account_id == account.id,
-                    Transaction.external_id.is_(None),
-                )
+            orphan_query = self.db.query(Transaction).filter(
+                Transaction.user_id == self.user_id,
+                Transaction.account_id == account.id,
+                Transaction.external_id.is_(None),
             )
             if window_start is not None:
                 orphan_query = orphan_query.filter(
@@ -437,7 +467,11 @@ class SyncService:
             csv_orphans = orphan_query.all()
 
             for orphan in csv_orphans:
-                orphan_date = orphan.booked_at.date() if hasattr(orphan.booked_at, "date") else orphan.booked_at
+                orphan_date = (
+                    orphan.booked_at.date()
+                    if hasattr(orphan.booked_at, "date")
+                    else orphan.booked_at
+                )
                 if (orphan.amount, orphan_date) not in eb_keys:
                     continue
 
@@ -464,13 +498,15 @@ class SyncService:
                 self.db.delete(orphan)
                 _logger.info(
                     "Post-sync cleanup: deleted stale CSV duplicate row %s (amount=%s date=%s)",
-                    orphan.id, orphan.amount, orphan_date,
+                    orphan.id,
+                    orphan.amount,
+                    orphan_date,
                 )
 
         self.db.commit()
 
         return (created_count, updated_count, created_transaction_ids, updated_transaction_ids)
-    
+
     def sync_all(
         self,
         adapter: BankAdapter,
@@ -496,20 +532,23 @@ class SyncService:
         accounts = self.sync_accounts(adapter, provider)
 
         # For Revolut, permanently delete old "Revolut default" accounts if they exist
-        if provider == 'revolut':
-            old_default_accounts = self.db.query(Account).filter(
-                Account.user_id == self.user_id,
-                Account.provider == 'revolut',
-                or_(
-                    Account.external_id == 'revolut_default',
-                    Account.external_id_hash.in_(blind_index_candidates("revolut_default")),
+        if provider == "revolut":
+            old_default_accounts = (
+                self.db.query(Account)
+                .filter(
+                    Account.user_id == self.user_id,
+                    Account.provider == "revolut",
+                    or_(
+                        Account.external_id == "revolut_default",
+                        Account.external_id_hash.in_(blind_index_candidates("revolut_default")),
+                    ),
                 )
-            ).all()
+                .all()
+            )
             for old_account in old_default_accounts:
                 # Delete associated transactions first
                 self.db.query(Transaction).filter(
-                    Transaction.user_id == self.user_id,
-                    Transaction.account_id == old_account.id
+                    Transaction.user_id == self.user_id, Transaction.account_id == old_account.id
                 ).delete()
                 # Then delete the account
                 self.db.delete(old_account)
@@ -536,12 +575,14 @@ class SyncService:
         # This ensures the balance is always accurate based on the transactions in the database
         from sqlalchemy import func
         from decimal import Decimal
+
         for account in accounts:
             # Calculate balance from sum of all transactions for this account
-            transaction_sum_result = self.db.query(func.sum(Transaction.amount)).filter(
-                Transaction.user_id == self.user_id,
-                Transaction.account_id == account.id
-            ).scalar()
+            transaction_sum_result = (
+                self.db.query(func.sum(Transaction.amount))
+                .filter(Transaction.user_id == self.user_id, Transaction.account_id == account.id)
+                .scalar()
+            )
 
             if transaction_sum_result is None:
                 transaction_sum = Decimal("0")
@@ -561,16 +602,14 @@ class SyncService:
             subscriptions_detected = detection_result.get("detected_count", 0)
 
         return {
-            'accounts_synced': len(accounts),
-            'transactions_created': total_created,
-            'transactions_updated': total_updated,
-            'subscriptions_detected': subscriptions_detected,
+            "accounts_synced": len(accounts),
+            "transactions_created": total_created,
+            "transactions_updated": total_updated,
+            "subscriptions_detected": subscriptions_detected,
         }
 
     def upsert_transaction(
-        self,
-        account_id: str,
-        transaction_data: TransactionData
+        self, account_id: str, transaction_data: TransactionData
     ) -> Dict[str, Any]:
         """
         Upsert a single transaction (create or update).
@@ -585,10 +624,11 @@ class SyncService:
             Dict with keys: created (bool), updated (bool), transaction_id (str)
         """
         # Get the account
-        account = self.db.query(Account).filter(
-            Account.id == account_id,
-            Account.user_id == self.user_id
-        ).first()
+        account = (
+            self.db.query(Account)
+            .filter(Account.id == account_id, Account.user_id == self.user_id)
+            .first()
+        )
 
         if not account:
             raise ValueError(f"Account {account_id} not found for user {self.user_id}")
@@ -599,7 +639,7 @@ class SyncService:
             merchant=transaction_data.merchant,
             amount=transaction_data.amount,
             transaction_type=transaction_data.transaction_type,
-            use_llm=self.use_llm_categorization
+            use_llm=self.use_llm_categorization,
         )
 
         # Try to extract/improve merchant from description if empty
@@ -618,11 +658,15 @@ class SyncService:
             )
 
         # Check if transaction already exists
-        existing_transaction = self.db.query(Transaction).filter(
-            Transaction.user_id == self.user_id,
-            Transaction.account_id == account.id,
-            Transaction.external_id == transaction_data.external_id
-        ).first()
+        existing_transaction = (
+            self.db.query(Transaction)
+            .filter(
+                Transaction.user_id == self.user_id,
+                Transaction.account_id == account.id,
+                Transaction.external_id == transaction_data.external_id,
+            )
+            .first()
+        )
 
         if existing_transaction:
             # Update existing transaction
@@ -636,14 +680,22 @@ class SyncService:
             existing_transaction.transaction_type = transaction_data.transaction_type
             existing_transaction.pending = transaction_data.pending
             if transaction_data.counterparty_iban:
-                existing_transaction.counterparty_iban_ciphertext = encrypt_value(transaction_data.counterparty_iban)
-                existing_transaction.counterparty_iban_hash = blind_index(transaction_data.counterparty_iban)
+                existing_transaction.counterparty_iban_ciphertext = encrypt_value(
+                    transaction_data.counterparty_iban
+                )
+                existing_transaction.counterparty_iban_hash = blind_index(
+                    transaction_data.counterparty_iban
+                )
             else:
                 existing_transaction.counterparty_iban_ciphertext = None
                 existing_transaction.counterparty_iban_hash = None
 
             # Only set category if neither user override nor AI category is already present.
-            if not existing_transaction.category_id and not existing_transaction.category_system_id and category:
+            if (
+                not existing_transaction.category_id
+                and not existing_transaction.category_system_id
+                and category
+            ):
                 existing_transaction.category_system_id = category.id
 
             # Only set subscription link if not already set (preserve manual links)
@@ -654,9 +706,9 @@ class SyncService:
             self.db.refresh(existing_transaction)
 
             return {
-                'created': False,
-                'updated': True,
-                'transaction_id': str(existing_transaction.id)
+                "created": False,
+                "updated": True,
+                "transaction_id": str(existing_transaction.id),
             }
         else:
             # Create new transaction
@@ -673,15 +725,15 @@ class SyncService:
                 pending=transaction_data.pending,
                 category_system_id=category.id if category else None,
                 recurring_transaction_id=matched_subscription.id if matched_subscription else None,
-                counterparty_iban_ciphertext=encrypt_value(transaction_data.counterparty_iban) if transaction_data.counterparty_iban else None,
-                counterparty_iban_hash=blind_index(transaction_data.counterparty_iban) if transaction_data.counterparty_iban else None,
+                counterparty_iban_ciphertext=encrypt_value(transaction_data.counterparty_iban)
+                if transaction_data.counterparty_iban
+                else None,
+                counterparty_iban_hash=blind_index(transaction_data.counterparty_iban)
+                if transaction_data.counterparty_iban
+                else None,
             )
             self.db.add(new_transaction)
             self.db.commit()
             self.db.refresh(new_transaction)
 
-            return {
-                'created': True,
-                'updated': False,
-                'transaction_id': str(new_transaction.id)
-            }
+            return {"created": True, "updated": False, "transaction_id": str(new_transaction.id)}

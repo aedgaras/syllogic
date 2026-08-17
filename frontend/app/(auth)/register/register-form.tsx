@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -40,7 +39,11 @@ const registerSchema = z
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
-export function RegisterForm({ firstUserWillBeAdmin = false }: { firstUserWillBeAdmin?: boolean }) {
+export function RegisterForm({
+  firstUserWillBeAdmin = false,
+}: {
+  firstUserWillBeAdmin?: boolean;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -122,12 +125,12 @@ export function RegisterForm({ firstUserWillBeAdmin = false }: { firstUserWillBe
                 {...register("name")}
                 disabled={isLoading}
               />
-              {errors.name && (
-                <FieldError>{errors.name.message}</FieldError>
-              )}
+              {errors.name && <FieldError>{errors.name.message}</FieldError>}
             </Field>
             <Field>
-              <FieldLabel htmlFor="email">{translate("email84add5")}</FieldLabel>
+              <FieldLabel htmlFor="email">
+                {translate("email84add5")}
+              </FieldLabel>
               <Input
                 id="email"
                 type="email"
@@ -135,12 +138,12 @@ export function RegisterForm({ firstUserWillBeAdmin = false }: { firstUserWillBe
                 {...register("email")}
                 disabled={isLoading}
               />
-              {errors.email && (
-                <FieldError>{errors.email.message}</FieldError>
-              )}
+              {errors.email && <FieldError>{errors.email.message}</FieldError>}
             </Field>
             <Field>
-              <FieldLabel htmlFor="password">{translate("password8be3c9")}</FieldLabel>
+              <FieldLabel htmlFor="password">
+                {translate("password8be3c9")}
+              </FieldLabel>
               <Input
                 id="password"
                 type="password"
@@ -152,7 +155,9 @@ export function RegisterForm({ firstUserWillBeAdmin = false }: { firstUserWillBe
               )}
             </Field>
             <Field>
-              <FieldLabel htmlFor="confirmPassword">{translate("confirmPassword")}</FieldLabel>
+              <FieldLabel htmlFor="confirmPassword">
+                {translate("confirmPassword")}
+              </FieldLabel>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -186,7 +191,9 @@ function RegisterPageFallback() {
     <Card>
       <CardHeader>
         <CardTitle>{translate("createAnAccount")}</CardTitle>
-        <CardDescription>{translate("loadingRegistrationForm")}</CardDescription>
+        <CardDescription>
+          {translate("loadingRegistrationForm")}
+        </CardDescription>
       </CardHeader>
       <CardContent />
     </Card>

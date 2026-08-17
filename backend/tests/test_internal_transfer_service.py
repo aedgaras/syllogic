@@ -6,6 +6,7 @@ Run with:
 or:
     cd backend && python tests/test_internal_transfer_service.py
 """
+
 from __future__ import annotations
 
 import base64
@@ -100,9 +101,7 @@ def _make_synced_account(db, user_id: str, name: str = "Checking") -> Account:
     return acc
 
 
-def _make_pocket_account(
-    db, user_id: str, iban: str, name: str = "Savings Pocket"
-) -> Account:
+def _make_pocket_account(db, user_id: str, iban: str, name: str = "Savings Pocket") -> Account:
     acc = Account(
         user_id=user_id,
         name=name,
@@ -172,15 +171,9 @@ def _cleanup_user(db, user_id: str) -> None:
     db.query(InternalTransfer).filter(InternalTransfer.user_id == user_id).delete(
         synchronize_session=False
     )
-    db.query(Transaction).filter(Transaction.user_id == user_id).delete(
-        synchronize_session=False
-    )
-    db.query(Account).filter(Account.user_id == user_id).delete(
-        synchronize_session=False
-    )
-    db.query(Category).filter(Category.user_id == user_id).delete(
-        synchronize_session=False
-    )
+    db.query(Transaction).filter(Transaction.user_id == user_id).delete(synchronize_session=False)
+    db.query(Account).filter(Account.user_id == user_id).delete(synchronize_session=False)
+    db.query(Category).filter(Category.user_id == user_id).delete(synchronize_session=False)
     db.query(User).filter(User.id == user_id).delete(synchronize_session=False)
     db.commit()
 
@@ -188,6 +181,7 @@ def _cleanup_user(db, user_id: str) -> None:
 # ---------------------------------------------------------------------------
 # Test 1: detect creates mirror and marks source not in analytics
 # ---------------------------------------------------------------------------
+
 
 def test_detect_creates_mirror_and_marks_source_not_in_analytics() -> None:
     _ensure_schema()
@@ -221,9 +215,7 @@ def test_detect_creates_mirror_and_marks_source_not_in_analytics() -> None:
         assert src.internal_transfer_id is not None
 
         link = (
-            db.query(InternalTransfer)
-            .filter(InternalTransfer.id == src.internal_transfer_id)
-            .one()
+            db.query(InternalTransfer).filter(InternalTransfer.id == src.internal_transfer_id).one()
         )
         assert link.source_txn_id == src.id
         assert link.source_account_id == synced.id
@@ -231,11 +223,7 @@ def test_detect_creates_mirror_and_marks_source_not_in_analytics() -> None:
         assert Decimal(str(link.amount)) == Decimal("200.00")
         assert link.currency == "EUR"
 
-        mirror = (
-            db.query(Transaction)
-            .filter(Transaction.id == link.mirror_txn_id)
-            .one()
-        )
+        mirror = db.query(Transaction).filter(Transaction.id == link.mirror_txn_id).one()
         assert mirror.account_id == pocket.id
         assert Decimal(str(mirror.amount)) == Decimal("200.00")
         assert mirror.currency == "EUR"
@@ -253,6 +241,7 @@ def test_detect_creates_mirror_and_marks_source_not_in_analytics() -> None:
 # ---------------------------------------------------------------------------
 # Test 2: detect is idempotent
 # ---------------------------------------------------------------------------
+
 
 def test_detect_is_idempotent() -> None:
     _ensure_schema()
@@ -282,18 +271,10 @@ def test_detect_is_idempotent() -> None:
         assert second["detected"] == 0, "Second detection should be a no-op"
         assert second["pocket_account_ids"] == []
 
-        mirrors = (
-            db.query(Transaction)
-            .filter(Transaction.external_id == f"mirror-{src.id}")
-            .all()
-        )
+        mirrors = db.query(Transaction).filter(Transaction.external_id == f"mirror-{src.id}").all()
         assert len(mirrors) == 1, f"Expected exactly one mirror, got {len(mirrors)}"
 
-        links = (
-            db.query(InternalTransfer)
-            .filter(InternalTransfer.source_txn_id == src.id)
-            .all()
-        )
+        links = db.query(InternalTransfer).filter(InternalTransfer.source_txn_id == src.id).all()
         assert len(links) == 1, f"Expected exactly one internal_transfer row, got {len(links)}"
         print("  PASS: test_detect_is_idempotent")
     finally:
@@ -305,6 +286,7 @@ def test_detect_is_idempotent() -> None:
 # ---------------------------------------------------------------------------
 # Test 3: detect skips when no matching pocket
 # ---------------------------------------------------------------------------
+
 
 def test_detect_skips_when_no_matching_pocket() -> None:
     _ensure_schema()
@@ -336,12 +318,10 @@ def test_detect_skips_when_no_matching_pocket() -> None:
         assert src.include_in_analytics is True
         assert src.internal_transfer_id is None
 
-        links = db.query(InternalTransfer).filter(
-            InternalTransfer.user_id == user_id
-        ).count()
-        mirrors = db.query(Transaction).filter(
-            Transaction.external_id == f"mirror-{src.id}"
-        ).count()
+        links = db.query(InternalTransfer).filter(InternalTransfer.user_id == user_id).count()
+        mirrors = (
+            db.query(Transaction).filter(Transaction.external_id == f"mirror-{src.id}").count()
+        )
         assert links == 0
         assert mirrors == 0
         print("  PASS: test_detect_skips_when_no_matching_pocket")
@@ -354,6 +334,7 @@ def test_detect_skips_when_no_matching_pocket() -> None:
 # ---------------------------------------------------------------------------
 # Test 4: unlink reverses detection
 # ---------------------------------------------------------------------------
+
 
 def test_unlink_reverses_detection() -> None:
     _ensure_schema()
@@ -376,7 +357,7 @@ def test_unlink_reverses_detection() -> None:
         )
 
         service = InternalTransferService(db, user_id=user_id)
-        assert service.detect_for_transactions([src.id])['detected'] == 1
+        assert service.detect_for_transactions([src.id])["detected"] == 1
 
         db.refresh(src)
         transfer_id = src.internal_transfer_id
@@ -389,17 +370,11 @@ def test_unlink_reverses_detection() -> None:
         assert src.internal_transfer_id is None
 
         mirrors = (
-            db.query(Transaction)
-            .filter(Transaction.external_id == f"mirror-{src.id}")
-            .count()
+            db.query(Transaction).filter(Transaction.external_id == f"mirror-{src.id}").count()
         )
         assert mirrors == 0, "Mirror transaction should be deleted on unlink"
 
-        links = (
-            db.query(InternalTransfer)
-            .filter(InternalTransfer.id == transfer_id)
-            .count()
-        )
+        links = db.query(InternalTransfer).filter(InternalTransfer.id == transfer_id).count()
         assert links == 0, "Internal transfer row should be deleted on unlink"
         print("  PASS: test_unlink_reverses_detection")
     finally:
@@ -411,6 +386,7 @@ def test_unlink_reverses_detection() -> None:
 # ---------------------------------------------------------------------------
 # Test 5: unlink_all_for_pocket restores sources
 # ---------------------------------------------------------------------------
+
 
 def test_unlink_all_for_pocket_restores_sources() -> None:
     _ensure_schema()
@@ -441,7 +417,7 @@ def test_unlink_all_for_pocket_restores_sources() -> None:
         )
 
         service = InternalTransferService(db, user_id=user_id)
-        assert service.detect_for_transactions([src_a.id, src_b.id])['detected'] == 2
+        assert service.detect_for_transactions([src_a.id, src_b.id])["detected"] == 2
 
         unlinked = service.unlink_all_for_pocket(pocket.id)
         assert unlinked == 2, f"Expected 2 unlinked, got {unlinked}"
@@ -473,6 +449,7 @@ def test_unlink_all_for_pocket_restores_sources() -> None:
 # Test 6: detection overwrites a stale LLM-assigned category_system_id
 # (authoritative overwrite; preserves only user-set category_id)
 # ---------------------------------------------------------------------------
+
 
 def test_detect_overwrites_stale_system_category() -> None:
     _ensure_schema()
@@ -531,6 +508,7 @@ def test_detect_overwrites_stale_system_category() -> None:
 # Test 7: detection preserves user category override
 # ---------------------------------------------------------------------------
 
+
 def test_detect_preserves_user_category_override() -> None:
     _ensure_schema()
     db = SessionLocal()
@@ -566,7 +544,7 @@ def test_detect_preserves_user_category_override() -> None:
         db.commit()
 
         service = InternalTransferService(db, user_id=user_id)
-        assert service.detect_for_transactions([src.id])['detected'] == 1
+        assert service.detect_for_transactions([src.id])["detected"] == 1
 
         db.refresh(src)
         # Link was still created and analytics was flipped off,
@@ -588,6 +566,7 @@ def test_detect_preserves_user_category_override() -> None:
 # Test 8: detection is strictly scoped to user — cross-user pockets never match
 # (security invariant; relies on the user_id filter in _load_user_account_iban_map)
 # ---------------------------------------------------------------------------
+
 
 def test_detect_does_not_match_cross_user_pocket() -> None:
     _ensure_schema()
@@ -618,9 +597,8 @@ def test_detect_does_not_match_cross_user_pocket() -> None:
         )
 
         service_a = InternalTransferService(db, user_id=user_a_id)
-        assert service_a.detect_for_transactions([src_a.id])['detected'] == 0, (
-            "User A's detection must not link to User B's pocket, "
-            "even with a matching IBAN hash."
+        assert service_a.detect_for_transactions([src_a.id])["detected"] == 0, (
+            "User A's detection must not link to User B's pocket, even with a matching IBAN hash."
         )
         db.refresh(src_a)
         assert src_a.include_in_analytics is True
@@ -637,6 +615,7 @@ def test_detect_does_not_match_cross_user_pocket() -> None:
 # ---------------------------------------------------------------------------
 # Test 9: synced -> synced detection creates link only, NO mirror
 # ---------------------------------------------------------------------------
+
 
 def test_detect_synced_to_synced_no_mirror_link_only() -> None:
     """When the destination is a synced account, detection MUST NOT create a
@@ -672,7 +651,9 @@ def test_detect_synced_to_synced_no_mirror_link_only() -> None:
         db.commit()
 
         src = _make_source_transaction(
-            db, user_id, synced_source.id,
+            db,
+            user_id,
+            synced_source.id,
             counterparty_iban=synced_dest_iban,
             amount=Decimal("-200.00"),
         )
@@ -692,9 +673,7 @@ def test_detect_synced_to_synced_no_mirror_link_only() -> None:
 
         # Link row exists with mirror_txn_id=NULL
         link = (
-            db.query(InternalTransfer)
-            .filter(InternalTransfer.id == src.internal_transfer_id)
-            .one()
+            db.query(InternalTransfer).filter(InternalTransfer.id == src.internal_transfer_id).one()
         )
         assert link.mirror_txn_id is None, (
             "Synced destinations must NOT have a mirror — EB delivers that side independently"
@@ -704,13 +683,9 @@ def test_detect_synced_to_synced_no_mirror_link_only() -> None:
 
         # CRUCIALLY: no mirror transaction was created on the synced destination
         mirror_count = (
-            db.query(Transaction)
-            .filter(Transaction.account_id == synced_dest.id)
-            .count()
+            db.query(Transaction).filter(Transaction.account_id == synced_dest.id).count()
         )
-        assert mirror_count == 0, (
-            "Synced destination must not receive a mirror transaction"
-        )
+        assert mirror_count == 0, "Synced destination must not receive a mirror transaction"
     finally:
         if user_id:
             _cleanup_user(db, user_id)
@@ -720,6 +695,7 @@ def test_detect_synced_to_synced_no_mirror_link_only() -> None:
 # ---------------------------------------------------------------------------
 # Test 10: synced -> manual still creates mirror (PR #72 behavior preserved)
 # ---------------------------------------------------------------------------
+
 
 def test_detect_synced_to_manual_still_creates_mirror() -> None:
     """Existing PR #72 behavior must be preserved: synced→manual still creates a mirror."""
@@ -735,7 +711,9 @@ def test_detect_synced_to_manual_still_creates_mirror() -> None:
         synced = _make_synced_account(db, user_id, name="Main Checking")
         pocket = _make_pocket_account(db, user_id, iban=POCKET_IBAN)
         src = _make_source_transaction(
-            db, user_id, synced.id,
+            db,
+            user_id,
+            synced.id,
             counterparty_iban=POCKET_IBAN,
             amount=Decimal("-50.00"),
         )
@@ -748,11 +726,7 @@ def test_detect_synced_to_manual_still_creates_mirror() -> None:
         assert pocket.id in result["pocket_account_ids"]
 
         # Mirror exists on pocket with sign-flipped amount
-        mirror = (
-            db.query(Transaction)
-            .filter(Transaction.account_id == pocket.id)
-            .one()
-        )
+        mirror = db.query(Transaction).filter(Transaction.account_id == pocket.id).one()
         assert mirror.amount == Decimal("50.00")
     finally:
         if user_id:
@@ -763,6 +737,7 @@ def test_detect_synced_to_manual_still_creates_mirror() -> None:
 # ---------------------------------------------------------------------------
 # CSV amount/date pair detection
 # ---------------------------------------------------------------------------
+
 
 def test_detect_csv_pair_marks_and_categorizes_both_sides() -> None:
     """Opposite rows imported for two accounts become one transfer pair."""
@@ -778,17 +753,21 @@ def test_detect_csv_pair_marks_and_categorizes_both_sides() -> None:
         checking = _make_synced_account(db, user_id, name="CSV Checking")
         savings = _make_synced_account(db, user_id, name="CSV Savings")
         debit = _make_source_transaction(
-            db, user_id, checking.id, counterparty_iban=None,
+            db,
+            user_id,
+            checking.id,
+            counterparty_iban=None,
             amount=Decimal("-425.50"),
         )
         credit = _make_source_transaction(
-            db, user_id, savings.id, counterparty_iban=None,
+            db,
+            user_id,
+            savings.id,
+            counterparty_iban=None,
             amount=Decimal("425.50"),
         )
 
-        result = InternalTransferService(db, user_id).detect_for_transactions(
-            [debit.id, credit.id]
-        )
+        result = InternalTransferService(db, user_id).detect_for_transactions([debit.id, credit.id])
 
         assert result["detected"] == 1
         db.refresh(debit)
@@ -828,7 +807,10 @@ def test_detect_csv_pair_matches_a_previous_account_import_and_unlinks_safely() 
         savings.iban_hash = blind_index(savings_iban)
         db.commit()
         debit = _make_source_transaction(
-            db, user_id, checking.id, counterparty_iban=savings_iban,
+            db,
+            user_id,
+            checking.id,
+            counterparty_iban=savings_iban,
             amount=Decimal("-99.00"),
         )
 
@@ -837,15 +819,16 @@ def test_detect_csv_pair_matches_a_previous_account_import_and_unlinks_safely() 
         assert first_result["detected"] == 1
         db.refresh(debit)
         original_transfer_id = debit.internal_transfer_id
-        original_link = db.query(InternalTransfer).filter_by(
-            id=original_transfer_id
-        ).one()
+        original_link = db.query(InternalTransfer).filter_by(id=original_transfer_id).one()
         assert original_link.mirror_txn_id is None
 
         # The second account is imported later. Its row should complete the
         # existing link rather than creating a duplicate transfer record.
         credit = _make_source_transaction(
-            db, user_id, savings.id, counterparty_iban=None,
+            db,
+            user_id,
+            savings.id,
+            counterparty_iban=None,
             amount=Decimal("99.00"),
         )
 
@@ -885,21 +868,28 @@ def test_detect_csv_pair_skips_ambiguous_equal_amounts() -> None:
         destination_a = _make_synced_account(db, user_id, name="Destination A")
         destination_b = _make_synced_account(db, user_id, name="Destination B")
         debit = _make_source_transaction(
-            db, user_id, source.id, counterparty_iban=None,
+            db,
+            user_id,
+            source.id,
+            counterparty_iban=None,
             amount=Decimal("-50.00"),
         )
         credit_a = _make_source_transaction(
-            db, user_id, destination_a.id, counterparty_iban=None,
+            db,
+            user_id,
+            destination_a.id,
+            counterparty_iban=None,
             amount=Decimal("50.00"),
         )
         credit_b = _make_source_transaction(
-            db, user_id, destination_b.id, counterparty_iban=None,
+            db,
+            user_id,
+            destination_b.id,
+            counterparty_iban=None,
             amount=Decimal("50.00"),
         )
 
-        result = InternalTransferService(db, user_id).detect_for_transactions(
-            [debit.id]
-        )
+        result = InternalTransferService(db, user_id).detect_for_transactions([debit.id])
 
         assert result["detected"] == 0
         db.refresh(debit)
@@ -918,6 +908,7 @@ def test_detect_csv_pair_skips_ambiguous_equal_amounts() -> None:
 # Test 11: unlink for synced -> synced link (mirror_txn_id=NULL) works
 # ---------------------------------------------------------------------------
 
+
 def test_unlink_synced_to_synced_link_no_mirror_to_delete() -> None:
     """Unlinking a synced→synced link (mirror_txn_id=NULL) must restore the source
     and delete the link without erroring on the missing mirror."""
@@ -934,16 +925,24 @@ def test_unlink_synced_to_synced_link_no_mirror_to_delete() -> None:
 
         synced_dest_iban = "NL55SYNCED0000000000"
         synced_dest = Account(
-            user_id=user_id, name="Synced Savings", account_type="savings",
-            institution="ABN AMRO", currency="EUR", provider="enable_banking",
+            user_id=user_id,
+            name="Synced Savings",
+            account_type="savings",
+            institution="ABN AMRO",
+            currency="EUR",
+            provider="enable_banking",
             external_id=f"ext-{uuid.uuid4().hex[:12]}",
             iban_hash=blind_index(synced_dest_iban),
-            is_active=True, starting_balance=Decimal("0"),
+            is_active=True,
+            starting_balance=Decimal("0"),
         )
-        db.add(synced_dest); db.commit()
+        db.add(synced_dest)
+        db.commit()
 
         src = _make_source_transaction(
-            db, user_id, synced_source.id,
+            db,
+            user_id,
+            synced_source.id,
             counterparty_iban=synced_dest_iban,
             amount=Decimal("-200.00"),
         )
@@ -992,6 +991,7 @@ if __name__ == "__main__":
             results.append((fn.__name__, True, None))
         except Exception:
             import traceback
+
             results.append((fn.__name__, False, traceback.format_exc()))
 
     print("\n--- Results ---")

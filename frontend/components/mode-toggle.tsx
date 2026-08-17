@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import * as React from "react";
 import { RiSunLine, RiMoonLine } from "@remixicon/react";
 import { useTheme } from "next-themes";

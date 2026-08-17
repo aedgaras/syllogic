@@ -4,6 +4,7 @@ Tests for the post_import_pipeline Celery task.
 Run with:
     cd backend && python tests/test_post_import_pipeline.py
 """
+
 import base64
 import sys
 import os
@@ -11,7 +12,7 @@ import uuid
 from decimal import Decimal
 from datetime import datetime, timezone
 from typing import Optional
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -151,15 +152,9 @@ def _cleanup_user_data(db, user_id: str) -> None:
     db.query(InternalTransfer).filter(InternalTransfer.user_id == user_id).delete(
         synchronize_session=False
     )
-    db.query(Transaction).filter(Transaction.user_id == user_id).delete(
-        synchronize_session=False
-    )
-    db.query(Account).filter(Account.user_id == user_id).delete(
-        synchronize_session=False
-    )
-    db.query(Category).filter(Category.user_id == user_id).delete(
-        synchronize_session=False
-    )
+    db.query(Transaction).filter(Transaction.user_id == user_id).delete(synchronize_session=False)
+    db.query(Account).filter(Account.user_id == user_id).delete(synchronize_session=False)
+    db.query(Category).filter(Category.user_id == user_id).delete(synchronize_session=False)
     db.query(User).filter(User.id == user_id).delete(synchronize_session=False)
     db.commit()
 
@@ -168,17 +163,18 @@ def test_pipeline_calls_all_steps_in_order():
     """Verify that _run_post_import_pipeline calls all 7 step helpers in the right order."""
     print("Running test_pipeline_calls_all_steps_in_order...")
 
-    with patch("tasks.post_import_pipeline.SessionLocal") as mock_session_local, \
-         patch("tasks.post_import_pipeline.set_request_user_id") as mock_set_user, \
-         patch("tasks.post_import_pipeline.clear_request_user_id") as mock_clear_user, \
-         patch("tasks.post_import_pipeline._sync_exchange_rates") as mock_fx, \
-         patch("tasks.post_import_pipeline._update_functional_amounts") as mock_fa, \
-         patch("tasks.post_import_pipeline._detect_internal_transfers") as mock_it, \
-         patch("tasks.post_import_pipeline._batch_categorize_transactions") as mock_cat, \
-         patch("tasks.post_import_pipeline._calculate_balances") as mock_balances, \
-         patch("tasks.post_import_pipeline._calculate_timeseries") as mock_timeseries, \
-         patch("tasks.post_import_pipeline._detect_subscriptions") as mock_subs:
-
+    with (
+        patch("tasks.post_import_pipeline.SessionLocal") as mock_session_local,
+        patch("tasks.post_import_pipeline.set_request_user_id") as mock_set_user,
+        patch("tasks.post_import_pipeline.clear_request_user_id") as mock_clear_user,
+        patch("tasks.post_import_pipeline._sync_exchange_rates") as mock_fx,
+        patch("tasks.post_import_pipeline._update_functional_amounts") as mock_fa,
+        patch("tasks.post_import_pipeline._detect_internal_transfers") as mock_it,
+        patch("tasks.post_import_pipeline._batch_categorize_transactions") as mock_cat,
+        patch("tasks.post_import_pipeline._calculate_balances") as mock_balances,
+        patch("tasks.post_import_pipeline._calculate_timeseries") as mock_timeseries,
+        patch("tasks.post_import_pipeline._detect_subscriptions") as mock_subs,
+    ):
         mock_db = MagicMock()
         mock_session_local.return_value = mock_db
         mock_token = "test-token"
@@ -233,17 +229,18 @@ def test_pipeline_initial_sync_passes_none_to_subscription_detector():
     """Verify that is_initial_sync=True passes None as transaction_ids to _detect_subscriptions."""
     print("Running test_pipeline_initial_sync_passes_none_to_subscription_detector...")
 
-    with patch("tasks.post_import_pipeline.SessionLocal") as mock_session_local, \
-         patch("tasks.post_import_pipeline.set_request_user_id") as mock_set_user, \
-         patch("tasks.post_import_pipeline.clear_request_user_id"), \
-         patch("tasks.post_import_pipeline._sync_exchange_rates"), \
-         patch("tasks.post_import_pipeline._update_functional_amounts"), \
-         patch("tasks.post_import_pipeline._detect_internal_transfers") as mock_it, \
-         patch("tasks.post_import_pipeline._batch_categorize_transactions"), \
-         patch("tasks.post_import_pipeline._calculate_balances"), \
-         patch("tasks.post_import_pipeline._calculate_timeseries"), \
-         patch("tasks.post_import_pipeline._detect_subscriptions") as mock_subs:
-
+    with (
+        patch("tasks.post_import_pipeline.SessionLocal") as mock_session_local,
+        patch("tasks.post_import_pipeline.set_request_user_id") as mock_set_user,
+        patch("tasks.post_import_pipeline.clear_request_user_id"),
+        patch("tasks.post_import_pipeline._sync_exchange_rates"),
+        patch("tasks.post_import_pipeline._update_functional_amounts"),
+        patch("tasks.post_import_pipeline._detect_internal_transfers") as mock_it,
+        patch("tasks.post_import_pipeline._batch_categorize_transactions"),
+        patch("tasks.post_import_pipeline._calculate_balances"),
+        patch("tasks.post_import_pipeline._calculate_timeseries"),
+        patch("tasks.post_import_pipeline._detect_subscriptions") as mock_subs,
+    ):
         mock_db = MagicMock()
         mock_session_local.return_value = mock_db
         mock_set_user.return_value = "token"
@@ -272,17 +269,18 @@ def test_pipeline_cleans_up_on_error():
     """Verify that clear_request_user_id and db.close() are called even if a step raises."""
     print("Running test_pipeline_cleans_up_on_error...")
 
-    with patch("tasks.post_import_pipeline.SessionLocal") as mock_session_local, \
-         patch("tasks.post_import_pipeline.set_request_user_id") as mock_set_user, \
-         patch("tasks.post_import_pipeline.clear_request_user_id") as mock_clear_user, \
-         patch("tasks.post_import_pipeline._sync_exchange_rates") as mock_fx, \
-         patch("tasks.post_import_pipeline._update_functional_amounts"), \
-         patch("tasks.post_import_pipeline._detect_internal_transfers"), \
-         patch("tasks.post_import_pipeline._batch_categorize_transactions"), \
-         patch("tasks.post_import_pipeline._calculate_balances"), \
-         patch("tasks.post_import_pipeline._calculate_timeseries"), \
-         patch("tasks.post_import_pipeline._detect_subscriptions"):
-
+    with (
+        patch("tasks.post_import_pipeline.SessionLocal") as mock_session_local,
+        patch("tasks.post_import_pipeline.set_request_user_id") as mock_set_user,
+        patch("tasks.post_import_pipeline.clear_request_user_id") as mock_clear_user,
+        patch("tasks.post_import_pipeline._sync_exchange_rates") as mock_fx,
+        patch("tasks.post_import_pipeline._update_functional_amounts"),
+        patch("tasks.post_import_pipeline._detect_internal_transfers"),
+        patch("tasks.post_import_pipeline._batch_categorize_transactions"),
+        patch("tasks.post_import_pipeline._calculate_balances"),
+        patch("tasks.post_import_pipeline._calculate_timeseries"),
+        patch("tasks.post_import_pipeline._detect_subscriptions"),
+    ):
         mock_db = MagicMock()
         mock_session_local.return_value = mock_db
         mock_token = "error-token"
@@ -316,6 +314,7 @@ def test_pipeline_cleans_up_on_error():
 # ---------------------------------------------------------------------------
 # Integration test: internal transfer detection runs before LLM categorization
 # ---------------------------------------------------------------------------
+
 
 def test_pipeline_runs_internal_transfer_detection_before_llm() -> None:
     """Detection must create a mirror, flip the source's include_in_analytics,
@@ -352,13 +351,17 @@ def test_pipeline_runs_internal_transfer_detection_before_llm() -> None:
 
         from tasks.post_import_pipeline import _run_post_import_pipeline
 
-        with patch("app.services.category_matcher.CategoryMatcher.match_categories_batch_llm",
-                   side_effect=fake_llm_batch), \
-             patch("tasks.post_import_pipeline._sync_exchange_rates"), \
-             patch("tasks.post_import_pipeline._update_functional_amounts"), \
-             patch("tasks.post_import_pipeline._calculate_balances"), \
-             patch("tasks.post_import_pipeline._calculate_timeseries"), \
-             patch("tasks.post_import_pipeline._detect_subscriptions"):
+        with (
+            patch(
+                "app.services.category_matcher.CategoryMatcher.match_categories_batch_llm",
+                side_effect=fake_llm_batch,
+            ),
+            patch("tasks.post_import_pipeline._sync_exchange_rates"),
+            patch("tasks.post_import_pipeline._update_functional_amounts"),
+            patch("tasks.post_import_pipeline._calculate_balances"),
+            patch("tasks.post_import_pipeline._calculate_timeseries"),
+            patch("tasks.post_import_pipeline._detect_subscriptions"),
+        ):
             _run_post_import_pipeline(
                 user_id=user_id,
                 account_ids=[synced_id, pocket_id],
@@ -378,19 +381,13 @@ def test_pipeline_runs_internal_transfer_detection_before_llm() -> None:
 
             # 2. An InternalTransfer link row must exist
             links = (
-                db2.query(InternalTransfer)
-                .filter(InternalTransfer.source_txn_id == src_id)
-                .all()
+                db2.query(InternalTransfer).filter(InternalTransfer.source_txn_id == src_id).all()
             )
             assert len(links) == 1, f"Expected 1 InternalTransfer link, got {len(links)}"
 
             # 3. A mirror transaction must exist on the pocket account
             link = links[0]
-            mirror = (
-                db2.query(Transaction)
-                .filter(Transaction.id == link.mirror_txn_id)
-                .one()
-            )
+            mirror = db2.query(Transaction).filter(Transaction.id == link.mirror_txn_id).one()
             assert str(mirror.account_id) == pocket_id, "Mirror must be on the pocket account"
 
             # 4. The LLM was NOT called with the internal-transfer source transaction
@@ -438,32 +435,49 @@ def test_pipeline_synced_to_synced_tags_transfer_no_mirror() -> None:
         pocket_iban = "NL22REVO0000000002"
 
         checking = Account(
-            user_id=user_id, name="ABN Checking", account_type="checking",
-            institution="ABN AMRO", currency="EUR",
-            provider="enable_banking", external_id="ext-checking-" + uuid.uuid4().hex[:8],
+            user_id=user_id,
+            name="ABN Checking",
+            account_type="checking",
+            institution="ABN AMRO",
+            currency="EUR",
+            provider="enable_banking",
+            external_id="ext-checking-" + uuid.uuid4().hex[:8],
             iban_ciphertext=encrypt_value(checking_iban),
             iban_hash=blind_index(checking_iban),
-            is_active=True, starting_balance=Decimal("0"),
+            is_active=True,
+            starting_balance=Decimal("0"),
         )
         pocket = Account(
-            user_id=user_id, name="Revo Pocket", account_type="savings",
-            institution="Revolut", currency="EUR",
-            provider="enable_banking", external_id="ext-pocket-" + uuid.uuid4().hex[:8],
+            user_id=user_id,
+            name="Revo Pocket",
+            account_type="savings",
+            institution="Revolut",
+            currency="EUR",
+            provider="enable_banking",
+            external_id="ext-pocket-" + uuid.uuid4().hex[:8],
             iban_ciphertext=encrypt_value(pocket_iban),
             iban_hash=blind_index(pocket_iban),
-            is_active=True, starting_balance=Decimal("0"),
+            is_active=True,
+            starting_balance=Decimal("0"),
         )
         cat = Category(
-            user_id=user_id, name="Transfer", category_type="transfer", is_system=True,
+            user_id=user_id,
+            name="Transfer",
+            category_type="transfer",
+            is_system=True,
         )
         db.add_all([checking, pocket, cat])
         db.commit()
 
         src = Transaction(
-            user_id=user_id, account_id=checking.id, external_id="src-synced-" + uuid.uuid4().hex[:8],
-            amount=Decimal("-200.00"), currency="EUR",
+            user_id=user_id,
+            account_id=checking.id,
+            external_id="src-synced-" + uuid.uuid4().hex[:8],
+            amount=Decimal("-200.00"),
+            currency="EUR",
             functional_amount=Decimal("-200.00"),
-            description="Transfer to savings", merchant=None,
+            description="Transfer to savings",
+            merchant=None,
             booked_at=datetime(2026, 4, 25, tzinfo=timezone.utc),
             transaction_type="debit",
             counterparty_iban_ciphertext=encrypt_value(pocket_iban),
@@ -478,8 +492,7 @@ def test_pipeline_synced_to_synced_tags_transfer_no_mirror() -> None:
         src_id = str(src.id)
 
         # Patch the LLM step so the test stays hermetic
-        with patch.object(CategoryMatcher, "match_categories_batch_llm",
-                          return_value=({}, 0, 0.0)):
+        with patch.object(CategoryMatcher, "match_categories_batch_llm", return_value=({}, 0, 0.0)):
             _run_post_import_pipeline(
                 user_id=user_id,
                 account_ids=[checking_id],  # only source in scope (typical sync)
@@ -498,23 +511,17 @@ def test_pipeline_synced_to_synced_tags_transfer_no_mirror() -> None:
 
         # Link with mirror_txn_id=NULL (no mirror because destination is also synced)
         link = (
-            db.query(InternalTransfer)
-            .filter(InternalTransfer.id == src.internal_transfer_id)
-            .one()
+            db.query(InternalTransfer).filter(InternalTransfer.id == src.internal_transfer_id).one()
         )
         assert link.mirror_txn_id is None, (
             "mirror_txn_id must be NULL when destination is a synced account"
         )
         assert link.pocket_account_id == pocket.id, (
-            f"pocket_account_id must point to the synced destination account"
+            "pocket_account_id must point to the synced destination account"
         )
 
         # No transaction added to the synced destination
-        dest_count = (
-            db.query(Transaction)
-            .filter(Transaction.account_id == pocket.id)
-            .count()
-        )
+        dest_count = db.query(Transaction).filter(Transaction.account_id == pocket.id).count()
         assert dest_count == 0, (
             f"No transaction should be added to the synced destination, got {dest_count}"
         )
@@ -541,6 +548,7 @@ if __name__ == "__main__":
             results.append((test_fn.__name__, True, None))
         except Exception as e:
             import traceback
+
             results.append((test_fn.__name__, False, traceback.format_exc()))
 
     print("\n--- Results ---")

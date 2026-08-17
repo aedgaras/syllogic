@@ -24,10 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,7 +50,8 @@ type SortKey = "sym" | "acct" | "type" | "qty" | "price" | "value" | "pnl";
 
 export function TypeBadge({ type }: { type: "etf" | "equity" | "cash" }) {
   if (type === "etf") return <Badge>{translate("etf")}</Badge>;
-  if (type === "equity") return <Badge variant="secondary">{translate("equity")}</Badge>;
+  if (type === "equity")
+    return <Badge variant="secondary">{translate("equity")}</Badge>;
   return <Badge variant="outline">{translate("cash")}</Badge>;
 }
 
@@ -152,7 +150,9 @@ export function HoldingsTableHF({
     );
 
   const totalValue = rows.reduce((s, r) => s + r._value, 0);
-  const editingHolding = editingId ? holdings.find((h) => h.id === editingId) : null;
+  const editingHolding = editingId
+    ? holdings.find((h) => h.id === editingId)
+    : null;
 
   return (
     <Card>
@@ -160,7 +160,8 @@ export function HoldingsTableHF({
         <div>
           <h2 className="text-sm font-semibold">{translate("allHoldings")}</h2>
           <p className="text-xs text-muted-foreground">
-            {holdings.length} {translate("positions")} {accountsCount} {translate("account")}
+            {holdings.length} {translate("positions")} {accountsCount}{" "}
+            {translate("account")}
             {accountsCount !== 1 ? "s" : ""}
           </p>
         </div>
@@ -176,7 +177,11 @@ export function HoldingsTableHF({
           size="sm"
         >
           {(["All", "ETF", "Equity", "Cash"] as Filter[]).map((t) => (
-            <ToggleGroupItem key={t} value={t} aria-label={translate("filter", { t: t })}>
+            <ToggleGroupItem
+              key={t}
+              value={t}
+              aria-label={translate("filter", { t: t })}
+            >
               {t}
             </ToggleGroupItem>
           ))}
@@ -191,18 +196,27 @@ export function HoldingsTableHF({
       <CardContent className="p-0">
         <div className="divide-y md:hidden">
           {(["etf", "equity", "cash"] as const).map((groupType) => {
-            const groupRows = rows.filter((r) => r.instrument_type === groupType);
+            const groupRows = rows.filter(
+              (r) => r.instrument_type === groupType,
+            );
             if (groupRows.length === 0) return null;
             const groupTotal = groupRows.reduce((s, r) => s + r._value, 0);
             const groupLabel =
-              groupType === "etf" ? translate("etf") : groupType === "equity" ? translate("equity") : translate("cash");
+              groupType === "etf"
+                ? translate("etf")
+                : groupType === "equity"
+                  ? translate("equity")
+                  : translate("cash");
 
             return (
               <section key={groupType}>
                 <div className="flex items-center justify-between gap-3 bg-muted/40 px-4 py-2 text-xs font-semibold uppercase text-muted-foreground">
-                  <span>{groupLabel} · {groupRows.length}</span>
+                  <span>
+                    {groupLabel} · {groupRows.length}
+                  </span>
                   <span className="shrink-0 tabular-nums">
-                    {portfolioCurrencySymbol} {groupTotal.toLocaleString("en", {
+                    {portfolioCurrencySymbol}{" "}
+                    {groupTotal.toLocaleString("en", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
@@ -216,7 +230,9 @@ export function HoldingsTableHF({
                         key={h.id}
                         tabIndex={0}
                         role="button"
-                        aria-label={translate("viewDetailsFor", { value1: h.symbol })}
+                        aria-label={translate("viewDetailsFor", {
+                          value1: h.symbol,
+                        })}
                         onClick={() => router.push(`/investments/${h.id}`)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
@@ -237,7 +253,11 @@ export function HoldingsTableHF({
                                   className="size-1.5 rounded-full bg-amber-500"
                                 />
                               )}
-                              <OwnerBadges entityType="account" entityId={h.account_id} size={16} />
+                              <OwnerBadges
+                                entityType="account"
+                                entityId={h.account_id}
+                                size={16}
+                              />
                             </div>
                             <div className="break-words text-[10px] text-muted-foreground">
                               {h.name ?? ""}
@@ -245,27 +265,41 @@ export function HoldingsTableHF({
                           </div>
                           <div className="shrink-0 text-right">
                             <div className="tabular-nums text-sm font-semibold">
-                              {portfolioCurrencySymbol} {h._value.toLocaleString("en", {
+                              {portfolioCurrencySymbol}{" "}
+                              {h._value.toLocaleString("en", {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {h.current_price ? translate("messagee9c086", { sym: sym, value2: h._price.toFixed(2) }) : "—"}
+                              {h.current_price
+                                ? translate("messagee9c086", {
+                                    sym: sym,
+                                    value2: h._price.toFixed(2),
+                                  })
+                                : "—"}
                             </div>
                           </div>
                         </div>
                         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                           <div>
-                            <div className="text-muted-foreground">{translate("account85dfa3")}</div>
+                            <div className="text-muted-foreground">
+                              {translate("account85dfa3")}
+                            </div>
                             <Badge variant="outline">{h._acct}</Badge>
                           </div>
                           <div className="text-right">
-                            <div className="text-muted-foreground">{translate("qty")}</div>
-                            <div className="tabular-nums">{h._qty.toLocaleString()}</div>
+                            <div className="text-muted-foreground">
+                              {translate("qty")}
+                            </div>
+                            <div className="tabular-nums">
+                              {h._qty.toLocaleString()}
+                            </div>
                           </div>
                           <div>
-                            <div className="text-muted-foreground">{translate("pL")}</div>
+                            <div className="text-muted-foreground">
+                              {translate("pL")}
+                            </div>
                             <div
                               className={`tabular-nums ${
                                 h._pnl == null
@@ -277,10 +311,15 @@ export function HoldingsTableHF({
                             >
                               {h._pnl == null
                                 ? "—"
-                                : translate("message4ec9f0", { value1: h._pnl >= 0 ? "+" : "", portfolioCurrencySymbol: portfolioCurrencySymbol, value3: h._pnl.toLocaleString("en", {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  }) })}
+                                : translate("message4ec9f0", {
+                                    value1: h._pnl >= 0 ? "+" : "",
+                                    portfolioCurrencySymbol:
+                                      portfolioCurrencySymbol,
+                                    value3: h._pnl.toLocaleString("en", {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2,
+                                    }),
+                                  })}
                             </div>
                           </div>
                           {!readOnly && h.source === "manual" && (
@@ -318,7 +357,8 @@ export function HoldingsTableHF({
           <div className="flex items-center justify-between gap-3 bg-muted/40 px-4 py-3 text-sm font-semibold">
             <span>{translate("totalb25928")}</span>
             <span className="tabular-nums">
-              {portfolioCurrencySymbol} {totalValue.toLocaleString("en", {
+              {portfolioCurrencySymbol}{" "}
+              {totalValue.toLocaleString("en", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
@@ -346,9 +386,11 @@ export function HoldingsTableHF({
                     align === "right" ? "text-right" : "text-left"
                   }`}
                 >
-                  <span className={`inline-flex items-center gap-1 ${
-                    align === "right" ? "justify-end w-full" : ""
-                  }`}>
+                  <span
+                    className={`inline-flex items-center gap-1 ${
+                      align === "right" ? "justify-end w-full" : ""
+                    }`}
+                  >
                     {label}
                     <SortIcon k={k as SortKey} />
                   </span>
@@ -359,13 +401,22 @@ export function HoldingsTableHF({
           </TableHeader>
           <TableBody>
             {(["etf", "equity", "cash"] as const).flatMap((groupType) => {
-              const groupRows = rows.filter((r) => r.instrument_type === groupType);
+              const groupRows = rows.filter(
+                (r) => r.instrument_type === groupType,
+              );
               if (groupRows.length === 0) return [];
               const groupTotal = groupRows.reduce((s, r) => s + r._value, 0);
               const groupLabel =
-                groupType === "etf" ? translate("etf") : groupType === "equity" ? translate("equity") : translate("cash");
+                groupType === "etf"
+                  ? translate("etf")
+                  : groupType === "equity"
+                    ? translate("equity")
+                    : translate("cash");
               return [
-                <TableRow key={`group-${groupType}`} className="bg-muted/40 hover:bg-muted/40">
+                <TableRow
+                  key={`group-${groupType}`}
+                  className="bg-muted/40 hover:bg-muted/40"
+                >
                   <TableCell
                     colSpan={5}
                     className="uppercase tracking-wider text-[10px] font-semibold text-muted-foreground"
@@ -376,131 +427,159 @@ export function HoldingsTableHF({
                     colSpan={3}
                     className="text-right tabular-nums text-xs font-semibold text-muted-foreground"
                   >
-                    {portfolioCurrencySymbol} {groupTotal.toLocaleString("en", {
+                    {portfolioCurrencySymbol}{" "}
+                    {groupTotal.toLocaleString("en", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
                   </TableCell>
                 </TableRow>,
                 ...groupRows.map((h) => {
-              const sym = currencySymbol(h.currency);
-              return (
-                <TableRow
-                  key={h.id}
-                  tabIndex={0}
-                  aria-label={translate("viewDetailsFor", { value1: h.symbol })}
-                  onClick={() => router.push(`/investments/${h.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      router.push(`/investments/${h.id}`);
-                    }
-                  }}
-                  className={`cursor-pointer ${
-                    h.is_stale ? "bg-amber-50 dark:bg-amber-950/30" : ""
-                  }`}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold">{h.symbol}</span>
-                      {h.is_stale && (
-                        <span
-                          title={translate("priceMayBeStale")}
-                          className="size-1.5 rounded-full bg-amber-500"
-                        />
-                      )}
-                      <OwnerBadges entityType="account" entityId={h.account_id} size={16} />
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {h.name ?? ""}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{h._acct}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <TypeBadge type={h.instrument_type} />
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {h._qty.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-muted-foreground">
-                    {h.current_price ? translate("messagee9c086", { sym: sym, value2: h._price.toFixed(2) }) : "—"}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums font-semibold">
-                    {portfolioCurrencySymbol} {h._value.toLocaleString("en", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </TableCell>
-                  <TableCell className={`text-right tabular-nums ${
-                    h._pnl == null
-                      ? "text-muted-foreground"
-                      : h._pnl >= 0
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-destructive"
-                  }`}>
-                    {h._pnl == null
-                      ? "—"
-                      : translate("message4ec9f0", { value1: h._pnl >= 0 ? "+" : "", portfolioCurrencySymbol: portfolioCurrencySymbol, value3: h._pnl.toLocaleString("en", {
+                  const sym = currencySymbol(h.currency);
+                  return (
+                    <TableRow
+                      key={h.id}
+                      tabIndex={0}
+                      aria-label={translate("viewDetailsFor", {
+                        value1: h.symbol,
+                      })}
+                      onClick={() => router.push(`/investments/${h.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          router.push(`/investments/${h.id}`);
+                        }
+                      }}
+                      className={`cursor-pointer ${
+                        h.is_stale ? "bg-amber-50 dark:bg-amber-950/30" : ""
+                      }`}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold">{h.symbol}</span>
+                          {h.is_stale && (
+                            <span
+                              title={translate("priceMayBeStale")}
+                              className="size-1.5 rounded-full bg-amber-500"
+                            />
+                          )}
+                          <OwnerBadges
+                            entityType="account"
+                            entityId={h.account_id}
+                            size={16}
+                          />
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {h.name ?? ""}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{h._acct}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <TypeBadge type={h.instrument_type} />
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {h._qty.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {h.current_price
+                          ? translate("messagee9c086", {
+                              sym: sym,
+                              value2: h._price.toFixed(2),
+                            })
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums font-semibold">
+                        {portfolioCurrencySymbol}{" "}
+                        {h._value.toLocaleString("en", {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
-                        }) })}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={translate("rowActions")}
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") e.stopPropagation();
-                          }}
-                        >
-                          <RiMore2Fill className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        onClick={(e) => e.stopPropagation()}
+                        })}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right tabular-nums ${
+                          h._pnl == null
+                            ? "text-muted-foreground"
+                            : h._pnl >= 0
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-destructive"
+                        }`}
                       >
-                        <DropdownMenuItem
-                          onClick={() => router.push(`/investments/${h.id}`)}
-                        >
-                          {translate("viewDetails")}
-                        </DropdownMenuItem>
-                        {!readOnly && h.source === "manual" && (
-                          <>
-                            <DropdownMenuItem onClick={() => setEditingId(h.id)}>
-                              {translate("edit")}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => setDeletingId(h.id)}
-                              className="text-destructive focus:text-destructive"
+                        {h._pnl == null
+                          ? "—"
+                          : translate("message4ec9f0", {
+                              value1: h._pnl >= 0 ? "+" : "",
+                              portfolioCurrencySymbol: portfolioCurrencySymbol,
+                              value3: h._pnl.toLocaleString("en", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              }),
+                            })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={translate("rowActions")}
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ")
+                                  e.stopPropagation();
+                              }}
                             >
-                              {translate("delete")}
+                              <RiMore2Fill className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <DropdownMenuItem
+                              onClick={() =>
+                                router.push(`/investments/${h.id}`)
+                              }
+                            >
+                              {translate("viewDetails")}
                             </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              );
+                            {!readOnly && h.source === "manual" && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => setEditingId(h.id)}
+                                >
+                                  {translate("edit")}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => setDeletingId(h.id)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  {translate("delete")}
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
                 }),
               ];
             })}
           </TableBody>
           <TableFooter>
             <TableRow>
-              <TableCell colSpan={6} className="font-semibold text-muted-foreground">
+              <TableCell
+                colSpan={6}
+                className="font-semibold text-muted-foreground"
+              >
                 {translate("totalb25928")}
               </TableCell>
               <TableCell className="text-right tabular-nums font-bold">
-                {portfolioCurrencySymbol} {totalValue.toLocaleString("en", {
+                {portfolioCurrencySymbol}{" "}
+                {totalValue.toLocaleString("en", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
@@ -525,7 +604,9 @@ export function HoldingsTableHF({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{translate("deleteThisHolding")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {translate("deleteThisHolding")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {translate("thisRemovesTheManualPositionPriceHistoryIsRetained")}
             </AlertDialogDescription>

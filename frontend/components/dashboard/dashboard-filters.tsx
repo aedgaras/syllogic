@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import * as React from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { type DateRange } from "react-day-picker";
@@ -46,19 +45,21 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
 
   const globalFilters = React.useMemo(
     () => parseGlobalFiltersFromSearchParams(searchParams),
-    [searchParams]
+    [searchParams],
   );
 
   const selectedAccountIds = globalFilters.accountIds;
 
   const selectedAccountSet = React.useMemo(
     () => new Set(selectedAccountIds),
-    [selectedAccountIds]
+    [selectedAccountIds],
   );
 
   const isAllAccountsSelected = selectedAccountIds.length === 0;
   const selectedAccountsCount = selectedAccountIds.length;
-  const accountTriggerText = isAllAccountsSelected ? translate("allAccounts6a19f2") : translate("accounts");
+  const accountTriggerText = isAllAccountsSelected
+    ? translate("allAccounts6a19f2")
+    : translate("accounts");
 
   const dateFromParam = globalFilters.from;
   const dateToParam = globalFilters.to;
@@ -79,7 +80,8 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
     return differenceInCalendarDays(dateRange.to, dateRange.from) + 1;
   }, [dateRange?.from, dateRange?.to]);
 
-  const shouldCollapseGap = matchedSpanDays === 7 || matchedSpanDays === 30 || matchedSpanDays === 365;
+  const shouldCollapseGap =
+    matchedSpanDays === 7 || matchedSpanDays === 30 || matchedSpanDays === 365;
 
   const pushParams = React.useCallback(
     (nextParams: URLSearchParams) => {
@@ -88,28 +90,32 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
         scroll: false,
       });
     },
-    [pathname, router]
+    [pathname, router],
   );
 
   const updateSelectedAccounts = React.useCallback(
     (nextAccountIds: string[]) => {
       const params = new URLSearchParams(searchParams.toString());
       params.delete("account");
-      nextAccountIds.forEach((accountId) => params.append("account", accountId));
+      nextAccountIds.forEach((accountId) =>
+        params.append("account", accountId),
+      );
       pushParams(params);
     },
-    [pushParams, searchParams]
+    [pushParams, searchParams],
   );
 
   const toggleAccount = React.useCallback(
     (accountId: string) => {
       if (selectedAccountSet.has(accountId)) {
-        updateSelectedAccounts(selectedAccountIds.filter((id) => id !== accountId));
+        updateSelectedAccounts(
+          selectedAccountIds.filter((id) => id !== accountId),
+        );
       } else {
         updateSelectedAccounts([...selectedAccountIds, accountId]);
       }
     },
-    [selectedAccountIds, selectedAccountSet, updateSelectedAccounts]
+    [selectedAccountIds, selectedAccountSet, updateSelectedAccounts],
   );
 
   const updateDateRange = React.useCallback(
@@ -129,7 +135,7 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
       }
       pushParams(params);
     },
-    [pushParams, searchParams]
+    [pushParams, searchParams],
   );
 
   const updateHorizon = React.useCallback(
@@ -144,7 +150,7 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
       }
       pushParams(params);
     },
-    [pushParams, searchParams]
+    [pushParams, searchParams],
   );
 
   return (
@@ -152,7 +158,7 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
       <Popover open={accountsOpen} onOpenChange={setAccountsOpen}>
         <PopoverTrigger
           className={cn(
-            "flex !h-9 min-w-0 flex-1 items-center justify-between border border-input bg-transparent px-2.5 text-xs transition-colors hover:bg-muted sm:w-[190px] sm:flex-none"
+            "flex !h-9 min-w-0 flex-1 items-center justify-between border border-input bg-transparent px-2.5 text-xs transition-colors hover:bg-muted sm:w-[190px] sm:flex-none",
           )}
         >
           <span className="flex items-center gap-2 truncate">
@@ -161,7 +167,10 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
           </span>
           <span className="flex items-center gap-1 shrink-0">
             {!isAllAccountsSelected && (
-              <Badge variant="outline" className="h-4 min-w-4 px-1 text-[10px] leading-none">
+              <Badge
+                variant="outline"
+                className="h-4 min-w-4 px-1 text-[10px] leading-none"
+              >
                 {selectedAccountsCount}
               </Badge>
             )}
@@ -179,7 +188,10 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
                 checked={isAllAccountsSelected}
                 className="pointer-events-none"
               />
-              <span>{translate("allAccounts")}{accounts.length})</span>
+              <span>
+                {translate("allAccounts")}
+                {accounts.length})
+              </span>
             </button>
           </div>
           <div className="max-h-56 overflow-y-auto p-1">
@@ -201,7 +213,12 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
         </PopoverContent>
       </Popover>
 
-      <div className={cn("flex min-w-0 flex-1 items-center sm:flex-none", shouldCollapseGap ? "gap-0" : "gap-2")}>
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 items-center sm:flex-none",
+          shouldCollapseGap ? "gap-0" : "gap-2",
+        )}
+      >
         <DateRangePicker
           value={dateRange}
           onChange={updateDateRange}
@@ -220,7 +237,7 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
                 "h-full px-2.5 text-xs font-medium transition-colors sm:px-3",
                 effectiveHorizon === option.value
                   ? "bg-primary text-primary-foreground"
-                  : "bg-transparent text-foreground hover:bg-muted"
+                  : "bg-transparent text-foreground hover:bg-muted",
               )}
               onClick={() => updateHorizon(option.value)}
             >

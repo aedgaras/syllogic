@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -48,10 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  createApiKey,
-  deleteApiKey,
-} from "@/lib/actions/api-keys";
+import { createApiKey, deleteApiKey } from "@/lib/actions/api-keys";
 import { DEMO_RESTRICTED_ACTION_ERROR } from "@/lib/demo-access";
 import { stringifyClaudeDesktopMcpConfig } from "@/lib/mcp/claude-desktop-config";
 
@@ -124,7 +120,7 @@ export function ApiKeysManager({
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [showKeyDialogOpen, setShowKeyDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deletingKey, setDeletingKey] = useState<typeof keys[0] | null>(null);
+  const [deletingKey, setDeletingKey] = useState<(typeof keys)[0] | null>(null);
 
   // Form state
   const [keyName, setKeyName] = useState("");
@@ -240,7 +236,8 @@ export function ApiKeysManager({
               <Label>{translate("claudeOnTheWebIosOrAndroid")}</Label>
               <p className="text-xs text-muted-foreground">
                 {translate("inClaudeSettingsOpen")}{" "}
-                <strong>{translate("connectorsAddCustomConnector")}</strong> {translate("andPasteThisUrlYouLlBeRedirectedHere")}
+                <strong>{translate("connectorsAddCustomConnector")}</strong>{" "}
+                {translate("andPasteThisUrlYouLlBeRedirectedHere")}
               </p>
               <div className="relative min-w-0">
                 <pre className="overflow-x-auto rounded bg-background p-3 pr-10 text-xs">
@@ -281,7 +278,9 @@ export function ApiKeysManager({
                       </div>
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="break-words text-sm font-medium">{key.name}</p>
+                          <p className="break-words text-sm font-medium">
+                            {key.name}
+                          </p>
                           {isExpired(key.expiresAt) && (
                             <span className="text-xs text-destructive">
                               {translate("expired")}
@@ -295,13 +294,17 @@ export function ApiKeysManager({
                           <span>·</span>
                           <span>
                             {key.lastUsedAt
-                              ? translate("lastUsed", { value1: formatRelativeTime(key.lastUsedAt) })
+                              ? translate("lastUsed", {
+                                  value1: formatRelativeTime(key.lastUsedAt),
+                                })
                               : translate("neverUsed")}
                           </span>
                           <span>·</span>
                           <span>
                             {key.expiresAt
-                              ? translate("expires", { value1: formatDate(key.expiresAt) })
+                              ? translate("expires", {
+                                  value1: formatDate(key.expiresAt),
+                                })
                               : translate("noExpiration")}
                           </span>
                         </div>
@@ -383,9 +386,15 @@ export function ApiKeysManager({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="never">{translate("never")}</SelectItem>
-                  <SelectItem value="30days">{translate("message30Days")}</SelectItem>
-                  <SelectItem value="90days">{translate("message90Days")}</SelectItem>
-                  <SelectItem value="1year">{translate("message1Year")}</SelectItem>
+                  <SelectItem value="30days">
+                    {translate("message30Days")}
+                  </SelectItem>
+                  <SelectItem value="90days">
+                    {translate("message90Days")}
+                  </SelectItem>
+                  <SelectItem value="1year">
+                    {translate("message1Year")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -415,7 +424,10 @@ export function ApiKeysManager({
           setShowKeyDialogOpen(open);
         }}
       >
-        <DialogContent showCloseButton={false} className="max-w-[calc(100%-2rem)] sm:max-w-lg">
+        <DialogContent
+          showCloseButton={false}
+          className="max-w-[calc(100%-2rem)] sm:max-w-lg"
+        >
           <DialogHeader>
             <DialogTitle>{translate("apiKeyCreated")}</DialogTitle>
             <DialogDescription>
@@ -424,7 +436,9 @@ export function ApiKeysManager({
           </DialogHeader>
           <div className="space-y-4 py-4 overflow-hidden">
             <div className="flex items-center gap-2 rounded bg-muted p-3 min-w-0">
-              <code className="flex-1 break-all text-xs min-w-0">{createdKey}</code>
+              <code className="flex-1 break-all text-xs min-w-0">
+                {createdKey}
+              </code>
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -451,12 +465,16 @@ export function ApiKeysManager({
               </p>
               <p className="text-xs text-muted-foreground">
                 {translate("thisUsesALocal")}{" "}
-                <code className="rounded bg-muted px-1 font-mono">{translate("npx")}</code>{" "}
-                {translate("bridge")}{" ("}
+                <code className="rounded bg-muted px-1 font-mono">
+                  {translate("npx")}
+                </code>{" "}
+                {translate("bridge")}
+                {" ("}
                 <code className="rounded bg-muted px-1 font-mono">
                   {translate("mcpRemote")}
                 </code>
-                {") "}{translate("toConnectClaudeDesktopToTheRemoteSyllogicMcp")}
+                {") "}
+                {translate("toConnectClaudeDesktopToTheRemoteSyllogicMcp")}
               </p>
               <div className="relative min-w-0">
                 <pre className="max-h-48 overflow-x-auto overflow-y-auto rounded bg-muted p-3 pr-10 text-xs whitespace-pre">
@@ -474,7 +492,9 @@ export function ApiKeysManager({
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setShowKeyDialogOpen(false)}>{translate("done")}</Button>
+            <Button onClick={() => setShowKeyDialogOpen(false)}>
+              {translate("done")}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -485,7 +505,9 @@ export function ApiKeysManager({
           <AlertDialogHeader>
             <AlertDialogTitle>{translate("deleteApiKey")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {translate("areYouSureYouWantToDelete")}{deletingKey?.name}{translate("anyApplicationsUsingThisKeyWillNoLongerBe")}
+              {translate("areYouSureYouWantToDelete")}
+              {deletingKey?.name}
+              {translate("anyApplicationsUsingThisKeyWillNoLongerBe")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

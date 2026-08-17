@@ -2,6 +2,7 @@
 Server-Sent Events (SSE) endpoints for real-time notifications.
 Provides streaming updates for long-running operations like CSV imports.
 """
+
 import asyncio
 import json
 import os
@@ -48,8 +49,12 @@ async def import_status_generator(user_id: str, import_id: str) -> AsyncGenerato
             logger.info(f"Sending {len(stored_events)} stored events to late subscriber")
             # Send stored events in order
             event_order = [
-                "import_started", "import_progress", "import_completed",
-                "subscriptions_started", "subscriptions_completed", "import_failed"
+                "import_started",
+                "import_progress",
+                "import_completed",
+                "subscriptions_started",
+                "subscriptions_completed",
+                "import_failed",
             ]
             for event_type in event_order:
                 if event_type in stored_events:
@@ -68,8 +73,7 @@ async def import_status_generator(user_id: str, import_id: str) -> AsyncGenerato
             try:
                 # Use asyncio.wait_for to implement timeout for heartbeats
                 message = await asyncio.wait_for(
-                    pubsub.get_message(ignore_subscribe_messages=True),
-                    timeout=1.0
+                    pubsub.get_message(ignore_subscribe_messages=True), timeout=1.0
                 )
 
                 if message and message["type"] == "message":
@@ -154,5 +158,5 @@ async def stream_import_status(import_id: str, request: Request):
             "X-Accel-Buffering": "no",  # Disable nginx buffering
             "Access-Control-Allow-Origin": cors_origin,
             "Access-Control-Allow-Credentials": "true",
-        }
+        },
     )

@@ -1,11 +1,16 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import * as React from "react";
 import { Label, Pie, PieChart, Sector } from "recharts";
 import type { PieSectorDataItem } from "recharts/types/polar/Pie";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   ChartContainer,
   ChartTooltip,
@@ -40,12 +45,12 @@ export function CategorySpendingDonutChart({
 }: CategorySpendingDonutChartProps) {
   const selectedCategorySet = React.useMemo(
     () => new Set(selectedCategoryIds),
-    [selectedCategoryIds]
+    [selectedCategoryIds],
   );
 
   const selectedCategories = React.useMemo(
     () => data.filter((item) => selectedCategorySet.has(item.id)),
-    [data, selectedCategorySet]
+    [data, selectedCategorySet],
   );
 
   const activeIndex = React.useMemo(() => {
@@ -61,7 +66,9 @@ export function CategorySpendingDonutChart({
   return (
     <Card className="flex flex-col">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">{translate("spendingShare")}</CardTitle>
+        <CardTitle className="text-sm font-medium">
+          {translate("spendingShare")}
+        </CardTitle>
       </CardHeader>
       <CardContent className="pb-0">
         {data.length === 0 ? (
@@ -87,15 +94,21 @@ export function CategorySpendingDonutChart({
 
                       return (
                         <div className="w-full space-y-1">
-                          <div className="font-medium text-foreground">{String(name)}</div>
+                          <div className="font-medium text-foreground">
+                            {String(name)}
+                          </div>
                           <div className="flex items-center justify-between gap-3">
-                            <span className="text-muted-foreground">{translate("amount")}</span>
+                            <span className="text-muted-foreground">
+                              {translate("amount")}
+                            </span>
                             <span className="font-mono font-medium text-foreground">
                               {formatCurrency(Number(value), currency)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between gap-3">
-                            <span className="text-muted-foreground">{translate("share")}</span>
+                            <span className="text-muted-foreground">
+                              {translate("share")}
+                            </span>
                             <span className="font-mono font-medium text-foreground">
                               {sharePct.toFixed(1)}%
                             </span>
@@ -113,7 +126,10 @@ export function CategorySpendingDonutChart({
                 innerRadius={60}
                 strokeWidth={5}
                 activeIndex={activeIndex}
-                activeShape={({ outerRadius = 0, ...props }: PieSectorDataItem) => (
+                activeShape={({
+                  outerRadius = 0,
+                  ...props
+                }: PieSectorDataItem) => (
                   <Sector {...props} outerRadius={outerRadius + 10} />
                 )}
                 onClick={(_, index) => {
@@ -172,22 +188,29 @@ export function CategorySpendingDonutChart({
       <CardFooter className="pt-2">
         {selectedCategories.length === 1 ? (
           <div className="flex w-full items-center justify-between gap-3 text-sm">
-            <span className="truncate font-medium">{selectedCategories[0].name}</span>
+            <span className="truncate font-medium">
+              {selectedCategories[0].name}
+            </span>
             <span className="shrink-0 font-mono text-muted-foreground">
-              {formatCurrency(selectedCategories[0].amount, currency)} ({selectedCategories[0].sharePct.toFixed(1)}%)
+              {formatCurrency(selectedCategories[0].amount, currency)} (
+              {selectedCategories[0].sharePct.toFixed(1)}%)
             </span>
           </div>
         ) : selectedCategories.length > 1 ? (
           <div className="flex w-full items-center justify-between gap-3 text-sm">
             <span className="truncate font-medium">
-              {selectedCategories.length} {translate("selectedCategoriesc107fd")}
+              {selectedCategories.length}{" "}
+              {translate("selectedCategoriesc107fd")}
             </span>
             <span className="shrink-0 font-mono text-muted-foreground">
-              {formatCurrency(selectedTotal, currency)} ({selectedSharePct.toFixed(1)}%)
+              {formatCurrency(selectedTotal, currency)} (
+              {selectedSharePct.toFixed(1)}%)
             </span>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">{translate("selectOneOrMoreSlicesForDetails")}</p>
+          <p className="text-sm text-muted-foreground">
+            {translate("selectOneOrMoreSlicesForDetails")}
+          </p>
         )}
       </CardFooter>
     </Card>

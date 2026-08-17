@@ -47,7 +47,14 @@ export function WalkthroughAutoStart() {
       }, 100);
       return () => clearTimeout(t);
     }
-  }, [pathname, searchParams, router, tutorialsEnabled, startWalkthrough, hasCompletedPage]);
+  }, [
+    pathname,
+    searchParams,
+    router,
+    tutorialsEnabled,
+    startWalkthrough,
+    hasCompletedPage,
+  ]);
 
   return null;
 }

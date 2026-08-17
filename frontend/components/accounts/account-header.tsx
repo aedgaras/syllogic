@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { RiRefreshLine } from "@remixicon/react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,9 +30,14 @@ function formatCurrency(value: string | null, currency: string): string {
 }
 
 export function AccountHeader({ account, currency }: AccountHeaderProps) {
-  const typeLabel = ACCOUNT_TYPE_LABELS[account.accountType] || account.accountType;
+  const typeLabel =
+    ACCOUNT_TYPE_LABELS[account.accountType] || account.accountType;
   const lastSyncedText = account.lastSyncedAt
-    ? translate("synced", { value1: formatDistanceToNow(new Date(account.lastSyncedAt), { addSuffix: true }) })
+    ? translate("synced", {
+        value1: formatDistanceToNow(new Date(account.lastSyncedAt), {
+          addSuffix: true,
+        }),
+      })
     : translate("manualAccount");
 
   return (
@@ -43,7 +47,9 @@ export function AccountHeader({ account, currency }: AccountHeaderProps) {
           <AccountLogo
             name={account.name}
             logoUrl={account.logo?.logoUrl}
-            updatedAt={account.logo?.updatedAt ? new Date(account.logo.updatedAt) : null}
+            updatedAt={
+              account.logo?.updatedAt ? new Date(account.logo.updatedAt) : null
+            }
             className="!size-12"
           />
           <div className="space-y-1">

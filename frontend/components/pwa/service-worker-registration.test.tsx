@@ -25,7 +25,7 @@ describe("ServiceWorkerRegistration", () => {
       expect(register).toHaveBeenCalledWith("/sw.js", {
         scope: "/",
         updateViaCache: "none",
-      })
+      }),
     );
   });
 });

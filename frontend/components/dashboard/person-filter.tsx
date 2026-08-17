@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { Button } from "@/components/ui/button";
 import { PersonAvatar } from "@/components/household/person-avatar";
 import { usePeopleQuery } from "@/lib/people/client";
@@ -16,7 +15,9 @@ export function PersonFilter(props: {
 
   function toggle(id: string) {
     props.onChange(
-      props.value.includes(id) ? props.value.filter((x) => x !== id) : [...props.value, id]
+      props.value.includes(id)
+        ? props.value.filter((x) => x !== id)
+        : [...props.value, id],
     );
   }
 

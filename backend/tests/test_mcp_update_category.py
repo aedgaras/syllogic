@@ -4,6 +4,7 @@ Tests for the update_category MCP tool.
 Exercises the tool function directly against the database (no HTTP),
 mirroring the setup style used in test_categorizer.py.
 """
+
 import os
 import sys
 import uuid

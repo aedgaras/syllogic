@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
@@ -18,13 +17,27 @@ const schema = z.object({
   account_ids: z.array(z.string()),
   transaction_mode: z.enum(["RECENT", "TOP_N"]),
   transaction_count: z.coerce.number().int().min(1).max(100),
-  transaction_direction: z.enum(["ALL", "EXPENSE", "INCOME", "INFLOW", "OUTFLOW"]),
+  transaction_direction: z.enum([
+    "ALL",
+    "EXPENSE",
+    "INCOME",
+    "INFLOW",
+    "OUTFLOW",
+  ]),
   frequency: z.enum(["DAILY", "WEEKLY", "BIWEEKLY", "MONTHLY"]),
   send_time: z.string().min(1),
   send_day_of_week: z.coerce.number().int().min(0).max(6).nullable().optional(),
-  send_day_of_month: z.coerce.number().int().min(1).max(28).nullable().optional(),
+  send_day_of_month: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(28)
+    .nullable()
+    .optional(),
   timezone: z.string().min(1),
-  recipient_emails: z.array(z.string().email()).min(1, "Add at least one recipient"),
+  recipient_emails: z
+    .array(z.string().email())
+    .min(1, "Add at least one recipient"),
   is_active: z.boolean(),
 });
 
@@ -89,7 +102,11 @@ export function ReportForm({
       }
       router.push("/reports");
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : translate("failedToSaveReportPleaseTryAgain"));
+      setSubmitError(
+        err instanceof Error
+          ? err.message
+          : translate("failedToSaveReportPleaseTryAgain"),
+      );
     }
   }
 
@@ -102,7 +119,11 @@ export function ReportForm({
       await sendTestReport(report.id);
       setSendTestSuccess(true);
     } catch (err) {
-      setSendTestError(err instanceof Error ? err.message : translate("failedToSendTestPleaseTryAgain"));
+      setSendTestError(
+        err instanceof Error
+          ? err.message
+          : translate("failedToSendTestPleaseTryAgain"),
+      );
     } finally {
       setSendingTest(false);
     }
@@ -111,27 +132,40 @@ export function ReportForm({
   function addRecipient() {
     const value = recipientDraft.trim();
     if (!value) return;
-    setValue("recipient_emails", [...recipients, value], { shouldValidate: true });
+    setValue("recipient_emails", [...recipients, value], {
+      shouldValidate: true,
+    });
     setRecipientDraft("");
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-5 text-foreground">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="max-w-2xl space-y-5 text-foreground"
+    >
       <div>
-        <label className="block text-sm font-medium mb-1">{translate("name")}</label>
+        <label className="block text-sm font-medium mb-1">
+          {translate("name")}
+        </label>
         <input
           {...register("name")}
           className="w-full border border-border bg-background text-foreground rounded px-3 py-2 text-sm placeholder:text-muted-foreground"
         />
-        {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
+        {errors.name && (
+          <p className="text-xs text-destructive mt-1">{errors.name.message}</p>
+        )}
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">{translate("accounts")}</label>
+        <label className="block text-sm font-medium mb-1">
+          {translate("accounts")}
+        </label>
         <AccountPicker
           accounts={availableAccounts}
           selectedIds={accountIds}
-          onChange={(ids) => setValue("account_ids", ids, { shouldValidate: true })}
+          onChange={(ids) =>
+            setValue("account_ids", ids, { shouldValidate: true })
+          }
           loading={accountsLoading ?? false}
           error={accountsError ?? false}
         />
@@ -139,7 +173,9 @@ export function ReportForm({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
-          <label className="block text-sm font-medium mb-1">{translate("mode")}</label>
+          <label className="block text-sm font-medium mb-1">
+            {translate("mode")}
+          </label>
           <select
             {...register("transaction_mode")}
             className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
@@ -149,18 +185,24 @@ export function ReportForm({
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">{translate("count")}</label>
+          <label className="block text-sm font-medium mb-1">
+            {translate("count")}
+          </label>
           <input
             type="number"
             {...register("transaction_count")}
             className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
           />
           {errors.transaction_count && (
-            <p className="text-xs text-destructive mt-1">{errors.transaction_count.message}</p>
+            <p className="text-xs text-destructive mt-1">
+              {errors.transaction_count.message}
+            </p>
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">{translate("direction")}</label>
+          <label className="block text-sm font-medium mb-1">
+            {translate("direction")}
+          </label>
           <select
             {...register("transaction_direction")}
             className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
@@ -176,7 +218,9 @@ export function ReportForm({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium mb-1">{translate("frequency")}</label>
+          <label className="block text-sm font-medium mb-1">
+            {translate("frequency")}
+          </label>
           <select
             {...register("frequency")}
             className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
@@ -188,7 +232,9 @@ export function ReportForm({
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">{translate("time")}</label>
+          <label className="block text-sm font-medium mb-1">
+            {translate("time")}
+          </label>
           <input
             type="time"
             step={60}
@@ -200,26 +246,40 @@ export function ReportForm({
 
       {(frequency === "WEEKLY" || frequency === "BIWEEKLY") && (
         <div>
-          <label className="block text-sm font-medium mb-1">{translate("dayOfWeek")}</label>
+          <label className="block text-sm font-medium mb-1">
+            {translate("dayOfWeek")}
+          </label>
           <select
             {...register("send_day_of_week")}
             className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
           >
-            {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((d, i) => (
+            {[
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+              "Sunday",
+            ].map((d, i) => (
               <option key={d} value={i}>
                 {d}
               </option>
             ))}
           </select>
           {errors.send_day_of_week && (
-            <p className="text-xs text-destructive mt-1">{errors.send_day_of_week.message}</p>
+            <p className="text-xs text-destructive mt-1">
+              {errors.send_day_of_week.message}
+            </p>
           )}
         </div>
       )}
 
       {frequency === "MONTHLY" && (
         <div>
-          <label className="block text-sm font-medium mb-1">{translate("dayOfMonth")}</label>
+          <label className="block text-sm font-medium mb-1">
+            {translate("dayOfMonth")}
+          </label>
           <input
             type="number"
             min={1}
@@ -228,13 +288,17 @@ export function ReportForm({
             className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
           />
           {errors.send_day_of_month && (
-            <p className="text-xs text-destructive mt-1">{errors.send_day_of_month.message}</p>
+            <p className="text-xs text-destructive mt-1">
+              {errors.send_day_of_month.message}
+            </p>
           )}
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-medium mb-1">{translate("recipients")}</label>
+        <label className="block text-sm font-medium mb-1">
+          {translate("recipients")}
+        </label>
         <div className="mb-2 flex flex-col gap-2 sm:flex-row">
           <input
             value={recipientDraft}
@@ -242,7 +306,12 @@ export function ReportForm({
             placeholder={translate("nameExampleCom")}
             className="min-w-0 flex-1 border border-border bg-background text-foreground rounded px-3 py-2 text-sm placeholder:text-muted-foreground"
           />
-          <Button type="button" variant="outline" className="sm:w-auto" onClick={addRecipient}>
+          <Button
+            type="button"
+            variant="outline"
+            className="sm:w-auto"
+            onClick={addRecipient}
+          >
             {translate("add")}
           </Button>
         </div>
@@ -260,7 +329,7 @@ export function ReportForm({
                   setValue(
                     "recipient_emails",
                     recipients.filter((r) => r !== email),
-                    { shouldValidate: true }
+                    { shouldValidate: true },
                   )
                 }
               >
@@ -270,7 +339,9 @@ export function ReportForm({
           ))}
         </div>
         {errors.recipient_emails && (
-          <p className="text-xs text-destructive mt-1">{errors.recipient_emails.message}</p>
+          <p className="text-xs text-destructive mt-1">
+            {errors.recipient_emails.message}
+          </p>
         )}
       </div>
 
@@ -282,17 +353,27 @@ export function ReportForm({
       </div>
 
       <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:gap-3">
-        <Button type="submit" disabled={isSubmitting || accountsLoading || accountsError}>
+        <Button
+          type="submit"
+          disabled={isSubmitting || accountsLoading || accountsError}
+        >
           {report ? translate("saveChanges") : translate("createReport")}
         </Button>
         {report && (
-          <Button type="button" variant="outline" onClick={handleSendTest} disabled={sendingTest}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleSendTest}
+            disabled={sendingTest}
+          >
             {sendingTest ? translate("sending") : translate("sendTestNow")}
           </Button>
         )}
       </div>
       {submitError && <p className="text-xs text-destructive">{submitError}</p>}
-      {sendTestError && <p className="text-xs text-destructive">{sendTestError}</p>}
+      {sendTestError && (
+        <p className="text-xs text-destructive">{sendTestError}</p>
+      )}
       {sendTestSuccess && (
         <p className="text-xs text-muted-foreground">
           {translate("testQueuedCheckTheRunsTabForDeliveryStatus")}

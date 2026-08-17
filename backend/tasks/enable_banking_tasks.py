@@ -5,7 +5,7 @@ Celery tasks for Enable Banking sync and consent management.
 import json
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 import redis
@@ -23,7 +23,7 @@ from tasks.post_import_pipeline import post_import_pipeline
 logger = logging.getLogger(__name__)
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-SYNC_COOLDOWN_SECONDS = 300    # 5 min since last completed sync
+SYNC_COOLDOWN_SECONDS = 300  # 5 min since last completed sync
 SYNC_IN_PROGRESS_TIMEOUT = 600  # 10 min since sync started (covers 730-day initial load)
 
 
@@ -48,13 +48,12 @@ def _should_skip_sync(connection) -> bool:
     return False
 
 
-def _account_sync_start_date(account, connection) -> "date":
+def _account_sync_start_date(account, connection) -> date:
     """Return the start date for syncing a single account.
 
     Previously-synced accounts start from last_synced_at - 1 day (incremental).
     New accounts (never synced) use the connection's full initial_sync_days lookback.
     """
-    from datetime import date as _date
     if account.last_synced_at is not None:
         last = account.last_synced_at
         if last.tzinfo is None:
@@ -97,16 +96,22 @@ def sync_bank_connection(self, connection_id: str):
     """
     db: Session = SessionLocal()
     try:
-        connection = db.query(BankConnection).filter(
-            BankConnection.id == connection_id,
-        ).first()
+        connection = (
+            db.query(BankConnection)
+            .filter(
+                BankConnection.id == connection_id,
+            )
+            .first()
+        )
 
         if not connection:
             logger.error(f"Bank connection {connection_id} not found")
             return {"error": "Connection not found"}
 
         if connection.status not in ("active",):
-            logger.info(f"Skipping sync for connection {connection_id} with status {connection.status}")
+            logger.info(
+                f"Skipping sync for connection {connection_id} with status {connection.status}"
+            )
             return {"skipped": True, "reason": f"Status is {connection.status}"}
 
         # Idempotency guard — skip if a sync ran recently or is still in progress
@@ -139,9 +144,13 @@ def sync_bank_connection(self, connection_id: str):
         sync_service = SyncService(db, user_id=connection.user_id, use_llm_categorization=False)
 
         # Get accounts linked to this connection
-        accounts = db.query(Account).filter(
-            Account.bank_connection_id == connection.id,
-        ).all()
+        accounts = (
+            db.query(Account)
+            .filter(
+                Account.bank_connection_id == connection.id,
+            )
+            .all()
+        )
 
         # Backfill account-level IBAN on synced accounts that don't have it yet.
         # This is independent of the per-account sync_transactions loop below;
@@ -159,9 +168,7 @@ def sync_bank_connection(self, connection_id: str):
         for acc in accounts:
             if acc.iban_hash is not None:
                 continue  # Skip accounts that already have IBAN persisted
-            acc_uid = decrypt_with_fallback(
-                acc.external_id_ciphertext, acc.external_id
-            )
+            acc_uid = decrypt_with_fallback(acc.external_id_ciphertext, acc.external_id)
             if not acc_uid:
                 continue
             try:
@@ -175,7 +182,10 @@ def sync_bank_connection(self, connection_id: str):
                 # retries on the next sync.
                 logger.warning(
                     "[SYNC] IBAN backfill skipped for account %s on connection %s: %s",
-                    acc.id, connection_id, e, exc_info=True,
+                    acc.id,
+                    connection_id,
+                    e,
+                    exc_info=True,
                 )
                 db.rollback()
 
@@ -187,14 +197,17 @@ def sync_bank_connection(self, connection_id: str):
 
         accounts_total = len(accounts)
         sync_started_at = datetime.now(timezone.utc).isoformat()
-        _set_sync_progress(connection_id, {
-            "stage": "syncing",
-            "accounts_done": 0,
-            "accounts_total": accounts_total,
-            "transactions_created": 0,
-            "transactions_updated": 0,
-            "started_at": sync_started_at,
-        })
+        _set_sync_progress(
+            connection_id,
+            {
+                "stage": "syncing",
+                "accounts_done": 0,
+                "accounts_total": accounts_total,
+                "transactions_created": 0,
+                "transactions_updated": 0,
+                "started_at": sync_started_at,
+            },
+        )
 
         for i, account in enumerate(accounts):
             account_uid = decrypt_with_fallback(
@@ -257,24 +270,32 @@ def sync_bank_connection(self, connection_id: str):
                 raise
 
             account.last_synced_at = datetime.now(timezone.utc)
-            _set_sync_progress(connection_id, {
-                "stage": "syncing",
-                "accounts_done": i + 1,
-                "accounts_total": accounts_total,
-                "transactions_created": total_created,
-                "transactions_updated": total_updated,
-                "started_at": sync_started_at,
-            })
+            _set_sync_progress(
+                connection_id,
+                {
+                    "stage": "syncing",
+                    "accounts_done": i + 1,
+                    "accounts_total": accounts_total,
+                    "transactions_created": total_created,
+                    "transactions_updated": total_updated,
+                    "started_at": sync_started_at,
+                },
+            )
 
             # Anchor balance: back-calculate starting_balance so functional_balance = balance_available.
             # This fixes the displayed balance for accounts that only have partial history imported.
             if account.balance_is_anchored and account.balance_available is not None:
                 from sqlalchemy import func as _sa_func2
                 from app.models import Transaction
-                _txn_sum_result = db.query(_sa_func2.sum(Transaction.amount)).filter(
-                    Transaction.user_id == connection.user_id,
-                    Transaction.account_id == account.id,
-                ).scalar()
+
+                _txn_sum_result = (
+                    db.query(_sa_func2.sum(Transaction.amount))
+                    .filter(
+                        Transaction.user_id == connection.user_id,
+                        Transaction.account_id == account.id,
+                    )
+                    .scalar()
+                )
                 _txn_sum = Decimal(str(_txn_sum_result)) if _txn_sum_result else Decimal("0")
                 _balance_av = Decimal(str(account.balance_available))
                 account.starting_balance = _balance_av - _txn_sum
@@ -290,7 +311,9 @@ def sync_bank_connection(self, connection_id: str):
         # Chain to shared post-processing pipeline (run if any transactions were touched).
         # Pass all created + updated IDs so the pipeline can batch-categorize, compute FX
         # rates, and run subscription detection on the full set of touched transactions.
-        all_touched_ids = list(dict.fromkeys(all_created_ids + all_updated_ids))  # dedup, preserve order
+        all_touched_ids = list(
+            dict.fromkeys(all_created_ids + all_updated_ids)
+        )  # dedup, preserve order
         if all_touched_ids or total_updated > 0:
             post_import_pipeline.delay(
                 user_id=str(connection.user_id),
@@ -300,8 +323,7 @@ def sync_bank_connection(self, connection_id: str):
             )
 
         logger.info(
-            f"Synced connection {connection_id}: "
-            f"{total_created} created, {total_updated} updated"
+            f"Synced connection {connection_id}: {total_created} created, {total_updated} updated"
         )
         return {
             "connection_id": connection_id,
@@ -313,9 +335,13 @@ def sync_bank_connection(self, connection_id: str):
         logger.error(f"Sync failed for connection {connection_id}: {e}", exc_info=True)
         # Mark error on connection
         try:
-            connection = db.query(BankConnection).filter(
-                BankConnection.id == connection_id,
-            ).first()
+            connection = (
+                db.query(BankConnection)
+                .filter(
+                    BankConnection.id == connection_id,
+                )
+                .first()
+            )
             if connection:
                 error_msg = str(e)
                 # Detect expired consent (only from Enable Banking API errors, not internal auth)
@@ -354,9 +380,13 @@ def sync_all_bank_connections():
     """
     db: Session = SessionLocal()
     try:
-        connections = db.query(BankConnection).filter(
-            BankConnection.status == "active",
-        ).all()
+        connections = (
+            db.query(BankConnection)
+            .filter(
+                BankConnection.status == "active",
+            )
+            .all()
+        )
 
         dispatched = 0
         for conn in connections:
@@ -383,10 +413,14 @@ def check_consent_expiry():
         now = datetime.now(timezone.utc)
 
         # Mark expired connections
-        expired = db.query(BankConnection).filter(
-            BankConnection.status == "active",
-            BankConnection.consent_expires_at <= now,
-        ).all()
+        expired = (
+            db.query(BankConnection)
+            .filter(
+                BankConnection.status == "active",
+                BankConnection.consent_expires_at <= now,
+            )
+            .all()
+        )
 
         for conn in expired:
             conn.status = "expired"

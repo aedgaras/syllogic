@@ -21,18 +21,25 @@ export function verifyInternalRequest(
   const tsNum = Number(ts);
   if (!Number.isFinite(tsNum)) return { ok: false, reason: "bad timestamp" };
   const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - tsNum) > MAX_AGE_SECONDS) return { ok: false, reason: "expired" };
+  if (Math.abs(now - tsNum) > MAX_AGE_SECONDS)
+    return { ok: false, reason: "expired" };
 
   const secret = process.env.INTERNAL_AUTH_SECRET;
   if (!secret) return { ok: false, reason: "secret not configured" };
-  const bodyHex = createHash("sha256").update(rawBody ?? "").digest("hex");
+  const bodyHex = createHash("sha256")
+    .update(rawBody ?? "")
+    .digest("hex");
   const expected = createHmac("sha256", secret)
     .update([req.method.toUpperCase(), path, userId, ts, bodyHex].join("\n"))
     .digest("hex");
-  if (!constantTimeEqualHex(expected, sig)) return { ok: false, reason: "bad signature" };
+  if (!constantTimeEqualHex(expected, sig))
+    return { ok: false, reason: "bad signature" };
   return { ok: true, userId };
 }
 
 export function unauthorizedInternal(reason: string) {
-  return NextResponse.json({ error: `internal auth: ${reason}` }, { status: 401 });
+  return NextResponse.json(
+    { error: `internal auth: ${reason}` },
+    { status: 401 },
+  );
 }

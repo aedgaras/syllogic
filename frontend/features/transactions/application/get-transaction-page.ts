@@ -1,13 +1,19 @@
-import type { TransactionPage, TransactionsQueryState } from "../domain/contracts";
+import type {
+  TransactionPage,
+  TransactionsQueryState,
+} from "../domain/contracts";
 
 export interface TransactionListRepository {
-  getPage(userId: string, query: TransactionsQueryState): Promise<TransactionPage>;
+  getPage(
+    userId: string,
+    query: TransactionsQueryState,
+  ): Promise<TransactionPage>;
 }
 
 export async function getTransactionPage(
   userId: string | null,
   query: TransactionsQueryState,
-  repository: TransactionListRepository
+  repository: TransactionListRepository,
 ): Promise<TransactionPage> {
   if (!userId) {
     return {

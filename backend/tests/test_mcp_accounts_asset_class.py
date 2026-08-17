@@ -1,4 +1,5 @@
 """Tests for asset_class on MCP list_accounts / get_account responses."""
+
 from __future__ import annotations
 
 import uuid

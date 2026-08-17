@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import type { ReportRun } from "@/lib/reports/types";
 import { RunStatusBadge } from "@/components/reports/RunStatusBadge";
 
@@ -29,20 +28,32 @@ export function ReportRunsTable({ runs }: ReportRunsTableProps) {
           <article key={run.id} className="border border-border p-3 text-sm">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="break-words font-medium">{formatScheduledRun(run)}</p>
-                <p className="text-xs text-muted-foreground">{translate("scheduledFor")}</p>
+                <p className="break-words font-medium">
+                  {formatScheduledRun(run)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {translate("scheduledFor")}
+                </p>
               </div>
               <RunStatusBadge status={run.status} />
             </div>
             <dl className="mt-3 grid gap-2 text-xs">
               <div className="min-w-0">
-                <dt className="uppercase text-muted-foreground">{translate("finished")}</dt>
-                <dd className="mt-0.5 break-words">{formatRunTime(run.finished_at)}</dd>
+                <dt className="uppercase text-muted-foreground">
+                  {translate("finished")}
+                </dt>
+                <dd className="mt-0.5 break-words">
+                  {formatRunTime(run.finished_at)}
+                </dd>
               </div>
               {run.error_message && (
                 <div className="min-w-0">
-                  <dt className="uppercase text-muted-foreground">{translate("error")}</dt>
-                  <dd className="mt-0.5 break-words text-destructive">{run.error_message}</dd>
+                  <dt className="uppercase text-muted-foreground">
+                    {translate("error")}
+                  </dt>
+                  <dd className="mt-0.5 break-words text-destructive">
+                    {run.error_message}
+                  </dd>
                 </div>
               )}
             </dl>
@@ -68,7 +79,9 @@ export function ReportRunsTable({ runs }: ReportRunsTableProps) {
                   <RunStatusBadge status={run.status} />
                 </td>
                 <td className="px-4 py-2">{formatRunTime(run.finished_at)}</td>
-                <td className="px-4 py-2 text-destructive">{run.error_message ?? ""}</td>
+                <td className="px-4 py-2 text-destructive">
+                  {run.error_message ?? ""}
+                </td>
               </tr>
             ))}
           </tbody>

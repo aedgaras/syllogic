@@ -24,7 +24,9 @@ export type { SubscriptionSuggestionViewModel as SubscriptionSuggestionWithMeta 
 /**
  * Get all pending suggestions for the current user
  */
-export async function getPendingSuggestions(): Promise<SubscriptionSuggestionViewModel[]> {
+export async function getPendingSuggestions(): Promise<
+  SubscriptionSuggestionViewModel[]
+> {
   const userId = await requireAuth();
 
   if (!userId) {
@@ -35,7 +37,7 @@ export async function getPendingSuggestions(): Promise<SubscriptionSuggestionVie
     const suggestions = await db.query.subscriptionSuggestions.findMany({
       where: and(
         eq(subscriptionSuggestions.userId, userId),
-        eq(subscriptionSuggestions.status, "pending")
+        eq(subscriptionSuggestions.status, "pending"),
       ),
       with: {
         account: {
@@ -63,7 +65,8 @@ export async function getPendingSuggestions(): Promise<SubscriptionSuggestionVie
       }
       return {
         ...suggestion,
-        detectedFrequency: suggestion.detectedFrequency as SubscriptionSuggestionViewModel["detectedFrequency"],
+        detectedFrequency:
+          suggestion.detectedFrequency as SubscriptionSuggestionViewModel["detectedFrequency"],
         matchCount,
         accountName: suggestion.account?.name ?? null,
         suggestedCategoryName: suggestion.suggestedCategory?.name ?? null,
@@ -89,7 +92,7 @@ export async function getPendingSuggestionCount(): Promise<number> {
     const suggestions = await db.query.subscriptionSuggestions.findMany({
       where: and(
         eq(subscriptionSuggestions.userId, userId),
-        eq(subscriptionSuggestions.status, "pending")
+        eq(subscriptionSuggestions.status, "pending"),
       ),
       columns: { id: true },
     });
@@ -121,10 +124,10 @@ export async function verifySuggestion(
     importance?: number;
     frequency?: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
     description?: string;
-  }
+  },
 ): Promise<{
   success: boolean;
-  subscription?: (typeof recurringTransactions.$inferSelect) & {
+  subscription?: typeof recurringTransactions.$inferSelect & {
     account?: unknown;
     category?: unknown;
     logo?: unknown;
@@ -141,7 +144,7 @@ export async function verifySuggestion(
 
   try {
     const resolveInheritedFields = async (
-      candidateTransactionIds: string[]
+      candidateTransactionIds: string[],
     ): Promise<{ categoryId: string | null; accountId: string | null }> => {
       if (candidateTransactionIds.length === 0) {
         return { categoryId: null, accountId: null };
@@ -150,7 +153,7 @@ export async function verifySuggestion(
       const matchedTransactions = await db.query.transactions.findMany({
         where: and(
           inArray(transactions.id, candidateTransactionIds),
-          eq(transactions.userId, userId)
+          eq(transactions.userId, userId),
         ),
         columns: {
           accountId: true,
@@ -163,7 +166,10 @@ export async function verifySuggestion(
       const accountCounts = new Map<string, number>();
       for (const tx of matchedTransactions) {
         if (tx.accountId) {
-          accountCounts.set(tx.accountId, (accountCounts.get(tx.accountId) ?? 0) + 1);
+          accountCounts.set(
+            tx.accountId,
+            (accountCounts.get(tx.accountId) ?? 0) + 1,
+          );
         }
 
         const categoryId = tx.categoryId ?? tx.categorySystemId;
@@ -202,7 +208,7 @@ export async function verifySuggestion(
       where: and(
         eq(subscriptionSuggestions.id, suggestionId),
         eq(subscriptionSuggestions.userId, userId),
-        eq(subscriptionSuggestions.status, "pending")
+        eq(subscriptionSuggestions.status, "pending"),
       ),
     });
 
@@ -223,9 +229,18 @@ export async function verifySuggestion(
 
     // Use overrides or fall back to suggestion values
     const finalName = overrides?.name?.trim() || suggestion.suggestedName;
-    const finalMerchant = overrides?.merchant?.trim() || suggestion.suggestedMerchant;
-    const finalAmount = overrides?.amount?.toFixed(2) || suggestion.suggestedAmount;
-    const finalFrequency = overrides?.frequency || (suggestion.detectedFrequency as "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly");
+    const finalMerchant =
+      overrides?.merchant?.trim() || suggestion.suggestedMerchant;
+    const finalAmount =
+      overrides?.amount?.toFixed(2) || suggestion.suggestedAmount;
+    const finalFrequency =
+      overrides?.frequency ||
+      (suggestion.detectedFrequency as
+        | "weekly"
+        | "biweekly"
+        | "monthly"
+        | "quarterly"
+        | "yearly");
     const finalImportance = overrides?.importance ?? 2;
     const inherited = await resolveInheritedFields(transactionIds);
     const inheritedCategoryId = inherited.categoryId;
@@ -243,17 +258,22 @@ export async function verifySuggestion(
       null;
 
     if (!finalAccountId) {
-      return { success: false, error: "Could not determine account for this suggestion" };
+      return {
+        success: false,
+        error: "Could not determine account for this suggestion",
+      };
     }
 
     // Check for duplicate subscription name
-    const existingSubscription = await db.query.recurringTransactions.findFirst({
-      where: and(
-        eq(recurringTransactions.userId, userId),
-        eq(recurringTransactions.accountId, finalAccountId),
-        eq(recurringTransactions.name, finalName)
-      ),
-    });
+    const existingSubscription = await db.query.recurringTransactions.findFirst(
+      {
+        where: and(
+          eq(recurringTransactions.userId, userId),
+          eq(recurringTransactions.accountId, finalAccountId),
+          eq(recurringTransactions.name, finalName),
+        ),
+      },
+    );
 
     if (existingSubscription) {
       return {
@@ -289,7 +309,7 @@ export async function verifySuggestion(
       const userTransactions = await db.query.transactions.findMany({
         where: and(
           inArray(transactions.id, transactionIds),
-          eq(transactions.userId, userId)
+          eq(transactions.userId, userId),
         ),
         columns: {
           id: true,
@@ -329,14 +349,15 @@ export async function verifySuggestion(
       .where(eq(subscriptionSuggestions.id, suggestionId));
 
     // Fetch the created subscription with category relation
-    const subscriptionWithCategory = await db.query.recurringTransactions.findFirst({
-      where: eq(recurringTransactions.id, created.id),
-      with: {
-        account: true,
-        category: true,
-        logo: true,
-      },
-    });
+    const subscriptionWithCategory =
+      await db.query.recurringTransactions.findFirst({
+        where: eq(recurringTransactions.id, created.id),
+        with: {
+          account: true,
+          category: true,
+          logo: true,
+        },
+      });
 
     revalidatePath("/subscriptions");
     revalidatePath("/transactions");
@@ -356,9 +377,7 @@ export async function verifySuggestion(
 /**
  * Dismiss a suggestion (hide it from the list)
  */
-export async function dismissSuggestion(
-  suggestionId: string
-): Promise<{
+export async function dismissSuggestion(suggestionId: string): Promise<{
   success: boolean;
   error?: string;
 }> {
@@ -373,7 +392,7 @@ export async function dismissSuggestion(
     const suggestion = await db.query.subscriptionSuggestions.findFirst({
       where: and(
         eq(subscriptionSuggestions.id, suggestionId),
-        eq(subscriptionSuggestions.userId, userId)
+        eq(subscriptionSuggestions.userId, userId),
       ),
     });
 

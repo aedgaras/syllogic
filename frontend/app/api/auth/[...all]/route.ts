@@ -23,19 +23,30 @@ const envBool = (name: string, fallback = false): boolean => {
 };
 
 const AUTH_RATE_LIMIT_ENABLED = envBool("AUTH_RATE_LIMIT_ENABLED", true);
-const AUTH_RATE_LIMIT_WINDOW_MS = parseEnvInt("AUTH_RATE_LIMIT_WINDOW_MS", 60_000);
-const AUTH_RATE_LIMIT_MAX_ATTEMPTS = parseEnvInt("AUTH_RATE_LIMIT_MAX_ATTEMPTS_PER_WINDOW", 30);
-const DEMO_AUTH_RATE_LIMIT_MAX_ATTEMPTS = parseEnvInt("DEMO_AUTH_RATE_LIMIT_MAX_ATTEMPTS_PER_WINDOW", 10);
+const AUTH_RATE_LIMIT_WINDOW_MS = parseEnvInt(
+  "AUTH_RATE_LIMIT_WINDOW_MS",
+  60_000,
+);
+const AUTH_RATE_LIMIT_MAX_ATTEMPTS = parseEnvInt(
+  "AUTH_RATE_LIMIT_MAX_ATTEMPTS_PER_WINDOW",
+  30,
+);
+const DEMO_AUTH_RATE_LIMIT_MAX_ATTEMPTS = parseEnvInt(
+  "DEMO_AUTH_RATE_LIMIT_MAX_ATTEMPTS_PER_WINDOW",
+  10,
+);
 const DEMO_AUTH_RATE_LIMIT_GLOBAL_MAX_ATTEMPTS = parseEnvInt(
   "DEMO_AUTH_RATE_LIMIT_GLOBAL_MAX_ATTEMPTS_PER_WINDOW",
-  120
+  120,
 );
 
 const demoUserEmail = (
   process.env.DEMO_SHARED_USER_EMAIL ||
   process.env.NEXT_PUBLIC_DEMO_EMAIL ||
   ""
-).trim().toLowerCase();
+)
+  .trim()
+  .toLowerCase();
 
 const cleanupExpiredBuckets = (nowMs: number) => {
   if (rateLimitBuckets.size < 5_000) return;
@@ -50,7 +61,7 @@ const consumeRateLimit = (
   key: string,
   limit: number,
   windowMs: number,
-  nowMs: number
+  nowMs: number,
 ): { allowed: true } | { allowed: false; retryAfterSeconds: number } => {
   const current = rateLimitBuckets.get(key);
   if (!current || current.resetAtMs <= nowMs) {
@@ -61,7 +72,7 @@ const consumeRateLimit = (
   if (current.count >= limit) {
     const retryAfterSeconds = Math.max(
       1,
-      Math.ceil((current.resetAtMs - nowMs) / 1000)
+      Math.ceil((current.resetAtMs - nowMs) / 1000),
     );
     return { allowed: false, retryAfterSeconds };
   }
@@ -89,11 +100,13 @@ const isEmailSignInRequest = (req: NextRequest): boolean =>
 const isEmailSignUpRequest = (req: NextRequest): boolean =>
   req.nextUrl.pathname.endsWith("/sign-up/email");
 
-const extractEmailFromRequest = async (req: NextRequest): Promise<string | null> => {
+const extractEmailFromRequest = async (
+  req: NextRequest,
+): Promise<string | null> => {
   const contentType = req.headers.get("content-type") || "";
   try {
     if (contentType.includes("application/json")) {
-      const json = await req.clone().json() as Record<string, unknown>;
+      const json = (await req.clone().json()) as Record<string, unknown>;
       const email = json?.email;
       if (typeof email === "string" && email.trim()) {
         return email.trim().toLowerCase();
@@ -121,7 +134,7 @@ const tooManyRequests = (retryAfterSeconds: number, message: string) =>
       headers: {
         "Retry-After": String(retryAfterSeconds),
       },
-    }
+    },
   );
 
 async function resolveHandlers() {
@@ -144,12 +157,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   if (isEmailSignUpRequest(req)) {
-    const { getRegistrationStatus } = await import("@/lib/registration-settings");
+    const { getRegistrationStatus } =
+      await import("@/lib/registration-settings");
     const registration = await getRegistrationStatus();
     if (!registration.enabled) {
       return NextResponse.json(
         { error: "Registrations are currently disabled." },
-        { status: 403 }
+        { status: 403 },
       );
     }
   }
@@ -163,12 +177,12 @@ export async function POST(req: NextRequest) {
       `auth:signin:ip:${client}`,
       AUTH_RATE_LIMIT_MAX_ATTEMPTS,
       AUTH_RATE_LIMIT_WINDOW_MS,
-      nowMs
+      nowMs,
     );
     if (!genericAttempt.allowed) {
       return tooManyRequests(
         genericAttempt.retryAfterSeconds,
-        "Too many sign-in attempts. Please try again shortly."
+        "Too many sign-in attempts. Please try again shortly.",
       );
     }
 
@@ -178,12 +192,12 @@ export async function POST(req: NextRequest) {
         `auth:signin:demo:ip:${client}`,
         DEMO_AUTH_RATE_LIMIT_MAX_ATTEMPTS,
         AUTH_RATE_LIMIT_WINDOW_MS,
-        nowMs
+        nowMs,
       );
       if (!demoIpAttempt.allowed) {
         return tooManyRequests(
           demoIpAttempt.retryAfterSeconds,
-          "Too many demo login attempts from this network. Please try again shortly."
+          "Too many demo login attempts from this network. Please try again shortly.",
         );
       }
 
@@ -191,12 +205,12 @@ export async function POST(req: NextRequest) {
         "auth:signin:demo:global",
         DEMO_AUTH_RATE_LIMIT_GLOBAL_MAX_ATTEMPTS,
         AUTH_RATE_LIMIT_WINDOW_MS,
-        nowMs
+        nowMs,
       );
       if (!demoGlobalAttempt.allowed) {
         return tooManyRequests(
           demoGlobalAttempt.retryAfterSeconds,
-          "Demo login is temporarily busy. Please try again shortly."
+          "Demo login is temporarily busy. Please try again shortly.",
         );
       }
     }

@@ -1,4 +1,5 @@
 """Celery tasks for scheduled and ad-hoc report newsletter sends."""
+
 from __future__ import annotations
 
 import json
@@ -21,7 +22,9 @@ from app.services.report_schedule_service import compute_next_run_at
 # source resolves by default. Production images use a self-contained compiled
 # renderer at /frontend/emails/render-report.cjs.
 _DEFAULT_FRONTEND_EMAILS_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "emails"
-_FRONTEND_EMAILS_DIR = Path(os.environ.get("FRONTEND_EMAILS_DIR", str(_DEFAULT_FRONTEND_EMAILS_DIR)))
+_FRONTEND_EMAILS_DIR = Path(
+    os.environ.get("FRONTEND_EMAILS_DIR", str(_DEFAULT_FRONTEND_EMAILS_DIR))
+)
 _RENDER_SCRIPT = _FRONTEND_EMAILS_DIR / "render-report.ts"
 _COMPILED_RENDER_SCRIPT = _FRONTEND_EMAILS_DIR / "render-report.cjs"
 
@@ -39,14 +42,16 @@ def check_due_reports() -> None:
     try:
         now = datetime.utcnow()
         due_reports = (
-            db.query(Report)
-            .filter(Report.is_active.is_(True), Report.next_run_at <= now)
-            .all()
+            db.query(Report).filter(Report.is_active.is_(True), Report.next_run_at <= now).all()
         )
         for report in due_reports:
             run = (
                 db.query(ReportRun)
-                .filter(ReportRun.report_id == report.id, ReportRun.status == "SCHEDULED", ReportRun.scheduled_for <= now)
+                .filter(
+                    ReportRun.report_id == report.id,
+                    ReportRun.status == "SCHEDULED",
+                    ReportRun.scheduled_for <= now,
+                )
                 .order_by(ReportRun.scheduled_for.asc())
                 .first()
             )
@@ -78,12 +83,14 @@ def check_due_reports() -> None:
                 send_day_of_month=report.send_day_of_month,
                 after=now,
             )
-            db.add(ReportRun(
-                report_id=report.id,
-                scheduled_for=report.next_run_at,
-                status="SCHEDULED",
-                recipient_emails=report.recipient_emails,
-            ))
+            db.add(
+                ReportRun(
+                    report_id=report.id,
+                    scheduled_for=report.next_run_at,
+                    status="SCHEDULED",
+                    recipient_emails=report.recipient_emails,
+                )
+            )
             db.commit()
     finally:
         db.close()
@@ -136,7 +143,9 @@ def send_report_run(report_run_id: str) -> None:
             db.commit()
 
             payload = build_report_payload(db, report)
-            frontend_base_url = (os.environ.get("FRONTEND_URL") or os.environ.get("APP_URL", "http://localhost:3000")).rstrip("/")
+            frontend_base_url = (
+                os.environ.get("FRONTEND_URL") or os.environ.get("APP_URL", "http://localhost:3000")
+            ).rstrip("/")
             payload["manage_url"] = f"{frontend_base_url}/reports/{report.id}"
 
             render_command, render_cwd = _report_renderer_command()

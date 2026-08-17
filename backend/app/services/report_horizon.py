@@ -3,6 +3,7 @@
 A weekly digest should report on the last seven days, not on all of history.
 Kept dependency-free (no DB, no models) so it is trivially testable.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta

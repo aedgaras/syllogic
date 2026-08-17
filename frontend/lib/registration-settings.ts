@@ -3,10 +3,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { appSettings } from "@/lib/db/schema";
-import {
-  decryptValue,
-  encryptValue,
-} from "@/lib/security/data-encryption";
+import { decryptValue, encryptValue } from "@/lib/security/data-encryption";
 import { resolveRegistrationEnabled } from "@/lib/registration-policy";
 
 export const REGISTRATION_SETTINGS_KEY = "registration_policy";
@@ -66,7 +63,7 @@ export async function getRegistrationStatus(): Promise<RegistrationStatus> {
 
 export async function saveRegistrationSettings(
   enabled: boolean,
-  updatedByUserId: string
+  updatedByUserId: string,
 ): Promise<RegistrationStatus> {
   const serialized = JSON.stringify({ enabled });
   // This policy contains no secret. Encrypt it when a key is configured, but

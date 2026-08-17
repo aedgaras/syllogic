@@ -17,7 +17,7 @@ export function resolveShares(owners: Owner[]): Record<string, number> {
 export function attributeAmount(
   amount: number,
   owners: Owner[],
-  personId: string | null
+  personId: string | null,
 ): number {
   if (personId === null) return amount;
   const shares = resolveShares(owners);

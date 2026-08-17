@@ -73,9 +73,9 @@ export function CompanyLogo({
   size = "default",
   className,
 }: CompanyLogoProps) {
-  const [status, setStatus] = useState<"empty" | "loading" | "loaded" | "error">(() =>
-    logoUrl ? "loading" : "empty"
-  );
+  const [status, setStatus] = useState<
+    "empty" | "loading" | "loaded" | "error"
+  >(() => (logoUrl ? "loading" : "empty"));
 
   const initials = getInitials(name);
   const bgColor = generateColor(name);
@@ -100,7 +100,9 @@ export function CompanyLogo({
             ? { backgroundColor: bgColor, color: "white" }
             : undefined
         }
-        className={cn(showInitialsFallback ? "" : "bg-muted text-muted-foreground")}
+        className={cn(
+          showInitialsFallback ? "" : "bg-muted text-muted-foreground",
+        )}
       >
         {showInitialsFallback ? (
           initials

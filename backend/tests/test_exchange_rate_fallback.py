@@ -1,4 +1,5 @@
 """Tests for ExchangeRateService.get_exchange_rate_with_fallback."""
+
 from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
@@ -26,6 +27,7 @@ def fx_svc(db_session):
 
 def _put_rate(db_session, base, target, on, value):
     from datetime import datetime
+
     db_session.add(
         ExchangeRate(
             date=datetime.combine(on, datetime.min.time()),
@@ -81,8 +83,10 @@ def test_fallback_uses_today_when_db_and_yfinance_miss_target_date(fx_svc, db_se
 
 def test_fallback_returns_none_when_everything_misses(fx_svc, db_session):
     """If all paths fail (no DB, no yfinance, no current rate), return None."""
-    with patch.object(fx_svc, "fetch_exchange_rates_batch", return_value={}), \
-         patch.object(fx_svc, "fetch_current_exchange_rates", return_value={}):
+    with (
+        patch.object(fx_svc, "fetch_exchange_rates_batch", return_value={}),
+        patch.object(fx_svc, "fetch_current_exchange_rates", return_value={}),
+    ):
         got = fx_svc.get_exchange_rate_with_fallback("USD", "EUR", date(2020, 6, 1))
 
     assert got is None

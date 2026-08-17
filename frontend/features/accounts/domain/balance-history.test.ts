@@ -32,4 +32,3 @@ describe("account balance rules", () => {
     ]);
   });
 });
-

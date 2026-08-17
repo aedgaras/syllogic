@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,7 +81,7 @@ export function SpendingByCategoryChart({
       });
       router.push(query ? `/category-spending?${query}` : "/category-spending");
     },
-    [accountIds, dateFrom, dateTo, horizon, router]
+    [accountIds, dateFrom, dateTo, horizon, router],
   );
 
   const navigateToCategorySpendingAll = React.useCallback(() => {
@@ -106,7 +105,9 @@ export function SpendingByCategoryChart({
     <Card>
       <CardHeader className="pb-4">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-sm font-medium">{periodTitle} {translate("expenses")}</CardTitle>
+          <CardTitle className="text-sm font-medium">
+            {periodTitle} {translate("expenses")}
+          </CardTitle>
           <span className="break-words font-mono text-xl font-semibold tracking-tight sm:text-2xl">
             {formatCurrency(total, currency)}
           </span>
@@ -132,7 +133,9 @@ export function SpendingByCategoryChart({
                 }}
               >
                 <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
-                  <span className="truncate font-medium">{category.name || translate("unknown")}</span>
+                  <span className="truncate font-medium">
+                    {category.name || translate("unknown")}
+                  </span>
                   <span className="shrink-0 font-mono text-muted-foreground">
                     {formatCurrency(category.amount, currency)}
                   </span>

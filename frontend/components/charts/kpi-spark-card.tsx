@@ -66,9 +66,7 @@ export function KpiSparkCard({
       <CardContent className="flex items-center justify-between gap-3 p-4 sm:p-6">
         <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-2">
-            {icon && (
-              <span className="text-muted-foreground">{icon}</span>
-            )}
+            {icon && <span className="text-muted-foreground">{icon}</span>}
             <p className="truncate text-xs font-medium text-muted-foreground">
               {title}
             </p>
@@ -77,12 +75,14 @@ export function KpiSparkCard({
             {formattedValue}
           </p>
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <p className="min-w-0 truncate text-xs text-muted-foreground">{subtitle}</p>
+            <p className="min-w-0 truncate text-xs text-muted-foreground">
+              {subtitle}
+            </p>
             {trend && (
               <span
                 className={cn(
                   "text-xs font-medium",
-                  trend.isPositive ? "text-emerald-600" : "text-red-600"
+                  trend.isPositive ? "text-emerald-600" : "text-red-600",
                 )}
               >
                 {trend.isPositive ? "+" : "-"}

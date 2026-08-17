@@ -3,6 +3,7 @@
 Reuses the same Account/Transaction ORM models the dashboard reads from,
 so report numbers match what the user sees in-app.
 """
+
 from __future__ import annotations
 
 import os
@@ -11,7 +12,7 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import and_, func
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import Account, Report, Transaction
@@ -69,7 +70,9 @@ def _fetch_accounts(db: Session, report: Report) -> list[dict]:
     functional_currency = (report.user.functional_currency if report.user else None) or "EUR"
     # logo_url on CompanyLogo is a relative path ("/uploads/logos/x.png"); mail
     # clients need it absolute.
-    base_url = (os.environ.get("FRONTEND_URL") or os.environ.get("APP_URL", "http://localhost:3000")).rstrip("/")
+    base_url = (
+        os.environ.get("FRONTEND_URL") or os.environ.get("APP_URL", "http://localhost:3000")
+    ).rstrip("/")
 
     def _logo_url(a: Account) -> str | None:
         logo = a.logo
@@ -88,13 +91,15 @@ def _fetch_accounts(db: Session, report: Report) -> list[dict]:
     accounts = []
     for a in rows:
         balance, currency = _balance_and_currency(a)
-        accounts.append({
-            "name": a.name,
-            "institution": a.institution,
-            "balance": balance,
-            "currency": currency,
-            "logo_url": _logo_url(a),
-        })
+        accounts.append(
+            {
+                "name": a.name,
+                "institution": a.institution,
+                "balance": balance,
+                "currency": currency,
+                "logo_url": _logo_url(a),
+            }
+        )
     return accounts
 
 
@@ -140,7 +145,9 @@ def _fetch_transactions(db: Session, report: Report) -> dict:
         # first" — order by absolute magnitude instead.
         query = query.order_by(func.abs(Transaction.amount).desc())
     else:  # TOP_N — order by absolute amount descending
-        query = query.order_by(Transaction.amount.desc() if types == ("credit",) else Transaction.amount.asc())
+        query = query.order_by(
+            Transaction.amount.desc() if types == ("credit",) else Transaction.amount.asc()
+        )
 
     rows = query.limit(report.transaction_count).all()
 

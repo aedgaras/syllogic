@@ -6,7 +6,8 @@ import { requireAuth } from "@/lib/auth-helpers";
 
 export async function GET() {
   const userId = await requireAuth();
-  if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!userId)
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const rows = await getPeople(userId);
   return NextResponse.json({
     people: rows.map((p) => ({ ...p, avatarUrl: avatarUrl(p.avatarPath) })),
@@ -23,7 +24,8 @@ const createSchema = z.object({
 
 export async function POST(req: NextRequest) {
   const userId = await requireAuth();
-  if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!userId)
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const form = await req.formData();
   const parsed = createSchema.safeParse({
     name: form.get("name"),
@@ -37,11 +39,18 @@ export async function POST(req: NextRequest) {
   const avatar = form.get("avatar");
   if (avatar instanceof File && avatar.size > 0) {
     const path = await uploadPersonAvatar(person.id, avatar);
-    const updated = await updatePerson({ userId, id: person.id, avatarPath: path });
+    const updated = await updatePerson({
+      userId,
+      id: person.id,
+      avatarPath: path,
+    });
     return NextResponse.json(
       { person: { ...updated, avatarUrl: avatarUrl(path) } },
-      { status: 201 }
+      { status: 201 },
     );
   }
-  return NextResponse.json({ person: { ...person, avatarUrl: null } }, { status: 201 });
+  return NextResponse.json(
+    { person: { ...person, avatarUrl: null } },
+    { status: 201 },
+  );
 }

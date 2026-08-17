@@ -5,6 +5,7 @@ Usage:
   cd backend
   python postgres_migration/run_encryption_upgrade.py --batch-size 500
 """
+
 from __future__ import annotations
 
 import argparse
@@ -51,10 +52,7 @@ def collect_coverage() -> dict[str, int]:
     try:
         accounts_total = db.query(func.count(Account.id)).scalar() or 0
         external_id_plaintext_present = (
-            db.query(func.count(Account.id))
-            .filter(Account.external_id.isnot(None))
-            .scalar()
-            or 0
+            db.query(func.count(Account.id)).filter(Account.external_id.isnot(None)).scalar() or 0
         )
         external_id_ciphertext_present = (
             db.query(func.count(Account.id))
@@ -63,9 +61,7 @@ def collect_coverage() -> dict[str, int]:
             or 0
         )
         external_id_hash_present = (
-            db.query(func.count(Account.id))
-            .filter(Account.external_id_hash.isnot(None))
-            .scalar()
+            db.query(func.count(Account.id)).filter(Account.external_id_hash.isnot(None)).scalar()
             or 0
         )
         accounts_missing_encryption = (
@@ -83,10 +79,7 @@ def collect_coverage() -> dict[str, int]:
 
         csv_total = db.query(func.count(CsvImport.id)).scalar() or 0
         file_path_plaintext_present = (
-            db.query(func.count(CsvImport.id))
-            .filter(CsvImport.file_path.isnot(None))
-            .scalar()
-            or 0
+            db.query(func.count(CsvImport.id)).filter(CsvImport.file_path.isnot(None)).scalar() or 0
         )
         file_path_ciphertext_present = (
             db.query(func.count(CsvImport.id))
@@ -132,7 +125,9 @@ def coverage_is_complete(coverage: dict[str, int], require_plaintext_cleared: bo
     return True
 
 
-def run_upgrade(batch_size: int, dry_run: bool, clear_plaintext: bool) -> tuple[dict[str, int], dict[str, int]]:
+def run_upgrade(
+    batch_size: int, dry_run: bool, clear_plaintext: bool
+) -> tuple[dict[str, int], dict[str, int]]:
     validate_encryption_configuration()
 
     backfill_result = backfill(
@@ -195,8 +190,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not coverage_is_complete(coverage, require_plaintext_cleared=args.clear_plaintext):
         print(
-            "Encryption upgrade is incomplete. "
-            "Re-run the command until missing counters are zero.",
+            "Encryption upgrade is incomplete. Re-run the command until missing counters are zero.",
             file=sys.stderr,
         )
         return 1

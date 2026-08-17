@@ -32,18 +32,34 @@ function collectFiles(directory) {
       if (entry.name === "api") return [];
       return collectFiles(target);
     }
-    if (!entry.name.endsWith(".tsx") || /(?:\.test|\.spec|\.characterization)\.tsx$/.test(entry.name)) return [];
+    if (
+      !entry.name.endsWith(".tsx") ||
+      /(?:\.test|\.spec|\.characterization)\.tsx$/.test(entry.name)
+    )
+      return [];
     return [target];
   });
 }
 
-for (const file of sourceRoots.flatMap((directory) => collectFiles(path.join(root, directory)))) {
+for (const file of sourceRoots.flatMap((directory) =>
+  collectFiles(path.join(root, directory)),
+)) {
   const source = fs.readFileSync(file, "utf8");
-  const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const sourceFile = ts.createSourceFile(
+    file,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
 
   function report(node, text) {
-    const location = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-    findings.push(`${path.relative(root, file)}:${location.line + 1}:${location.character + 1} ${JSON.stringify(text.trim().replace(/\s+/g, " "))}`);
+    const location = sourceFile.getLineAndCharacterOfPosition(
+      node.getStart(sourceFile),
+    );
+    findings.push(
+      `${path.relative(root, file)}:${location.line + 1}:${location.character + 1} ${JSON.stringify(text.trim().replace(/\s+/g, " "))}`,
+    );
   }
 
   function visit(node) {

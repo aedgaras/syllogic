@@ -1,10 +1,13 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { RiArrowDownLine, RiArrowUpLine, RiSubtractLine } from "@remixicon/react";
+import {
+  RiArrowDownLine,
+  RiArrowUpLine,
+  RiSubtractLine,
+} from "@remixicon/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardFilters } from "@/components/dashboard/dashboard-filters";
 import { CategorySpendingDonutChart } from "@/components/category-spending/category-spending-donut-chart";
@@ -16,7 +19,10 @@ import type { TransactionWithRelations } from "@/features/transactions/public";
 import type { ParsedCategorySpendingQueryParams } from "@/lib/category-spending/query-params";
 import { buildCategorySpendingQuery } from "@/lib/category-spending/query-params";
 import type { TransactionsQueryState } from "@/features/transactions/public";
-import type { AccountDisplay, CategoryDisplay } from "@/shared/domain/display-contracts";
+import type {
+  AccountDisplay,
+  CategoryDisplay,
+} from "@/shared/domain/display-contracts";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -79,10 +85,11 @@ export function CategorySpendingClient({
   const router = useRouter();
   const bulkActions = useBulkTransactionActions();
 
-  const [selectedCategoryIds, setSelectedCategoryIds] = React.useState<string[]>(
-    initialSelectedCategoryIds
-  );
-  const [tableTransactions, setTableTransactions] = React.useState(transactions);
+  const [selectedCategoryIds, setSelectedCategoryIds] = React.useState<
+    string[]
+  >(initialSelectedCategoryIds);
+  const [tableTransactions, setTableTransactions] =
+    React.useState(transactions);
 
   React.useEffect(() => {
     setSelectedCategoryIds(initialSelectedCategoryIds);
@@ -98,7 +105,7 @@ export function CategorySpendingClient({
       options: {
         resetPage?: boolean;
         replace?: boolean;
-      } = {}
+      } = {},
     ) => {
       const queryString = buildCategorySpendingQuery({
         categoryIds: nextCategoryIds,
@@ -106,13 +113,15 @@ export function CategorySpendingClient({
         dateFrom: query.dateFrom,
         dateTo: query.dateTo,
         horizon: query.effectiveHorizon,
-        page: options.resetPage ?? true ? 1 : query.page,
+        page: (options.resetPage ?? true) ? 1 : query.page,
         pageSize: query.pageSize,
         sort: query.sort,
         order: query.order,
       });
 
-      const href = queryString ? `/category-spending?${queryString}` : "/category-spending";
+      const href = queryString
+        ? `/category-spending?${queryString}`
+        : "/category-spending";
       if (options.replace) {
         router.replace(href, { scroll: false });
       } else {
@@ -129,7 +138,7 @@ export function CategorySpendingClient({
       query.pageSize,
       query.sort,
       router,
-    ]
+    ],
   );
 
   React.useEffect(() => {
@@ -137,8 +146,12 @@ export function CategorySpendingClient({
       return;
     }
 
-    const validCategorySet = new Set(data.categories.map((category) => category.id));
-    const sanitized = selectedCategoryIds.filter((id) => validCategorySet.has(id));
+    const validCategorySet = new Set(
+      data.categories.map((category) => category.id),
+    );
+    const sanitized = selectedCategoryIds.filter((id) =>
+      validCategorySet.has(id),
+    );
 
     if (areArraysEqual(sanitized, selectedCategoryIds)) {
       return;
@@ -151,23 +164,24 @@ export function CategorySpendingClient({
   const selectedCategories = React.useMemo(
     () =>
       data.categories.filter((category) =>
-        selectedCategoryIds.includes(category.id)
+        selectedCategoryIds.includes(category.id),
       ),
-    [data.categories, selectedCategoryIds]
+    [data.categories, selectedCategoryIds],
   );
 
   const selectedTotal = React.useMemo(
-    () => selectedCategories.reduce((sum, category) => sum + category.amount, 0),
-    [selectedCategories]
+    () =>
+      selectedCategories.reduce((sum, category) => sum + category.amount, 0),
+    [selectedCategories],
   );
 
   const selectedAverageMonthly = React.useMemo(
     () =>
       selectedCategories.reduce(
         (sum, category) => sum + category.averageMonthlyAmount,
-        0
+        0,
       ),
-    [selectedCategories]
+    [selectedCategories],
   );
 
   const handleToggleCategory = React.useCallback(
@@ -179,39 +193,41 @@ export function CategorySpendingClient({
       setSelectedCategoryIds(nextCategoryIds);
       navigateWithCategories(nextCategoryIds, { resetPage: true });
     },
-    [navigateWithCategories, selectedCategoryIds]
+    [navigateWithCategories, selectedCategoryIds],
   );
 
   const handleUpdateTransaction = React.useCallback(
     (id: string, updates: Partial<TransactionWithRelations>) => {
       setTableTransactions((prev) =>
         prev.map((transaction) =>
-          transaction.id === id ? { ...transaction, ...updates } : transaction
-        )
+          transaction.id === id ? { ...transaction, ...updates } : transaction,
+        ),
       );
     },
-    []
+    [],
   );
 
   const handleDeleteTransaction = React.useCallback((id: string) => {
-    setTableTransactions((prev) => prev.filter((transaction) => transaction.id !== id));
+    setTableTransactions((prev) =>
+      prev.filter((transaction) => transaction.id !== id),
+    );
   }, []);
 
   const handleBulkUpdate = React.useCallback(
     (transactionIds: string[], categoryId: string | null) => {
       const category = categoryId
-        ? categories.find((value) => value.id === categoryId) ?? null
+        ? (categories.find((value) => value.id === categoryId) ?? null)
         : null;
 
       setTableTransactions((prev) =>
         prev.map((transaction) =>
           transactionIds.includes(transaction.id)
             ? { ...transaction, categoryId, category }
-            : transaction
-        )
+            : transaction,
+        ),
       );
     },
-    [categories]
+    [categories],
   );
 
   return (
@@ -223,7 +239,9 @@ export function CategorySpendingClient({
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">{translate("totalSpending")}</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {translate("totalSpending")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="font-mono text-2xl font-semibold tracking-tight">
@@ -235,45 +253,60 @@ export function CategorySpendingClient({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
-              {selectedCategories.length > 0 ? translate("selectedCategories") : translate("topCategory")}
+              {selectedCategories.length > 0
+                ? translate("selectedCategories")
+                : translate("topCategory")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {selectedCategories.length > 0 ? (
               <>
                 <p className="truncate text-sm font-medium">
-                  {selectedCategories.length} {translate("categor")}{selectedCategories.length === 1 ? "y" : translate("ies")}
+                  {selectedCategories.length} {translate("categor")}
+                  {selectedCategories.length === 1 ? "y" : translate("ies")}
                 </p>
                 <p className="font-mono text-xl text-muted-foreground">
                   {formatCurrency(selectedTotal, data.currency)}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {formatCurrency(selectedAverageMonthly, data.currency)}{translate("mo")}
+                  {formatCurrency(selectedAverageMonthly, data.currency)}
+                  {translate("mo")}
                 </p>
               </>
             ) : data.summary.topCategory ? (
               <>
-                <p className="truncate text-sm font-medium">{data.summary.topCategory.name}</p>
+                <p className="truncate text-sm font-medium">
+                  {data.summary.topCategory.name}
+                </p>
                 <p className="font-mono text-xl text-muted-foreground">
-                  {formatCurrency(data.summary.topCategory.amount, data.currency)}
+                  {formatCurrency(
+                    data.summary.topCategory.amount,
+                    data.currency,
+                  )}
                 </p>
               </>
             ) : (
-              <p className="text-sm text-muted-foreground">{translate("noSpendingData")}</p>
+              <p className="text-sm text-muted-foreground">
+                {translate("noSpendingData")}
+              </p>
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">{translate("averageMonthly")}</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {translate("averageMonthly")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="font-mono text-2xl font-semibold tracking-tight">
               {formatCurrency(data.summary.averageMonthlySpend, data.currency)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {translate("basedOn")} {data.range.monthCount} {translate("month")}{data.range.monthCount === 1 ? "" : "s"}
+              {translate("basedOn")} {data.range.monthCount}{" "}
+              {translate("month")}
+              {data.range.monthCount === 1 ? "" : "s"}
             </p>
           </CardContent>
         </Card>
@@ -292,11 +325,15 @@ export function CategorySpendingClient({
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{translate("categoryBreakdown")}</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {translate("categoryBreakdown")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {data.categories.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{translate("noCategorySpendingForThisPeriod")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {translate("noCategorySpendingForThisPeriod")}
+                </p>
               ) : (
                 data.categories.map((category) => {
                   const isSelected = selectedCategoryIds.includes(category.id);
@@ -311,7 +348,7 @@ export function CategorySpendingClient({
                         "w-full rounded-md border px-3 py-2 text-left transition-colors",
                         isSelected
                           ? "border-foreground bg-muted/50"
-                          : "border-border hover:bg-muted/30"
+                          : "border-border hover:bg-muted/30",
                       )}
                       onClick={() => handleToggleCategory(category.id)}
                     >
@@ -321,7 +358,9 @@ export function CategorySpendingClient({
                             className="h-2.5 w-2.5 shrink-0"
                             style={{ backgroundColor: category.fill }}
                           />
-                          <span className="truncate text-sm font-medium">{category.name}</span>
+                          <span className="truncate text-sm font-medium">
+                            {category.name}
+                          </span>
                         </div>
                         <span className="shrink-0 font-mono text-sm text-muted-foreground">
                           {formatCurrency(category.amount, data.currency)}
@@ -340,13 +379,14 @@ export function CategorySpendingClient({
 
                       <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-xs text-muted-foreground">
                         <span className="justify-self-start text-left">
-                          {category.sharePct.toFixed(1)}{translate("ofTotal")}
+                          {category.sharePct.toFixed(1)}
+                          {translate("ofTotal")}
                         </span>
                         <span
                           className={cn(
                             "flex items-center gap-1 justify-self-center text-center",
                             deltaPositive && "text-rose-600",
-                            deltaNegative && "text-emerald-600"
+                            deltaNegative && "text-emerald-600",
                           )}
                         >
                           {deltaPositive ? (
@@ -356,10 +396,18 @@ export function CategorySpendingClient({
                           ) : (
                             <RiSubtractLine className="h-3.5 w-3.5" />
                           )}
-                          {formatSignedCurrency(category.deltaAmount, data.currency)} ({formatSignedPercent(category.deltaPct)})
+                          {formatSignedCurrency(
+                            category.deltaAmount,
+                            data.currency,
+                          )}{" "}
+                          ({formatSignedPercent(category.deltaPct)})
                         </span>
                         <span className="justify-self-end text-right font-mono">
-                          {formatCurrency(category.averageMonthlyAmount, data.currency)}{translate("mo")}
+                          {formatCurrency(
+                            category.averageMonthlyAmount,
+                            data.currency,
+                          )}
+                          {translate("mo")}
                         </span>
                       </div>
                     </button>
@@ -372,7 +420,9 @@ export function CategorySpendingClient({
 
         <Card className="flex min-h-0 flex-col lg:col-span-8">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">{translate("transactions")}</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {translate("transactions")}
+            </CardTitle>
           </CardHeader>
           <CardContent className="min-h-0 flex-1 pb-0">
             <TransactionTable

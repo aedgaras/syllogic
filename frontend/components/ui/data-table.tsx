@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import * as React from "react";
 import {
   flexRender,
@@ -85,7 +84,8 @@ export function DataTable<TData, TValue>({
   tableContainerProps,
   mobileCards = false,
 }: DataTableProps<TData, TValue>) {
-  const [uncontrolledSorting, setUncontrolledSorting] = React.useState<SortingState>([]);
+  const [uncontrolledSorting, setUncontrolledSorting] =
+    React.useState<SortingState>([]);
   const resolvedSorting = sortingState ?? uncontrolledSorting;
   const setResolvedSorting: OnChangeFn<SortingState> = (updater) => {
     if (onSortingStateChange) {
@@ -94,21 +94,22 @@ export function DataTable<TData, TValue>({
     }
     setUncontrolledSorting(updater);
   };
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    initialColumnFilters
-  );
+  const [columnFilters, setColumnFilters] =
+    React.useState<ColumnFiltersState>(initialColumnFilters);
 
   // Notify parent when filters change
   React.useEffect(() => {
     onColumnFiltersChange?.(columnFilters);
   }, [columnFilters, onColumnFiltersChange]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>({});
-  const [uncontrolledPagination, setUncontrolledPagination] = React.useState<PaginationState>({
-    pageIndex: 0,
-    pageSize,
-  });
+  const [uncontrolledPagination, setUncontrolledPagination] =
+    React.useState<PaginationState>({
+      pageIndex: 0,
+      pageSize,
+    });
   const resolvedPagination = paginationState ?? uncontrolledPagination;
   const setResolvedPagination: OnChangeFn<PaginationState> = (updater) => {
     if (onPaginationStateChange) {
@@ -125,7 +126,9 @@ export function DataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel:
-      enablePagination && !manualPagination ? getPaginationRowModel() : undefined,
+      enablePagination && !manualPagination
+        ? getPaginationRowModel()
+        : undefined,
     getSortedRowModel: manualSorting ? undefined : getSortedRowModel(),
     manualPagination,
     manualSorting,
@@ -158,7 +161,7 @@ export function DataTable<TData, TValue>({
 
   const handleMobileCardKeyDown = (
     event: React.KeyboardEvent<HTMLDivElement>,
-    row: TData
+    row: TData,
   ) => {
     if (!onRowClick || (event.key !== "Enter" && event.key !== " ")) {
       return;
@@ -176,7 +179,7 @@ export function DataTable<TData, TValue>({
           className={cn(
             "space-y-2 md:hidden",
             tableContainerClassName,
-            tableContainerProps?.className
+            tableContainerProps?.className,
           )}
           {...tableContainerRest}
         >
@@ -184,12 +187,17 @@ export function DataTable<TData, TValue>({
             table.getRowModel().rows.map((row) => {
               const mobileCells = row
                 .getVisibleCells()
-                .filter((cell) => cell.column.columnDef.meta?.mobilePriority !== "hidden");
+                .filter(
+                  (cell) =>
+                    cell.column.columnDef.meta?.mobilePriority !== "hidden",
+                );
               const primaryCells = mobileCells.filter(
-                (cell) => cell.column.columnDef.meta?.mobilePriority === "primary"
+                (cell) =>
+                  cell.column.columnDef.meta?.mobilePriority === "primary",
               );
               const secondaryCells = mobileCells.filter(
-                (cell) => cell.column.columnDef.meta?.mobilePriority !== "primary"
+                (cell) =>
+                  cell.column.columnDef.meta?.mobilePriority !== "primary",
               );
 
               return (
@@ -199,10 +207,12 @@ export function DataTable<TData, TValue>({
                   tabIndex={onRowClick ? 0 : undefined}
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => onRowClick?.(row.original)}
-                  onKeyDown={(event) => handleMobileCardKeyDown(event, row.original)}
+                  onKeyDown={(event) =>
+                    handleMobileCardKeyDown(event, row.original)
+                  }
                   className={cn(
                     "border border-border bg-background p-3 text-xs shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-                    onRowClick && "cursor-pointer"
+                    onRowClick && "cursor-pointer",
                   )}
                 >
                   <div className="flex min-w-0 items-start justify-between gap-3">
@@ -211,10 +221,13 @@ export function DataTable<TData, TValue>({
                         key={cell.id}
                         className={cn(
                           "min-w-0",
-                          cell.column.columnDef.meta?.mobileClassName
+                          cell.column.columnDef.meta?.mobileClassName,
                         )}
                       >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
                       </div>
                     ))}
                   </div>
@@ -233,8 +246,16 @@ export function DataTable<TData, TValue>({
                             <dt className="text-[10px] uppercase text-muted-foreground">
                               {label}
                             </dt>
-                            <dd className={cn("mt-0.5 min-w-0", meta?.mobileClassName)}>
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            <dd
+                              className={cn(
+                                "mt-0.5 min-w-0",
+                                meta?.mobileClassName,
+                              )}
+                            >
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext(),
+                              )}
                             </dd>
                           </div>
                         );
@@ -256,14 +277,17 @@ export function DataTable<TData, TValue>({
           "overflow-auto rounded-md border relative",
           mobileCards && "hidden md:block",
           tableContainerClassName,
-          tableContainerProps?.className
+          tableContainerProps?.className,
         )}
         {...tableContainerRest}
       >
         <table className="w-full table-fixed caption-bottom text-xs">
           <TableHeader className="bg-muted sticky top-0 z-20 shadow-sm">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="border-b hover:bg-transparent">
+              <TableRow
+                key={headerGroup.id}
+                className="border-b hover:bg-transparent"
+              >
                 {headerGroup.headers.map((header, index) => {
                   const isLastColumn = index === headerGroup.headers.length - 1;
                   return (
@@ -276,14 +300,14 @@ export function DataTable<TData, TValue>({
                       }}
                       className={cn(
                         "font-medium bg-muted overflow-hidden",
-                        enableColumnResizing && "select-none"
+                        enableColumnResizing && "select-none",
                       )}
                     >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext()
+                            header.getContext(),
                           )}
                       {enableColumnResizing && header.column.getCanResize() && (
                         <div
@@ -293,7 +317,7 @@ export function DataTable<TData, TValue>({
                             "absolute -right-1 top-0 h-full w-3 cursor-col-resize select-none touch-none",
                             "after:absolute after:right-1 after:top-0 after:h-full after:w-px after:bg-transparent",
                             "hover:after:bg-primary/50",
-                            header.column.getIsResizing() && "after:bg-primary"
+                            header.column.getIsResizing() && "after:bg-primary",
                           )}
                         />
                       )}
@@ -313,19 +337,22 @@ export function DataTable<TData, TValue>({
                   className={cn(onRowClick && "cursor-pointer")}
                 >
                   {row.getVisibleCells().map((cell, index) => {
-                    const isLastColumn = index === row.getVisibleCells().length - 1;
+                    const isLastColumn =
+                      index === row.getVisibleCells().length - 1;
                     return (
                       <TableCell
                         key={cell.id}
                         className="overflow-hidden"
                         style={{
                           width: isLastColumn ? "auto" : cell.column.getSize(),
-                          maxWidth: isLastColumn ? undefined : cell.column.getSize(),
+                          maxWidth: isLastColumn
+                            ? undefined
+                            : cell.column.getSize(),
                         }}
                       >
                         {flexRender(
                           cell.column.columnDef.cell,
-                          cell.getContext()
+                          cell.getContext(),
                         )}
                       </TableCell>
                     );

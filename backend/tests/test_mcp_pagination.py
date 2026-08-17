@@ -1,4 +1,5 @@
 """Tests for cursor pagination, sort_by, and account_id filter on MCP search/list tools."""
+
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -22,17 +23,19 @@ def seeded_user(db_session):
     db_session.flush()
     base = datetime(2026, 4, 1)
     for i in range(10):
-        db_session.add(Transaction(
-            user_id=user.id,
-            account_id=acc1.id if i % 2 == 0 else acc2.id,
-            amount=Decimal(f"-{(i + 1) * 10}"),
-            currency="EUR",
-            description=f"Purchase {i}",
-            merchant=f"Merchant {i}",
-            category_id=cat.id if i < 5 else None,
-            booked_at=base + timedelta(days=i),
-            transaction_type="debit",
-        ))
+        db_session.add(
+            Transaction(
+                user_id=user.id,
+                account_id=acc1.id if i % 2 == 0 else acc2.id,
+                amount=Decimal(f"-{(i + 1) * 10}"),
+                currency="EUR",
+                description=f"Purchase {i}",
+                merchant=f"Merchant {i}",
+                category_id=cat.id if i < 5 else None,
+                booked_at=base + timedelta(days=i),
+                transaction_type="debit",
+            )
+        )
     db_session.commit()
     try:
         yield user, acc1, acc2, cat
@@ -47,9 +50,7 @@ def seeded_user(db_session):
 
 def test_list_transactions_sort_by_amount_desc(seeded_user):
     user, _, _, _ = seeded_user
-    result = tx_tools.list_transactions(
-        user_id=user.id, sort_by="amount_desc", limit=3
-    )
+    result = tx_tools.list_transactions(user_id=user.id, sort_by="amount_desc", limit=3)
     # amount_desc over negative expenses: -10 is largest, -100 smallest
     amounts = [r["amount"] for r in result["transactions"]]
     assert amounts == sorted(amounts, reverse=True)
@@ -70,16 +71,18 @@ def user_with_tied_booked_at(db_session):
     db_session.flush()
     same_ts = datetime(2026, 4, 15, 12, 0, 0)
     for i in range(7):
-        db_session.add(Transaction(
-            user_id=user.id,
-            account_id=acc.id,
-            amount=Decimal(f"-{(i + 1) * 5}"),
-            currency="EUR",
-            description=f"Tied purchase {i}",
-            merchant=f"Merchant {i}",
-            booked_at=same_ts,
-            transaction_type="debit",
-        ))
+        db_session.add(
+            Transaction(
+                user_id=user.id,
+                account_id=acc.id,
+                amount=Decimal(f"-{(i + 1) * 5}"),
+                currency="EUR",
+                description=f"Tied purchase {i}",
+                merchant=f"Merchant {i}",
+                booked_at=same_ts,
+                transaction_type="debit",
+            )
+        )
     db_session.commit()
     try:
         yield user
@@ -162,9 +165,7 @@ def test_search_transactions_account_id_filter(seeded_user):
 def test_search_multi_cursor_opt_in(seeded_user):
     user, _, _, _ = seeded_user
     # Default (no cursor) behavior: returns all capped results, no next_cursor
-    r1 = tx_tools.search_transactions_multi(
-        user_id=user.id, queries=["Purchase"], max_results=100
-    )
+    r1 = tx_tools.search_transactions_multi(user_id=user.id, queries=["Purchase"], max_results=100)
     assert r1["total_count"] == 10
     assert "next_cursor" not in r1 or r1.get("next_cursor") is None
 
@@ -201,9 +202,7 @@ def test_amount_asc_cursor_round_trip(seeded_user):
     assert len(collected_ids) == len(set(collected_ids)), (
         f"cursor walk produced duplicates: {collected_ids}"
     )
-    assert len(collected_ids) == 10, (
-        f"cursor walk skipped rows; got {len(collected_ids)}/10"
-    )
+    assert len(collected_ids) == 10, f"cursor walk skipped rows; got {len(collected_ids)}/10"
 
 
 def test_abs_amount_desc_cursor_round_trip(seeded_user):
@@ -228,6 +227,4 @@ def test_abs_amount_desc_cursor_round_trip(seeded_user):
     assert len(collected_ids) == len(set(collected_ids)), (
         f"cursor walk produced duplicates: {collected_ids}"
     )
-    assert len(collected_ids) == 10, (
-        f"cursor walk skipped rows; got {len(collected_ids)}/10"
-    )
+    assert len(collected_ids) == 10, f"cursor walk skipped rows; got {len(collected_ids)}/10"

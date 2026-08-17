@@ -25,7 +25,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.database import engine, SessionLocal, Base
-from app.models import Account, Category, Transaction, User
+from app.models import Account, Category, Transaction
 from app.db_helpers import get_or_create_system_user
 from app.services.exchange_rate_service import ExchangeRateService
 
@@ -85,22 +85,106 @@ def create_accounts(db: Session, user_id: str) -> list[Account]:
 def create_categories(db: Session, user_id: str) -> list[Category]:
     categories_data = [
         # Expenses
-        {"name": "Groceries", "category_type": "expense", "color": "#10B981", "icon": "shopping-cart", "is_system": True},
-        {"name": "Transport", "category_type": "expense", "color": "#3B82F6", "icon": "car", "is_system": True},
-        {"name": "Utilities", "category_type": "expense", "color": "#F59E0B", "icon": "zap", "is_system": True},
-        {"name": "Entertainment", "category_type": "expense", "color": "#8B5CF6", "icon": "tv", "is_system": True},
-        {"name": "Dining Out", "category_type": "expense", "color": "#EC4899", "icon": "utensils", "is_system": True},
-        {"name": "Shopping", "category_type": "expense", "color": "#F97316", "icon": "shopping-bag", "is_system": True},
-        {"name": "Healthcare", "category_type": "expense", "color": "#EF4444", "icon": "heart", "is_system": True},
-        {"name": "Subscriptions", "category_type": "expense", "color": "#6366F1", "icon": "credit-card", "is_system": True},
-        {"name": "Education", "category_type": "expense", "color": "#14B8A6", "icon": "book", "is_system": True},
-        {"name": "Housing", "category_type": "expense", "color": "#64748B", "icon": "home", "is_system": True},
+        {
+            "name": "Groceries",
+            "category_type": "expense",
+            "color": "#10B981",
+            "icon": "shopping-cart",
+            "is_system": True,
+        },
+        {
+            "name": "Transport",
+            "category_type": "expense",
+            "color": "#3B82F6",
+            "icon": "car",
+            "is_system": True,
+        },
+        {
+            "name": "Utilities",
+            "category_type": "expense",
+            "color": "#F59E0B",
+            "icon": "zap",
+            "is_system": True,
+        },
+        {
+            "name": "Entertainment",
+            "category_type": "expense",
+            "color": "#8B5CF6",
+            "icon": "tv",
+            "is_system": True,
+        },
+        {
+            "name": "Dining Out",
+            "category_type": "expense",
+            "color": "#EC4899",
+            "icon": "utensils",
+            "is_system": True,
+        },
+        {
+            "name": "Shopping",
+            "category_type": "expense",
+            "color": "#F97316",
+            "icon": "shopping-bag",
+            "is_system": True,
+        },
+        {
+            "name": "Healthcare",
+            "category_type": "expense",
+            "color": "#EF4444",
+            "icon": "heart",
+            "is_system": True,
+        },
+        {
+            "name": "Subscriptions",
+            "category_type": "expense",
+            "color": "#6366F1",
+            "icon": "credit-card",
+            "is_system": True,
+        },
+        {
+            "name": "Education",
+            "category_type": "expense",
+            "color": "#14B8A6",
+            "icon": "book",
+            "is_system": True,
+        },
+        {
+            "name": "Housing",
+            "category_type": "expense",
+            "color": "#64748B",
+            "icon": "home",
+            "is_system": True,
+        },
         # Income
-        {"name": "Salary", "category_type": "income", "color": "#22C55E", "icon": "briefcase", "is_system": True},
-        {"name": "Freelance", "category_type": "income", "color": "#06B6D4", "icon": "laptop", "is_system": True},
-        {"name": "Investment Income", "category_type": "income", "color": "#A855F7", "icon": "trending-up", "is_system": True},
+        {
+            "name": "Salary",
+            "category_type": "income",
+            "color": "#22C55E",
+            "icon": "briefcase",
+            "is_system": True,
+        },
+        {
+            "name": "Freelance",
+            "category_type": "income",
+            "color": "#06B6D4",
+            "icon": "laptop",
+            "is_system": True,
+        },
+        {
+            "name": "Investment Income",
+            "category_type": "income",
+            "color": "#A855F7",
+            "icon": "trending-up",
+            "is_system": True,
+        },
         # Transfer
-        {"name": "Transfer", "category_type": "transfer", "color": "#94A3B8", "icon": "repeat", "is_system": True},
+        {
+            "name": "Transfer",
+            "category_type": "transfer",
+            "color": "#94A3B8",
+            "icon": "repeat",
+            "is_system": True,
+        },
     ]
 
     categories = []
@@ -118,62 +202,254 @@ def create_categories(db: Session, user_id: str) -> list[Category]:
     return categories
 
 
-def create_transactions(db: Session, accounts: list[Account], categories: list[Category], user_id: str) -> None:
+def create_transactions(
+    db: Session, accounts: list[Account], categories: list[Category], user_id: str
+) -> None:
     # Get category references
     expense_categories = [c for c in categories if c.category_type == "expense"]
     income_categories = [c for c in categories if c.category_type == "income"]
 
     # Transaction templates - EUR transactions
     expense_templates_eur = [
-        {"description": "LIDL", "merchant": "Lidl", "category": "Groceries", "amount_range": (15, 120)},
-        {"description": "ALBERT HEIJN", "merchant": "Albert Heijn", "category": "Groceries", "amount_range": (20, 150)},
-        {"description": "JUMBO SUPERMARKET", "merchant": "Jumbo", "category": "Groceries", "amount_range": (25, 100)},
-        {"description": "NS STATION", "merchant": "NS", "category": "Transport", "amount_range": (5, 50)},
-        {"description": "SHELL FUEL", "merchant": "Shell", "category": "Transport", "amount_range": (40, 100)},
-        {"description": "UBER TRIP", "merchant": "Uber", "category": "Transport", "amount_range": (8, 35)},
-        {"description": "VATTENFALL ENERGY", "merchant": "Vattenfall", "category": "Utilities", "amount_range": (80, 200)},
-        {"description": "ZIGGO INTERNET", "merchant": "Ziggo", "category": "Utilities", "amount_range": (50, 70)},
-        {"description": "NETFLIX", "merchant": "Netflix", "category": "Subscriptions", "amount_range": (12, 18)},
-        {"description": "SPOTIFY", "merchant": "Spotify", "category": "Subscriptions", "amount_range": (10, 15)},
-        {"description": "CINEMA PATHE", "merchant": "Pathe", "category": "Entertainment", "amount_range": (12, 30)},
-        {"description": "RESTAURANT", "merchant": None, "category": "Dining Out", "amount_range": (20, 80)},
-        {"description": "CAFE DE WERELD", "merchant": "Cafe de Wereld", "category": "Dining Out", "amount_range": (10, 40)},
-        {"description": "MCDONALDS", "merchant": "McDonalds", "category": "Dining Out", "amount_range": (8, 20)},
-        {"description": "ZALANDO", "merchant": "Zalando", "category": "Shopping", "amount_range": (30, 150)},
-        {"description": "H&M", "merchant": "H&M", "category": "Shopping", "amount_range": (20, 100)},
-        {"description": "APOTHEEK", "merchant": "Pharmacy", "category": "Healthcare", "amount_range": (5, 50)},
-        {"description": "HUISARTS", "merchant": "Doctor", "category": "Healthcare", "amount_range": (20, 100)},
-        {"description": "RENT PAYMENT", "merchant": "Landlord", "category": "Housing", "amount_range": (1200, 1200)},
+        {
+            "description": "LIDL",
+            "merchant": "Lidl",
+            "category": "Groceries",
+            "amount_range": (15, 120),
+        },
+        {
+            "description": "ALBERT HEIJN",
+            "merchant": "Albert Heijn",
+            "category": "Groceries",
+            "amount_range": (20, 150),
+        },
+        {
+            "description": "JUMBO SUPERMARKET",
+            "merchant": "Jumbo",
+            "category": "Groceries",
+            "amount_range": (25, 100),
+        },
+        {
+            "description": "NS STATION",
+            "merchant": "NS",
+            "category": "Transport",
+            "amount_range": (5, 50),
+        },
+        {
+            "description": "SHELL FUEL",
+            "merchant": "Shell",
+            "category": "Transport",
+            "amount_range": (40, 100),
+        },
+        {
+            "description": "UBER TRIP",
+            "merchant": "Uber",
+            "category": "Transport",
+            "amount_range": (8, 35),
+        },
+        {
+            "description": "VATTENFALL ENERGY",
+            "merchant": "Vattenfall",
+            "category": "Utilities",
+            "amount_range": (80, 200),
+        },
+        {
+            "description": "ZIGGO INTERNET",
+            "merchant": "Ziggo",
+            "category": "Utilities",
+            "amount_range": (50, 70),
+        },
+        {
+            "description": "NETFLIX",
+            "merchant": "Netflix",
+            "category": "Subscriptions",
+            "amount_range": (12, 18),
+        },
+        {
+            "description": "SPOTIFY",
+            "merchant": "Spotify",
+            "category": "Subscriptions",
+            "amount_range": (10, 15),
+        },
+        {
+            "description": "CINEMA PATHE",
+            "merchant": "Pathe",
+            "category": "Entertainment",
+            "amount_range": (12, 30),
+        },
+        {
+            "description": "RESTAURANT",
+            "merchant": None,
+            "category": "Dining Out",
+            "amount_range": (20, 80),
+        },
+        {
+            "description": "CAFE DE WERELD",
+            "merchant": "Cafe de Wereld",
+            "category": "Dining Out",
+            "amount_range": (10, 40),
+        },
+        {
+            "description": "MCDONALDS",
+            "merchant": "McDonalds",
+            "category": "Dining Out",
+            "amount_range": (8, 20),
+        },
+        {
+            "description": "ZALANDO",
+            "merchant": "Zalando",
+            "category": "Shopping",
+            "amount_range": (30, 150),
+        },
+        {
+            "description": "H&M",
+            "merchant": "H&M",
+            "category": "Shopping",
+            "amount_range": (20, 100),
+        },
+        {
+            "description": "APOTHEEK",
+            "merchant": "Pharmacy",
+            "category": "Healthcare",
+            "amount_range": (5, 50),
+        },
+        {
+            "description": "HUISARTS",
+            "merchant": "Doctor",
+            "category": "Healthcare",
+            "amount_range": (20, 100),
+        },
+        {
+            "description": "RENT PAYMENT",
+            "merchant": "Landlord",
+            "category": "Housing",
+            "amount_range": (1200, 1200),
+        },
     ]
 
     # USD transaction templates (for Amazon, online purchases, etc.)
     expense_templates_usd = [
-        {"description": "AMAZON.COM", "merchant": "Amazon", "category": "Shopping", "amount_range": (20, 250)},
-        {"description": "AMAZON PRIME", "merchant": "Amazon", "category": "Subscriptions", "amount_range": (10, 15)},
-        {"description": "UBER EATS", "merchant": "Uber Eats", "category": "Dining Out", "amount_range": (15, 60)},
-        {"description": "STARBUCKS", "merchant": "Starbucks", "category": "Dining Out", "amount_range": (5, 15)},
-        {"description": "APPLE STORE", "merchant": "Apple", "category": "Shopping", "amount_range": (50, 500)},
-        {"description": "GOOGLE PLAY", "merchant": "Google", "category": "Subscriptions", "amount_range": (5, 20)},
-        {"description": "AIRBNB", "merchant": "Airbnb", "category": "Housing", "amount_range": (80, 300)},
-        {"description": "HOTEL BOOKING", "merchant": "Booking.com", "category": "Housing", "amount_range": (100, 400)},
+        {
+            "description": "AMAZON.COM",
+            "merchant": "Amazon",
+            "category": "Shopping",
+            "amount_range": (20, 250),
+        },
+        {
+            "description": "AMAZON PRIME",
+            "merchant": "Amazon",
+            "category": "Subscriptions",
+            "amount_range": (10, 15),
+        },
+        {
+            "description": "UBER EATS",
+            "merchant": "Uber Eats",
+            "category": "Dining Out",
+            "amount_range": (15, 60),
+        },
+        {
+            "description": "STARBUCKS",
+            "merchant": "Starbucks",
+            "category": "Dining Out",
+            "amount_range": (5, 15),
+        },
+        {
+            "description": "APPLE STORE",
+            "merchant": "Apple",
+            "category": "Shopping",
+            "amount_range": (50, 500),
+        },
+        {
+            "description": "GOOGLE PLAY",
+            "merchant": "Google",
+            "category": "Subscriptions",
+            "amount_range": (5, 20),
+        },
+        {
+            "description": "AIRBNB",
+            "merchant": "Airbnb",
+            "category": "Housing",
+            "amount_range": (80, 300),
+        },
+        {
+            "description": "HOTEL BOOKING",
+            "merchant": "Booking.com",
+            "category": "Housing",
+            "amount_range": (100, 400),
+        },
     ]
 
     # GBP transaction templates (UK transactions)
     expense_templates_gbp = [
-        {"description": "TESCO STORE", "merchant": "Tesco", "category": "Groceries", "amount_range": (15, 100)},
-        {"description": "SAINSBURYS", "merchant": "Sainsbury's", "category": "Groceries", "amount_range": (20, 120)},
-        {"description": "TUBE FARE", "merchant": "TFL", "category": "Transport", "amount_range": (3, 15)},
-        {"description": "LONDON BUS", "merchant": "TFL", "category": "Transport", "amount_range": (2, 5)},
-        {"description": "PRET A MANGER", "merchant": "Pret", "category": "Dining Out", "amount_range": (5, 15)},
-        {"description": "BOOTS PHARMACY", "merchant": "Boots", "category": "Healthcare", "amount_range": (5, 50)},
-        {"description": "ASOS", "merchant": "ASOS", "category": "Shopping", "amount_range": (30, 150)},
-        {"description": "JOHN LEWIS", "merchant": "John Lewis", "category": "Shopping", "amount_range": (50, 300)},
+        {
+            "description": "TESCO STORE",
+            "merchant": "Tesco",
+            "category": "Groceries",
+            "amount_range": (15, 100),
+        },
+        {
+            "description": "SAINSBURYS",
+            "merchant": "Sainsbury's",
+            "category": "Groceries",
+            "amount_range": (20, 120),
+        },
+        {
+            "description": "TUBE FARE",
+            "merchant": "TFL",
+            "category": "Transport",
+            "amount_range": (3, 15),
+        },
+        {
+            "description": "LONDON BUS",
+            "merchant": "TFL",
+            "category": "Transport",
+            "amount_range": (2, 5),
+        },
+        {
+            "description": "PRET A MANGER",
+            "merchant": "Pret",
+            "category": "Dining Out",
+            "amount_range": (5, 15),
+        },
+        {
+            "description": "BOOTS PHARMACY",
+            "merchant": "Boots",
+            "category": "Healthcare",
+            "amount_range": (5, 50),
+        },
+        {
+            "description": "ASOS",
+            "merchant": "ASOS",
+            "category": "Shopping",
+            "amount_range": (30, 150),
+        },
+        {
+            "description": "JOHN LEWIS",
+            "merchant": "John Lewis",
+            "category": "Shopping",
+            "amount_range": (50, 300),
+        },
     ]
 
     income_templates = [
-        {"description": "SALARY PAYMENT", "merchant": "Employer", "category": "Salary", "amount_range": (3500, 4500)},
-        {"description": "FREELANCE PROJECT", "merchant": "Client", "category": "Freelance", "amount_range": (500, 2000)},
-        {"description": "DIVIDEND PAYMENT", "merchant": "Broker", "category": "Investment Income", "amount_range": (50, 200)},
+        {
+            "description": "SALARY PAYMENT",
+            "merchant": "Employer",
+            "category": "Salary",
+            "amount_range": (3500, 4500),
+        },
+        {
+            "description": "FREELANCE PROJECT",
+            "merchant": "Client",
+            "category": "Freelance",
+            "amount_range": (500, 2000),
+        },
+        {
+            "description": "DIVIDEND PAYMENT",
+            "merchant": "Broker",
+            "category": "Investment Income",
+            "amount_range": (50, 200),
+        },
     ]
 
     checking_eur = accounts[0]
@@ -349,37 +625,40 @@ def sync_exchange_rates(db: Session, start_date: date, end_date: date) -> None:
     try:
         exchange_service = ExchangeRateService(db)
         result = exchange_service.sync_exchange_rates(start_date=start_date, end_date=end_date)
-        
+
         # Log full result for debugging
         import logging
+
         logger = logging.getLogger(__name__)
         logger.info(f"Exchange rate sync result: {result}")
-        
-        print(f"✓ Exchange rates synced successfully!")
+
+        print("✓ Exchange rates synced successfully!")
         print(f"  - Dates processed: {result.get('dates_processed', 0)}")
         print(f"  - Total rates stored: {result.get('total_rates_stored', 0)}")
-        
+
         # Handle different return value formats
-        if 'base_currencies' in result:
+        if "base_currencies" in result:
             print(f"  - Base currencies: {', '.join(result.get('base_currencies', []))}")
-        if 'target_currencies' in result:
+        if "target_currencies" in result:
             print(f"  - Target currencies: {', '.join(result.get('target_currencies', []))}")
-        if 'currencies' in result:
+        if "currencies" in result:
             print(f"  - Currencies: {', '.join(result.get('currencies', []))}")
-        if 'failed_batches' in result and result.get('failed_batches', 0) > 0:
+        if "failed_batches" in result and result.get("failed_batches", 0) > 0:
             print(f"  - Failed batches: {result.get('failed_batches', 0)}")
-            
+
     except KeyError as e:
         import traceback
+
         print(f"⚠ Warning: Failed to sync exchange rates - KeyError: {e}")
-        print(f"  Error details:")
+        print("  Error details:")
         traceback.print_exc()
         print("  You can sync rates later using: POST /api/exchange-rates/sync")
     except Exception as e:
         import traceback
+
         print(f"⚠ Warning: Failed to sync exchange rates: {e}")
         print(f"  Error type: {type(e).__name__}")
-        print(f"  Error details:")
+        print("  Error details:")
         traceback.print_exc()
         print("  You can sync rates later using: POST /api/exchange-rates/sync")
 
@@ -418,7 +697,7 @@ def seed():
         if not user.functional_currency:
             user.functional_currency = "EUR"
             db.commit()
-            print(f"✓ Set user functional currency to: EUR")
+            print("✓ Set user functional currency to: EUR")
 
         # Sync exchange rates from January 2024 to today
         # This covers all historical transactions and provides rates for future use
@@ -429,7 +708,9 @@ def seed():
         print("\n✅ Seeding complete!")
         print(f"Total accounts: {db.query(Account).filter(Account.user_id == user_id).count()}")
         print(f"Total categories: {db.query(Category).filter(Category.user_id == user_id).count()}")
-        print(f"Total transactions: {db.query(Transaction).filter(Transaction.user_id == user_id).count()}")
+        print(
+            f"Total transactions: {db.query(Transaction).filter(Transaction.user_id == user_id).count()}"
+        )
 
     finally:
         db.close()

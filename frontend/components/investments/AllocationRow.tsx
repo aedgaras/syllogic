@@ -38,10 +38,7 @@ export function AllocationRow({
             <AllocationDonut segments={g.segs} size={72} />
             <div className="flex-1 flex flex-col gap-1.5">
               {g.segs.map((s, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-2 text-xs"
-                >
+                <div key={i} className="flex items-center gap-2 text-xs">
                   <span
                     className="w-2 h-2 flex-shrink-0"
                     style={{ background: s.color }}

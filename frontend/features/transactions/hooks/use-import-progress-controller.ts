@@ -22,7 +22,8 @@ export function useImportProgressController() {
   const { data: session } = useSession();
   const userId = session?.user?.id;
   const importingId = searchParams.get("importing");
-  const [pendingImport, setPendingImport] = React.useState<PendingImport | null>(null);
+  const [pendingImport, setPendingImport] =
+    React.useState<PendingImport | null>(null);
   const [status, setStatus] = React.useState<ImportState>(null);
 
   const clearImportingParam = React.useCallback(() => {
@@ -38,7 +39,7 @@ export function useImportProgressController() {
       setPendingImport(null);
       if (clearUrl && importingId) clearImportingParam();
     },
-    [clearImportingParam, importingId]
+    [clearImportingParam, importingId],
   );
 
   React.useEffect(() => {
@@ -75,9 +76,17 @@ export function useImportProgressController() {
       }
       if (!body) return;
 
-      const nextStatus = body.status as ImportState | "pending" | "mapping" | "previewing";
+      const nextStatus = body.status as
+        | ImportState
+        | "pending"
+        | "mapping"
+        | "previewing";
       const total = body.total_rows ?? body.totalRows;
-      const processed = body.progress_count ?? body.progressCount ?? body.imported_rows ?? body.importedRows;
+      const processed =
+        body.progress_count ??
+        body.progressCount ??
+        body.imported_rows ??
+        body.importedRows;
       const completedByCounts =
         nextStatus === "importing" &&
         typeof total === "number" &&
@@ -85,8 +94,18 @@ export function useImportProgressController() {
         typeof processed === "number" &&
         processed >= total;
 
-      setStatus(completedByCounts ? "completed" : ["importing", "completed", "failed"].includes(nextStatus ?? "") ? nextStatus as ImportState : null);
-      if (nextStatus === "completed" || nextStatus === "failed" || completedByCounts) {
+      setStatus(
+        completedByCounts
+          ? "completed"
+          : ["importing", "completed", "failed"].includes(nextStatus ?? "")
+            ? (nextStatus as ImportState)
+            : null,
+      );
+      if (
+        nextStatus === "completed" ||
+        nextStatus === "failed" ||
+        completedByCounts
+      ) {
         clearImport();
         router.refresh();
       }
@@ -95,28 +114,35 @@ export function useImportProgressController() {
     }
   }, [clearImport, pendingImport, queryClient, router]);
 
-  React.useEffect(() => { void checkStatus(); }, [checkStatus]);
+  React.useEffect(() => {
+    void checkStatus();
+  }, [checkStatus]);
 
-  const stream = useImportStatus(pendingImport?.userId, pendingImport?.importId, {
-    onStarted: () => setStatus("importing"),
-    onProgress: () => setStatus("importing"),
-    onCompleted: () => {
-      setStatus("completed");
-      router.refresh();
+  const stream = useImportStatus(
+    pendingImport?.userId,
+    pendingImport?.importId,
+    {
+      onStarted: () => setStatus("importing"),
+      onProgress: () => setStatus("importing"),
+      onCompleted: () => {
+        setStatus("completed");
+        router.refresh();
+      },
+      onFailed: () => {
+        setStatus("failed");
+        clearImport();
+      },
+      onSubscriptionsCompleted: () => {
+        clearImport();
+        router.refresh();
+      },
+      onEvent: presentImportStatusToast,
     },
-    onFailed: () => {
-      setStatus("failed");
-      clearImport();
-    },
-    onSubscriptionsCompleted: () => {
-      clearImport();
-      router.refresh();
-    },
-    onEvent: presentImportStatusToast,
-  });
+  );
 
   React.useEffect(() => {
-    if (!pendingImport || (status !== "importing" && !stream.isImporting)) return;
+    if (!pendingImport || (status !== "importing" && !stream.isImporting))
+      return;
     const interval = window.setInterval(() => void checkStatus(), 15_000);
     return () => window.clearInterval(interval);
   }, [checkStatus, pendingImport, status, stream.isImporting]);

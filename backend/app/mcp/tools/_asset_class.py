@@ -4,6 +4,7 @@ Mirrors the frontend taxonomy in `frontend/lib/assets/asset-category.ts`.
 Keep these two in sync — both sides are intentionally explicit so neither
 side has to ship the other's enum.
 """
+
 from __future__ import annotations
 
 from typing import Optional

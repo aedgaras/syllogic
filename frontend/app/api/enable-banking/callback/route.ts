@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBackendBaseUrl } from "@/lib/backend-url";
-import {
-  createInternalAuthHeaders,
-} from "@/lib/internal-auth";
+import { createInternalAuthHeaders } from "@/lib/internal-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,19 +31,19 @@ export async function GET(req: NextRequest) {
   if (error) {
     const errorDesc = searchParams.get("error_description") || error;
     return NextResponse.redirect(
-      `${baseUrl}/settings/connect-bank?error=${encodeURIComponent(errorDesc)}`
+      `${baseUrl}/settings/connect-bank?error=${encodeURIComponent(errorDesc)}`,
     );
   }
 
   if (!code) {
     return NextResponse.redirect(
-      `${baseUrl}/settings/connect-bank?error=${encodeURIComponent("No authorization code received")}`
+      `${baseUrl}/settings/connect-bank?error=${encodeURIComponent("No authorization code received")}`,
     );
   }
 
   if (!state) {
     return NextResponse.redirect(
-      `${baseUrl}/settings/connect-bank?error=${encodeURIComponent("Missing OAuth state")}`
+      `${baseUrl}/settings/connect-bank?error=${encodeURIComponent("Missing OAuth state")}`,
     );
   }
 
@@ -56,13 +54,13 @@ export async function GET(req: NextRequest) {
     const session = await auth.api.getSession({ headers: req.headers });
     if (!session?.user?.id) {
       return NextResponse.redirect(
-        `${baseUrl}/login?redirect=${encodeURIComponent("/settings/connect-bank")}`
+        `${baseUrl}/login?redirect=${encodeURIComponent("/settings/connect-bank")}`,
       );
     }
     userId = session.user.id;
   } catch {
     return NextResponse.redirect(
-      `${baseUrl}/login?redirect=${encodeURIComponent("/settings/connect-bank")}`
+      `${baseUrl}/login?redirect=${encodeURIComponent("/settings/connect-bank")}`,
     );
   }
 
@@ -89,9 +87,11 @@ export async function GET(req: NextRequest) {
     });
 
     if (!resp.ok) {
-      const errorData = await resp.json().catch(() => ({ detail: "Unknown error" }));
+      const errorData = await resp
+        .json()
+        .catch(() => ({ detail: "Unknown error" }));
       return NextResponse.redirect(
-        `${baseUrl}/settings/connect-bank?error=${encodeURIComponent(errorData.detail || "Failed to connect bank")}`
+        `${baseUrl}/settings/connect-bank?error=${encodeURIComponent(errorData.detail || "Failed to connect bank")}`,
       );
     }
 
@@ -99,15 +99,15 @@ export async function GET(req: NextRequest) {
     const connectionId = data.connection_id;
     if (data.relinked) {
       return NextResponse.redirect(
-        `${baseUrl}/settings?tab=bank-connections&relinked=success`
+        `${baseUrl}/settings?tab=bank-connections&relinked=success`,
       );
     }
     return NextResponse.redirect(
-      `${baseUrl}/settings/connect-bank/map-accounts?connectionId=${connectionId}`
+      `${baseUrl}/settings/connect-bank/map-accounts?connectionId=${connectionId}`,
     );
   } catch (e) {
     return NextResponse.redirect(
-      `${baseUrl}/settings/connect-bank?error=${encodeURIComponent("Failed to connect bank. Please try again.")}`
+      `${baseUrl}/settings/connect-bank?error=${encodeURIComponent("Failed to connect bank. Please try again.")}`,
     );
   }
 }

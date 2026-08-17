@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import * as React from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -48,14 +47,20 @@ const MIN_SEARCH_LENGTH = 2;
 
 export function CommandPalette() {
   const { callbacks } = useCommandPaletteCallbacks();
-  const { onAddTransaction, onExportCSV, onImportCsv, onAddAsset, onRefreshData } = callbacks;
+  const {
+    onAddTransaction,
+    onExportCSV,
+    onImportCsv,
+    onAddAsset,
+    onRefreshData,
+  } = callbacks;
   const [open, setOpen] = React.useState(false);
   const [data, setData] = React.useState<CommandPaletteData | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
-  const [isSearchingTransactions, setIsSearchingTransactions] = React.useState(false);
-  const [transactionSearchResults, setTransactionSearchResults] = React.useState<
-    CommandPaletteData["transactions"]
-  >([]);
+  const [isSearchingTransactions, setIsSearchingTransactions] =
+    React.useState(false);
+  const [transactionSearchResults, setTransactionSearchResults] =
+    React.useState<CommandPaletteData["transactions"]>([]);
   const [search, setSearch] = React.useState("");
   const transactionSearchRequestIdRef = React.useRef(0);
   const router = useRouter();
@@ -173,7 +178,15 @@ export function CommandPalette() {
 
     document.addEventListener("keydown", handleDirectKeys);
     return () => document.removeEventListener("keydown", handleDirectKeys);
-  }, [open, router, resolvedTheme, setTheme, onAddTransaction, getHomePathWithFilters, getTransactionsPathWithFilters]);
+  }, [
+    open,
+    router,
+    resolvedTheme,
+    setTheme,
+    onAddTransaction,
+    getHomePathWithFilters,
+    getTransactionsPathWithFilters,
+  ]);
 
   const runCommand = React.useCallback((command: () => void) => {
     setOpen(false);
@@ -290,7 +303,7 @@ export function CommandPalette() {
     return data.accounts.filter(
       (a) =>
         a.name.toLowerCase().includes(term) ||
-        a.institution?.toLowerCase().includes(term)
+        a.institution?.toLowerCase().includes(term),
     );
   }, [data?.accounts, search, shouldSearch]);
 
@@ -300,7 +313,7 @@ export function CommandPalette() {
     return data.assets.filter(
       (a) =>
         a.name.toLowerCase().includes(term) ||
-        a.subtitle?.toLowerCase().includes(term)
+        a.subtitle?.toLowerCase().includes(term),
     );
   }, [data?.assets, search, shouldSearch]);
 
@@ -317,19 +330,61 @@ export function CommandPalette() {
 
   // Navigation items for filtering
   const navigationItems = [
-    { label: translate("dashboard"), path: "/", icon: RiHomeLine, shortcut: "B" },
-    { label: translate("transactions"), path: "/transactions", icon: RiExchangeLine, shortcut: "T" },
-    { label: translate("subscriptions"), path: "/subscriptions", icon: RiLoopRightLine, shortcut: "S" },
-    { label: translate("assets"), path: "/assets", icon: RiWallet3Line, shortcut: "A" },
-    { label: translate("settings"), path: "/settings", icon: RiSettings3Line, shortcut: "D" },
+    {
+      label: translate("dashboard"),
+      path: "/",
+      icon: RiHomeLine,
+      shortcut: "B",
+    },
+    {
+      label: translate("transactions"),
+      path: "/transactions",
+      icon: RiExchangeLine,
+      shortcut: "T",
+    },
+    {
+      label: translate("subscriptions"),
+      path: "/subscriptions",
+      icon: RiLoopRightLine,
+      shortcut: "S",
+    },
+    {
+      label: translate("assets"),
+      path: "/assets",
+      icon: RiWallet3Line,
+      shortcut: "A",
+    },
+    {
+      label: translate("settings"),
+      path: "/settings",
+      icon: RiSettings3Line,
+      shortcut: "D",
+    },
   ];
 
   // Theme items for filtering
   const themeItems = [
-    { label: translate("lightMode"), action: () => setTheme("light"), icon: RiSunLine },
-    { label: translate("darkMode"), action: () => setTheme("dark"), icon: RiMoonLine },
-    { label: translate("systemMode"), action: () => setTheme("system"), icon: RiComputerLine },
-    { label: translate("toggleTheme"), action: () => setTheme(resolvedTheme === "dark" ? "light" : "dark"), icon: resolvedTheme === "dark" ? RiSunLine : RiMoonLine, shortcut: "M" },
+    {
+      label: translate("lightMode"),
+      action: () => setTheme("light"),
+      icon: RiSunLine,
+    },
+    {
+      label: translate("darkMode"),
+      action: () => setTheme("dark"),
+      icon: RiMoonLine,
+    },
+    {
+      label: translate("systemMode"),
+      action: () => setTheme("system"),
+      icon: RiComputerLine,
+    },
+    {
+      label: translate("toggleTheme"),
+      action: () => setTheme(resolvedTheme === "dark" ? "light" : "dark"),
+      icon: resolvedTheme === "dark" ? RiSunLine : RiMoonLine,
+      shortcut: "M",
+    },
   ];
 
   // Filter navigation items based on search
@@ -337,7 +392,7 @@ export function CommandPalette() {
     if (!search) return navigationItems;
     const term = search.toLowerCase();
     return navigationItems.filter((item) =>
-      item.label.toLowerCase().includes(term)
+      item.label.toLowerCase().includes(term),
     );
   }, [search]);
 
@@ -346,7 +401,7 @@ export function CommandPalette() {
     if (!search) return contextualActions;
     const term = search.toLowerCase();
     return contextualActions.filter((action) =>
-      action.label.toLowerCase().includes(term)
+      action.label.toLowerCase().includes(term),
     );
   }, [search, contextualActions]);
 
@@ -354,9 +409,7 @@ export function CommandPalette() {
   const filteredTheme = React.useMemo(() => {
     if (!search) return themeItems;
     const term = search.toLowerCase();
-    return themeItems.filter((item) =>
-      item.label.toLowerCase().includes(term)
-    );
+    return themeItems.filter((item) => item.label.toLowerCase().includes(term));
   }, [search, themeItems]);
 
   // Check if we have any filtered command results
@@ -370,11 +423,7 @@ export function CommandPalette() {
       (isLoading && !data && transactionSearchResults.length === 0));
 
   return (
-    <CommandDialog
-      open={open}
-      onOpenChange={setOpen}
-      className="sm:max-w-xl"
-    >
+    <CommandDialog open={open} onOpenChange={setOpen} className="sm:max-w-xl">
       <Command
         className="[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:font-medium"
         shouldFilter={false}
@@ -404,7 +453,9 @@ export function CommandPalette() {
                       {filteredAccounts.map((account) => (
                         <CommandItem
                           key={account.id}
-                          onSelect={() => runCommand(() => router.push("/settings"))}
+                          onSelect={() =>
+                            runCommand(() => router.push("/settings"))
+                          }
                           className="flex items-center justify-between"
                         >
                           <div className="flex items-center gap-2 min-w-0">
@@ -439,7 +490,9 @@ export function CommandPalette() {
                         {filteredAssets.map((asset) => (
                           <CommandItem
                             key={asset.id}
-                            onSelect={() => runCommand(() => router.push("/assets"))}
+                            onSelect={() =>
+                              runCommand(() => router.push("/assets"))
+                            }
                             className="flex items-center justify-between"
                           >
                             <div className="flex items-center gap-2 min-w-0">
@@ -450,7 +503,9 @@ export function CommandPalette() {
                               <span className="truncate">{asset.name}</span>
                               {asset.subtitle && (
                                 <>
-                                  <span className="text-muted-foreground">·</span>
+                                  <span className="text-muted-foreground">
+                                    ·
+                                  </span>
                                   <span className="text-muted-foreground truncate">
                                     {asset.subtitle}
                                   </span>
@@ -468,16 +523,15 @@ export function CommandPalette() {
 
                   {filteredTransactions.length > 0 && (
                     <>
-                      {(filteredAccounts.length > 0 || filteredAssets.length > 0) && (
-                        <CommandSeparator />
-                      )}
+                      {(filteredAccounts.length > 0 ||
+                        filteredAssets.length > 0) && <CommandSeparator />}
                       <CommandGroup heading="TRANSACTIONS">
                         {filteredTransactions.slice(0, 10).map((tx) => (
                           <CommandItem
                             key={tx.id}
                             onSelect={() =>
                               runCommand(() =>
-                                router.push(`/transactions?tx=${tx.id}`)
+                                router.push(`/transactions?tx=${tx.id}`),
                               )
                             }
                             className="flex items-center justify-between"
@@ -485,13 +539,17 @@ export function CommandPalette() {
                             <div className="flex items-center gap-2 min-w-0">
                               <RiExchangeLine className="h-4 w-4 shrink-0 text-muted-foreground" />
                               <span className="truncate">
-                                {tx.merchant || tx.description || translate("transaction")}
+                                {tx.merchant ||
+                                  tx.description ||
+                                  translate("transaction")}
                               </span>
                             </div>
                             <div className="flex items-center gap-3 shrink-0 ml-2">
                               <span
                                 className={
-                                  tx.amount < 0 ? "text-red-500" : "text-green-500"
+                                  tx.amount < 0
+                                    ? "text-red-500"
+                                    : "text-green-500"
                                 }
                               >
                                 {formatAmount(tx.amount, tx.currency)}
@@ -522,9 +580,9 @@ export function CommandPalette() {
                               item.path === "/"
                                 ? getHomePathWithFilters()
                                 : item.path === "/transactions"
-                                ? getTransactionsPathWithFilters()
-                                : item.path
-                            )
+                                  ? getTransactionsPathWithFilters()
+                                  : item.path,
+                            ),
                           )
                         }
                       >

@@ -5,6 +5,7 @@ precedence order: SMTP (if SMTP_HOST is set) > Resend (if RESEND_API_KEY
 is set) > usesend (if USESEND_API_KEY is set). If none are configured,
 get_mail_adapter() raises rather than silently no-op-ing.
 """
+
 from __future__ import annotations
 
 import os
@@ -18,8 +19,7 @@ import resend
 
 
 class MailAdapter(Protocol):
-    def send(self, to: list[str], subject: str, html: str, text: str) -> None:
-        ...
+    def send(self, to: list[str], subject: str, html: str, text: str) -> None: ...
 
 
 class SmtpMailAdapter:
@@ -66,13 +66,15 @@ class ResendMailAdapter:
         resend.api_key = api_key
 
     def send(self, to: list[str], subject: str, html: str, text: str) -> None:
-        resend.Emails.send({
-            "from": self.from_addr,
-            "to": to,
-            "subject": subject,
-            "html": html,
-            "text": text,
-        })
+        resend.Emails.send(
+            {
+                "from": self.from_addr,
+                "to": to,
+                "subject": subject,
+                "html": html,
+                "text": text,
+            }
+        )
 
 
 class UsesendMailAdapter:

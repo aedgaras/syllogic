@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   RiUserLine,
@@ -20,7 +19,10 @@ import { ImportHistoryManager } from "./import-history-manager";
 import { BankConnectionsManager } from "./bank-connections-manager";
 import { HouseholdTab } from "./household-tab";
 import { PreferencesTab } from "./preferences-tab";
-import type { SettingsCategory, SettingsUser } from "@/features/settings/public";
+import type {
+  SettingsCategory,
+  SettingsUser,
+} from "@/features/settings/public";
 import type { CsvImportWithStats } from "@/features/csv-import/public";
 import type { OpenAiSettings } from "@/lib/actions/settings";
 import type { OidcAdminSettings } from "@/lib/oidc-settings";
@@ -95,7 +97,10 @@ export function SettingsTabs({
           <RiUserLine className="mr-1.5 h-4 w-4" />
           {translate("profile")}
         </TabsTrigger>
-        <TabsTrigger value="categories" data-walkthrough="walkthrough-categories">
+        <TabsTrigger
+          value="categories"
+          data-walkthrough="walkthrough-categories"
+        >
           <RiFolderLine className="mr-1.5 h-4 w-4" />
           {translate("categories")}
         </TabsTrigger>
@@ -103,7 +108,10 @@ export function SettingsTabs({
           <RiKeyLine className="mr-1.5 h-4 w-4" />
           {translate("apiKeys")}
         </TabsTrigger>
-        <TabsTrigger value="import-history" data-walkthrough="walkthrough-import-history">
+        <TabsTrigger
+          value="import-history"
+          data-walkthrough="walkthrough-import-history"
+        >
           <RiUploadLine className="mr-1.5 h-4 w-4" />
           {translate("importHistory")}
         </TabsTrigger>
@@ -146,7 +154,10 @@ export function SettingsTabs({
       </TabsContent>
 
       <TabsContent value="import-history">
-        <ImportHistoryManager initialImports={csvImports} canDelete={canDelete} />
+        <ImportHistoryManager
+          initialImports={csvImports}
+          canDelete={canDelete}
+        />
       </TabsContent>
 
       {!isDemoUser && (

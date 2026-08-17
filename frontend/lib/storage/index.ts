@@ -6,12 +6,15 @@ export { LocalStorageProvider } from "./local";
 
 let storageInstance: StorageProvider | null = null;
 
-export function getStorageProvider(type?: StorageProviderType): StorageProvider {
+export function getStorageProvider(
+  type?: StorageProviderType,
+): StorageProvider {
   if (storageInstance) {
     return storageInstance;
   }
 
-  const providerType = type || (process.env.STORAGE_PROVIDER as StorageProviderType) || "local";
+  const providerType =
+    type || (process.env.STORAGE_PROVIDER as StorageProviderType) || "local";
 
   switch (providerType) {
     case "local":

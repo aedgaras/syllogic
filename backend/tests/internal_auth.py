@@ -1,6 +1,7 @@
 """
 Helpers for generating signed internal auth headers in integration tests.
 """
+
 import hashlib
 import hmac
 import os

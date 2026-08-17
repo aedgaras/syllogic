@@ -1,7 +1,11 @@
 import { t as translate } from "@/i18n/translate";
 import { Suspense } from "react";
 import { Header } from "@/components/layout/header";
-import { CardGridSkeleton, ChartSkeleton, DetailListSkeleton } from "@/components/skeletons/page-skeletons";
+import {
+  CardGridSkeleton,
+  ChartSkeleton,
+  DetailListSkeleton,
+} from "@/components/skeletons/page-skeletons";
 import { InvestmentsSection } from "./_sections";
 import { InvestmentsPersonFilterBar } from "./_client";
 

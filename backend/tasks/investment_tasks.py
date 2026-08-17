@@ -1,5 +1,4 @@
 from __future__ import annotations
-from datetime import date
 import logging
 import os
 from uuid import UUID
@@ -42,6 +41,7 @@ def _resolve_demo_user_id(db) -> str | None:
 
 class _FxAdapter:
     """Adapts ExchangeRateService.convert_amount to the FxConverter protocol."""
+
     def __init__(self, db):
         self.db = db
         self._svc = ExchangeRateService(db=db)
@@ -81,9 +81,8 @@ def daily_investment_sync_all() -> dict:
             .join(BrokerConnection, BrokerConnection.account_id == Account.id)
             .filter(Account.is_active == True, Account.account_type == "investment_brokerage")
         )
-        manual_q = (
-            db.query(Account)
-            .filter(Account.is_active == True, Account.account_type == "investment_manual")
+        manual_q = db.query(Account).filter(
+            Account.is_active == True, Account.account_type == "investment_manual"
         )
         if demo_user_id:
             broker_q = broker_q.filter(Account.user_id != demo_user_id)

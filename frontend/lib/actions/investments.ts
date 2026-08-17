@@ -17,7 +17,10 @@ export async function searchSymbolsAction(q: string) {
   return searchSymbols(q);
 }
 
-export async function fetchHoldingHistoryRange(holdingId: string, range: Range) {
+export async function fetchHoldingHistoryRange(
+  holdingId: string,
+  range: Range,
+) {
   const { getHoldingHistory } = await import("@/lib/api/investments");
   const { from, to } = rangeToDates(range);
   return getHoldingHistory(holdingId, from, to);

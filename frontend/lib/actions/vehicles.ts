@@ -17,7 +17,7 @@ export interface CreateVehicleInput {
 }
 
 export async function createVehicle(
-  input: CreateVehicleInput
+  input: CreateVehicleInput,
 ): Promise<{ success: boolean; error?: string; vehicleId?: string }> {
   const userId = await requireAuth();
 
@@ -38,7 +38,10 @@ export async function createVehicle(
       isActive: true,
     };
 
-    const [result] = await db.insert(vehicles).values(newVehicle).returning({ id: vehicles.id });
+    const [result] = await db
+      .insert(vehicles)
+      .values(newVehicle)
+      .returning({ id: vehicles.id });
 
     revalidatePath("/");
     revalidatePath("/settings");
@@ -51,7 +54,7 @@ export async function createVehicle(
 
 export async function updateVehicle(
   vehicleId: string,
-  input: Partial<CreateVehicleInput>
+  input: Partial<CreateVehicleInput>,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -92,7 +95,7 @@ export async function updateVehicle(
 }
 
 export async function deleteVehicle(
-  vehicleId: string
+  vehicleId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -151,7 +154,7 @@ export async function getVehicle(vehicleId: string) {
     where: and(
       eq(vehicles.id, vehicleId),
       eq(vehicles.userId, userId),
-      eq(vehicles.isActive, true)
+      eq(vehicles.isActive, true),
     ),
   });
 }

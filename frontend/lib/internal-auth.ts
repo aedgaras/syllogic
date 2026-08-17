@@ -34,7 +34,13 @@ function buildSignaturePayload({
         ? Buffer.from(body)
         : body;
   const bodyDigest = createHash("sha256").update(bodyBytes).digest("hex");
-  return [method.toUpperCase(), pathWithQuery, userId, timestamp, bodyDigest].join("\n");
+  return [
+    method.toUpperCase(),
+    pathWithQuery,
+    userId,
+    timestamp,
+    bodyDigest,
+  ].join("\n");
 }
 
 export function createInternalAuthHeaders({
@@ -52,9 +58,7 @@ export function createInternalAuthHeaders({
     timestamp,
     body,
   });
-  const signature = createHmac("sha256", secret)
-    .update(payload)
-    .digest("hex");
+  const signature = createHmac("sha256", secret).update(payload).digest("hex");
 
   return {
     [INTERNAL_AUTH_USER_HEADER]: userId,

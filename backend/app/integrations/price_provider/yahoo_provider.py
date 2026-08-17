@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 from datetime import date, timedelta
 from decimal import Decimal
-from .base import PriceProvider, PriceQuote, SymbolMatch
+from .base import PriceQuote, SymbolMatch
 
 try:
     import yfinance as yf
@@ -27,7 +27,9 @@ class YahooPriceProvider:
             raise RuntimeError("yfinance is not installed")
         start = on - timedelta(days=5)
         end = on + timedelta(days=1)
-        df = yf.Ticker(symbol).history(start=start.isoformat(), end=end.isoformat(), auto_adjust=False)
+        df = yf.Ticker(symbol).history(
+            start=start.isoformat(), end=end.isoformat(), auto_adjust=False
+        )
         if df is None or df.empty:
             return None
         df = df[df.index.date <= on]
@@ -62,9 +64,9 @@ class YahooPriceProvider:
             return out
         # yfinance returns a MultiIndex when multiple tickers are requested,
         # but a flat columns Index when only one is requested.
-        is_multi = hasattr(data.columns, "get_level_values") and getattr(
-            data.columns, "nlevels", 1
-        ) > 1
+        is_multi = (
+            hasattr(data.columns, "get_level_values") and getattr(data.columns, "nlevels", 1) > 1
+        )
         if is_multi:
             if "Close" not in data.columns.get_level_values(0):
                 return out
@@ -74,6 +76,7 @@ class YahooPriceProvider:
                 return out
             # Single-symbol response: build a one-column frame keyed by the symbol.
             import pandas as pd  # local import — already a transitive dep of yfinance
+
             closes = pd.DataFrame({symbols[0]: data["Close"]})
         for sym in symbols:
             if sym not in closes.columns:
@@ -90,9 +93,7 @@ class YahooPriceProvider:
             )
         return out
 
-    def get_daily_closes_range(
-        self, symbol: str, start: date, end: date
-    ) -> list[PriceQuote]:
+    def get_daily_closes_range(self, symbol: str, start: date, end: date) -> list[PriceQuote]:
         """Fetch all daily closes for `symbol` in [start, end] (inclusive on
         both ends). Returns one PriceQuote per trading day; weekends/holidays
         are absent (caller forward-fills)."""
@@ -113,17 +114,20 @@ class YahooPriceProvider:
             d = ts.date()
             if d < start or d > end:
                 continue
-            out.append(PriceQuote(
-                symbol=symbol,
-                currency=currency,
-                date=d,
-                close=Decimal(str(row["Close"])),
-            ))
+            out.append(
+                PriceQuote(
+                    symbol=symbol,
+                    currency=currency,
+                    date=d,
+                    close=Decimal(str(row["Close"])),
+                )
+            )
         return out
 
     def search_symbols(self, query: str) -> list[SymbolMatch]:
         try:
             from yfinance import Search  # type: ignore
+
             results = Search(query, max_results=10).quotes or []
             return [
                 SymbolMatch(
@@ -136,4 +140,6 @@ class YahooPriceProvider:
                 if r.get("symbol")
             ]
         except Exception:
-            return [SymbolMatch(symbol=query.upper(), name=query.upper(), exchange=None, currency=None)]
+            return [
+                SymbolMatch(symbol=query.upper(), name=query.upper(), exchange=None, currency=None)
+            ]

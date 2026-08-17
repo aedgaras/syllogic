@@ -11,7 +11,7 @@ describe("transactionFilterDraft", () => {
         search: " coffee ",
         minAmount: " ",
         maxAmount: "25",
-      })
+      }),
     ).toEqual({ search: "coffee", minAmount: undefined, maxAmount: "25" });
   });
 
@@ -19,8 +19,8 @@ describe("transactionFilterDraft", () => {
     expect(
       transactionFilterDraftReducer(
         { search: "", minAmount: "10", maxAmount: "20" },
-        { type: "edit", field: "minAmount", value: "15" }
-      )
+        { type: "edit", field: "minAmount", value: "15" },
+      ),
     ).toEqual({ search: "", minAmount: "15", maxAmount: "20" });
   });
 });

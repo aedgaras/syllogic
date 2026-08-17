@@ -62,7 +62,10 @@ function toURLSearchParams(params: SearchParamsInput): URLSearchParams {
   return nextParams;
 }
 
-function parsePositiveInt(value: string | undefined | null, fallback: number): number {
+function parsePositiveInt(
+  value: string | undefined | null,
+  fallback: number,
+): number {
   if (!value) {
     return fallback;
   }
@@ -80,7 +83,7 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function parseCategoryParams(
-  searchParams: Pick<URLSearchParams, "getAll">
+  searchParams: Pick<URLSearchParams, "getAll">,
 ): string[] {
   return Array.from(
     new Set(
@@ -88,12 +91,14 @@ function parseCategoryParams(
         .getAll("category")
         .flatMap((value) => value.split(","))
         .map((value) => value.trim())
-        .filter(Boolean)
-    )
+        .filter(Boolean),
+    ),
   );
 }
 
-function parseSortField(value: string | undefined | null): CategorySpendingSortField {
+function parseSortField(
+  value: string | undefined | null,
+): CategorySpendingSortField {
   if (
     value === "bookedAt" ||
     value === "amount" ||
@@ -105,7 +110,9 @@ function parseSortField(value: string | undefined | null): CategorySpendingSortF
   return DEFAULT_SORT;
 }
 
-function parseSortOrder(value: string | undefined | null): CategorySpendingSortOrder {
+function parseSortOrder(
+  value: string | undefined | null,
+): CategorySpendingSortOrder {
   if (value === "asc" || value === "desc") {
     return value;
   }
@@ -113,7 +120,7 @@ function parseSortOrder(value: string | undefined | null): CategorySpendingSortO
 }
 
 export function parseCategorySpendingSearchParams(
-  params: SearchParamsInput
+  params: SearchParamsInput,
 ): ParsedCategorySpendingQueryParams {
   const searchParams = toURLSearchParams(params);
   const accountIds = parseAccountParams(searchParams);
@@ -125,12 +132,14 @@ export function parseCategorySpendingSearchParams(
       : undefined;
 
   const categoryIds = parseCategoryParams(searchParams);
-  const horizon = dateFrom ? undefined : parseHorizonParam(searchParams.get("horizon"));
+  const horizon = dateFrom
+    ? undefined
+    : parseHorizonParam(searchParams.get("horizon"));
   const page = parsePositiveInt(searchParams.get("page"), DEFAULT_PAGE);
   const pageSize = clamp(
     parsePositiveInt(searchParams.get("pageSize"), DEFAULT_PAGE_SIZE),
     MIN_PAGE_SIZE,
-    MAX_PAGE_SIZE
+    MAX_PAGE_SIZE,
   );
   const sort = parseSortField(searchParams.get("sort"));
   const order = parseSortOrder(searchParams.get("order"));
@@ -168,15 +177,15 @@ export function buildCategorySpendingQuery({
       (categoryIds ?? [])
         .concat(categoryId ? [categoryId] : [])
         .map((value) => value.trim())
-        .filter(Boolean)
-    )
+        .filter(Boolean),
+    ),
   );
   normalizedCategoryIds.forEach((id) => params.append("category", id));
 
   if (accountIds?.length) {
-    Array.from(new Set(accountIds.map((value) => value.trim()).filter(Boolean))).forEach(
-      (accountId) => params.append("account", accountId)
-    );
+    Array.from(
+      new Set(accountIds.map((value) => value.trim()).filter(Boolean)),
+    ).forEach((accountId) => params.append("account", accountId));
   }
 
   const normalizedFrom = parseIsoDateParam(dateFrom);
@@ -193,7 +202,7 @@ export function buildCategorySpendingQuery({
         ? String(horizon)
         : typeof horizon === "string"
           ? horizon
-          : undefined
+          : undefined,
     );
 
     if (normalizedHorizon) {
@@ -203,15 +212,20 @@ export function buildCategorySpendingQuery({
     }
   }
 
-  if (typeof page === "number" && Number.isFinite(page) && page > DEFAULT_PAGE) {
+  if (
+    typeof page === "number" &&
+    Number.isFinite(page) &&
+    page > DEFAULT_PAGE
+  ) {
     params.set("page", String(Math.floor(page)));
   }
 
-  if (
-    typeof pageSize === "number" &&
-    Number.isFinite(pageSize)
-  ) {
-    const normalizedPageSize = clamp(Math.floor(pageSize), MIN_PAGE_SIZE, MAX_PAGE_SIZE);
+  if (typeof pageSize === "number" && Number.isFinite(pageSize)) {
+    const normalizedPageSize = clamp(
+      Math.floor(pageSize),
+      MIN_PAGE_SIZE,
+      MAX_PAGE_SIZE,
+    );
     if (normalizedPageSize !== DEFAULT_PAGE_SIZE) {
       params.set("pageSize", String(normalizedPageSize));
     }

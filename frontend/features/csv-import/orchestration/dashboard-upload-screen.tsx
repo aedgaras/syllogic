@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { RiArrowLeftLine, RiArrowRightLine } from "@remixicon/react";
 import {
   Card,
@@ -25,7 +24,16 @@ import { CsvUploadDropzone } from "@/components/transactions/csv-upload-dropzone
 import { useUploadController } from "@/features/csv-import/hooks/use-upload-controller";
 
 export default function CsvImportPage() {
-  const { accounts, selectedAccountId, setSelectedAccountId, selectedFile, isLoading, selectFile, continueToMapping, goBack } = useUploadController("dashboard");
+  const {
+    accounts,
+    selectedAccountId,
+    setSelectedAccountId,
+    selectedFile,
+    isLoading,
+    selectFile,
+    continueToMapping,
+    goBack,
+  } = useUploadController("dashboard");
 
   return (
     <>
@@ -46,15 +54,23 @@ export default function CsvImportPage() {
                   {translate("noAccountsFoundPleaseCreateAnAccountFirst")}
                 </p>
               ) : (
-                <Select value={selectedAccountId} onValueChange={(v) => v && setSelectedAccountId(v)}>
+                <Select
+                  value={selectedAccountId}
+                  onValueChange={(v) => v && setSelectedAccountId(v)}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder={translate("selectAnAccount")}>
-                      {accounts.find((a) => a.id === selectedAccountId)?.name ?? translate("selectAnAccount")}
+                      {accounts.find((a) => a.id === selectedAccountId)?.name ??
+                        translate("selectAnAccount")}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
                     {accounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id} className="pr-10">
+                      <SelectItem
+                        key={account.id}
+                        value={account.id}
+                        className="pr-10"
+                      >
                         {account.name} ({account.currency})
                       </SelectItem>
                     ))}
@@ -72,11 +88,7 @@ export default function CsvImportPage() {
             </div>
           </CardContent>
           <CardFooter className="justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={goBack}
-            >
+            <Button type="button" variant="outline" onClick={goBack}>
               <RiArrowLeftLine className="mr-2 h-4 w-4" />
               {translate("cancel")}
             </Button>

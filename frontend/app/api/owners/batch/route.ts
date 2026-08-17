@@ -15,11 +15,15 @@ const bodySchema = z.object({
 async function filterOwnedIds(
   userId: string,
   entityType: EntityType,
-  ids: string[]
+  ids: string[],
 ): Promise<string[]> {
   if (ids.length === 0) return [];
   const table =
-    entityType === "account" ? accounts : entityType === "property" ? properties : vehicles;
+    entityType === "account"
+      ? accounts
+      : entityType === "property"
+        ? properties
+        : vehicles;
   const rows = await db
     .select({ id: table.id })
     .from(table)
@@ -34,7 +38,8 @@ async function filterOwnedIds(
  */
 export async function POST(req: NextRequest) {
   const userId = await requireAuth();
-  if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!userId)
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   let raw: unknown;
   try {
@@ -61,7 +66,9 @@ export async function POST(req: NextRequest) {
     getOwnersForEntities("vehicle", vehicleIds),
   ]);
 
-  const toObj = (m: Map<string, { personId: string; share: number | null }[]>) => {
+  const toObj = (
+    m: Map<string, { personId: string; share: number | null }[]>,
+  ) => {
     const o: Record<string, { personId: string; share: number | null }[]> = {};
     for (const [k, v] of m) o[k] = v;
     return o;

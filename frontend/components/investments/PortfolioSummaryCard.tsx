@@ -21,9 +21,7 @@ export async function PortfolioSummaryCard() {
         <h3 className="font-medium">{translate("investments")}</h3>
         <span
           className={
-            change >= 0
-              ? "text-green-600 text-sm"
-              : "text-red-600 text-sm"
+            change >= 0 ? "text-green-600 text-sm" : "text-red-600 text-sm"
           }
         >
           {change >= 0 ? "+" : ""}

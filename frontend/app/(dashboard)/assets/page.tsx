@@ -1,7 +1,10 @@
 import { t as translate } from "@/i18n/translate";
 import { Suspense } from "react";
 import { Header } from "@/components/layout/header";
-import { CardGridSkeleton, DetailListSkeleton } from "@/components/skeletons/page-skeletons";
+import {
+  CardGridSkeleton,
+  DetailListSkeleton,
+} from "@/components/skeletons/page-skeletons";
 import { AssetsSection } from "./_sections";
 
 export default function AssetsPage() {

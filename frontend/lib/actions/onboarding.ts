@@ -3,15 +3,28 @@
 import { revalidatePath, updateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { users, categories, type User, type NewCategory } from "@/lib/db/schema";
+import {
+  users,
+  categories,
+  type User,
+  type NewCategory,
+} from "@/lib/db/schema";
 import { getAuthenticatedSession, requireAuth } from "@/lib/auth-helpers";
 import { storage } from "@/lib/storage";
-import { DEFAULT_CATEGORIES, type DefaultCategory } from "@/lib/constants/default-categories";
+import {
+  DEFAULT_CATEGORIES,
+  type DefaultCategory,
+} from "@/lib/constants/default-categories";
 import { CACHE_TAGS } from "@/lib/data/cached";
 import { type CategoryInput } from "./categories";
 import { normalizeProfileImage } from "@/lib/profile-image";
 
-export type OnboardingStatus = "pending" | "step_1" | "step_2" | "step_3" | "completed";
+export type OnboardingStatus =
+  | "pending"
+  | "step_1"
+  | "step_2"
+  | "step_3"
+  | "completed";
 
 export interface OnboardingStatusResult {
   status: OnboardingStatus;
@@ -52,7 +65,7 @@ export async function getOnboardingStatus(): Promise<OnboardingStatusResult | nu
       userId,
       databaseUrl: process.env.DATABASE_URL ? "set" : "not set",
     });
-    
+
     // Return default status on error to prevent app crash
     return {
       status: "pending",
@@ -83,7 +96,7 @@ export async function getCurrentUser(): Promise<User | null> {
  * Sets onboardingStatus to step_1 upon success
  */
 export async function updatePersonalDetails(
-  formData: FormData
+  formData: FormData,
 ): Promise<{ success: boolean; error?: string }> {
   const session = await getAuthenticatedSession();
 
@@ -95,7 +108,8 @@ export async function updatePersonalDetails(
     const name = formData.get("name") as string;
     const currency = formData.get("currency") as string;
     const profilePhotoEntry = formData.get("profilePhoto");
-    const profilePhoto = profilePhotoEntry instanceof File ? profilePhotoEntry : null;
+    const profilePhoto =
+      profilePhotoEntry instanceof File ? profilePhotoEntry : null;
 
     if (!name?.trim()) {
       return { success: false, error: "Name is required" };
@@ -146,7 +160,7 @@ export type { CategoryInput } from "./categories";
  * Sets onboardingStatus to step_2 upon success
  */
 export async function saveOnboardingCategories(
-  categoryInputs: CategoryInput[]
+  categoryInputs: CategoryInput[],
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -198,7 +212,10 @@ export async function saveOnboardingCategories(
  * Complete onboarding (step 3)
  * Sets onboardingStatus to completed with timestamp
  */
-export async function completeOnboarding(): Promise<{ success: boolean; error?: string }> {
+export async function completeOnboarding(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
   const userId = await requireAuth();
 
   if (!userId) {
@@ -234,7 +251,9 @@ export async function getDefaultCategories(): Promise<DefaultCategory[]> {
 /**
  * Get the redirect path based on onboarding status
  */
-export async function getOnboardingRedirectPath(status: OnboardingStatus): Promise<string> {
+export async function getOnboardingRedirectPath(
+  status: OnboardingStatus,
+): Promise<string> {
   switch (status) {
     case "pending":
       return "/step-1";

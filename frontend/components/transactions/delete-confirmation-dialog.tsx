@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
@@ -62,7 +61,8 @@ export function DeleteConfirmationDialog({
     }
 
     setLoadingImpact(true);
-    controller.loadImpact(transactionIds)
+    controller
+      .loadImpact(transactionIds)
       .then((result) => {
         if (result) setImpact(result);
         else onOpenChangeRef.current(false);
@@ -83,7 +83,8 @@ export function DeleteConfirmationDialog({
     }
   }
 
-  const hasAnchoredAccount = impact?.accountImpacts.some((a) => a.balanceIsAnchored) ?? false;
+  const hasAnchoredAccount =
+    impact?.accountImpacts.some((a) => a.balanceIsAnchored) ?? false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -91,7 +92,12 @@ export function DeleteConfirmationDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <RiDeleteBinLine className="size-4 shrink-0" />
-            {translate("delete")} {transactionIds.length === 1 ? translate("transaction") : translate("transactions22e992", { value1: transactionIds.length })}
+            {translate("delete")}{" "}
+            {transactionIds.length === 1
+              ? translate("transaction")
+              : translate("transactions22e992", {
+                  value1: transactionIds.length,
+                })}
           </DialogTitle>
           <DialogDescription>
             {translate("thisActionIsPermanentAndCannotBeUndone")}
@@ -109,18 +115,23 @@ export function DeleteConfirmationDialog({
           ) : impact ? (
             <>
               <p className="text-xs text-muted-foreground">
-                {translate("balanceImpactAcross")} {impact.accountImpacts.length} {translate("account")}
+                {translate("balanceImpactAcross")}{" "}
+                {impact.accountImpacts.length} {translate("account")}
                 {impact.accountImpacts.length !== 1 ? "s" : ""}:
               </p>
               <div className="divide-y divide-border rounded-none border">
                 {impact.accountImpacts.map((acc) => (
                   <div key={acc.accountId} className="px-3 py-2.5 space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium">{acc.accountName}</span>
+                      <span className="text-xs font-medium">
+                        {acc.accountName}
+                      </span>
                       <span
                         className={cn(
                           "text-xs font-mono",
-                          acc.amountChange > 0 ? "text-emerald-600" : "text-destructive"
+                          acc.amountChange > 0
+                            ? "text-emerald-600"
+                            : "text-destructive",
                         )}
                       >
                         {acc.amountChange > 0 ? "+" : ""}
@@ -131,7 +142,9 @@ export function DeleteConfirmationDialog({
                       <div className="flex items-start gap-1.5 text-xs text-amber-600">
                         <RiAlertLine className="size-3.5 shrink-0 mt-0.5" />
                         <span>
-                          {translate("anchoredBalanceDeletionWillCreateAReconciliationGapVerify")}
+                          {translate(
+                            "anchoredBalanceDeletionWillCreateAReconciliationGapVerify",
+                          )}
                         </span>
                       </div>
                     ) : (
@@ -150,7 +163,9 @@ export function DeleteConfirmationDialog({
                 <div className="flex items-start gap-2 rounded-none border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
                   <RiErrorWarningLine className="size-4 shrink-0 mt-0.5" />
                   <span>
-                    {translate("oneOrMoreAffectedAccountsHaveAnAnchoredBalance")}
+                    {translate(
+                      "oneOrMoreAffectedAccountsHaveAnAnchoredBalance",
+                    )}
                   </span>
                 </div>
               )}
@@ -164,7 +179,9 @@ export function DeleteConfirmationDialog({
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
             {translate("type")}{" "}
-            <span className="font-mono text-foreground">{translate("deleteTransactions")}</span>{" "}
+            <span className="font-mono text-foreground">
+              {translate("deleteTransactions")}
+            </span>{" "}
             {translate("toConfirm12ef9b")}
           </p>
           <Input
@@ -202,7 +219,9 @@ export function DeleteConfirmationDialog({
                 {translate("delete")}{" "}
                 {transactionIds.length === 1
                   ? translate("transaction")
-                  : translate("transactions22e992", { value1: transactionIds.length })}
+                  : translate("transactions22e992", {
+                      value1: transactionIds.length,
+                    })}
               </>
             )}
           </Button>

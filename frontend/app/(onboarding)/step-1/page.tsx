@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -20,7 +19,10 @@ import {
 import { OnboardingProgress } from "@/components/onboarding/onboarding-progress";
 import { ProfilePhotoUpload } from "@/components/onboarding/profile-photo-upload";
 import { CurrencySelector } from "@/components/onboarding/currency-selector";
-import { updatePersonalDetails, getCurrentUser } from "@/lib/actions/onboarding";
+import {
+  updatePersonalDetails,
+  getCurrentUser,
+} from "@/lib/actions/onboarding";
 import { useEffect } from "react";
 
 export default function OnboardingStep1Page() {

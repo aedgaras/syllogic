@@ -60,7 +60,7 @@ function addDays(date: Date, days: number): Date {
 
 function toIsoDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-    date.getDate()
+    date.getDate(),
   ).padStart(2, "0")}`;
 }
 
@@ -70,14 +70,18 @@ function parseIsoDate(isoDate: string): Date {
 }
 
 function toUtcDayValue(date: Date): number {
-  return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / MS_PER_DAY);
+  return Math.floor(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / MS_PER_DAY,
+  );
 }
 
 function getInclusiveDayCount(startDate: Date, endDate: Date): number {
   return toUtcDayValue(endDate) - toUtcDayValue(startDate) + 1;
 }
 
-function buildDailyMap(dailyData: DailyIncomeExpensePoint[]): Map<string, { income: number; expenses: number }> {
+function buildDailyMap(
+  dailyData: DailyIncomeExpensePoint[],
+): Map<string, { income: number; expenses: number }> {
   return new Map(
     dailyData.map((point) => [
       point.date,
@@ -85,13 +89,13 @@ function buildDailyMap(dailyData: DailyIncomeExpensePoint[]): Map<string, { inco
         income: point.income,
         expenses: point.expenses,
       },
-    ])
+    ]),
   );
 }
 
 export function resolveIncomeExpenseGrouping(
   startDate: Date,
-  endDate: Date
+  endDate: Date,
 ): IncomeExpenseGrouping {
   const rangeStart = startOfDay(startDate);
   const rangeEnd = startOfDay(endDate);
@@ -111,7 +115,7 @@ export function resolveIncomeExpenseGrouping(
 function buildDailyBuckets(
   rangeStart: Date,
   totalDays: number,
-  dailyMap: Map<string, { income: number; expenses: number }>
+  dailyMap: Map<string, { income: number; expenses: number }>,
 ): IncomeExpenseChartPoint[] {
   const buckets: IncomeExpenseChartPoint[] = [];
 
@@ -136,7 +140,7 @@ function buildWeeklyBuckets(
   rangeStart: Date,
   rangeEnd: Date,
   totalDays: number,
-  dailyMap: Map<string, { income: number; expenses: number }>
+  dailyMap: Map<string, { income: number; expenses: number }>,
 ): IncomeExpenseChartPoint[] {
   const buckets: IncomeExpenseChartPoint[] = [];
 
@@ -164,7 +168,7 @@ function buildWeeklyBuckets(
       income,
       expenses,
       tooltipLabel: `${mediumDateFormatter.format(bucketStart)} - ${mediumDateFormatter.format(
-        clampedBucketEnd
+        clampedBucketEnd,
       )}`,
     });
   }
@@ -175,7 +179,7 @@ function buildWeeklyBuckets(
 function buildMonthlyBuckets(
   rangeStart: Date,
   rangeEnd: Date,
-  dailyData: DailyIncomeExpensePoint[]
+  dailyData: DailyIncomeExpensePoint[],
 ): IncomeExpenseChartPoint[] {
   const monthTotals = new Map<string, { income: number; expenses: number }>();
 
@@ -207,7 +211,11 @@ function buildMonthlyBuckets(
       tooltipLabel: longMonthYearFormatter.format(currentMonth),
     });
 
-    currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    currentMonth = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() + 1,
+      1,
+    );
   }
 
   return buckets;
@@ -226,7 +234,8 @@ export function buildIncomeExpenseBuckets({
     return [];
   }
 
-  const resolvedGrouping = grouping ?? resolveIncomeExpenseGrouping(rangeStart, rangeEnd);
+  const resolvedGrouping =
+    grouping ?? resolveIncomeExpenseGrouping(rangeStart, rangeEnd);
   const totalDays = getInclusiveDayCount(rangeStart, rangeEnd);
   const dailyMap = buildDailyMap(dailyData);
 

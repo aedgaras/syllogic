@@ -11,6 +11,7 @@ Usage:
     Using FastMCP CLI:
         fastmcp run mcp_server.py
 """
+
 from app.mcp.server import mcp
 from starlette.responses import JSONResponse
 

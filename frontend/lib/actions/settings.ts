@@ -31,7 +31,9 @@ async function requireAdminUserId(): Promise<string | null> {
   return user?.role === "admin" ? userId : null;
 }
 
-export async function getOidcSettings(): Promise<OidcAdminSettings & { error?: string }> {
+export async function getOidcSettings(): Promise<
+  OidcAdminSettings & { error?: string }
+> {
   const adminUserId = await requireAdminUserId();
   if (!adminUserId) {
     return {
@@ -59,7 +61,10 @@ export async function getOidcSettings(): Promise<OidcAdminSettings & { error?: s
       allowSignUp: true,
       encryptionConfigured: false,
       updatedAt: null,
-      error: error instanceof Error ? error.message : "Failed to load OIDC settings.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to load OIDC settings.",
     };
   }
 }
@@ -71,9 +76,14 @@ export async function updateOidcSettings(input: {
   clientId: string;
   clientSecret?: string;
   allowSignUp: boolean;
-}): Promise<{ success: boolean; settings?: OidcAdminSettings; error?: string }> {
+}): Promise<{
+  success: boolean;
+  settings?: OidcAdminSettings;
+  error?: string;
+}> {
   const adminUserId = await requireAdminUserId();
-  if (!adminUserId) return { success: false, error: "Administrator access is required." };
+  if (!adminUserId)
+    return { success: false, error: "Administrator access is required." };
 
   try {
     const settings = await saveOidcSettings(input, adminUserId);
@@ -83,12 +93,17 @@ export async function updateOidcSettings(input: {
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to save OIDC settings.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to save OIDC settings.",
     };
   }
 }
 
-export async function getSignupSettings(): Promise<RegistrationStatus & { error?: string }> {
+export async function getSignupSettings(): Promise<
+  RegistrationStatus & { error?: string }
+> {
   const adminUserId = await requireAdminUserId();
   if (!adminUserId) {
     return {
@@ -112,16 +127,22 @@ export async function getSignupSettings(): Promise<RegistrationStatus & { error?
       environmentDisabled: false,
       databaseEnabled: false,
       databaseConfigured: false,
-      error: error instanceof Error ? error.message : "Failed to load signup settings.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to load signup settings.",
     };
   }
 }
 
-export async function updateSignupSettings(
-  enabled: boolean
-): Promise<{ success: boolean; settings?: RegistrationStatus; error?: string }> {
+export async function updateSignupSettings(enabled: boolean): Promise<{
+  success: boolean;
+  settings?: RegistrationStatus;
+  error?: string;
+}> {
   const adminUserId = await requireAdminUserId();
-  if (!adminUserId) return { success: false, error: "Administrator access is required." };
+  if (!adminUserId)
+    return { success: false, error: "Administrator access is required." };
 
   try {
     const settings = await saveRegistrationSettings(enabled, adminUserId);
@@ -132,7 +153,10 @@ export async function updateSignupSettings(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to save signup settings.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to save signup settings.",
     };
   }
 }
@@ -170,11 +194,7 @@ function mapOpenAiSettings(settings: BackendOpenAiSettings): OpenAiSettings {
 }
 
 function extractBackendError(payload: unknown, fallback: string): string {
-  if (
-    payload &&
-    typeof payload === "object" &&
-    "detail" in payload
-  ) {
+  if (payload && typeof payload === "object" && "detail" in payload) {
     const detail = (payload as { detail?: unknown }).detail;
     if (typeof detail === "string") return detail;
     if (Array.isArray(detail) && detail[0] && typeof detail[0] === "object") {
@@ -188,8 +208,11 @@ function extractBackendError(payload: unknown, fallback: string): string {
 async function requestOpenAiSettings(
   method: "GET" | "PUT" | "DELETE",
   userId: string,
-  body?: { api_key: string }
-): Promise<{ success: true; settings: OpenAiSettings } | { success: false; error: string }> {
+  body?: { api_key: string },
+): Promise<
+  | { success: true; settings: OpenAiSettings }
+  | { success: false; error: string }
+> {
   const backendUrl = getBackendBaseUrl();
   const pathWithQuery = "/api/app-settings/llm";
   const requestBody = body ? JSON.stringify(body) : undefined;
@@ -237,10 +260,14 @@ export async function hasOpenAiApiKey(): Promise<boolean> {
   if (!userId) return false;
 
   const result = await requestOpenAiSettings("GET", userId);
-  return result.success ? result.settings.configured : getLlmConfig().configured;
+  return result.success
+    ? result.settings.configured
+    : getLlmConfig().configured;
 }
 
-export async function getOpenAiSettings(): Promise<OpenAiSettings & { error?: string }> {
+export async function getOpenAiSettings(): Promise<
+  OpenAiSettings & { error?: string }
+> {
   const userId = await requireAuth();
   if (!userId) {
     return {
@@ -249,8 +276,14 @@ export async function getOpenAiSettings(): Promise<OpenAiSettings & { error?: st
       databaseConfigured: false,
       environmentConfigured: false,
       baseUrl: null,
-      model: process.env.LLM_MODEL || process.env.CATEGORIZATION_LLM_MODEL || "gpt-4o-mini",
-      provider: process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL ? "custom" : "openai",
+      model:
+        process.env.LLM_MODEL ||
+        process.env.CATEGORIZATION_LLM_MODEL ||
+        "gpt-4o-mini",
+      provider:
+        process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL
+          ? "custom"
+          : "openai",
       error: "Not authenticated",
     };
   }
@@ -259,19 +292,41 @@ export async function getOpenAiSettings(): Promise<OpenAiSettings & { error?: st
   if (result.success) return result.settings;
 
   return {
-    configured: !!(process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL),
-    source: process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL ? "environment" : "none",
+    configured: !!(
+      process.env.LLM_API_KEY ||
+      process.env.OPENAI_API_KEY ||
+      process.env.LLM_BASE_URL ||
+      process.env.OPENAI_BASE_URL
+    ),
+    source:
+      process.env.LLM_API_KEY ||
+      process.env.OPENAI_API_KEY ||
+      process.env.LLM_BASE_URL ||
+      process.env.OPENAI_BASE_URL
+        ? "environment"
+        : "none",
     databaseConfigured: false,
-    environmentConfigured: !!(process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL),
+    environmentConfigured: !!(
+      process.env.LLM_API_KEY ||
+      process.env.OPENAI_API_KEY ||
+      process.env.LLM_BASE_URL ||
+      process.env.OPENAI_BASE_URL
+    ),
     baseUrl: process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL || null,
-    model: process.env.LLM_MODEL || process.env.CATEGORIZATION_LLM_MODEL || "gpt-4o-mini",
-    provider: process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL ? "custom" : "openai",
+    model:
+      process.env.LLM_MODEL ||
+      process.env.CATEGORIZATION_LLM_MODEL ||
+      "gpt-4o-mini",
+    provider:
+      process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL
+        ? "custom"
+        : "openai",
     error: result.error,
   };
 }
 
 export async function updateOpenAiApiKey(
-  apiKey: string
+  apiKey: string,
 ): Promise<{ success: boolean; settings?: OpenAiSettings; error?: string }> {
   const userId = await requireAuth();
   if (!userId) return { success: false, error: "Not authenticated" };
@@ -279,7 +334,9 @@ export async function updateOpenAiApiKey(
   const normalized = apiKey.trim();
   if (!normalized) return { success: false, error: "LLM API key is required" };
 
-  const result = await requestOpenAiSettings("PUT", userId, { api_key: normalized });
+  const result = await requestOpenAiSettings("PUT", userId, {
+    api_key: normalized,
+  });
   if (!result.success) return result;
 
   revalidatePath("/settings");
@@ -322,7 +379,7 @@ export async function getCurrentUserProfile(): Promise<User | null> {
  * Update the current user's profile data.
  */
 export async function updateUserProfile(
-  formData: FormData
+  formData: FormData,
 ): Promise<{ success: boolean; error?: string }> {
   const session = await getAuthenticatedSession();
 
@@ -333,7 +390,8 @@ export async function updateUserProfile(
   try {
     const name = formData.get("name") as string;
     const profilePhotoEntry = formData.get("profilePhoto");
-    const profilePhoto = profilePhotoEntry instanceof File ? profilePhotoEntry : null;
+    const profilePhoto =
+      profilePhotoEntry instanceof File ? profilePhotoEntry : null;
 
     if (!name?.trim()) {
       return { success: false, error: "Name is required" };
@@ -423,6 +481,9 @@ export async function deleteAllTransactionsAndResetBalances(): Promise<{
     };
   } catch (error) {
     console.error("Failed to delete transactions and reset balances:", error);
-    return { success: false, error: "Failed to delete transactions and reset balances" };
+    return {
+      success: false,
+      error: "Failed to delete transactions and reset balances",
+    };
   }
 }

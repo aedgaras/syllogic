@@ -29,7 +29,7 @@ function stringSimilarity(str1: string, str2: string): number {
       matrix[i][j] = Math.min(
         matrix[i - 1][j] + 1, // deletion
         matrix[i][j - 1] + 1, // insertion
-        matrix[i - 1][j - 1] + cost // substitution
+        matrix[i - 1][j - 1] + cost, // substitution
       );
     }
   }
@@ -71,7 +71,7 @@ export interface DuplicateMatch {
 export function detectDuplicates(
   previewTransactions: PreviewTransaction[],
   existingTransactions: Transaction[],
-  similarityThreshold: number = 0.85
+  similarityThreshold: number = 0.85,
 ): Map<number, DuplicateMatch> {
   const duplicates = new Map<number, DuplicateMatch>();
 
@@ -96,7 +96,10 @@ export function detectDuplicates(
       }
 
       // Check description similarity
-      const descSimilarity = stringSimilarity(previewDescription, existingDescription);
+      const descSimilarity = stringSimilarity(
+        previewDescription,
+        existingDescription,
+      );
       if (descSimilarity < similarityThreshold) {
         continue;
       }
@@ -105,7 +108,9 @@ export function detectDuplicates(
       const reasons: string[] = [];
       reasons.push(`Same date: ${previewDate.toLocaleDateString()}`);
       reasons.push(`Same amount: ${previewAmount.toFixed(2)}`);
-      reasons.push(`Description similarity: ${(descSimilarity * 100).toFixed(0)}%`);
+      reasons.push(
+        `Description similarity: ${(descSimilarity * 100).toFixed(0)}%`,
+      );
 
       const confidence = descSimilarity;
 
@@ -130,7 +135,7 @@ export function detectDuplicates(
  */
 export function markDuplicates(
   previewTransactions: PreviewTransaction[],
-  duplicateMatches: Map<number, DuplicateMatch>
+  duplicateMatches: Map<number, DuplicateMatch>,
 ): PreviewTransaction[] {
   return previewTransactions.map((tx) => {
     const match = duplicateMatches.get(tx.rowIndex);
@@ -149,10 +154,7 @@ export function markDuplicates(
  * Simple hash function for quick pre-filtering
  * Creates a hash based on amount and date
  */
-export function createTransactionHash(
-  amount: number,
-  date: Date
-): string {
+export function createTransactionHash(amount: number, date: Date): string {
   const roundedAmount = Math.round(amount * 100);
   // Use UTC to avoid timezone issues
   const dateStr = `${date.getUTCFullYear()}-${date.getUTCMonth()}-${date.getUTCDate()}`;

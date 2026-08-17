@@ -2,20 +2,26 @@ from __future__ import annotations
 import os
 import time
 from datetime import date, datetime
-from decimal import Decimal
 from typing import Callable
 from uuid import UUID
 import logging
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Account, BrokerConnection, Holding, BrokerTrade, PriceSnapshot,
+    Account,
+    BrokerConnection,
+    Holding,
+    BrokerTrade,
 )
 from app.services.credentials_crypto import decrypt
 from app.services.holding_valuation_service import HoldingValuationService, FxConverter
 from app.services.price_service import PriceService
 from app.integrations.ibkr_flex_adapter import (
-    IBKRFlexAdapter, FlexAuthError, FlexStatementNotReady, FlexTransientError, FlexError,
+    IBKRFlexAdapter,
+    FlexAuthError,
+    FlexStatementNotReady,
+    FlexTransientError,
+    FlexError,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,15 +38,21 @@ def _default_factory(creds: dict) -> IBKRFlexAdapter:
 
 
 class InvestmentSyncService:
-    def __init__(self, db: Session, fx: FxConverter,
-                 adapter_factory: AdapterFactory | None = None,
-                 price_service: PriceService | None = None,
-                 valuation_service: HoldingValuationService | None = None):
+    def __init__(
+        self,
+        db: Session,
+        fx: FxConverter,
+        adapter_factory: AdapterFactory | None = None,
+        price_service: PriceService | None = None,
+        valuation_service: HoldingValuationService | None = None,
+    ):
         self.db = db
         self.fx = fx
         self.adapter_factory = adapter_factory or _default_factory
         self.price_service = price_service or PriceService(db=db)
-        self.valuation_service = valuation_service or HoldingValuationService(db=db, fx=fx, price_service=self.price_service)
+        self.valuation_service = valuation_service or HoldingValuationService(
+            db=db, fx=fx, price_service=self.price_service
+        )
 
     def sync_account(self, account_id: UUID, on: date | None = None) -> None:
         on = on or date.today()
@@ -149,14 +161,24 @@ class InvestmentSyncService:
         seen = set()
         for p in positions:
             seen.add((p.symbol, p.instrument_type))
-            row = self.db.query(Holding).filter_by(
-                account_id=account.id, symbol=p.symbol, instrument_type=p.instrument_type
-            ).one_or_none()
+            row = (
+                self.db.query(Holding)
+                .filter_by(
+                    account_id=account.id, symbol=p.symbol, instrument_type=p.instrument_type
+                )
+                .one_or_none()
+            )
             if row is None:
                 row = Holding(
-                    user_id=account.user_id, account_id=account.id, symbol=p.symbol,
-                    name=p.name, currency=p.currency, instrument_type=p.instrument_type,
-                    quantity=p.quantity, avg_cost=p.avg_cost, source="ibkr_flex",
+                    user_id=account.user_id,
+                    account_id=account.id,
+                    symbol=p.symbol,
+                    name=p.name,
+                    currency=p.currency,
+                    instrument_type=p.instrument_type,
+                    quantity=p.quantity,
+                    avg_cost=p.avg_cost,
+                    source="ibkr_flex",
                 )
                 self.db.add(row)
             else:
@@ -164,7 +186,9 @@ class InvestmentSyncService:
                 row.avg_cost = p.avg_cost
                 row.name = p.name
                 row.currency = p.currency
-        for h in list(self.db.query(Holding).filter_by(account_id=account.id, source="ibkr_flex").all()):
+        for h in list(
+            self.db.query(Holding).filter_by(account_id=account.id, source="ibkr_flex").all()
+        ):
             if (h.symbol, h.instrument_type) not in seen and h.instrument_type != "cash":
                 self.db.delete(h)
 
@@ -172,32 +196,50 @@ class InvestmentSyncService:
         seen = set()
         for c in cash:
             seen.add(c.currency)
-            row = self.db.query(Holding).filter_by(
-                account_id=account.id, symbol=c.currency, instrument_type="cash"
-            ).one_or_none()
+            row = (
+                self.db.query(Holding)
+                .filter_by(account_id=account.id, symbol=c.currency, instrument_type="cash")
+                .one_or_none()
+            )
             if row is None:
                 row = Holding(
-                    user_id=account.user_id, account_id=account.id, symbol=c.currency,
-                    name=f"Cash ({c.currency})", currency=c.currency,
-                    instrument_type="cash", quantity=c.balance, source="ibkr_flex",
+                    user_id=account.user_id,
+                    account_id=account.id,
+                    symbol=c.currency,
+                    name=f"Cash ({c.currency})",
+                    currency=c.currency,
+                    instrument_type="cash",
+                    quantity=c.balance,
+                    source="ibkr_flex",
                 )
                 self.db.add(row)
             else:
                 row.quantity = c.balance
-        for h in self.db.query(Holding).filter_by(account_id=account.id, source="ibkr_flex", instrument_type="cash").all():
+        for h in (
+            self.db.query(Holding)
+            .filter_by(account_id=account.id, source="ibkr_flex", instrument_type="cash")
+            .all()
+        ):
             if h.symbol not in seen:
                 self.db.delete(h)
 
     def _upsert_trades(self, account: Account, trades) -> None:
         existing = {
-            t.external_id for t in
-            self.db.query(BrokerTrade.external_id).filter_by(account_id=account.id).all()
+            t.external_id
+            for t in self.db.query(BrokerTrade.external_id).filter_by(account_id=account.id).all()
         }
         for t in trades:
             if t.external_id in existing:
                 continue
-            self.db.add(BrokerTrade(
-                account_id=account.id, symbol=t.symbol, trade_date=t.trade_date,
-                side=t.side, quantity=t.quantity, price=t.price,
-                currency=t.currency, external_id=t.external_id,
-            ))
+            self.db.add(
+                BrokerTrade(
+                    account_id=account.id,
+                    symbol=t.symbol,
+                    trade_date=t.trade_date,
+                    side=t.side,
+                    quantity=t.quantity,
+                    price=t.price,
+                    currency=t.currency,
+                    external_id=t.external_id,
+                )
+            )

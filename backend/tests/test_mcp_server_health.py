@@ -1,6 +1,7 @@
 """
 Smoke tests for MCP HTTP health and auth behavior.
 """
+
 import os
 import sys
 

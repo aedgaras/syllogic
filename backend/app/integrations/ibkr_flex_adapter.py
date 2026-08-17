@@ -5,13 +5,13 @@ Two-step flow:
   2. GetStatement with token + reference code → returns XML statement
      (or status=Warn/ErrorCode=1019 if still generating).
 """
+
 from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Iterable
 import xml.etree.ElementTree as ET
 
 import httpx
@@ -108,7 +108,9 @@ class IBKRFlexAdapter:
         last_exc: FlexTransientError | None = None
         for attempt in range(self._transient_retries + 1):
             try:
-                resp = self._client.get(SEND_URL, params={"v": "3", "t": self.token, "q": query_id}, timeout=30.0)
+                resp = self._client.get(
+                    SEND_URL, params={"v": "3", "t": self.token, "q": query_id}, timeout=30.0
+                )
                 root = ET.fromstring(resp.text)
                 status = (root.findtext("Status") or "").strip()
                 if status != "Success":
@@ -118,17 +120,23 @@ class IBKRFlexAdapter:
                 last_exc = e
                 if attempt >= self._transient_retries:
                     break
-                delay = self._transient_backoff * (3 ** attempt)
+                delay = self._transient_backoff * (3**attempt)
                 logger.warning(
                     "IBKR Flex transient error on SendRequest (q=%s), retry %d/%d in %.1fs: %s",
-                    query_id, attempt + 1, self._transient_retries, delay, e,
+                    query_id,
+                    attempt + 1,
+                    self._transient_retries,
+                    delay,
+                    e,
                 )
                 self._sleep(delay)
         assert last_exc is not None
         raise last_exc
 
     def fetch_statement(self, reference_code: str) -> str:
-        resp = self._client.get(GET_URL, params={"v": "3", "t": self.token, "q": reference_code}, timeout=60.0)
+        resp = self._client.get(
+            GET_URL, params={"v": "3", "t": self.token, "q": reference_code}, timeout=60.0
+        )
         if "<FlexQueryResponse" in resp.text:
             return resp.text
         root = ET.fromstring(resp.text)
@@ -188,15 +196,17 @@ class IBKRFlexAdapter:
         positions: list[ParsedPosition] = []
         for (symbol, instrument_type), acc in aggregates.items():
             avg = (acc["cost_total"] / acc["cost_qty"]) if acc["cost_qty"] != 0 else None
-            positions.append(ParsedPosition(
-                symbol=symbol,
-                name=acc["name"],
-                quantity=acc["quantity"],
-                currency=acc["currency"],
-                instrument_type=instrument_type,
-                avg_cost=avg,
-                mark_price=acc["mark_price"],
-            ))
+            positions.append(
+                ParsedPosition(
+                    symbol=symbol,
+                    name=acc["name"],
+                    quantity=acc["quantity"],
+                    currency=acc["currency"],
+                    instrument_type=instrument_type,
+                    avg_cost=avg,
+                    mark_price=acc["mark_price"],
+                )
+            )
         cash: list[ParsedCash] = []
         for c in root.iter("CashReportCurrency"):
             cur = (c.get("currency") or "").upper()
@@ -212,15 +222,17 @@ class IBKRFlexAdapter:
             asset = (t.get("assetCategory") or "").upper()
             if asset not in _ASSET_CATEGORY_MAP:
                 continue
-            trades.append(ParsedTrade(
-                external_id=t.get("tradeID", "").strip(),
-                symbol=t.get("symbol", "").strip(),
-                side="buy" if t.get("buySell", "BUY").upper() == "BUY" else "sell",
-                quantity=Decimal(t.get("quantity", "0")),
-                price=Decimal(t.get("tradePrice", "0")),
-                currency=t.get("currency", "USD").strip().upper(),
-                trade_date=datetime.strptime(t.get("tradeDate", ""), "%Y%m%d").date(),
-            ))
+            trades.append(
+                ParsedTrade(
+                    external_id=t.get("tradeID", "").strip(),
+                    symbol=t.get("symbol", "").strip(),
+                    side="buy" if t.get("buySell", "BUY").upper() == "BUY" else "sell",
+                    quantity=Decimal(t.get("quantity", "0")),
+                    price=Decimal(t.get("tradePrice", "0")),
+                    currency=t.get("currency", "USD").strip().upper(),
+                    trade_date=datetime.strptime(t.get("tradeDate", ""), "%Y%m%d").date(),
+                )
+            )
         return trades
 
 

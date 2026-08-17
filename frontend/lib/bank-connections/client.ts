@@ -20,18 +20,23 @@ export type BankConnectionStatus = {
   last_sync_error?: string | null;
 };
 
-export async function fetchAspsps(country: string, signal?: AbortSignal): Promise<Aspsp[]> {
-  const response = await fetch(`/api/enable-banking/aspsps?country=${country}`, { signal });
+export async function fetchAspsps(
+  country: string,
+  signal?: AbortSignal,
+): Promise<Aspsp[]> {
+  const response = await fetch(
+    `/api/enable-banking/aspsps?country=${country}`,
+    { signal },
+  );
   if (!response.ok) throw new Error("Failed to load banks");
   const data = await response.json();
   return (Array.isArray(data) ? data : data.aspsps || []) as Aspsp[];
 }
 
 export async function fetchBankConnectionStatus(
-  connectionId: string
+  connectionId: string,
 ): Promise<BankConnectionStatus> {
   const response = await fetch(`/api/enable-banking/status/${connectionId}`);
   if (!response.ok) throw new Error(`Status ${response.status}`);
   return response.json();
 }
-

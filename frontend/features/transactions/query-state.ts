@@ -1,6 +1,13 @@
-import { parseHorizonParam, parseIsoDateParam } from "@/lib/dashboard/query-params";
+import {
+  parseHorizonParam,
+  parseIsoDateParam,
+} from "@/lib/dashboard/query-params";
 import { parseAccountParams } from "@/lib/filters/global-filters";
-import type { TransactionSortField, TransactionSortOrder, TransactionsQueryState } from "./domain/contracts";
+import type {
+  TransactionSortField,
+  TransactionSortOrder,
+  TransactionsQueryState,
+} from "./domain/contracts";
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 20;
@@ -11,7 +18,8 @@ const DEFAULT_ORDER = "desc";
 const DEFAULT_HORIZON = 30;
 
 type SearchParamsInput = Record<string, string | string[] | undefined>;
-const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
 
 function parsePositiveInt(value: string | undefined | null, fallback: number) {
   if (!value) return fallback;
@@ -19,28 +27,52 @@ function parsePositiveInt(value: string | undefined | null, fallback: number) {
   return Number.isFinite(parsed) && parsed >= 1 ? parsed : fallback;
 }
 
-function parseMultiValueParam(searchParams: Pick<URLSearchParams, "getAll">, key: string) {
-  return Array.from(new Set(searchParams.getAll(key).flatMap((value) => value.split(",")).map((value) => value.trim()).filter(Boolean)));
+function parseMultiValueParam(
+  searchParams: Pick<URLSearchParams, "getAll">,
+  key: string,
+) {
+  return Array.from(
+    new Set(
+      searchParams
+        .getAll(key)
+        .flatMap((value) => value.split(","))
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  );
 }
 
 function toURLSearchParams(params: SearchParamsInput) {
   const nextParams = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
-    if (Array.isArray(value)) value.forEach((entry) => nextParams.append(key, entry));
+    if (Array.isArray(value))
+      value.forEach((entry) => nextParams.append(key, entry));
     else if (typeof value === "string") nextParams.append(key, value);
   }
   return nextParams;
 }
 
-function parseSortField(value: string | undefined | null): TransactionSortField {
-  return value === "bookedAt" || value === "amount" || value === "description" || value === "merchant" ? value : DEFAULT_SORT;
+function parseSortField(
+  value: string | undefined | null,
+): TransactionSortField {
+  return value === "bookedAt" ||
+    value === "amount" ||
+    value === "description" ||
+    value === "merchant"
+    ? value
+    : DEFAULT_SORT;
 }
 
-function parseSortOrder(value: string | undefined | null): TransactionSortOrder {
+function parseSortOrder(
+  value: string | undefined | null,
+): TransactionSortOrder {
   return value === "asc" || value === "desc" ? value : DEFAULT_ORDER;
 }
 
-function normalizeDateRange(fromRaw?: string, toRaw?: string): { from?: string; to?: string } {
+function normalizeDateRange(
+  fromRaw?: string,
+  toRaw?: string,
+): { from?: string; to?: string } {
   const from = parseIsoDateParam(fromRaw);
   const to = parseIsoDateParam(toRaw);
   if (!from) return {};
@@ -48,10 +80,17 @@ function normalizeDateRange(fromRaw?: string, toRaw?: string): { from?: string; 
 }
 
 function parseInternal(searchParams: URLSearchParams): TransactionsQueryState {
-  const { from, to } = normalizeDateRange(searchParams.get("from") || undefined, searchParams.get("to") || undefined);
+  const { from, to } = normalizeDateRange(
+    searchParams.get("from") || undefined,
+    searchParams.get("to") || undefined,
+  );
   return {
     page: parsePositiveInt(searchParams.get("page"), DEFAULT_PAGE),
-    pageSize: clamp(parsePositiveInt(searchParams.get("pageSize"), DEFAULT_PAGE_SIZE), MIN_PAGE_SIZE, MAX_PAGE_SIZE),
+    pageSize: clamp(
+      parsePositiveInt(searchParams.get("pageSize"), DEFAULT_PAGE_SIZE),
+      MIN_PAGE_SIZE,
+      MAX_PAGE_SIZE,
+    ),
     search: searchParams.get("search")?.trim() || undefined,
     category: parseMultiValueParam(searchParams, "category"),
     accountIds: parseAccountParams(searchParams),
@@ -72,14 +111,17 @@ export function parseTransactionsSearchParams(searchParams: SearchParamsInput) {
   return parseInternal(toURLSearchParams(searchParams));
 }
 
-export function parseTransactionsSearchParamsFromUrlSearchParams(searchParams: URLSearchParams) {
+export function parseTransactionsSearchParamsFromUrlSearchParams(
+  searchParams: URLSearchParams,
+) {
   return parseInternal(searchParams);
 }
 
 export function toTransactionsSearchParams(state: TransactionsQueryState) {
   const params = new URLSearchParams();
   if (state.page !== DEFAULT_PAGE) params.set("page", String(state.page));
-  if (state.pageSize !== DEFAULT_PAGE_SIZE) params.set("pageSize", String(state.pageSize));
+  if (state.pageSize !== DEFAULT_PAGE_SIZE)
+    params.set("pageSize", String(state.pageSize));
   if (state.search) params.set("search", state.search);
   state.category.forEach((id) => params.append("category", id));
   state.accountIds.forEach((id) => params.append("account", id));
@@ -97,15 +139,38 @@ export function toTransactionsSearchParams(state: TransactionsQueryState) {
   return params;
 }
 
-export function applyTransactionsQueryPatch(currentSearchParams: URLSearchParams, patch: Partial<TransactionsQueryState>) {
-  const nextState = { ...parseTransactionsSearchParamsFromUrlSearchParams(currentSearchParams), ...patch };
-  if (nextState.page < 1 || !Number.isFinite(nextState.page)) nextState.page = DEFAULT_PAGE;
+export function applyTransactionsQueryPatch(
+  currentSearchParams: URLSearchParams,
+  patch: Partial<TransactionsQueryState>,
+) {
+  const nextState = {
+    ...parseTransactionsSearchParamsFromUrlSearchParams(currentSearchParams),
+    ...patch,
+  };
+  if (nextState.page < 1 || !Number.isFinite(nextState.page))
+    nextState.page = DEFAULT_PAGE;
   nextState.pageSize = clamp(nextState.pageSize, MIN_PAGE_SIZE, MAX_PAGE_SIZE);
   return toTransactionsSearchParams(nextState);
 }
 
 export function hasActiveTransactionFilters(state: TransactionsQueryState) {
-  return Boolean(state.search || state.category.length || state.accountIds.length || state.status.length || state.subscription.length || state.analytics.length || state.minAmount || state.maxAmount || state.from || state.to || (state.horizon !== undefined && state.horizon !== DEFAULT_HORIZON));
+  return Boolean(
+    state.search ||
+    state.category.length ||
+    state.accountIds.length ||
+    state.status.length ||
+    state.subscription.length ||
+    state.analytics.length ||
+    state.minAmount ||
+    state.maxAmount ||
+    state.from ||
+    state.to ||
+    (state.horizon !== undefined && state.horizon !== DEFAULT_HORIZON),
+  );
 }
 
-export type { TransactionSortField, TransactionSortOrder, TransactionsQueryState } from "./domain/contracts";
+export type {
+  TransactionSortField,
+  TransactionSortOrder,
+  TransactionsQueryState,
+} from "./domain/contracts";

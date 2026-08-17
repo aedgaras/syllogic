@@ -1,11 +1,15 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { RiArrowLeftLine, RiArrowRightLine, RiLoader4Line, RiRefreshLine } from "@remixicon/react";
+import {
+  RiArrowLeftLine,
+  RiArrowRightLine,
+  RiLoader4Line,
+  RiRefreshLine,
+} from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -71,7 +75,7 @@ export default function OnboardingStep2Page() {
             description: cat.description,
             isSystem: cat.isSystem,
             hideFromSelection: cat.hideFromSelection,
-          }))
+          })),
         );
       } catch (error) {
         console.error("Failed to load categories:", error);
@@ -85,7 +89,7 @@ export default function OnboardingStep2Page() {
             description: cat.description,
             isSystem: cat.isSystem,
             hideFromSelection: cat.hideFromSelection,
-          }))
+          })),
         );
       } finally {
         setIsLoading(false);
@@ -104,7 +108,7 @@ export default function OnboardingStep2Page() {
         description: cat.description,
         isSystem: cat.isSystem,
         hideFromSelection: cat.hideFromSelection,
-      }))
+      })),
     );
     toast.success(translate("categoriesResetToDefaults"));
   };
@@ -164,7 +168,9 @@ export default function OnboardingStep2Page() {
               <CardDescription>
                 {activeStep ? (
                   <>
-                    <span className="font-medium text-foreground">{activeStep.title}:</span>{" "}
+                    <span className="font-medium text-foreground">
+                      {activeStep.title}:
+                    </span>{" "}
                     {activeStep.description}
                   </>
                 ) : (
@@ -172,7 +178,9 @@ export default function OnboardingStep2Page() {
                 )}
               </CardDescription>
               <p className="mt-2 text-xs text-muted-foreground">
-                {translate("tipAddCategorizationInstructionsByClickingTheEditIcon")}
+                {translate(
+                  "tipAddCategorizationInstructionsByClickingTheEditIcon",
+                )}
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={handleResetToDefaults}>
@@ -193,7 +201,10 @@ export default function OnboardingStep2Page() {
             <RiArrowLeftLine className="mr-2 h-4 w-4" />
             {translate("back")}
           </Button>
-          <Button onClick={handleSubmit} disabled={isPending || categories.length === 0}>
+          <Button
+            onClick={handleSubmit}
+            disabled={isPending || categories.length === 0}
+          >
             {isPending ? (
               <>
                 <RiLoader4Line className="mr-2 h-4 w-4 animate-spin" />
@@ -201,7 +212,9 @@ export default function OnboardingStep2Page() {
               </>
             ) : (
               <>
-                {activeIndex < substeps.length - 1 ? translate("continue") : translate("saveContinue")}
+                {activeIndex < substeps.length - 1
+                  ? translate("continue")
+                  : translate("saveContinue")}
                 <RiArrowRightLine className="ml-2 h-4 w-4" />
               </>
             )}

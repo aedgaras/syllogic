@@ -1,4 +1,5 @@
 """REST endpoints for investment connections, holdings, and portfolio."""
+
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -66,7 +67,10 @@ def _run_sync_in_process(account_id: UUID) -> None:
             if src.upper() == dst.upper():
                 return amount
             result = self._svc.convert_amount(
-                amount=amount, from_currency=src, to_currency=dst, for_date=on,
+                amount=amount,
+                from_currency=src,
+                to_currency=dst,
+                for_date=on,
             )
             return result if result is not None else amount
 
@@ -259,11 +263,7 @@ def create_manual_holding(
     db: Session = Depends(get_db),
 ):
     user_id = get_user_id(user_id)
-    account = (
-        db.query(Account)
-        .filter(Account.id == account_id, Account.user_id == user_id)
-        .first()
-    )
+    account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
     if not account or account.account_type != "investment_manual":
         raise HTTPException(status_code=404, detail="Manual investment account not found")
 
@@ -331,9 +331,7 @@ def list_holdings(
 ):
     user_id = get_user_id(user_id)
     user = db.query(User).filter(User.id == user_id).first()
-    user_currency = (
-        getattr(user, "functional_currency", None) or "EUR"
-    ).upper()
+    user_currency = (getattr(user, "functional_currency", None) or "EUR").upper()
 
     from app.services.exchange_rate_service import ExchangeRateService
 
@@ -377,9 +375,7 @@ def list_holdings(
             .order_by(desc(HoldingValuation.date))
             .first()
         )
-        cost_basis_user = _convert_cost_to_user(
-            h.avg_cost, h.quantity, h.currency, h.as_of_date
-        )
+        cost_basis_user = _convert_cost_to_user(h.avg_cost, h.quantity, h.currency, h.as_of_date)
         results.append(
             HoldingResponse(
                 id=h.id,
@@ -413,20 +409,15 @@ def update_holding(
     db: Session = Depends(get_db),
 ):
     user_id = get_user_id(user_id)
-    holding = (
-        db.query(Holding)
-        .filter(Holding.id == holding_id, Holding.user_id == user_id)
-        .first()
-    )
+    holding = db.query(Holding).filter(Holding.id == holding_id, Holding.user_id == user_id).first()
     if not holding:
         raise HTTPException(status_code=404, detail="Holding not found")
     if holding.source != "manual":
         raise HTTPException(status_code=400, detail="Only manual holdings can be edited")
 
     payload = updates.model_dump(exclude_unset=True)
-    lookup_changed = (
-        ("symbol" in payload and payload["symbol"] != holding.symbol)
-        or ("provider_symbol" in payload and payload["provider_symbol"] != holding.provider_symbol)
+    lookup_changed = ("symbol" in payload and payload["symbol"] != holding.symbol) or (
+        "provider_symbol" in payload and payload["provider_symbol"] != holding.provider_symbol
     )
     for field, value in payload.items():
         setattr(holding, field, value)
@@ -448,11 +439,7 @@ def delete_holding(
     db: Session = Depends(get_db),
 ):
     user_id = get_user_id(user_id)
-    holding = (
-        db.query(Holding)
-        .filter(Holding.id == holding_id, Holding.user_id == user_id)
-        .first()
-    )
+    holding = db.query(Holding).filter(Holding.id == holding_id, Holding.user_id == user_id).first()
     if not holding:
         raise HTTPException(status_code=404, detail="Holding not found")
     if holding.source != "manual":
@@ -504,14 +491,12 @@ def portfolio_summary(
             )
             if latest:
                 account_value += Decimal(latest.value_user_currency)
-                allocation_by_type[h.instrument_type] = (
-                    allocation_by_type.get(h.instrument_type, Decimal("0"))
-                    + Decimal(latest.value_user_currency)
-                )
-                allocation_by_currency[h.currency] = (
-                    allocation_by_currency.get(h.currency, Decimal("0"))
-                    + Decimal(latest.value_user_currency)
-                )
+                allocation_by_type[h.instrument_type] = allocation_by_type.get(
+                    h.instrument_type, Decimal("0")
+                ) + Decimal(latest.value_user_currency)
+                allocation_by_currency[h.currency] = allocation_by_currency.get(
+                    h.currency, Decimal("0")
+                ) + Decimal(latest.value_user_currency)
 
         total_value += account_value
 
@@ -539,9 +524,9 @@ def portfolio_summary(
                 .first()
             )
             if prior_balance is not None:
-                today_change += Decimal(
-                    latest_balance.balance_in_functional_currency
-                ) - Decimal(prior_balance.balance_in_functional_currency)
+                today_change += Decimal(latest_balance.balance_in_functional_currency) - Decimal(
+                    prior_balance.balance_in_functional_currency
+                )
 
         accounts_payload.append(
             {
@@ -571,11 +556,7 @@ def holding_history(
     db: Session = Depends(get_db),
 ):
     user_id = get_user_id(user_id)
-    holding = (
-        db.query(Holding)
-        .filter(Holding.id == holding_id, Holding.user_id == user_id)
-        .first()
-    )
+    holding = db.query(Holding).filter(Holding.id == holding_id, Holding.user_id == user_id).first()
     if not holding:
         raise HTTPException(status_code=404, detail="Holding not found")
     cutoff = date.today() - timedelta(days=days)
@@ -588,10 +569,7 @@ def holding_history(
         .order_by(HoldingValuation.date.asc())
         .all()
     )
-    return [
-        ValuationPoint(date=r.date, value=Decimal(r.value_user_currency))
-        for r in rows
-    ]
+    return [ValuationPoint(date=r.date, value=Decimal(r.value_user_currency)) for r in rows]
 
 
 @router.get("/portfolio/history", response_model=list[ValuationPoint])
@@ -642,11 +620,7 @@ def holding_trades(
     """Return all BrokerTrade rows behind this holding (account_id, symbol),
     chronologically. Each row carries a running quantity (post-trade)."""
     user_id = get_user_id(user_id)
-    holding = (
-        db.query(Holding)
-        .filter(Holding.id == holding_id, Holding.user_id == user_id)
-        .first()
-    )
+    holding = db.query(Holding).filter(Holding.id == holding_id, Holding.user_id == user_id).first()
     if not holding:
         raise HTTPException(status_code=404, detail="Holding not found")
 
@@ -701,11 +675,7 @@ def holding_lots(
 ):
     """Return the open FIFO lots for this holding."""
     user_id = get_user_id(user_id)
-    holding = (
-        db.query(Holding)
-        .filter(Holding.id == holding_id, Holding.user_id == user_id)
-        .first()
-    )
+    holding = db.query(Holding).filter(Holding.id == holding_id, Holding.user_id == user_id).first()
     if not holding:
         raise HTTPException(status_code=404, detail="Holding not found")
 
@@ -757,9 +727,9 @@ def holding_lots(
                 lot.currency.upper(), user_currency, lot.open_date
             )
             if rate is not None:
-                cost_per_share_user = (
-                    Decimal(lot.cost_per_share_native) * Decimal(rate)
-                ).quantize(Decimal("0.00000001"))
+                cost_per_share_user = (Decimal(lot.cost_per_share_native) * Decimal(rate)).quantize(
+                    Decimal("0.00000001")
+                )
         out.append(
             HoldingLot(
                 open_date=lot.open_date,

@@ -15,7 +15,7 @@ export function isDemoModeEnabled(): boolean {
 
 export function getConfiguredDemoUserEmail(): string | null {
   return normalizeEmail(
-    process.env.DEMO_SHARED_USER_EMAIL || process.env.NEXT_PUBLIC_DEMO_EMAIL
+    process.env.DEMO_SHARED_USER_EMAIL || process.env.NEXT_PUBLIC_DEMO_EMAIL,
   );
 }
 

@@ -26,7 +26,7 @@ function contentTypeFor(filePath: string): string {
 
 export async function GET(
   _request: NextRequest,
-  context: { params: Promise<{ slug: string[] }> }
+  context: { params: Promise<{ slug: string[] }> },
 ) {
   const { slug } = await context.params;
   if (!Array.isArray(slug) || slug.length < 2) {
@@ -56,7 +56,9 @@ export async function GET(
       status: 200,
       headers: {
         "Content-Type": contentType,
-        "Content-Disposition": contentType.startsWith("image/") ? "inline" : "attachment",
+        "Content-Disposition": contentType.startsWith("image/")
+          ? "inline"
+          : "attachment",
         "Content-Security-Policy": "default-src 'none'; sandbox",
         "X-Content-Type-Options": "nosniff",
         // Filenames are stable; callers append ?v=timestamp when replacing files.

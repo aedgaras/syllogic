@@ -8,7 +8,7 @@ describe("resolveRegistrationEnabled", () => {
         hasUsers: false,
         environmentDisabled: true,
         databaseEnabled: false,
-      })
+      }),
     ).toBe(true);
   });
 
@@ -18,7 +18,7 @@ describe("resolveRegistrationEnabled", () => {
         hasUsers: true,
         environmentDisabled: false,
         databaseEnabled: true,
-      })
+      }),
     ).toBe(true);
   });
 
@@ -28,7 +28,7 @@ describe("resolveRegistrationEnabled", () => {
         hasUsers: true,
         environmentDisabled: false,
         databaseEnabled: false,
-      })
+      }),
     ).toBe(false);
   });
 
@@ -38,7 +38,7 @@ describe("resolveRegistrationEnabled", () => {
         hasUsers: true,
         environmentDisabled: true,
         databaseEnabled: true,
-      })
+      }),
     ).toBe(false);
   });
 });

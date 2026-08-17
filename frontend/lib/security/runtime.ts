@@ -29,14 +29,17 @@ export function shouldEnforceDatabaseTls(connectionString: string): boolean {
   }
 }
 
-export function assertProductionDatabaseTls(connectionString: string, context: string): void {
+export function assertProductionDatabaseTls(
+  connectionString: string,
+  context: string,
+): void {
   if (
     isProductionEnvironment() &&
     shouldEnforceDatabaseTls(connectionString) &&
     !databaseUrlRequiresTls(connectionString)
   ) {
     throw new Error(
-      `[${context}] Production DATABASE_URL must enforce TLS. Use '?sslmode=require', '?sslmode=verify-ca', '?sslmode=verify-full', or '?ssl=true'.`
+      `[${context}] Production DATABASE_URL must enforce TLS. Use '?sslmode=require', '?sslmode=verify-ca', '?sslmode=verify-full', or '?ssl=true'.`,
     );
   }
 }

@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -21,7 +20,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { OnboardingProgress } from "@/components/onboarding/onboarding-progress";
 import { AccountForm } from "@/components/accounts/account-form";
 import { completeOnboarding } from "@/lib/actions/onboarding";
@@ -99,7 +103,9 @@ export default function OnboardingStep3Page() {
           <div className="space-y-6">
             {accounts.length > 0 ? (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">{translate("accountsCreated")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {translate("accountsCreated")}
+                </p>
                 <div className="space-y-2">
                   {accounts.map((account) => (
                     <div
@@ -122,15 +128,23 @@ export default function OnboardingStep3Page() {
                 <div className="space-y-2">
                   <h3 className="font-medium">{translate("noAccountsYet")}</h3>
                   <p className="text-sm text-muted-foreground max-w-md">
-                    {translate("createOneAccountToStartImportingYourTransactionsVia")}
+                    {translate(
+                      "createOneAccountToStartImportingYourTransactionsVia",
+                    )}
                   </p>
                 </div>
               </div>
             )}
 
-            <Button onClick={() => setIsDialogOpen(true)} className="w-full" size="lg">
+            <Button
+              onClick={() => setIsDialogOpen(true)}
+              className="w-full"
+              size="lg"
+            >
               <RiAddLine className="mr-2 h-4 w-4" />
-              {accounts.length > 0 ? translate("addAnotherAccount") : translate("createYourFirstAccount")}
+              {accounts.length > 0
+                ? translate("addAnotherAccount")
+                : translate("createYourFirstAccount")}
             </Button>
           </div>
         </CardContent>
@@ -139,7 +153,10 @@ export default function OnboardingStep3Page() {
             <RiArrowLeftLine className="mr-2 h-4 w-4" />
             {translate("back")}
           </Button>
-          <Button onClick={handleComplete} disabled={isPending || accounts.length === 0}>
+          <Button
+            onClick={handleComplete}
+            disabled={isPending || accounts.length === 0}
+          >
             {isPending ? (
               <>
                 <RiLoader4Line className="mr-2 h-4 w-4 animate-spin" />

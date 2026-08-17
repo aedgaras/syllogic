@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 export function PortfolioChart({
   data,
   currencySymbol,
@@ -27,7 +26,9 @@ export function PortfolioChart({
   const toX = (i: number, len: number) => (i / (len - 1)) * W;
   const pts = data.map((v, i) => [toX(i, data.length), toY(v)] as const);
   const linePath = pts
-    .map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`)
+    .map(
+      (p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`,
+    )
     .join(" ");
   const areaPath = `${linePath} L${W},${H} L0,${H} Z`;
   const yTicks = [0.25, 0.5, 0.75].map((f) => lo + (hi - lo) * f);
@@ -67,8 +68,14 @@ export function PortfolioChart({
           fill="var(--muted-foreground)"
         >
           {v >= 1000
-            ? translate("k", { currencySymbol: currencySymbol, value2: (v / 1000).toFixed(0) })
-            : translate("messagead684e", { currencySymbol: currencySymbol, value2: v.toFixed(0) })}
+            ? translate("k", {
+                currencySymbol: currencySymbol,
+                value2: (v / 1000).toFixed(0),
+              })
+            : translate("messagead684e", {
+                currencySymbol: currencySymbol,
+                value2: v.toFixed(0),
+              })}
         </text>
       ))}
       <path d={areaPath} fill="url(#invAreaGrad)" />

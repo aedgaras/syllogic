@@ -121,12 +121,8 @@
           "name": "accounts_user_id_users_id_fk",
           "tableFrom": "accounts",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -136,11 +132,7 @@
         "accounts_user_provider_external_id": {
           "name": "accounts_user_provider_external_id",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id",
-            "provider",
-            "external_id"
-          ]
+          "columns": ["user_id", "provider", "external_id"]
         }
       },
       "policies": {},
@@ -238,12 +230,8 @@
           "name": "auth_accounts_user_id_users_id_fk",
           "tableFrom": "auth_accounts",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -327,12 +315,8 @@
           "name": "bank_connections_user_id_users_id_fk",
           "tableFrom": "bank_connections",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -342,9 +326,7 @@
         "bank_connections_requisition_id_unique": {
           "name": "bank_connections_requisition_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "requisition_id"
-          ]
+          "columns": ["requisition_id"]
         }
       },
       "policies": {},
@@ -448,12 +430,8 @@
           "name": "categories_user_id_users_id_fk",
           "tableFrom": "categories",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -463,11 +441,7 @@
         "categories_user_name_parent": {
           "name": "categories_user_name_parent",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id",
-            "name",
-            "parent_id"
-          ]
+          "columns": ["user_id", "name", "parent_id"]
         }
       },
       "policies": {},
@@ -524,12 +498,8 @@
           "name": "categorization_rules_user_id_users_id_fk",
           "tableFrom": "categorization_rules",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -537,12 +507,8 @@
           "name": "categorization_rules_category_id_categories_id_fk",
           "tableFrom": "categorization_rules",
           "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -676,12 +642,8 @@
           "name": "csv_imports_user_id_users_id_fk",
           "tableFrom": "csv_imports",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -689,12 +651,8 @@
           "name": "csv_imports_account_id_accounts_id_fk",
           "tableFrom": "csv_imports",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -798,12 +756,8 @@
           "name": "properties_user_id_users_id_fk",
           "tableFrom": "properties",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -875,12 +829,8 @@
           "name": "sessions_user_id_users_id_fk",
           "tableFrom": "sessions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -890,9 +840,7 @@
         "sessions_token_unique": {
           "name": "sessions_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -1093,12 +1041,8 @@
           "name": "transactions_user_id_users_id_fk",
           "tableFrom": "transactions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1106,12 +1050,8 @@
           "name": "transactions_account_id_accounts_id_fk",
           "tableFrom": "transactions",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1119,12 +1059,8 @@
           "name": "transactions_category_id_categories_id_fk",
           "tableFrom": "transactions",
           "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1132,12 +1068,8 @@
           "name": "transactions_category_system_id_categories_id_fk",
           "tableFrom": "transactions",
           "tableTo": "categories",
-          "columnsFrom": [
-            "category_system_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_system_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1147,10 +1079,7 @@
         "transactions_account_external_id": {
           "name": "transactions_account_external_id",
           "nullsNotDistinct": false,
-          "columns": [
-            "account_id",
-            "external_id"
-          ]
+          "columns": ["account_id", "external_id"]
         }
       },
       "policies": {},
@@ -1240,9 +1169,7 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -1354,12 +1281,8 @@
           "name": "vehicles_user_id_users_id_fk",
           "tableFrom": "vehicles",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1420,9 +1343,7 @@
         "verification_tokens_token_unique": {
           "name": "verification_tokens_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},

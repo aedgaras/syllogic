@@ -1,4 +1,5 @@
 """Pin the factory to yfinance-only behaviour."""
+
 import os
 from unittest.mock import patch
 

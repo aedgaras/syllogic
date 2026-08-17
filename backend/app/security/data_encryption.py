@@ -4,6 +4,7 @@ Application-layer field encryption helpers.
 Envelope format:
     enc:v1:<keyId>:<base64url(nonce + ciphertext)>
 """
+
 from __future__ import annotations
 
 import base64
@@ -149,7 +150,9 @@ def decrypt_value(ciphertext: Optional[str]) -> Optional[str]:
     raise ValueError("Failed to decrypt encrypted value with configured keys.") from last_error
 
 
-def decrypt_with_fallback(ciphertext: Optional[str], plaintext_fallback: Optional[str]) -> Optional[str]:
+def decrypt_with_fallback(
+    ciphertext: Optional[str], plaintext_fallback: Optional[str]
+) -> Optional[str]:
     if ciphertext:
         try:
             return decrypt_value(ciphertext)

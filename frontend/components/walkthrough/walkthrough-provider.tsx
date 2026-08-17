@@ -11,7 +11,11 @@ import {
   getPageConfig,
 } from "./walkthrough-store";
 
-export function WalkthroughProvider({ children }: { children: React.ReactNode }) {
+export function WalkthroughProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const {
     isActive,
@@ -32,7 +36,9 @@ export function WalkthroughProvider({ children }: { children: React.ReactNode })
     }
   }, [pathname, isActive, currentPage, skipWalkthrough]);
 
-  const config = currentPage ? PAGE_CONFIGS[currentPage as keyof typeof PAGE_CONFIGS] : null;
+  const config = currentPage
+    ? PAGE_CONFIGS[currentPage as keyof typeof PAGE_CONFIGS]
+    : null;
   const step = config?.steps?.[currentStepIndex] ?? null;
 
   useEffect(() => {

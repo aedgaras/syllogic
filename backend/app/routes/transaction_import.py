@@ -11,6 +11,7 @@ Handles the complete workflow:
 8. Calculate account balances
 9. Calculate and store account timeseries (daily balance snapshots)
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
@@ -21,15 +22,14 @@ import logging
 
 from app.database import get_db
 from app.db_helpers import get_user_id
-from app.models import Transaction, Account, User, ExchangeRate
+from app.models import Transaction, Account, User
 from pydantic import BaseModel
 from app.schemas import (
-    TransactionCreate,
     TransactionInput,
     BatchCategorizeRequest,
     BatchCategorizeResponse,
     UserOverride,
-    DailyBalanceImport
+    DailyBalanceImport,
 )
 from app.models import Category
 from app.services.category_matcher import CategoryMatcher
@@ -37,7 +37,6 @@ from app.services.exchange_rate_service import ExchangeRateService
 from app.services.account_balance_service import AccountBalanceService
 from app.services.subscription_matcher import SubscriptionMatcher
 from app.services.subscription_detector import SubscriptionDetector
-from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +45,7 @@ router = APIRouter()
 
 class TransactionImportItem(BaseModel):
     """Single transaction to import."""
+
     account_id: UUID
     amount: Decimal
     description: Optional[str] = None
@@ -59,6 +59,7 @@ class TransactionImportItem(BaseModel):
 
 class TransactionImportRequest(BaseModel):
     """Request to import transactions."""
+
     transactions: List[TransactionImportItem]
     user_id: Optional[str] = None
     sync_exchange_rates: bool = True
@@ -71,6 +72,7 @@ class TransactionImportRequest(BaseModel):
 
 class TransactionImportResponse(BaseModel):
     """Response from transaction import."""
+
     success: bool
     message: str
     transactions_inserted: int
@@ -87,50 +89,51 @@ class TransactionImportResponse(BaseModel):
 def _get_user_overrides_from_db(db: Session, user_id: str) -> List[dict]:
     """
     Get user overrides from database based on overridden transactions.
-    
+
     Returns list of override dicts in format:
     [{"description": "...", "merchant": "...", "category_name": "..."}, ...]
     """
     matcher = CategoryMatcher(db, user_id=user_id)
     overridden_transactions = matcher.get_overridden_transactions()
-    
+
     overrides = []
     for txn in overridden_transactions:
         # Get the user-selected category (category_id, not category_system_id)
         if txn.category_id:
             category = db.query(Category).filter(Category.id == txn.category_id).first()
             if category:
-                overrides.append({
-                    "description": txn.description,
-                    "merchant": txn.merchant,
-                    "category_name": category.name
-                })
-    
+                overrides.append(
+                    {
+                        "description": txn.description,
+                        "merchant": txn.merchant,
+                        "category_name": category.name,
+                    }
+                )
+
     return overrides
 
 
 def _get_categorization_instructions_from_db(db: Session, user_id: str) -> List[str]:
     """
     Get categorization instructions from overridden transactions.
-    
+
     Returns list of instruction strings from transactions with categorization_instructions.
     """
-    instructions = db.query(Transaction.categorization_instructions).filter(
-        Transaction.user_id == user_id,
-        Transaction.categorization_instructions.isnot(None)
-    ).distinct().all()
-    
+    instructions = (
+        db.query(Transaction.categorization_instructions)
+        .filter(Transaction.user_id == user_id, Transaction.categorization_instructions.isnot(None))
+        .distinct()
+        .all()
+    )
+
     return [inst[0] for inst in instructions if inst[0]]
 
 
 @router.post("/import", response_model=TransactionImportResponse)
-def import_transactions(
-    request: TransactionImportRequest,
-    db: Session = Depends(get_db)
-):
+def import_transactions(request: TransactionImportRequest, db: Session = Depends(get_db)):
     """
     Import transactions with full processing pipeline.
-    
+
     This endpoint:
     1. Normalizes amounts based on transactionType (credit = positive, debit = negative)
     2. Categorizes transactions using batch API with user overrides and instructions
@@ -138,7 +141,7 @@ def import_transactions(
     4. Syncs exchange rates for transaction currencies from earliest date
     5. Updates functional_amount for all transactions
     6. Calculates and updates functional_balance for all accounts
-    
+
     Example request:
     ```json
     {
@@ -161,37 +164,40 @@ def import_transactions(
     """
     try:
         user_id = get_user_id(request.user_id)
-        
+
         if not request.transactions:
             raise HTTPException(status_code=400, detail="No transactions provided")
-        
-        logger.info(f"[IMPORT] Starting import of {len(request.transactions)} transactions for user {user_id}")
-        
+
+        logger.info(
+            f"[IMPORT] Starting import of {len(request.transactions)} transactions for user {user_id}"
+        )
+
         # Step 1: Normalize amounts based on transaction_type
         normalized_transactions = []
         for txn in request.transactions:
             # Validate account belongs to user
-            account = db.query(Account).filter(
-                Account.id == txn.account_id,
-                Account.user_id == user_id
-            ).first()
+            account = (
+                db.query(Account)
+                .filter(Account.id == txn.account_id, Account.user_id == user_id)
+                .first()
+            )
             if not account:
                 raise HTTPException(
                     status_code=404,
-                    detail=f"Account {txn.account_id} not found or doesn't belong to user"
+                    detail=f"Account {txn.account_id} not found or doesn't belong to user",
                 )
-            
+
             # Normalize amount: credit = positive, debit = negative
             # Also validate transaction_type matches amount sign to catch frontend bugs
             normalized_amount = txn.amount
             transaction_type_lower = txn.transaction_type.lower()
-            
+
             # Handle aliases: "expense" = "debit", "income" = "credit"
             if transaction_type_lower in ["expense", "expenses"]:
                 transaction_type_lower = "debit"
             elif transaction_type_lower in ["income", "revenue"]:
                 transaction_type_lower = "credit"
-            
+
             if transaction_type_lower == "credit":
                 normalized_amount = abs(txn.amount)  # Ensure positive
                 # Validate: credit should be positive
@@ -227,7 +233,7 @@ def import_transactions(
                 else:
                     transaction_type_lower = "debit"
                     normalized_amount = -abs(txn.amount)
-            
+
             normalized_txn = {
                 "account_id": txn.account_id,
                 "amount": normalized_amount,
@@ -237,11 +243,13 @@ def import_transactions(
                 "transaction_type": transaction_type_lower,  # Use corrected transaction_type
                 "currency": txn.currency or account.currency or "EUR",
                 "external_id": txn.external_id,
-                "category_id": txn.category_id  # Pre-selected category
+                "category_id": txn.category_id,  # Pre-selected category
             }
-            logger.debug(f"[IMPORT] Normalized transaction: transaction_type='{transaction_type_lower}', amount={normalized_amount}, description='{txn.description[:50]}...'")
+            logger.debug(
+                f"[IMPORT] Normalized transaction: transaction_type='{transaction_type_lower}', amount={normalized_amount}, description='{txn.description[:50]}...'"
+            )
             normalized_transactions.append(normalized_txn)
-        
+
         # Step 2: Categorize transactions (skip if category already provided)
         # Build list of transactions needing categorization and track their indices
         transactions_needing_categorization = []
@@ -257,17 +265,23 @@ def import_transactions(
 
         # Only run categorization if there are transactions without categories
         if transactions_needing_categorization:
-            logger.info(f"[IMPORT] Categorizing {len(transactions_needing_categorization)} transactions (AI)...")
+            logger.info(
+                f"[IMPORT] Categorizing {len(transactions_needing_categorization)} transactions (AI)..."
+            )
             logger.info("[IMPORT] Fetching user overrides and categorization instructions...")
             user_overrides = _get_user_overrides_from_db(db, user_id)
             categorization_instructions = _get_categorization_instructions_from_db(db, user_id)
 
-            logger.info(f"[IMPORT] Found {len(user_overrides)} user overrides and {len(categorization_instructions)} instructions")
+            logger.info(
+                f"[IMPORT] Found {len(user_overrides)} user overrides and {len(categorization_instructions)} instructions"
+            )
 
             # Log first transaction to debug transaction_type
             if transactions_needing_categorization:
                 first_txn = transactions_needing_categorization[0]
-                logger.info(f"[IMPORT] First transaction needing categorization: transaction_type='{first_txn.get('transaction_type')}', amount={first_txn.get('amount')}, description='{first_txn.get('description', '')[:50]}...'")
+                logger.info(
+                    f"[IMPORT] First transaction needing categorization: transaction_type='{first_txn.get('transaction_type')}', amount={first_txn.get('amount')}, description='{first_txn.get('description', '')[:50]}...'"
+                )
 
             categorize_request = BatchCategorizeRequest(
                 transactions=[
@@ -275,18 +289,27 @@ def import_transactions(
                         description=txn["description"],
                         merchant=txn["merchant"],
                         amount=txn["amount"],
-                        transaction_type=txn.get("transaction_type")  # Use .get() to handle missing keys
+                        transaction_type=txn.get(
+                            "transaction_type"
+                        ),  # Use .get() to handle missing keys
                     )
                     for txn in transactions_needing_categorization
                 ],
                 use_llm=True,
-                user_overrides=[UserOverride(**override) for override in user_overrides] if user_overrides else None,
-                additional_instructions=categorization_instructions if categorization_instructions else None
+                user_overrides=[UserOverride(**override) for override in user_overrides]
+                if user_overrides
+                else None,
+                additional_instructions=categorization_instructions
+                if categorization_instructions
+                else None,
             )
 
             # Call the categorize/batch endpoint logic directly
             from app.routes.categories import categorize_transactions_batch
-            categorization_result: BatchCategorizeResponse = categorize_transactions_batch(categorize_request, db, user_id=user_id)
+
+            categorization_result: BatchCategorizeResponse = categorize_transactions_batch(
+                categorize_request, db, user_id=user_id
+            )
 
             logger.info(
                 f"[IMPORT] Categorization complete: "
@@ -299,7 +322,9 @@ def import_transactions(
                 original_idx = categorization_index_map[result_idx]
                 categorization_results[original_idx] = result.category_id
         else:
-            logger.info("[IMPORT] All transactions have pre-selected categories, skipping AI categorization")
+            logger.info(
+                "[IMPORT] All transactions have pre-selected categories, skipping AI categorization"
+            )
             categorization_result = None
 
         # For transactions with pre-selected categories, use those
@@ -311,7 +336,7 @@ def import_transactions(
 
         if pre_selected_count > 0:
             logger.info(f"[IMPORT] {pre_selected_count} transactions using pre-selected categories")
-        
+
         # Step 4: Pre-check for duplicates (don't delete, just identify for skipping)
         # Build a set of external_ids that already exist to skip them during insert
         logger.info("[IMPORT] Checking for existing duplicate transactions...")
@@ -341,27 +366,33 @@ def import_transactions(
             db.flush()
 
             # Query for existing transactions with these external_ids
-            existing_with_external_ids = db.query(Transaction.external_id).filter(
-                Transaction.user_id == user_id,
-                Transaction.external_id.in_(incoming_external_ids)
-            ).all()
+            existing_with_external_ids = (
+                db.query(Transaction.external_id)
+                .filter(
+                    Transaction.user_id == user_id,
+                    Transaction.external_id.in_(incoming_external_ids),
+                )
+                .all()
+            )
 
             # Build set of duplicate external_ids
-            duplicate_external_ids = set(ext_id[0] for ext_id in existing_with_external_ids if ext_id and ext_id[0])
+            duplicate_external_ids = set(
+                ext_id[0] for ext_id in existing_with_external_ids if ext_id and ext_id[0]
+            )
 
             if duplicate_external_ids:
                 logger.info(
                     f"[IMPORT] Found {len(duplicate_external_ids)} existing transaction(s) "
                     f"with matching external_ids that will be skipped"
                 )
-                logger.debug(f"[IMPORT] Duplicate external_ids: {list(duplicate_external_ids)[:10]}...")  # Log first 10
+                logger.debug(
+                    f"[IMPORT] Duplicate external_ids: {list(duplicate_external_ids)[:10]}..."
+                )  # Log first 10
             else:
                 logger.info("[IMPORT] No existing duplicates found by external_id")
 
-        logger.info(
-            f"[IMPORT] Will skip {len(duplicate_external_ids)} duplicate(s) during insert"
-        )
-        
+        logger.info(f"[IMPORT] Will skip {len(duplicate_external_ids)} duplicate(s) during insert")
+
         # Step 5: Insert transactions with categories
         logger.info("[IMPORT] Inserting transactions into database...")
         inserted_count = 0
@@ -404,47 +435,46 @@ def import_transactions(
                     # Mark this external_id as seen in this batch
                     seen_external_ids_in_batch.add(external_id)
 
-                    logger.debug(
-                        f"[IMPORT] Transaction {idx} is new (external_id={external_id})"
-                    )
-                
+                    logger.debug(f"[IMPORT] Transaction {idx} is new (external_id={external_id})")
+
                 # Check 2: By amount, description, and booked_at
                 # Use date comparison (not exact datetime) to handle microsecond differences
                 if txn_data.get("description") and txn_data.get("booked_at"):
                     # Normalize description for comparison (strip whitespace, case-insensitive)
-                    normalized_description = txn_data["description"].strip() if txn_data["description"] else None
-                    
+                    normalized_description = (
+                        txn_data["description"].strip() if txn_data["description"] else None
+                    )
+
                     # Extract date from booked_at (handle both datetime and date objects)
                     if isinstance(txn_data["booked_at"], datetime):
                         booked_date = txn_data["booked_at"].date()
-                    elif hasattr(txn_data["booked_at"], 'date'):
+                    elif hasattr(txn_data["booked_at"], "date"):
                         booked_date = txn_data["booked_at"].date()
                     else:
                         booked_date = txn_data["booked_at"]
-                    
+
                     # Query using date comparison and normalized description
                     from sqlalchemy import func, cast, Date
-                    
+
                     query = db.query(Transaction).filter(
                         Transaction.account_id == txn_data["account_id"],
                         Transaction.user_id == user_id,
-                        Transaction.amount == txn_data["amount"]
+                        Transaction.amount == txn_data["amount"],
                     )
-                    
+
                     # Add description filter (case-insensitive, trimmed)
                     if normalized_description:
                         query = query.filter(
-                            func.lower(func.trim(Transaction.description)) == normalized_description.lower().strip()
+                            func.lower(func.trim(Transaction.description))
+                            == normalized_description.lower().strip()
                         )
-                    
+
                     # Add date filter (compare dates, not exact datetime)
-                    query = query.filter(
-                        cast(Transaction.booked_at, Date) == booked_date
-                    )
-                    
+                    query = query.filter(cast(Transaction.booked_at, Date) == booked_date)
+
                     # Execute query and log what we found
                     existing_by_details = query.first()
-                    
+
                     # Log the query for debugging
                     logger.debug(
                         f"[IMPORT] Checking for duplicate transaction {idx}: "
@@ -453,7 +483,7 @@ def import_transactions(
                         f"description='{normalized_description}', "
                         f"booked_date={booked_date}"
                     )
-                    
+
                     if existing_by_details:
                         logger.warning(
                             f"[IMPORT] Skipping duplicate transaction {idx} "
@@ -462,7 +492,7 @@ def import_transactions(
                         )
                         skipped_count += 1
                         continue
-                
+
                 # Create transaction
                 # If category was pre-selected, set both category_id and category_system_id to it
                 # If category was AI-assigned, set category_id = category_system_id initially (user can override later)
@@ -477,37 +507,44 @@ def import_transactions(
                     merchant=txn_data["merchant"],
                     booked_at=txn_data["booked_at"],
                     category_id=category_id,
-                    category_system_id=category_id if not txn_data.get("category_id") else None,  # Only set if AI-categorized
-                    pending=False
+                    category_system_id=category_id
+                    if not txn_data.get("category_id")
+                    else None,  # Only set if AI-categorized
+                    pending=False,
                 )
-                
+
                 db.add(transaction)
                 inserted_transactions.append(transaction)  # Store for later ID retrieval
                 inserted_count += 1
             except Exception as e:
                 logger.error(f"[IMPORT] Error creating transaction {idx}: {e}")
                 import traceback
+
                 logger.error(traceback.format_exc())
                 # Don't raise immediately - try to continue with other transactions
                 skipped_count += 1
-        
+
         try:
             db.commit()
-            logger.info(f"[IMPORT] Committed {inserted_count} transactions (skipped {skipped_count})")
-            
+            logger.info(
+                f"[IMPORT] Committed {inserted_count} transactions (skipped {skipped_count})"
+            )
+
             # Refresh transactions to get their IDs
             for transaction in inserted_transactions:
                 db.refresh(transaction)
-            
+
             # Get transaction IDs
             inserted_ids = [str(txn.id) for txn in inserted_transactions]
             logger.info(f"[IMPORT] Inserted transaction IDs: {inserted_ids}")
-            
+
             # Verify transactions were actually inserted by querying the database
-            verified_count = db.query(Transaction).filter(
-                Transaction.id.in_([txn.id for txn in inserted_transactions])
-            ).count()
-            
+            verified_count = (
+                db.query(Transaction)
+                .filter(Transaction.id.in_([txn.id for txn in inserted_transactions]))
+                .count()
+            )
+
             if verified_count != inserted_count:
                 logger.warning(
                     f"[IMPORT] Warning: Expected {inserted_count} transactions, "
@@ -518,7 +555,7 @@ def import_transactions(
         except Exception as e:
             db.rollback()
             error_msg = str(e)
-            
+
             # Check if it's a duplicate key violation
             if "duplicate key" in error_msg.lower() or "unique constraint" in error_msg.lower():
                 logger.error(
@@ -529,26 +566,30 @@ def import_transactions(
                 raise HTTPException(
                     status_code=409,  # Conflict
                     detail=f"Duplicate transaction detected. Some transactions may already exist. "
-                           f"Original error: {error_msg}"
+                    f"Original error: {error_msg}",
                 )
             else:
                 logger.error(f"[IMPORT] Error committing transactions: {e}")
                 import traceback
+
                 logger.error(traceback.format_exc())
                 raise HTTPException(
-                    status_code=500,
-                    detail=f"Failed to commit transactions: {str(e)}"
+                    status_code=500, detail=f"Failed to commit transactions: {str(e)}"
                 )
-        
+
         if skipped_count > 0:
-            logger.warning(f"[IMPORT] Skipped {skipped_count} duplicate transaction(s) during insert")
+            logger.warning(
+                f"[IMPORT] Skipped {skipped_count} duplicate transaction(s) during insert"
+            )
 
         logger.info(f"[IMPORT] Successfully inserted {inserted_count} transactions")
 
         # Step 5: Match transactions to subscriptions
         subscription_matches_result = None
         if inserted_transactions:
-            logger.info(f"[IMPORT] Matching {len(inserted_transactions)} transactions to subscriptions...")
+            logger.info(
+                f"[IMPORT] Matching {len(inserted_transactions)} transactions to subscriptions..."
+            )
             try:
                 subscription_matcher = SubscriptionMatcher(db, user_id=user_id)
                 matched_count = 0
@@ -584,11 +625,12 @@ def import_transactions(
 
                 subscription_matches_result = {
                     "matched": matched_count,
-                    "total_checked": len([t for t in inserted_transactions if float(t.amount) < 0])
+                    "total_checked": len([t for t in inserted_transactions if float(t.amount) < 0]),
                 }
             except Exception as e:
                 logger.error(f"[IMPORT] Error matching subscriptions: {e}")
                 import traceback
+
                 logger.error(traceback.format_exc())
                 subscription_matches_result = {"error": str(e)}
 
@@ -624,6 +666,7 @@ def import_transactions(
             except Exception as e:
                 logger.error(f"[IMPORT] Error detecting subscription patterns: {e}")
                 import traceback
+
                 logger.error(traceback.format_exc())
                 subscription_detection_result = {
                     "enabled": True,
@@ -653,7 +696,7 @@ def import_transactions(
             try:
                 # Get unique account IDs from imported transactions
                 account_ids = list(set([txn["account_id"] for txn in normalized_transactions]))
-                
+
                 # Get account currencies (base currencies for exchange rate fetching)
                 account_currencies = []
                 for account_id in account_ids:
@@ -661,42 +704,49 @@ def import_transactions(
                     if account and account.currency:
                         if account.currency not in account_currencies:
                             account_currencies.append(account.currency)
-                
+
                 # If no account currencies found, default to EUR
                 if not account_currencies:
                     account_currencies = ["EUR"]
                     logger.warning("[IMPORT] No account currencies found, defaulting to EUR")
-                
+
                 # Find earliest transaction date from imported transactions only
                 if normalized_transactions:
-                    earliest_date = min([
-                        txn["booked_at"].date() if isinstance(txn["booked_at"], datetime) 
-                        else (txn["booked_at"] if isinstance(txn["booked_at"], date) else datetime.now().date())
-                        for txn in normalized_transactions
-                    ])
+                    earliest_date = min(
+                        [
+                            txn["booked_at"].date()
+                            if isinstance(txn["booked_at"], datetime)
+                            else (
+                                txn["booked_at"]
+                                if isinstance(txn["booked_at"], date)
+                                else datetime.now().date()
+                            )
+                            for txn in normalized_transactions
+                        ]
+                    )
                 else:
                     earliest_date = datetime.now().date()
-                
+
                 end_date = datetime.now().date()
-                
+
                 logger.info(
                     f"[IMPORT] Fetching exchange rates for account currencies {account_currencies} "
                     f"from {earliest_date} to {end_date}"
                 )
-                
+
                 # Fetch exchange rates for each account currency
                 service = ExchangeRateService(db)
                 total_rates_stored = 0
-                
+
                 for account_currency in account_currencies:
                     # Fetch rates for this account currency to EUR and USD
                     rates_by_date = service.fetch_exchange_rates_batch(
                         base_currency=account_currency,
                         target_currencies=["EUR", "USD"],
                         start_date=earliest_date,
-                        end_date=end_date
+                        end_date=end_date,
                     )
-                    
+
                     # Store the fetched rates for each date
                     stored_count = 0
                     for rate_date, rate_dict in rates_by_date.items():
@@ -705,31 +755,28 @@ def import_transactions(
                             eur_stored = service.store_exchange_rates(
                                 target_currency="EUR",
                                 rates={account_currency: rate_dict["EUR"]},
-                                for_date=rate_date
+                                for_date=rate_date,
                             )
                             stored_count += eur_stored
-                        
+
                         # Store USD rate if available
                         if "USD" in rate_dict:
                             usd_stored = service.store_exchange_rates(
                                 target_currency="USD",
                                 rates={account_currency: rate_dict["USD"]},
-                                for_date=rate_date
+                                for_date=rate_date,
                             )
                             stored_count += usd_stored
-                    
+
                     total_rates_stored += stored_count
                     logger.info(
                         f"[IMPORT] Fetched and stored {stored_count} rates for {account_currency} -> EUR/USD"
                     )
-                
+
                 exchange_rates_result = {
                     "total_rates_stored": total_rates_stored,
                     "account_currencies": account_currencies,
-                    "date_range": {
-                        "start": earliest_date.isoformat(),
-                        "end": end_date.isoformat()
-                    }
+                    "date_range": {"start": earliest_date.isoformat(), "end": end_date.isoformat()},
                 }
                 logger.info(
                     f"[IMPORT] Exchange rates synced: "
@@ -738,13 +785,16 @@ def import_transactions(
             except Exception as e:
                 logger.error(f"[IMPORT] Error syncing exchange rates: {e}")
                 import traceback
+
                 logger.error(traceback.format_exc())
                 exchange_rates_result = {"error": str(e)}
-        
+
         # Step 7: Update functional amounts for newly imported transactions only
         functional_amounts_result = None
         if request.update_functional_amounts and inserted_transactions:
-            logger.info(f"[IMPORT] Updating functional amounts for {len(inserted_transactions)} newly imported transactions...")
+            logger.info(
+                f"[IMPORT] Updating functional amounts for {len(inserted_transactions)} newly imported transactions..."
+            )
             try:
                 # Get user's functional currency
                 user = db.query(User).filter(User.id == user_id).first()
@@ -766,7 +816,7 @@ def import_transactions(
                             exchange_rate = service.get_exchange_rate(
                                 base_currency=txn.currency,
                                 target_currency=functional_currency,
-                                for_date=txn_date
+                                for_date=txn_date,
                             )
 
                             if exchange_rate:
@@ -776,14 +826,16 @@ def import_transactions(
                                 txn.functional_amount = None
                                 failed_count += 1
                     except Exception as e:
-                        logger.error(f"[IMPORT] Error updating functional amount for transaction {txn.id}: {e}")
+                        logger.error(
+                            f"[IMPORT] Error updating functional amount for transaction {txn.id}: {e}"
+                        )
                         failed_count += 1
 
                 db.commit()
                 functional_amounts_result = {
                     "updated": updated_count,
                     "skipped": skipped_count,
-                    "failed": failed_count
+                    "failed": failed_count,
                 }
                 logger.info(
                     f"[IMPORT] Functional amounts updated for new transactions: "
@@ -792,19 +844,23 @@ def import_transactions(
             except Exception as e:
                 logger.error(f"[IMPORT] Error updating functional amounts: {e}")
                 functional_amounts_result = {"error": str(e)}
-        
+
         # Get unique account IDs from imported transactions
         affected_account_ids = list(set([txn.account_id for txn in inserted_transactions]))
 
         # Step 8a: Update account starting balance if provided from CSV
         # IMPORTANT: This must happen BEFORE balance calculation so the calculation uses the correct starting balance
         if request.starting_balance is not None and affected_account_ids:
-            logger.info(f"[IMPORT] Updating account starting balance to {request.starting_balance}...")
+            logger.info(
+                f"[IMPORT] Updating account starting balance to {request.starting_balance}..."
+            )
             for account_id in affected_account_ids:
                 account = db.query(Account).filter(Account.id == account_id).first()
                 if account:
                     account.starting_balance = request.starting_balance
-                    logger.info(f"[IMPORT] Updated starting balance for account {account.name} to {request.starting_balance}")
+                    logger.info(
+                        f"[IMPORT] Updated starting balance for account {account.name} to {request.starting_balance}"
+                    )
             db.commit()
 
         # Step 8b: Calculate account balances for affected accounts only
@@ -812,9 +868,13 @@ def import_transactions(
         balance_service = None
 
         if request.calculate_balances and affected_account_ids:
-            logger.info(f"[IMPORT] Calculating account balances for {len(affected_account_ids)} affected account(s)...")
+            logger.info(
+                f"[IMPORT] Calculating account balances for {len(affected_account_ids)} affected account(s)..."
+            )
             balance_service = AccountBalanceService(db)
-            balances_result = balance_service.calculate_account_balances(user_id, account_ids=affected_account_ids)
+            balances_result = balance_service.calculate_account_balances(
+                user_id, account_ids=affected_account_ids
+            )
 
         # Step 8c: Import daily balances from CSV if provided
         # This stores authoritative balance values from the CSV file
@@ -822,7 +882,9 @@ def import_transactions(
         daily_balances_result = None
 
         if request.daily_balances and affected_account_ids:
-            logger.info(f"[IMPORT] Importing {len(request.daily_balances)} daily balances from CSV...")
+            logger.info(
+                f"[IMPORT] Importing {len(request.daily_balances)} daily balances from CSV..."
+            )
 
             if balance_service is None:
                 balance_service = AccountBalanceService(db)
@@ -837,8 +899,11 @@ def import_transactions(
             for account_id in affected_account_ids:
                 import_result = balance_service.import_daily_balances(
                     account_id=str(account_id),
-                    daily_balances=[{"date": db.date, "balance": float(db.balance)} for db in request.daily_balances],
-                    functional_currency=functional_currency
+                    daily_balances=[
+                        {"date": db.date, "balance": float(db.balance)}
+                        for db in request.daily_balances
+                    ],
+                    functional_currency=functional_currency,
                 )
 
                 if "imported_dates" in import_result and import_result["imported_dates"]:
@@ -849,48 +914,61 @@ def import_transactions(
 
             daily_balances_result = {
                 "total_dates_imported": len(request.daily_balances),
-                "accounts_updated": len(affected_account_ids)
+                "accounts_updated": len(affected_account_ids),
             }
 
         # Step 9: Calculate and store account timeseries for affected accounts only
         # Skip dates that already have authoritative balance data from CSV
         timeseries_result = None
         if affected_account_ids:
-            logger.info(f"[IMPORT] Calculating account timeseries for {len(affected_account_ids)} affected account(s)...")
+            logger.info(
+                f"[IMPORT] Calculating account timeseries for {len(affected_account_ids)} affected account(s)..."
+            )
             if balance_service is None:
                 balance_service = AccountBalanceService(db)
             timeseries_result = balance_service.calculate_account_timeseries(
                 user_id,
                 account_ids=affected_account_ids,
-                skip_dates=skip_dates_by_account if skip_dates_by_account else None
+                skip_dates=skip_dates_by_account if skip_dates_by_account else None,
             )
-        
+
         return TransactionImportResponse(
             success=True,
             message=f"Successfully imported {inserted_count} transactions",
             transactions_inserted=inserted_count,
             transaction_ids=inserted_ids if inserted_ids else None,
             categorization_summary={
-                "total": categorization_result.total_transactions if categorization_result else pre_selected_count,
-                "categorized": categorization_result.categorized_count if categorization_result else pre_selected_count,
-                "deterministic": categorization_result.deterministic_count if categorization_result else 0,
+                "total": categorization_result.total_transactions
+                if categorization_result
+                else pre_selected_count,
+                "categorized": categorization_result.categorized_count
+                if categorization_result
+                else pre_selected_count,
+                "deterministic": categorization_result.deterministic_count
+                if categorization_result
+                else 0,
                 "llm": categorization_result.llm_count if categorization_result else 0,
-                "uncategorized": categorization_result.uncategorized_count if categorization_result else 0,
-                "tokens_used": categorization_result.total_tokens_used if categorization_result else 0,
-                "cost_usd": categorization_result.total_cost_usd if categorization_result else 0.0
+                "uncategorized": categorization_result.uncategorized_count
+                if categorization_result
+                else 0,
+                "tokens_used": categorization_result.total_tokens_used
+                if categorization_result
+                else 0,
+                "cost_usd": categorization_result.total_cost_usd if categorization_result else 0.0,
             },
             subscription_matches=subscription_matches_result,
             subscription_detection=subscription_detection_result,
             exchange_rates_synced=exchange_rates_result,
             functional_amounts_updated=functional_amounts_result,
             balances_calculated=balances_result,
-            timeseries_calculated=timeseries_result
+            timeseries_calculated=timeseries_result,
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"[IMPORT] Error importing transactions: {type(e).__name__}: {e}")
         import traceback
+
         logger.error(f"[IMPORT] Traceback:\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")

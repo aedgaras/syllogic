@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useEffect } from "react";
 import { RiAlertLine } from "@remixicon/react";
 import {
@@ -46,7 +45,9 @@ export function DeleteCategoryDialog({
   isLoading = false,
 }: DeleteCategoryDialogProps) {
   const [confirmText, setConfirmText] = useState("");
-  const [reassignOption, setReassignOption] = useState<"uncategorized" | "reassign">("uncategorized");
+  const [reassignOption, setReassignOption] = useState<
+    "uncategorized" | "reassign"
+  >("uncategorized");
   const [reassignCategoryId, setReassignCategoryId] = useState<string>("");
 
   // Reset state when dialog opens
@@ -62,10 +63,13 @@ export function DeleteCategoryDialog({
 
   const isConfirmValid = confirmText === category.name;
   const hasTransactions = transactionCount > 0;
-  const availableCategories = sameTypeCategories.filter((c) => c.id !== category.id);
+  const availableCategories = sameTypeCategories.filter(
+    (c) => c.id !== category.id,
+  );
 
   const handleConfirm = async () => {
-    const targetCategoryId = reassignOption === "reassign" ? reassignCategoryId : null;
+    const targetCategoryId =
+      reassignOption === "reassign" ? reassignCategoryId : null;
     await onConfirm(targetCategoryId);
   };
 
@@ -77,15 +81,25 @@ export function DeleteCategoryDialog({
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
               <RiAlertLine className="h-5 w-5 text-destructive" />
             </div>
-            <AlertDialogTitle>{translate("delete63346e")}{category.name}"?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {translate("delete63346e")}
+              {category.name}"?
+            </AlertDialogTitle>
           </div>
           <AlertDialogDescription>
             {hasTransactions ? (
               <>
-                {translate("thisCategoryHas")} <span className="font-semibold text-foreground">{transactionCount} {translate("transaction41c48b")}{transactionCount !== 1 ? "s" : ""}</span> {translate("assignedToIt")}
+                {translate("thisCategoryHas")}{" "}
+                <span className="font-semibold text-foreground">
+                  {transactionCount} {translate("transaction41c48b")}
+                  {transactionCount !== 1 ? "s" : ""}
+                </span>{" "}
+                {translate("assignedToIt")}
               </>
             ) : (
-              <>{translate("thisCategoryHasNoTransactionsItWillBePermanently")}</>
+              <>
+                {translate("thisCategoryHasNoTransactionsItWillBePermanently")}
+              </>
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -96,7 +110,9 @@ export function DeleteCategoryDialog({
             <div className="flex gap-2">
               <Button
                 type="button"
-                variant={reassignOption === "uncategorized" ? "default" : "outline"}
+                variant={
+                  reassignOption === "uncategorized" ? "default" : "outline"
+                }
                 size="sm"
                 className="flex-1"
                 onClick={() => setReassignOption("uncategorized")}
@@ -115,52 +131,65 @@ export function DeleteCategoryDialog({
               </Button>
             </div>
 
-            {reassignOption === "reassign" && availableCategories.length > 0 && (
-              <Select
-                value={reassignCategoryId}
-                onValueChange={(value) => value && setReassignCategoryId(value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={translate("selectACategory")}>
-                    {reassignCategoryId ? (
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="h-3 w-3 rounded-full shrink-0"
-                          style={{
-                            backgroundColor:
-                              availableCategories.find((c) => c.id === reassignCategoryId)?.color || "#666",
-                          }}
-                        />
-                        <span>
-                          {availableCategories.find((c) => c.id === reassignCategoryId)?.name}
-                        </span>
-                      </div>
-                    ) : (
-                      translate("selectACategory")
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {availableCategories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: cat.color || "#666" }}
-                        />
-                        {cat.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            {reassignOption === "reassign" &&
+              availableCategories.length > 0 && (
+                <Select
+                  value={reassignCategoryId}
+                  onValueChange={(value) =>
+                    value && setReassignCategoryId(value)
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={translate("selectACategory")}>
+                      {reassignCategoryId ? (
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="h-3 w-3 rounded-full shrink-0"
+                            style={{
+                              backgroundColor:
+                                availableCategories.find(
+                                  (c) => c.id === reassignCategoryId,
+                                )?.color || "#666",
+                            }}
+                          />
+                          <span>
+                            {
+                              availableCategories.find(
+                                (c) => c.id === reassignCategoryId,
+                              )?.name
+                            }
+                          </span>
+                        </div>
+                      ) : (
+                        translate("selectACategory")
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="h-3 w-3 rounded-full"
+                            style={{ backgroundColor: cat.color || "#666" }}
+                          />
+                          {cat.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
           </div>
         )}
 
         <div className="space-y-2">
           <Label htmlFor="confirm-name">
-            {translate("type")} <span className="font-semibold text-foreground">{category.name}</span> {translate("toConfirm")}
+            {translate("type")}{" "}
+            <span className="font-semibold text-foreground">
+              {category.name}
+            </span>{" "}
+            {translate("toConfirm")}
           </Label>
           <Input
             id="confirm-name"
@@ -172,7 +201,9 @@ export function DeleteCategoryDialog({
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>{translate("cancel")}</AlertDialogCancel>
+          <AlertDialogCancel disabled={isLoading}>
+            {translate("cancel")}
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={
@@ -182,7 +213,9 @@ export function DeleteCategoryDialog({
             }
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isLoading ? translate("deleting") : translate("deleteCategoryea9ac9")}
+            {isLoading
+              ? translate("deleting")
+              : translate("deleteCategoryea9ac9")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

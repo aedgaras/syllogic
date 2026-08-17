@@ -7,7 +7,9 @@ describe("validateOwners", () => {
   });
 
   it("accepts a single owner with null share", () => {
-    expect(() => validateOwners([{ personId: "p1", share: null }])).not.toThrow();
+    expect(() =>
+      validateOwners([{ personId: "p1", share: null }]),
+    ).not.toThrow();
   });
 
   it("accepts multiple owners with all-null shares (equal split)", () => {
@@ -15,7 +17,7 @@ describe("validateOwners", () => {
       validateOwners([
         { personId: "p1", share: null },
         { personId: "p2", share: null },
-      ])
+      ]),
     ).not.toThrow();
   });
 
@@ -24,7 +26,7 @@ describe("validateOwners", () => {
       validateOwners([
         { personId: "p1", share: null },
         { personId: "p2", share: 0.5 },
-      ])
+      ]),
     ).toThrow(/all owners must either share equally or specify shares/i);
   });
 
@@ -33,7 +35,7 @@ describe("validateOwners", () => {
       validateOwners([
         { personId: "p1", share: 0.6 },
         { personId: "p2", share: 0.4 },
-      ])
+      ]),
     ).not.toThrow();
   });
 
@@ -42,7 +44,7 @@ describe("validateOwners", () => {
       validateOwners([
         { personId: "p1", share: 0.6 },
         { personId: "p2", share: 0.3 },
-      ])
+      ]),
     ).toThrow(/must sum to 1/i);
   });
 
@@ -56,7 +58,7 @@ describe("validateOwners", () => {
       validateOwners([
         { personId: "p1", share: 0.5 },
         { personId: "p1", share: 0.5 },
-      ])
+      ]),
     ).toThrow(/duplicate/i);
   });
 });

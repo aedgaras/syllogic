@@ -144,7 +144,9 @@ export const DEFAULT_TRANSFER_CATEGORIES: DefaultCategory[] = [
     categoryType: "transfer",
     color: CATEGORY_COLORS[9].value, // Slate
     icon: "RiExchangeLine",
-    description: translate("transfersBetweenYourOwnAccountsToMoveMoneyInternally"),
+    description: translate(
+      "transfersBetweenYourOwnAccountsToMoveMoneyInternally",
+    ),
     isSystem: true,
   },
   {
@@ -173,5 +175,7 @@ export const DEFAULT_CATEGORIES: DefaultCategory[] = [
 ];
 
 export function getCategoriesByType(type: CategoryType): DefaultCategory[] {
-  return DEFAULT_CATEGORIES.filter((category) => category.categoryType === type);
+  return DEFAULT_CATEGORIES.filter(
+    (category) => category.categoryType === type,
+  );
 }

@@ -18,14 +18,22 @@ export function RecommendationItems({ items }: { items: Item[] }) {
   if (items.length === 0) return null;
   return (
     <Section style={{ marginBottom: "16px" }}>
-      <Text style={{ fontSize: "16px", fontWeight: 600 }}>{translate("recommendations")}</Text>
+      <Text style={{ fontSize: "16px", fontWeight: 600 }}>
+        {translate("recommendations")}
+      </Text>
       {items.map((r, i) => (
         <div
           key={i}
-          style={{ borderLeft: `4px solid ${SEV[r.severity]}`, padding: "8px 12px", marginBottom: "8px" }}
+          style={{
+            borderLeft: `4px solid ${SEV[r.severity]}`,
+            padding: "8px 12px",
+            marginBottom: "8px",
+          }}
         >
           <div style={{ fontWeight: 600 }}>{r.title}</div>
-          <div style={{ fontSize: "14px", marginTop: "4px" }}>{r.rationale}</div>
+          <div style={{ fontSize: "14px", marginTop: "4px" }}>
+            {r.rationale}
+          </div>
           {r.proposedChange !== null && (
             <div style={{ fontSize: "14px", marginTop: "4px", color: "#333" }}>
               <strong>{translate("proposedChange")}</strong> {r.proposedChange}

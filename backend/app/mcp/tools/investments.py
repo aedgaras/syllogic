@@ -7,7 +7,8 @@ Exposes:
 - get_portfolio_history: daily portfolio value history (sum of investment account balances)
 - search_symbol: lookup symbols seen in user's holdings
 """
-from datetime import date, datetime, timedelta
+
+from datetime import date
 from decimal import Decimal
 from typing import Optional
 
@@ -39,11 +40,7 @@ INVESTMENT_ACCOUNT_TYPES = ("investment_manual", "investment_brokerage")
 
 def _latest_valuations_for_user(db: Session, user_id: str):
     """Return mapping of holding_id -> latest HoldingValuation for the user."""
-    holding_ids_subq = (
-        db.query(Holding.id)
-        .filter(Holding.user_id == user_id)
-        .subquery()
-    )
+    holding_ids_subq = db.query(Holding.id).filter(Holding.user_id == user_id).subquery()
 
     latest_dates = (
         db.query(
@@ -114,9 +111,7 @@ def list_holdings_impl(
         value_str = str(v.value_user_currency) if v else None
         if single_person and v is not None and v.value_user_currency is not None:
             owners = owners_cache[str(h.account_id)]
-            weighted_value = attribute_amount(
-                float(v.value_user_currency), owners, person_ids[0]
-            )
+            weighted_value = attribute_amount(float(v.value_user_currency), owners, person_ids[0])
             value_str = str(Decimal(str(weighted_value)))
         out.append(
             {
@@ -181,13 +176,10 @@ def get_portfolio_summary_impl(
                 "accounts": [],
             }
 
-    accounts_query = (
-        db.query(Account)
-        .filter(
-            Account.user_id == user_id,
-            Account.account_type.in_(INVESTMENT_ACCOUNT_TYPES),
-            Account.is_active == True,  # noqa: E712
-        )
+    accounts_query = db.query(Account).filter(
+        Account.user_id == user_id,
+        Account.account_type.in_(INVESTMENT_ACCOUNT_TYPES),
+        Account.is_active == True,  # noqa: E712
     )
     if allowed_account_ids is not None:
         accounts_query = accounts_query.filter(Account.id.in_(allowed_account_ids))
@@ -204,10 +196,14 @@ def get_portfolio_summary_impl(
 
     # Sum value per account from latest valuations of holdings in those accounts.
     holdings = (
-        db.query(Holding)
-        .filter(Holding.user_id == user_id, Holding.account_id.in_(account_ids))
-        .all()
-    ) if account_ids else []
+        (
+            db.query(Holding)
+            .filter(Holding.user_id == user_id, Holding.account_id.in_(account_ids))
+            .all()
+        )
+        if account_ids
+        else []
+    )
 
     per_account: dict = {}
     total = Decimal("0")
@@ -283,12 +279,9 @@ def get_portfolio_history_impl(
         if not allowed_person_ids:
             return []
 
-    accounts_query = (
-        db.query(Account)
-        .filter(
-            Account.user_id == user_id,
-            Account.account_type.in_(INVESTMENT_ACCOUNT_TYPES),
-        )
+    accounts_query = db.query(Account).filter(
+        Account.user_id == user_id,
+        Account.account_type.in_(INVESTMENT_ACCOUNT_TYPES),
     )
     if allowed_person_ids is not None:
         accounts_query = accounts_query.filter(Account.id.in_(allowed_person_ids))
@@ -420,11 +413,7 @@ def _trades_for_user(
     allowed_account_ids: if provided, further restricts to those account IDs
     (used for person_ids ownership filtering).
     """
-    account_ids_subq = (
-        db.query(Account.id)
-        .filter(Account.user_id == user_id)
-        .subquery()
-    )
+    account_ids_subq = db.query(Account.id).filter(Account.user_id == user_id).subquery()
     q = db.query(BrokerTrade).filter(BrokerTrade.account_id.in_(account_ids_subq))
     if account_id:
         q = q.filter(BrokerTrade.account_id == account_id)
@@ -511,7 +500,9 @@ def get_unrealized_pnl_impl(
             return []
 
     base = _user_base_currency(db, user_id)
-    trades = _trades_for_user(db, user_id, account_id, symbol, allowed_account_ids=allowed_account_ids)
+    trades = _trades_for_user(
+        db, user_id, account_id, symbol, allowed_account_ids=allowed_account_ids
+    )
     if not trades:
         return []
 
@@ -559,11 +550,7 @@ def get_unrealized_pnl(
 
 def get_holding_trades_impl(db: Session, user_id: str, holding_id: str) -> list[dict]:
     """Return broker trades behind a holding, chronologically, with running quantity."""
-    holding = (
-        db.query(Holding)
-        .filter(Holding.id == holding_id, Holding.user_id == user_id)
-        .first()
-    )
+    holding = db.query(Holding).filter(Holding.id == holding_id, Holding.user_id == user_id).first()
     if not holding:
         return []
     trades = (
@@ -601,7 +588,9 @@ def get_holding_trades_impl(db: Session, user_id: str, holding_id: str) -> list[
                 "fees": _dec_str_local(fees),
                 "external_id": t.external_id,
                 "cost_native": _dec_str_local(cost_native) if cost_native is not None else None,
-                "proceeds_native": _dec_str_local(proceeds_native) if proceeds_native is not None else None,
+                "proceeds_native": _dec_str_local(proceeds_native)
+                if proceeds_native is not None
+                else None,
                 "running_quantity": _dec_str_local(running),
             }
         )
@@ -633,7 +622,8 @@ def _jsonify_pnl_row(row: dict) -> dict:
         elif isinstance(v, list):
             out[k] = [
                 {kk: (_dec_str(vv) if isinstance(vv, Decimal) else vv) for kk, vv in item.items()}
-                if isinstance(item, dict) else item
+                if isinstance(item, dict)
+                else item
                 for item in v
             ]
         else:

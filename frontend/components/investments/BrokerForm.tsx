@@ -67,7 +67,9 @@ export function BrokerForm({ onCancel }: { onCancel: () => void }) {
                 {translate("interactiveBrokersFlexQuery")}
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">
-                {translate("positionsAndTradeHistorySyncAutomaticallyViaTheFlex")}
+                {translate(
+                  "positionsAndTradeHistorySyncAutomaticallyViaTheFlex",
+                )}
               </div>
             </div>
           </div>
@@ -80,10 +82,7 @@ export function BrokerForm({ onCancel }: { onCancel: () => void }) {
               "A Positions Flex Query ID configured to export account positions",
               "A Trades Flex Query ID configured to export trade history",
             ].map((t) => (
-              <div
-                key={t}
-                className="flex gap-2 text-xs text-muted-foreground"
-              >
+              <div key={t} className="flex gap-2 text-xs text-muted-foreground">
                 <span>·</span>
                 <span>{t}</span>
               </div>
@@ -94,12 +93,16 @@ export function BrokerForm({ onCancel }: { onCancel: () => void }) {
               rel="noreferrer"
               className="text-xs text-foreground mt-1 inline-flex items-center gap-1 hover:underline"
             >
-              <RiExternalLinkLine size={11} /> {translate("howToSetUpFlexQueries")}
+              <RiExternalLinkLine size={11} />{" "}
+              {translate("howToSetUpFlexQueries")}
             </a>
           </div>
           <div className="space-y-3.5">
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Field label={translate("accountNameabe4d6")} className="flex-[2_1_0%]">
+              <Field
+                label={translate("accountNameabe4d6")}
+                className="flex-[2_1_0%]"
+              >
                 <Input
                   value={accountName}
                   onChange={(e) => setAccountName(e.target.value)}
@@ -164,7 +167,8 @@ export function BrokerForm({ onCancel }: { onCancel: () => void }) {
                 {translate("cancel")}
               </Button>
               <Button type="submit" disabled={busy}>
-                <RiRefreshLine size={13} /> {busy ? translate("syncing") : translate("connectSync")}
+                <RiRefreshLine size={13} />{" "}
+                {busy ? translate("syncing") : translate("connectSync")}
               </Button>
             </div>
           </div>

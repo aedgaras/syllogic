@@ -3,6 +3,7 @@
 Run with:
     cd backend && .venv/bin/pytest tests/test_report_models.py -v
 """
+
 from __future__ import annotations
 
 import base64
@@ -28,7 +29,9 @@ from app.models import Report, ReportRun, User  # noqa: E402
 
 
 def _make_user(db) -> User:
-    user = User(id=f"test-user-{uuid.uuid4()}", email=f"{uuid.uuid4()}@example.com", name="Test User")
+    user = User(
+        id=f"test-user-{uuid.uuid4()}", email=f"{uuid.uuid4()}@example.com", name="Test User"
+    )
     db.add(user)
     db.flush()
     return user

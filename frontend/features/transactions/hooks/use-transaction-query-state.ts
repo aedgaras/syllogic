@@ -2,7 +2,11 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { OnChangeFn, PaginationState, SortingState } from "@tanstack/react-table";
+import type {
+  OnChangeFn,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import {
   parseTransactionsSearchParamsFromUrlSearchParams,
   toTransactionsSearchParams,
@@ -11,14 +15,26 @@ import {
 } from "../public";
 
 const MANAGED_QUERY_KEYS = [
-  "page", "pageSize", "search", "category", "account", "status",
-  "subscription", "analytics", "minAmount", "maxAmount", "from", "to",
-  "horizon", "sort", "order",
+  "page",
+  "pageSize",
+  "search",
+  "category",
+  "account",
+  "status",
+  "subscription",
+  "analytics",
+  "minAmount",
+  "maxAmount",
+  "from",
+  "to",
+  "horizon",
+  "sort",
+  "order",
 ] as const;
 
 export function mergeTransactionQueryParams(
   currentSearchParams: URLSearchParams,
-  nextState: TransactionsQueryState
+  nextState: TransactionsQueryState,
 ): URLSearchParams {
   const nextParams = new URLSearchParams(currentSearchParams.toString());
   MANAGED_QUERY_KEYS.forEach((key) => nextParams.delete(key));
@@ -36,13 +52,16 @@ function mapSortColumnId(id: string): TransactionSortField {
 
 export function useTransactionQueryState(
   queryState: TransactionsQueryState,
-  basePath = "/transactions"
+  basePath = "/transactions",
 ) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const updateQueryState = React.useCallback(
-    (patch: Partial<TransactionsQueryState>, options?: { resetPage?: boolean }) => {
+    (
+      patch: Partial<TransactionsQueryState>,
+      options?: { resetPage?: boolean },
+    ) => {
       const currentParams = new URLSearchParams(searchParams.toString());
       const nextState = {
         ...parseTransactionsSearchParamsFromUrlSearchParams(currentParams),
@@ -50,44 +69,59 @@ export function useTransactionQueryState(
       };
       if (options?.resetPage ?? true) nextState.page = 1;
 
-      const queryString = mergeTransactionQueryParams(currentParams, nextState).toString();
-      router.replace(queryString ? `${basePath}?${queryString}` : basePath, { scroll: false });
+      const queryString = mergeTransactionQueryParams(
+        currentParams,
+        nextState,
+      ).toString();
+      router.replace(queryString ? `${basePath}?${queryString}` : basePath, {
+        scroll: false,
+      });
     },
-    [basePath, router, searchParams]
+    [basePath, router, searchParams],
   );
 
   const sortingState = React.useMemo<SortingState>(
     () => [{ id: queryState.sort, desc: queryState.order === "desc" }],
-    [queryState.order, queryState.sort]
+    [queryState.order, queryState.sort],
   );
   const paginationState = React.useMemo<PaginationState>(
-    () => ({ pageIndex: Math.max(0, queryState.page - 1), pageSize: queryState.pageSize }),
-    [queryState.page, queryState.pageSize]
+    () => ({
+      pageIndex: Math.max(0, queryState.page - 1),
+      pageSize: queryState.pageSize,
+    }),
+    [queryState.page, queryState.pageSize],
   );
 
   const onSortingStateChange = React.useCallback<OnChangeFn<SortingState>>(
     (updater) => {
-      const next = typeof updater === "function" ? updater(sortingState) : updater;
+      const next =
+        typeof updater === "function" ? updater(sortingState) : updater;
       const sort = next[0];
       updateQueryState(
         sort
-          ? { sort: mapSortColumnId(sort.id), order: sort.desc ? "desc" : "asc" }
+          ? {
+              sort: mapSortColumnId(sort.id),
+              order: sort.desc ? "desc" : "asc",
+            }
           : { sort: "bookedAt", order: "desc" },
-        { resetPage: false }
+        { resetPage: false },
       );
     },
-    [sortingState, updateQueryState]
+    [sortingState, updateQueryState],
   );
 
-  const onPaginationStateChange = React.useCallback<OnChangeFn<PaginationState>>(
+  const onPaginationStateChange = React.useCallback<
+    OnChangeFn<PaginationState>
+  >(
     (updater) => {
-      const next = typeof updater === "function" ? updater(paginationState) : updater;
+      const next =
+        typeof updater === "function" ? updater(paginationState) : updater;
       updateQueryState(
         { page: next.pageIndex + 1, pageSize: next.pageSize },
-        { resetPage: false }
+        { resetPage: false },
       );
     },
-    [paginationState, updateQueryState]
+    [paginationState, updateQueryState],
   );
 
   const consumeTransactionDeepLink = React.useCallback(
@@ -96,9 +130,11 @@ export function useTransactionQueryState(
       if (params.get("tx") !== transactionId) return;
       params.delete("tx");
       const queryString = params.toString();
-      router.replace(queryString ? `${basePath}?${queryString}` : basePath, { scroll: false });
+      router.replace(queryString ? `${basePath}?${queryString}` : basePath, {
+        scroll: false,
+      });
     },
-    [basePath, router, searchParams]
+    [basePath, router, searchParams],
   );
 
   return {

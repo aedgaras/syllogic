@@ -1,5 +1,9 @@
 import { t as translate } from "@/i18n/translate";
-import { HeaderSkeleton, FiltersSkeleton, TableSkeleton } from "@/components/skeletons/page-skeletons";
+import {
+  HeaderSkeleton,
+  FiltersSkeleton,
+  TableSkeleton,
+} from "@/components/skeletons/page-skeletons";
 
 export default function Loading() {
   return (

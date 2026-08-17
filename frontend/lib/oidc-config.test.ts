@@ -4,7 +4,8 @@ import { validateOidcConfig } from "@/lib/oidc-config";
 const validConfig = {
   enabled: true,
   displayName: " Authentik ",
-  discoveryUrl: "https://auth.example.com/application/o/syllogic/.well-known/openid-configuration",
+  discoveryUrl:
+    "https://auth.example.com/application/o/syllogic/.well-known/openid-configuration",
   clientId: " client-id ",
   clientSecret: " secret ",
   allowSignUp: true,
@@ -21,14 +22,18 @@ describe("validateOidcConfig", () => {
   });
 
   it("requires complete credentials when enabled", () => {
-    expect(() => validateOidcConfig({ ...validConfig, clientSecret: "" })).toThrow(
-      "required before enabling OIDC"
-    );
+    expect(() =>
+      validateOidcConfig({ ...validConfig, clientSecret: "" }),
+    ).toThrow("required before enabling OIDC");
   });
 
   it("rejects insecure remote discovery URLs", () => {
     expect(() =>
-      validateOidcConfig({ ...validConfig, discoveryUrl: "http://auth.example.com/.well-known/openid-configuration" })
+      validateOidcConfig({
+        ...validConfig,
+        discoveryUrl:
+          "http://auth.example.com/.well-known/openid-configuration",
+      }),
     ).toThrow("must use HTTPS");
   });
 
@@ -36,8 +41,11 @@ describe("validateOidcConfig", () => {
     expect(
       validateOidcConfig({
         ...validConfig,
-        discoveryUrl: "http://localhost:9000/application/o/test/.well-known/openid-configuration",
-      }).discoveryUrl
-    ).toBe("http://localhost:9000/application/o/test/.well-known/openid-configuration");
+        discoveryUrl:
+          "http://localhost:9000/application/o/test/.well-known/openid-configuration",
+      }).discoveryUrl,
+    ).toBe(
+      "http://localhost:9000/application/o/test/.well-known/openid-configuration",
+    );
   });
 });

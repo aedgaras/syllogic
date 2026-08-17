@@ -32,7 +32,9 @@ export function EditHoldingDialog({
   const [qty, setQty] = useState(holding.quantity);
   const [avgCost, setAvgCost] = useState(holding.avg_cost ?? "");
   const [asOfDate, setAsOfDate] = useState(holding.as_of_date ?? "");
-  const [providerSymbol, setProviderSymbol] = useState(holding.provider_symbol ?? "");
+  const [providerSymbol, setProviderSymbol] = useState(
+    holding.provider_symbol ?? "",
+  );
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -61,9 +63,13 @@ export function EditHoldingDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{translate("editHolding")} {holding.symbol}</DialogTitle>
+          <DialogTitle>
+            {translate("editHolding")} {holding.symbol}
+          </DialogTitle>
           <DialogDescription>
-            {translate("manualHoldingsOnlyConnectedBrokerPositionsSyncAutomatically")}
+            {translate(
+              "manualHoldingsOnlyConnectedBrokerPositionsSyncAutomatically",
+            )}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
@@ -91,7 +97,10 @@ export function EditHoldingDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="avg-cost">
-              {translate("avgCost")} <span className="text-muted-foreground">{translate("optional")}</span>
+              {translate("avgCost")}{" "}
+              <span className="text-muted-foreground">
+                {translate("optional")}
+              </span>
             </Label>
             <Input
               id="avg-cost"
@@ -103,7 +112,10 @@ export function EditHoldingDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="as-of">
-              {translate("asOfDate")} <span className="text-muted-foreground">{translate("optional")}</span>
+              {translate("asOfDate")}{" "}
+              <span className="text-muted-foreground">
+                {translate("optional")}
+              </span>
             </Label>
             <Input
               id="as-of"
@@ -115,14 +127,19 @@ export function EditHoldingDialog({
           <div className="space-y-2">
             <Label htmlFor="provider-symbol">
               {translate("priceLookupSymbol")}{" "}
-              <span className="text-muted-foreground">{translate("optional")}</span>
+              <span className="text-muted-foreground">
+                {translate("optional")}
+              </span>
             </Label>
             <SymbolSearchInput
               id="provider-symbol"
               value={providerSymbol}
               onChange={setProviderSymbol}
               onSelect={(r: SymbolSearchResult) => setProviderSymbol(r.symbol)}
-              placeholder={translate("eGLonOrAs", { value1: holding.symbol, value2: holding.symbol })}
+              placeholder={translate("eGLonOrAs", {
+                value1: holding.symbol,
+                value2: holding.symbol,
+              })}
             />
             <p className="text-xs text-muted-foreground">
               {translate("overrideTheTickerUsedForPriceLookupsUsefulFor")}

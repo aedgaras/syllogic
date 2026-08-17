@@ -1,7 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, and, inArray, sql, ne, desc, gte, lte, ilike, or, count } from "drizzle-orm";
+import {
+  eq,
+  and,
+  inArray,
+  sql,
+  ne,
+  desc,
+  gte,
+  lte,
+  ilike,
+  or,
+  count,
+} from "drizzle-orm";
 import { db } from "@/lib/db";
 import { transactions, transactionLinks, accounts } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth-helpers";
@@ -105,7 +117,7 @@ export async function getUserAccountsForLinking(): Promise<AccountOption[]> {
 export async function createTransactionLinkGroup(
   primaryId: string,
   linkedIds: string[],
-  linkType: "reimbursement" | "expense"
+  linkType: "reimbursement" | "expense",
 ): Promise<{ success: boolean; error?: string; groupId?: string }> {
   const userId = await requireAuth();
 
@@ -114,7 +126,10 @@ export async function createTransactionLinkGroup(
   }
 
   if (linkedIds.length === 0) {
-    return { success: false, error: "At least one linked transaction is required" };
+    return {
+      success: false,
+      error: "At least one linked transaction is required",
+    };
   }
 
   try {
@@ -123,12 +138,15 @@ export async function createTransactionLinkGroup(
     const userTransactions = await db.query.transactions.findMany({
       where: and(
         eq(transactions.userId, userId),
-        inArray(transactions.id, allIds)
+        inArray(transactions.id, allIds),
       ),
     });
 
     if (userTransactions.length !== allIds.length) {
-      return { success: false, error: "Some transactions not found or not owned by user" };
+      return {
+        success: false,
+        error: "Some transactions not found or not owned by user",
+      };
     }
 
     // Check if any transaction is already linked
@@ -137,7 +155,10 @@ export async function createTransactionLinkGroup(
     });
 
     if (existingLinks.length > 0) {
-      return { success: false, error: "One or more transactions are already linked to a group" };
+      return {
+        success: false,
+        error: "One or more transactions are already linked to a group",
+      };
     }
 
     // Create a new group
@@ -176,7 +197,7 @@ export async function createTransactionLinkGroup(
 export async function addTransactionToLinkGroup(
   groupId: string,
   transactionId: string,
-  role: LinkRole
+  role: LinkRole,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -189,7 +210,7 @@ export async function addTransactionToLinkGroup(
     const transaction = await db.query.transactions.findFirst({
       where: and(
         eq(transactions.id, transactionId),
-        eq(transactions.userId, userId)
+        eq(transactions.userId, userId),
       ),
     });
 
@@ -201,7 +222,7 @@ export async function addTransactionToLinkGroup(
     const existingGroupLink = await db.query.transactionLinks.findFirst({
       where: and(
         eq(transactionLinks.groupId, groupId),
-        eq(transactionLinks.userId, userId)
+        eq(transactionLinks.userId, userId),
       ),
     });
 
@@ -215,7 +236,10 @@ export async function addTransactionToLinkGroup(
     });
 
     if (existingLink) {
-      return { success: false, error: "Transaction is already linked to a group" };
+      return {
+        success: false,
+        error: "Transaction is already linked to a group",
+      };
     }
 
     // Add the transaction to the group
@@ -240,7 +264,7 @@ export async function addTransactionToLinkGroup(
  * If it's the primary transaction or the last one, deletes the entire group.
  */
 export async function removeTransactionFromLinkGroup(
-  transactionId: string
+  transactionId: string,
 ): Promise<{ success: boolean; error?: string; groupDeleted?: boolean }> {
   const userId = await requireAuth();
 
@@ -253,12 +277,15 @@ export async function removeTransactionFromLinkGroup(
     const link = await db.query.transactionLinks.findFirst({
       where: and(
         eq(transactionLinks.transactionId, transactionId),
-        eq(transactionLinks.userId, userId)
+        eq(transactionLinks.userId, userId),
       ),
     });
 
     if (!link) {
-      return { success: false, error: "Transaction is not linked to any group" };
+      return {
+        success: false,
+        error: "Transaction is not linked to any group",
+      };
     }
 
     const groupId = link.groupId;
@@ -270,7 +297,9 @@ export async function removeTransactionFromLinkGroup(
 
     // If this is the primary or there are only 2 transactions, delete the entire group
     if (link.linkRole === "primary" || groupLinks.length <= 2) {
-      await db.delete(transactionLinks).where(eq(transactionLinks.groupId, groupId));
+      await db
+        .delete(transactionLinks)
+        .where(eq(transactionLinks.groupId, groupId));
 
       revalidatePath("/transactions");
       revalidatePath("/");
@@ -278,7 +307,9 @@ export async function removeTransactionFromLinkGroup(
     }
 
     // Otherwise, just remove this transaction
-    await db.delete(transactionLinks).where(eq(transactionLinks.transactionId, transactionId));
+    await db
+      .delete(transactionLinks)
+      .where(eq(transactionLinks.transactionId, transactionId));
 
     revalidatePath("/transactions");
     revalidatePath("/");
@@ -293,7 +324,7 @@ export async function removeTransactionFromLinkGroup(
  * Deletes an entire link group.
  */
 export async function deleteLinkGroup(
-  groupId: string
+  groupId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -306,7 +337,7 @@ export async function deleteLinkGroup(
     const existingLink = await db.query.transactionLinks.findFirst({
       where: and(
         eq(transactionLinks.groupId, groupId),
-        eq(transactionLinks.userId, userId)
+        eq(transactionLinks.userId, userId),
       ),
     });
 
@@ -315,7 +346,9 @@ export async function deleteLinkGroup(
     }
 
     // Delete all links in the group
-    await db.delete(transactionLinks).where(eq(transactionLinks.groupId, groupId));
+    await db
+      .delete(transactionLinks)
+      .where(eq(transactionLinks.groupId, groupId));
 
     revalidatePath("/transactions");
     revalidatePath("/");
@@ -330,7 +363,7 @@ export async function deleteLinkGroup(
  * Gets the link group for a transaction, including all linked transactions and net amount.
  */
 export async function getTransactionLinkGroup(
-  transactionId: string
+  transactionId: string,
 ): Promise<TransactionLinkGroup | null> {
   const userId = await requireAuth();
 
@@ -343,7 +376,7 @@ export async function getTransactionLinkGroup(
     const link = await db.query.transactionLinks.findFirst({
       where: and(
         eq(transactionLinks.transactionId, transactionId),
-        eq(transactionLinks.userId, userId)
+        eq(transactionLinks.userId, userId),
       ),
     });
 
@@ -394,7 +427,9 @@ export async function getTransactionLinkGroup(
     }
 
     // Sort linked transactions by date
-    linked.sort((a, b) => new Date(a.bookedAt).getTime() - new Date(b.bookedAt).getTime());
+    linked.sort(
+      (a, b) => new Date(a.bookedAt).getTime() - new Date(b.bookedAt).getTime(),
+    );
 
     return {
       groupId: link.groupId,
@@ -478,7 +513,10 @@ export async function getUserLinkGroups(): Promise<TransactionLinkGroup[]> {
         }
       }
 
-      linked.sort((a, b) => new Date(a.bookedAt).getTime() - new Date(b.bookedAt).getTime());
+      linked.sort(
+        (a, b) =>
+          new Date(a.bookedAt).getTime() - new Date(b.bookedAt).getTime(),
+      );
 
       groups.push({
         groupId,
@@ -502,7 +540,7 @@ export async function getUserLinkGroups(): Promise<TransactionLinkGroup[]> {
  */
 export async function findPotentialReimbursements(
   transactionId: string,
-  filters: LinkSearchFilters = {}
+  filters: LinkSearchFilters = {},
 ): Promise<LinkSearchResult> {
   const userId = await requireAuth();
 
@@ -526,7 +564,7 @@ export async function findPotentialReimbursements(
     const sourceTxn = await db.query.transactions.findFirst({
       where: and(
         eq(transactions.id, transactionId),
-        eq(transactions.userId, userId)
+        eq(transactions.userId, userId),
       ),
     });
 
@@ -558,7 +596,12 @@ export async function findPotentialReimbursements(
 
     // Exclude already linked transactions
     if (linkedIds.length > 0) {
-      conditions.push(sql`${transactions.id} NOT IN (${sql.join(linkedIds.map(id => sql`${id}`), sql`, `)})`);
+      conditions.push(
+        sql`${transactions.id} NOT IN (${sql.join(
+          linkedIds.map((id) => sql`${id}`),
+          sql`, `,
+        )})`,
+      );
     }
 
     // Search filter
@@ -566,8 +609,8 @@ export async function findPotentialReimbursements(
       conditions.push(
         or(
           ilike(transactions.merchant, `%${searchQuery}%`),
-          ilike(transactions.description, `%${searchQuery}%`)
-        )!
+          ilike(transactions.description, `%${searchQuery}%`),
+        )!,
       );
     }
 
@@ -640,7 +683,7 @@ export async function findPotentialReimbursements(
  */
 export async function findPotentialExpenses(
   transactionId: string,
-  filters: LinkSearchFilters = {}
+  filters: LinkSearchFilters = {},
 ): Promise<LinkSearchResult> {
   const userId = await requireAuth();
 
@@ -664,7 +707,7 @@ export async function findPotentialExpenses(
     const sourceTxn = await db.query.transactions.findFirst({
       where: and(
         eq(transactions.id, transactionId),
-        eq(transactions.userId, userId)
+        eq(transactions.userId, userId),
       ),
     });
 
@@ -696,7 +739,12 @@ export async function findPotentialExpenses(
 
     // Exclude already linked transactions
     if (linkedIds.length > 0) {
-      conditions.push(sql`${transactions.id} NOT IN (${sql.join(linkedIds.map(id => sql`${id}`), sql`, `)})`);
+      conditions.push(
+        sql`${transactions.id} NOT IN (${sql.join(
+          linkedIds.map((id) => sql`${id}`),
+          sql`, `,
+        )})`,
+      );
     }
 
     // Search filter
@@ -704,8 +752,8 @@ export async function findPotentialExpenses(
       conditions.push(
         or(
           ilike(transactions.merchant, `%${searchQuery}%`),
-          ilike(transactions.description, `%${searchQuery}%`)
-        )!
+          ilike(transactions.description, `%${searchQuery}%`),
+        )!,
       );
     }
 
@@ -776,7 +824,7 @@ export async function findPotentialExpenses(
  * Gets the link info for a single transaction.
  */
 export async function getTransactionLinkInfo(
-  transactionId: string
+  transactionId: string,
 ): Promise<TransactionLinkInfo | null> {
   const userId = await requireAuth();
 
@@ -788,7 +836,7 @@ export async function getTransactionLinkInfo(
     const link = await db.query.transactionLinks.findFirst({
       where: and(
         eq(transactionLinks.transactionId, transactionId),
-        eq(transactionLinks.userId, userId)
+        eq(transactionLinks.userId, userId),
       ),
     });
 
@@ -814,7 +862,7 @@ export async function getTransactionLinkInfo(
  * Auto-detects the primary (largest expense or income) and assigns roles.
  */
 export async function createLinkGroupFromSelection(
-  transactionIds: string[]
+  transactionIds: string[],
 ): Promise<{ success: boolean; error?: string; groupId?: string }> {
   const userId = await requireAuth();
 
@@ -831,12 +879,15 @@ export async function createLinkGroupFromSelection(
     const userTransactions = await db.query.transactions.findMany({
       where: and(
         eq(transactions.userId, userId),
-        inArray(transactions.id, transactionIds)
+        inArray(transactions.id, transactionIds),
       ),
     });
 
     if (userTransactions.length !== transactionIds.length) {
-      return { success: false, error: "Some transactions not found or not owned by user" };
+      return {
+        success: false,
+        error: "Some transactions not found or not owned by user",
+      };
     }
 
     // Check if any transaction is already linked
@@ -845,7 +896,10 @@ export async function createLinkGroupFromSelection(
     });
 
     if (existingLinks.length > 0) {
-      return { success: false, error: "One or more transactions are already linked" };
+      return {
+        success: false,
+        error: "One or more transactions are already linked",
+      };
     }
 
     // Determine primary: largest absolute amount

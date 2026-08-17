@@ -11,13 +11,13 @@ export async function GET() {
         enabled: status.enabled,
         firstUserWillBeAdmin: status.firstUserWillBeAdmin,
       },
-      { headers: { "Cache-Control": "no-store" } }
+      { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
     console.error("Failed to load registration configuration:", error);
     return NextResponse.json(
       { enabled: false, firstUserWillBeAdmin: false },
-      { headers: { "Cache-Control": "no-store" } }
+      { headers: { "Cache-Control": "no-store" } },
     );
   }
 }

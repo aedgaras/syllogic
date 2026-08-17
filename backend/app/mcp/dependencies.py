@@ -1,6 +1,7 @@
 """
 Database session management for MCP tools.
 """
+
 from __future__ import annotations
 
 from contextlib import contextmanager

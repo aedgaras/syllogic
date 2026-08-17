@@ -27,7 +27,10 @@ import {
   toInvariantDate,
   toInvariantDateTime,
 } from "@/lib/import/dates";
-import { detectDuplicates, markDuplicates } from "@/lib/utils/duplicate-detection";
+import {
+  detectDuplicates,
+  markDuplicates,
+} from "@/lib/utils/duplicate-detection";
 import { readImportFile, storeImportFile } from "./import-file.storage";
 import type {
   BalanceVerification,
@@ -87,7 +90,7 @@ function collectNumericSamples(rows: string[][], indices: number[]): string[] {
 function createNumberParseOptions(
   mapping: ColumnMapping,
   rows: string[][],
-  indices: number[]
+  indices: number[],
 ): {
   amountFormat: AmountFormat;
   inferredFormat: InferredAmountFormat;
@@ -105,7 +108,7 @@ function parseImportedNumber(
   options: {
     amountFormat: AmountFormat;
     inferredFormat: InferredAmountFormat;
-  }
+  },
 ): number | null {
   if (!raw?.trim()) {
     return null;
@@ -117,7 +120,7 @@ function parseImportedNumber(
   }
 
   throw new Error(
-    `Could not parse ${label} on row ${rowNumber}: "${raw}". Choose Amount Format in mapping if the file uses a different decimal separator.`
+    `Could not parse ${label} on row ${rowNumber}: "${raw}". Choose Amount Format in mapping if the file uses a different decimal separator.`,
   );
 }
 
@@ -138,7 +141,7 @@ async function getCsvImportAccess() {
 export async function initializeCsvImport(
   accountId: string,
   fileName: string,
-  fileContent: string
+  fileContent: string,
 ): Promise<{ success: boolean; error?: string; importId?: string }> {
   const access = await getCsvImportAccess();
   if ("error" in access) {
@@ -162,7 +165,7 @@ export async function initializeCsvImport(
     const account = await db.query.accounts.findFirst({
       where: and(
         eq(accounts.id, accountId),
-        eq(accounts.userId, session.user.id)
+        eq(accounts.userId, session.user.id),
       ),
     });
 
@@ -199,7 +202,7 @@ export async function initializeCsvImport(
 }
 
 export async function parseCsvHeaders(
-  importId: string
+  importId: string,
 ): Promise<{ success: boolean; error?: string; data?: ParsedCsvData }> {
   const access = await getCsvImportAccess();
   if ("error" in access) {
@@ -210,10 +213,7 @@ export async function parseCsvHeaders(
   try {
     // Get the import session
     const importSession = await db.query.csvImports.findFirst({
-      where: and(
-        eq(csvImports.id, importId),
-        eq(csvImports.userId, userId)
-      ),
+      where: and(eq(csvImports.id, importId), eq(csvImports.userId, userId)),
     });
 
     if (!importSession) {
@@ -249,7 +249,7 @@ export async function parseCsvHeaders(
 export async function getAiColumnMapping(
   importId: string,
   csvHeaders: string[],
-  sampleRows: string[][]
+  sampleRows: string[][],
 ): Promise<{ success: boolean; error?: string; mapping?: ColumnMapping }> {
   const access = await getCsvImportAccess();
   if ("error" in access) {
@@ -278,9 +278,15 @@ export async function getAiColumnMapping(
       body: requestBody,
       cache: "no-store",
     });
-    const payload = (await response.json()) as { mapping?: ColumnMapping; detail?: string };
+    const payload = (await response.json()) as {
+      mapping?: ColumnMapping;
+      detail?: string;
+    };
     if (!response.ok || !payload.mapping) {
-      return { success: false, error: payload.detail || "Failed to analyze CSV columns" };
+      return {
+        success: false,
+        error: payload.detail || "Failed to analyze CSV columns",
+      };
     }
 
     const mapping = normalizeColumnMapping(payload.mapping);
@@ -303,7 +309,7 @@ export async function getAiColumnMapping(
 
 export async function saveColumnMapping(
   importId: string,
-  mapping: ColumnMapping
+  mapping: ColumnMapping,
 ): Promise<{ success: boolean; error?: string }> {
   const access = await getCsvImportAccess();
   if ("error" in access) {
@@ -318,9 +324,7 @@ export async function saveColumnMapping(
         columnMapping: normalizeColumnMapping(mapping),
         status: "previewing",
       })
-      .where(
-        and(eq(csvImports.id, importId), eq(csvImports.userId, userId))
-      );
+      .where(and(eq(csvImports.id, importId), eq(csvImports.userId, userId)));
 
     return { success: true };
   } catch (error) {
@@ -329,10 +333,13 @@ export async function saveColumnMapping(
   }
 }
 
-
-export async function previewImportedTransactions(
-  importId: string
-): Promise<{ success: boolean; error?: string; transactions?: PreviewTransaction[]; balanceVerification?: BalanceVerification; dailyBalances?: DailyBalance[] }> {
+export async function previewImportedTransactions(importId: string): Promise<{
+  success: boolean;
+  error?: string;
+  transactions?: PreviewTransaction[];
+  balanceVerification?: BalanceVerification;
+  dailyBalances?: DailyBalance[];
+}> {
   const access = await getCsvImportAccess();
   if ("error" in access) {
     return { success: false, error: access.error };
@@ -342,14 +349,14 @@ export async function previewImportedTransactions(
   try {
     // Get the import session
     const importSession = await db.query.csvImports.findFirst({
-      where: and(
-        eq(csvImports.id, importId),
-        eq(csvImports.userId, userId)
-      ),
+      where: and(eq(csvImports.id, importId), eq(csvImports.userId, userId)),
     });
 
     if (!importSession || !importSession.columnMapping) {
-      return { success: false, error: "Import session not found or mapping incomplete" };
+      return {
+        success: false,
+        error: "Import session not found or mapping incomplete",
+      };
     }
 
     const fileContent = await readImportFile(importSession);
@@ -357,7 +364,9 @@ export async function previewImportedTransactions(
       return { success: false, error: "Import file path is unavailable" };
     }
 
-    const mapping = normalizeColumnMapping(importSession.columnMapping as ColumnMapping);
+    const mapping = normalizeColumnMapping(
+      importSession.columnMapping as ColumnMapping,
+    );
 
     // Read and parse the CSV file
     const delimiter = detectCsvDelimiter(fileContent);
@@ -366,12 +375,22 @@ export async function previewImportedTransactions(
     // Get column indices
     const dateIndex = mapping.date ? headers.indexOf(mapping.date) : -1;
     const amountIndex = mapping.amount ? headers.indexOf(mapping.amount) : -1;
-    const descriptionIndex = mapping.description ? headers.indexOf(mapping.description) : -1;
-    const merchantIndex = mapping.merchant ? headers.indexOf(mapping.merchant) : -1;
-    const typeIndex = mapping.transactionType ? headers.indexOf(mapping.transactionType) : -1;
+    const descriptionIndex = mapping.description
+      ? headers.indexOf(mapping.description)
+      : -1;
+    const merchantIndex = mapping.merchant
+      ? headers.indexOf(mapping.merchant)
+      : -1;
+    const typeIndex = mapping.transactionType
+      ? headers.indexOf(mapping.transactionType)
+      : -1;
     const stateIndex = mapping.state ? headers.indexOf(mapping.state) : -1;
-    const startBalIdx = mapping.startingBalance ? headers.indexOf(mapping.startingBalance) : -1;
-    const endBalIdx = mapping.endingBalance ? headers.indexOf(mapping.endingBalance) : -1;
+    const startBalIdx = mapping.startingBalance
+      ? headers.indexOf(mapping.startingBalance)
+      : -1;
+    const endBalIdx = mapping.endingBalance
+      ? headers.indexOf(mapping.endingBalance)
+      : -1;
     const feeIdx = mapping.fee ? headers.indexOf(mapping.fee) : -1;
 
     if (dateIndex === -1 || amountIndex === -1 || descriptionIndex === -1) {
@@ -387,7 +406,8 @@ export async function previewImportedTransactions(
 
     // Parse transactions
     const previewTransactions: PreviewTransaction[] = [];
-    const completedStateValue = mapping.typeConfig?.completedStateValue?.toLowerCase();
+    const completedStateValue =
+      mapping.typeConfig?.completedStateValue?.toLowerCase();
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -409,12 +429,17 @@ export async function previewImportedTransactions(
 
       const parsedDate = parseImportDate(
         dateStr,
-        mapping.typeConfig?.dateFormat ?? "DD-MM-YYYY"
+        mapping.typeConfig?.dateFormat ?? "DD-MM-YYYY",
       );
       if (!parsedDate) continue;
 
       // Parse amount (preserve sign for now to determine transaction type)
-      const parsedAmount = parseImportedNumber(amountStr, "amount", i + 2, numberParseOptions);
+      const parsedAmount = parseImportedNumber(
+        amountStr,
+        "amount",
+        i + 2,
+        numberParseOptions,
+      );
       if (parsedAmount === null) continue;
 
       // Determine transaction type BEFORE calling Math.abs()
@@ -423,15 +448,33 @@ export async function previewImportedTransactions(
       // First check if there's an explicit transaction type column
       if (typeIndex >= 0 && mapping.typeConfig) {
         const typeValue = row[typeIndex]?.toLowerCase().trim();
-        if (mapping.typeConfig.creditValue && typeValue?.includes(mapping.typeConfig.creditValue.toLowerCase())) {
+        if (
+          mapping.typeConfig.creditValue &&
+          typeValue?.includes(mapping.typeConfig.creditValue.toLowerCase())
+        ) {
           transactionType = "credit";
-        } else if (mapping.typeConfig.debitValue && typeValue?.includes(mapping.typeConfig.debitValue.toLowerCase())) {
+        } else if (
+          mapping.typeConfig.debitValue &&
+          typeValue?.includes(mapping.typeConfig.debitValue.toLowerCase())
+        ) {
           transactionType = "debit";
         } else {
           // If type column exists but value doesn't match, check for common aliases
-          if (typeValue && (typeValue.includes("expense") || typeValue.includes("debit") || typeValue.includes("outgoing") || typeValue.includes("payment"))) {
+          if (
+            typeValue &&
+            (typeValue.includes("expense") ||
+              typeValue.includes("debit") ||
+              typeValue.includes("outgoing") ||
+              typeValue.includes("payment"))
+          ) {
             transactionType = "debit";
-          } else if (typeValue && (typeValue.includes("income") || typeValue.includes("credit") || typeValue.includes("incoming") || typeValue.includes("deposit"))) {
+          } else if (
+            typeValue &&
+            (typeValue.includes("income") ||
+              typeValue.includes("credit") ||
+              typeValue.includes("incoming") ||
+              typeValue.includes("deposit"))
+          ) {
             transactionType = "credit";
           }
         }
@@ -445,7 +488,10 @@ export async function previewImportedTransactions(
 
       // Send amount with correct sign based on transaction_type
       // Backend expects: debit = negative, credit = positive
-      const amount = transactionType === "debit" ? -Math.abs(parsedAmount) : Math.abs(parsedAmount);
+      const amount =
+        transactionType === "debit"
+          ? -Math.abs(parsedAmount)
+          : Math.abs(parsedAmount);
 
       previewTransactions.push({
         rowIndex: i,
@@ -461,13 +507,19 @@ export async function previewImportedTransactions(
     const existingTransactions = await db.query.transactions.findMany({
       where: and(
         eq(transactions.accountId, importSession.accountId),
-        eq(transactions.userId, userId)
+        eq(transactions.userId, userId),
       ),
     });
 
     // Run duplicate detection
-    const duplicateMatches = detectDuplicates(previewTransactions, existingTransactions);
-    const markedTransactions = markDuplicates(previewTransactions, duplicateMatches);
+    const duplicateMatches = detectDuplicates(
+      previewTransactions,
+      existingTransactions,
+    );
+    const markedTransactions = markDuplicates(
+      previewTransactions,
+      duplicateMatches,
+    );
 
     // Update import session with duplicate count
     await db
@@ -493,7 +545,12 @@ export async function previewImportedTransactions(
             continue; // Skip fees from non-completed transactions
           }
         }
-        const fee = parseImportedNumber(row[feeIdx], "fee", rowIndex + 2, numberParseOptions);
+        const fee = parseImportedNumber(
+          row[feeIdx],
+          "fee",
+          rowIndex + 2,
+          numberParseOptions,
+        );
         if (fee !== null && fee > 0) {
           totalFees += fee;
         }
@@ -506,12 +563,24 @@ export async function previewImportedTransactions(
       const firstRow = rows[0];
       const lastRow = rows[rows.length - 1];
 
-      const fileStartingBalance = startBalIdx >= 0
-        ? parseImportedNumber(firstRow?.[startBalIdx], "starting balance", 2, numberParseOptions)
-        : null;
-      const fileEndingBalance = endBalIdx >= 0
-        ? parseImportedNumber(lastRow?.[endBalIdx], "ending balance", rows.length + 1, numberParseOptions)
-        : null;
+      const fileStartingBalance =
+        startBalIdx >= 0
+          ? parseImportedNumber(
+              firstRow?.[startBalIdx],
+              "starting balance",
+              2,
+              numberParseOptions,
+            )
+          : null;
+      const fileEndingBalance =
+        endBalIdx >= 0
+          ? parseImportedNumber(
+              lastRow?.[endBalIdx],
+              "ending balance",
+              rows.length + 1,
+              numberParseOptions,
+            )
+          : null;
 
       // Calculate starting balance from first row's ending balance when no explicit starting balance
       // Formula: balance_before_first_tx = first_ending_balance - first_amount
@@ -520,53 +589,78 @@ export async function previewImportedTransactions(
       // captured in the daily balances from the CSV which are the source of truth.
       let calculatedStartingBalance: number | null = null;
       if (fileStartingBalance === null && endBalIdx >= 0) {
-        const firstRowEndingBalance = parseImportedNumber(firstRow?.[endBalIdx], "ending balance", 2, numberParseOptions);
-        const firstRowAmount = amountIndex >= 0
-          ? parseImportedNumber(firstRow?.[amountIndex], "amount", 2, numberParseOptions)
-          : null;
+        const firstRowEndingBalance = parseImportedNumber(
+          firstRow?.[endBalIdx],
+          "ending balance",
+          2,
+          numberParseOptions,
+        );
+        const firstRowAmount =
+          amountIndex >= 0
+            ? parseImportedNumber(
+                firstRow?.[amountIndex],
+                "amount",
+                2,
+                numberParseOptions,
+              )
+            : null;
 
         if (firstRowEndingBalance !== null && firstRowAmount !== null) {
           // first_ending_balance = starting_balance + first_amount
           // starting_balance = first_ending_balance - first_amount
-          calculatedStartingBalance = Math.round((firstRowEndingBalance - firstRowAmount) * 100) / 100;
+          calculatedStartingBalance =
+            Math.round((firstRowEndingBalance - firstRowAmount) * 100) / 100;
         }
       }
 
       // Calculate sum of transactions (credits positive, debits negative)
       const transactionSum = previewTransactions.reduce((sum, tx) => {
-        return sum + (tx.transactionType === "credit" ? tx.amount : -Math.abs(tx.amount));
+        return (
+          sum +
+          (tx.transactionType === "credit" ? tx.amount : -Math.abs(tx.amount))
+        );
       }, 0);
 
       // Use explicit starting balance if available, otherwise use calculated
-      const effectiveStartingBalance = fileStartingBalance ?? calculatedStartingBalance;
+      const effectiveStartingBalance =
+        fileStartingBalance ?? calculatedStartingBalance;
 
       // Calculate expected ending balance
       // Subtract fees since they affect the balance but aren't in the transaction amounts
       // (e.g., Premium plan fee with Amount=0.00 but Fee=9.99 reduces balance by 9.99)
-      const calculatedEndingBalance = effectiveStartingBalance !== null
-        ? Math.round((effectiveStartingBalance + transactionSum - totalFees) * 100) / 100
-        : null;
+      const calculatedEndingBalance =
+        effectiveStartingBalance !== null
+          ? Math.round(
+              (effectiveStartingBalance + transactionSum - totalFees) * 100,
+            ) / 100
+          : null;
 
-      const discrepancy = (fileEndingBalance !== null && calculatedEndingBalance !== null)
-        ? Math.round((fileEndingBalance - calculatedEndingBalance) * 100) / 100
-        : null;
+      const discrepancy =
+        fileEndingBalance !== null && calculatedEndingBalance !== null
+          ? Math.round((fileEndingBalance - calculatedEndingBalance) * 100) /
+            100
+          : null;
 
-      const canVerify = effectiveStartingBalance !== null && fileEndingBalance !== null;
+      const canVerify =
+        effectiveStartingBalance !== null && fileEndingBalance !== null;
 
       // Calculate suggested starting balance for recalculation
       // Formula: startingBalance = fileEndingBalance - transactionSum
-      const suggestedStartingBalance = fileEndingBalance !== null
-        ? Math.round((fileEndingBalance - transactionSum) * 100) / 100
-        : null;
+      const suggestedStartingBalance =
+        fileEndingBalance !== null
+          ? Math.round((fileEndingBalance - transactionSum) * 100) / 100
+          : null;
 
       balanceVerification = {
-        hasBalanceData: fileEndingBalance !== null || effectiveStartingBalance !== null,
+        hasBalanceData:
+          fileEndingBalance !== null || effectiveStartingBalance !== null,
         canVerify,
         fileStartingBalance: effectiveStartingBalance, // Use effective (calculated if needed)
         fileEndingBalance,
         calculatedEndingBalance,
         discrepancy,
-        isVerified: canVerify && discrepancy !== null && Math.abs(discrepancy) < 0.01,
+        isVerified:
+          canVerify && discrepancy !== null && Math.abs(discrepancy) < 0.01,
         importedTransactionSum: Math.round(transactionSum * 100) / 100,
         suggestedStartingBalance,
       };
@@ -594,7 +688,7 @@ export async function previewImportedTransactions(
 
           const parsedDate = parseImportDate(
             dateStr,
-            mapping.typeConfig?.dateFormat ?? "DD-MM-YYYY"
+            mapping.typeConfig?.dateFormat ?? "DD-MM-YYYY",
           );
           if (!parsedDate) continue;
 
@@ -605,12 +699,27 @@ export async function previewImportedTransactions(
 
           if (endBalIdx >= 0) {
             // Use ending balance directly if available
-            dayBalance = parseImportedNumber(row[endBalIdx], "ending balance", i + 2, numberParseOptions);
+            dayBalance = parseImportedNumber(
+              row[endBalIdx],
+              "ending balance",
+              i + 2,
+              numberParseOptions,
+            );
           } else if (startBalIdx >= 0 && amountIndex >= 0) {
             // Calculate ending balance from starting balance + transaction amount
-            const startBal = parseImportedNumber(row[startBalIdx], "starting balance", i + 2, numberParseOptions);
+            const startBal = parseImportedNumber(
+              row[startBalIdx],
+              "starting balance",
+              i + 2,
+              numberParseOptions,
+            );
             const amountStr = row[amountIndex];
-            const txAmount = parseImportedNumber(amountStr, "amount", i + 2, numberParseOptions);
+            const txAmount = parseImportedNumber(
+              amountStr,
+              "amount",
+              i + 2,
+              numberParseOptions,
+            );
 
             if (startBal !== null && txAmount !== null) {
               // For signed amounts, just add directly. For type-based, need to check type
@@ -618,15 +727,24 @@ export async function previewImportedTransactions(
                 dayBalance = startBal + txAmount;
               } else {
                 // Need to determine if credit or debit
-                const typeIndex = mapping.transactionType ? headers.indexOf(mapping.transactionType) : -1;
+                const typeIndex = mapping.transactionType
+                  ? headers.indexOf(mapping.transactionType)
+                  : -1;
                 let isCredit = false;
                 if (typeIndex >= 0 && mapping.typeConfig) {
                   const typeValue = row[typeIndex]?.toLowerCase();
-                  if (mapping.typeConfig.creditValue && typeValue?.includes(mapping.typeConfig.creditValue.toLowerCase())) {
+                  if (
+                    mapping.typeConfig.creditValue &&
+                    typeValue?.includes(
+                      mapping.typeConfig.creditValue.toLowerCase(),
+                    )
+                  ) {
                     isCredit = true;
                   }
                 }
-                dayBalance = startBal + (isCredit ? Math.abs(txAmount) : -Math.abs(txAmount));
+                dayBalance =
+                  startBal +
+                  (isCredit ? Math.abs(txAmount) : -Math.abs(txAmount));
               }
             }
           }
@@ -638,17 +756,26 @@ export async function previewImportedTransactions(
         }
 
         // Convert map to array
-        dailyBalances = Array.from(dailyBalanceMap.entries())
-          .map(([date, balance]) => ({ date, balance }));
+        dailyBalances = Array.from(dailyBalanceMap.entries()).map(
+          ([date, balance]) => ({ date, balance }),
+        );
       }
     }
 
-    return { success: true, transactions: markedTransactions, balanceVerification, dailyBalances };
+    return {
+      success: true,
+      transactions: markedTransactions,
+      balanceVerification,
+      dailyBalances,
+    };
   } catch (error) {
     console.error("Failed to preview transactions:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to preview transactions",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to preview transactions",
     };
   }
 }
@@ -665,33 +792,34 @@ function generateCsvImportExternalId(
   date: string,
   amount: number,
   description: string | null,
-  merchant: string | null = null
+  merchant: string | null = null,
 ): string {
   // Create a string to hash - include merchant for better uniqueness
-  const dateOnly = date.split('T')[0]; // Use only the date part (YYYY-MM-DD)
-  const normalizedDesc = (description || '').trim().toLowerCase();
-  const normalizedMerchant = (merchant || '').trim().toLowerCase();
+  const dateOnly = date.split("T")[0]; // Use only the date part (YYYY-MM-DD)
+  const normalizedDesc = (description || "").trim().toLowerCase();
+  const normalizedMerchant = (merchant || "").trim().toLowerCase();
   const dataToHash = `${accountId}|${dateOnly}|${amount.toFixed(2)}|${normalizedDesc}|${normalizedMerchant}`;
 
   // FNV-1a hash (32-bit)
   let hash1 = 2166136261;
   for (let i = 0; i < dataToHash.length; i++) {
     hash1 ^= dataToHash.charCodeAt(i);
-    hash1 += (hash1 << 1) + (hash1 << 4) + (hash1 << 7) + (hash1 << 8) + (hash1 << 24);
+    hash1 +=
+      (hash1 << 1) + (hash1 << 4) + (hash1 << 7) + (hash1 << 8) + (hash1 << 24);
   }
 
   // MurmurHash-inspired second hash (32-bit)
   let hash2 = 0;
   for (let i = 0; i < dataToHash.length; i++) {
     const char = dataToHash.charCodeAt(i);
-    hash2 = ((hash2 << 5) - hash2) + char;
+    hash2 = (hash2 << 5) - hash2 + char;
     hash2 = hash2 & hash2; // Convert to 32bit integer
   }
 
   // DJB2 third hash for additional entropy
   let hash3 = 5381;
   for (let i = 0; i < dataToHash.length; i++) {
-    hash3 = ((hash3 << 5) + hash3) + dataToHash.charCodeAt(i);
+    hash3 = (hash3 << 5) + hash3 + dataToHash.charCodeAt(i);
   }
 
   // Convert all to unsigned 32-bit and combine into a longer hash
@@ -717,7 +845,7 @@ interface BackendTransactionImportItem {
 
 // Backend daily balance import format
 interface BackendDailyBalance {
-  date: string;  // ISO date string (YYYY-MM-DD)
+  date: string; // ISO date string (YYYY-MM-DD)
   balance: number;
 }
 
@@ -729,7 +857,7 @@ interface BackendTransactionImportRequest {
   update_functional_amounts: boolean;
   calculate_balances: boolean;
   daily_balances?: BackendDailyBalance[];
-  starting_balance?: number;  // Starting balance from CSV to update account
+  starting_balance?: number; // Starting balance from CSV to update account
 }
 
 // Backend API response format
@@ -754,8 +882,13 @@ interface BackendTransactionImportResponse {
 
 export async function finalizeImport(
   importId: string,
-  selectedIndices: number[]
-): Promise<{ success: boolean; error?: string; importedCount?: number; categorizationSummary?: BackendTransactionImportResponse["categorization_summary"] }> {
+  selectedIndices: number[],
+): Promise<{
+  success: boolean;
+  error?: string;
+  importedCount?: number;
+  categorizationSummary?: BackendTransactionImportResponse["categorization_summary"];
+}> {
   const access = await getCsvImportAccess();
   if ("error" in access) {
     return { success: false, error: access.error };
@@ -766,14 +899,17 @@ export async function finalizeImport(
     // Get preview transactions
     const previewResult = await previewImportedTransactions(importId);
     if (!previewResult.success || !previewResult.transactions) {
-      return { success: false, error: previewResult.error || "Failed to get preview" };
+      return {
+        success: false,
+        error: previewResult.error || "Failed to get preview",
+      };
     }
 
     // Get the import session
     const importSession = await db.query.csvImports.findFirst({
       where: and(
         eq(csvImports.id, importId),
-        eq(csvImports.userId, session.user.id)
+        eq(csvImports.userId, session.user.id),
       ),
     });
 
@@ -792,7 +928,7 @@ export async function finalizeImport(
 
     // Filter to selected transactions
     const selectedTransactions = previewResult.transactions.filter((tx) =>
-      selectedIndices.includes(tx.rowIndex)
+      selectedIndices.includes(tx.rowIndex),
     );
 
     if (selectedTransactions.length === 0) {
@@ -804,36 +940,36 @@ export async function finalizeImport(
     // Track external_ids to handle same-day duplicate transactions
     const externalIdCounts = new Map<string, number>();
 
-    const backendTransactions: BackendTransactionImportItem[] = selectedTransactions.map((tx) => {
-      const bookedAt = new Date(tx.date).toISOString();
-      const baseExternalId = generateCsvImportExternalId(
-        importSession.accountId,
-        bookedAt,
-        tx.amount,
-        tx.description || null,
-        tx.merchant || null
-      );
+    const backendTransactions: BackendTransactionImportItem[] =
+      selectedTransactions.map((tx) => {
+        const bookedAt = new Date(tx.date).toISOString();
+        const baseExternalId = generateCsvImportExternalId(
+          importSession.accountId,
+          bookedAt,
+          tx.amount,
+          tx.description || null,
+          tx.merchant || null,
+        );
 
-      // Check if we've seen this external_id before in this batch
-      const count = externalIdCounts.get(baseExternalId) || 0;
-      externalIdCounts.set(baseExternalId, count + 1);
+        // Check if we've seen this external_id before in this batch
+        const count = externalIdCounts.get(baseExternalId) || 0;
+        externalIdCounts.set(baseExternalId, count + 1);
 
-      // If this is a duplicate within the batch, append a counter
-      const externalId = count === 0
-        ? baseExternalId
-        : `${baseExternalId}-${count + 1}`;
+        // If this is a duplicate within the batch, append a counter
+        const externalId =
+          count === 0 ? baseExternalId : `${baseExternalId}-${count + 1}`;
 
-      return {
-        account_id: importSession.accountId,
-        amount: tx.amount,
-        description: tx.description || null,
-        merchant: tx.merchant || null,
-        booked_at: bookedAt,
-        transaction_type: tx.transactionType,
-        currency: account.currency || "EUR",
-        external_id: externalId,
-      };
-    });
+        return {
+          account_id: importSession.accountId,
+          amount: tx.amount,
+          description: tx.description || null,
+          merchant: tx.merchant || null,
+          booked_at: bookedAt,
+          transaction_type: tx.transactionType,
+          currency: account.currency || "EUR",
+          external_id: externalId,
+        };
+      });
 
     // Batch the transactions to avoid request timeouts and large payload issues
     // For large imports (>500 transactions), split into batches
@@ -841,7 +977,8 @@ export async function finalizeImport(
     const backendUrl = getBackendBaseUrl();
 
     let totalImported = 0;
-    let aggregatedCategorizationSummary: BackendTransactionImportResponse["categorization_summary"] = null;
+    let aggregatedCategorizationSummary: BackendTransactionImportResponse["categorization_summary"] =
+      null;
 
     // Split transactions into batches
     const batches: BackendTransactionImportItem[][] = [];
@@ -864,8 +1001,13 @@ export async function finalizeImport(
           update_functional_amounts: isLastBatch,
           calculate_balances: isLastBatch,
           // Only include daily balances and starting balance on the last batch
-          daily_balances: isLastBatch ? (previewResult.dailyBalances || undefined) : undefined,
-          starting_balance: isLastBatch ? (previewResult.balanceVerification?.fileStartingBalance ?? undefined) : undefined,
+          daily_balances: isLastBatch
+            ? previewResult.dailyBalances || undefined
+            : undefined,
+          starting_balance: isLastBatch
+            ? (previewResult.balanceVerification?.fileStartingBalance ??
+              undefined)
+            : undefined,
         };
 
         // Call backend API with 5-minute timeout per batch
@@ -892,19 +1034,24 @@ export async function finalizeImport(
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`Backend import failed for batch ${batchIndex + 1}/${batches.length}:`, response.status, errorText);
+          console.error(
+            `Backend import failed for batch ${batchIndex + 1}/${batches.length}:`,
+            response.status,
+            errorText,
+          );
           return {
             success: false,
-            error: `Import failed on batch ${batchIndex + 1}/${batches.length}: ${response.status} - ${errorText}. ${totalImported} transactions were imported before the failure.`
+            error: `Import failed on batch ${batchIndex + 1}/${batches.length}: ${response.status} - ${errorText}. ${totalImported} transactions were imported before the failure.`,
           };
         }
 
-        const backendResponse: BackendTransactionImportResponse = await response.json();
+        const backendResponse: BackendTransactionImportResponse =
+          await response.json();
 
         if (!backendResponse.success) {
           return {
             success: false,
-            error: `Batch ${batchIndex + 1}/${batches.length} failed: ${backendResponse.message}. ${totalImported} transactions were imported before the failure.`
+            error: `Batch ${batchIndex + 1}/${batches.length} failed: ${backendResponse.message}. ${totalImported} transactions were imported before the failure.`,
           };
         }
 
@@ -913,15 +1060,24 @@ export async function finalizeImport(
         // Aggregate categorization summary from all batches
         if (backendResponse.categorization_summary) {
           if (!aggregatedCategorizationSummary) {
-            aggregatedCategorizationSummary = { ...backendResponse.categorization_summary };
+            aggregatedCategorizationSummary = {
+              ...backendResponse.categorization_summary,
+            };
           } else {
-            aggregatedCategorizationSummary.total += backendResponse.categorization_summary.total;
-            aggregatedCategorizationSummary.categorized += backendResponse.categorization_summary.categorized;
-            aggregatedCategorizationSummary.deterministic += backendResponse.categorization_summary.deterministic;
-            aggregatedCategorizationSummary.llm += backendResponse.categorization_summary.llm;
-            aggregatedCategorizationSummary.uncategorized += backendResponse.categorization_summary.uncategorized;
-            aggregatedCategorizationSummary.tokens_used += backendResponse.categorization_summary.tokens_used;
-            aggregatedCategorizationSummary.cost_usd += backendResponse.categorization_summary.cost_usd;
+            aggregatedCategorizationSummary.total +=
+              backendResponse.categorization_summary.total;
+            aggregatedCategorizationSummary.categorized +=
+              backendResponse.categorization_summary.categorized;
+            aggregatedCategorizationSummary.deterministic +=
+              backendResponse.categorization_summary.deterministic;
+            aggregatedCategorizationSummary.llm +=
+              backendResponse.categorization_summary.llm;
+            aggregatedCategorizationSummary.uncategorized +=
+              backendResponse.categorization_summary.uncategorized;
+            aggregatedCategorizationSummary.tokens_used +=
+              backendResponse.categorization_summary.tokens_used;
+            aggregatedCategorizationSummary.cost_usd +=
+              backendResponse.categorization_summary.cost_usd;
           }
         }
 
@@ -954,14 +1110,20 @@ export async function finalizeImport(
         console.error("Import timeout during batch processing");
         return {
           success: false,
-          error: `Import timeout: The operation took too long. ${totalImported} transactions were imported before the timeout.`
+          error: `Import timeout: The operation took too long. ${totalImported} transactions were imported before the timeout.`,
         };
       }
       throw fetchError; // Re-throw to outer catch
     }
   } catch (error) {
     console.error("Failed to finalize import:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Failed to import transactions" };
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to import transactions",
+    };
   }
 }
 
@@ -983,7 +1145,7 @@ interface BackendEnqueueResponse {
  */
 export async function enqueueBackgroundImport(
   importId: string,
-  selectedIndices: number[]
+  selectedIndices: number[],
 ): Promise<{
   success: boolean;
   error?: string;
@@ -1001,14 +1163,17 @@ export async function enqueueBackgroundImport(
     // Get preview transactions
     const previewResult = await previewImportedTransactions(importId);
     if (!previewResult.success || !previewResult.transactions) {
-      return { success: false, error: previewResult.error || "Failed to get preview" };
+      return {
+        success: false,
+        error: previewResult.error || "Failed to get preview",
+      };
     }
 
     // Get the import session
     const importSession = await db.query.csvImports.findFirst({
       where: and(
         eq(csvImports.id, importId),
-        eq(csvImports.userId, session.user.id)
+        eq(csvImports.userId, session.user.id),
       ),
     });
 
@@ -1027,7 +1192,7 @@ export async function enqueueBackgroundImport(
 
     // Filter to selected transactions
     const selectedTransactions = previewResult.transactions.filter((tx) =>
-      selectedIndices.includes(tx.rowIndex)
+      selectedIndices.includes(tx.rowIndex),
     );
 
     if (selectedTransactions.length === 0) {
@@ -1044,15 +1209,14 @@ export async function enqueueBackgroundImport(
         bookedAt,
         tx.amount,
         tx.description || null,
-        tx.merchant || null
+        tx.merchant || null,
       );
 
       const count = externalIdCounts.get(baseExternalId) || 0;
       externalIdCounts.set(baseExternalId, count + 1);
 
-      const externalId = count === 0
-        ? baseExternalId
-        : `${baseExternalId}-${count + 1}`;
+      const externalId =
+        count === 0 ? baseExternalId : `${baseExternalId}-${count + 1}`;
 
       return {
         account_id: importSession.accountId,
@@ -1073,7 +1237,8 @@ export async function enqueueBackgroundImport(
       csv_import_id: importId,
       transactions,
       daily_balances: previewResult.dailyBalances || undefined,
-      starting_balance: previewResult.balanceVerification?.fileStartingBalance ?? undefined,
+      starting_balance:
+        previewResult.balanceVerification?.fileStartingBalance ?? undefined,
     };
 
     // Call backend enqueue endpoint
@@ -1129,7 +1294,7 @@ export async function enqueueBackgroundImport(
 }
 
 export async function getCsvImportSession(
-  importId: string
+  importId: string,
 ): Promise<CsvImportSession | null> {
   const access = await getCsvImportAccess();
   if ("error" in access) {
@@ -1138,10 +1303,7 @@ export async function getCsvImportSession(
   const { userId } = access;
 
   const importSession = await db.query.csvImports.findFirst({
-    where: and(
-      eq(csvImports.id, importId),
-      eq(csvImports.userId, userId)
-    ),
+    where: and(eq(csvImports.id, importId), eq(csvImports.userId, userId)),
   });
 
   if (!importSession) {
@@ -1197,8 +1359,8 @@ export async function getCsvImportHistory(): Promise<CsvImportWithStats[]> {
     .where(
       and(
         inArray(transactions.csvImportId, importIds),
-        eq(transactions.userId, userId)
-      )
+        eq(transactions.userId, userId),
+      ),
     )
     .groupBy(transactions.csvImportId);
 
@@ -1226,7 +1388,7 @@ export async function getCsvImportHistory(): Promise<CsvImportWithStats[]> {
  * Reuses deleteTransactions for atomic deletion and balance recalculation.
  */
 export async function revertCsvImport(
-  importId: string
+  importId: string,
 ): Promise<{ success: boolean; error?: string; deletedCount?: number }> {
   const session = await getAuthenticatedSession();
   const userId = session?.user?.id ?? null;
@@ -1245,10 +1407,19 @@ export async function revertCsvImport(
   const linkedTransactions = await db
     .select({ id: transactions.id })
     .from(transactions)
-    .where(and(eq(transactions.csvImportId, importId), eq(transactions.userId, userId)));
+    .where(
+      and(
+        eq(transactions.csvImportId, importId),
+        eq(transactions.userId, userId),
+      ),
+    );
 
   if (!linkedTransactions.length) {
-    return { success: false, error: "No transactions linked to this import. It may predate import tracking." };
+    return {
+      success: false,
+      error:
+        "No transactions linked to this import. It may predate import tracking.",
+    };
   }
 
   const transactionIds = linkedTransactions.map((t) => t.id);

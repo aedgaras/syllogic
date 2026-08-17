@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -23,7 +22,12 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { RiLoader4Line, RiAlertLine, RiRepeatLine, RiLightbulbLine } from "@remixicon/react";
+import {
+  RiLoader4Line,
+  RiAlertLine,
+  RiRepeatLine,
+  RiLightbulbLine,
+} from "@remixicon/react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import type { TransactionWithRelations } from "@/features/transactions/public";
@@ -70,14 +74,17 @@ export function SubscriptionDetectionDialog({
 }: SubscriptionDetectionDialogProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [detectionResult, setDetectionResult] = useState<SubscriptionDetectionResult | null>(null);
+  const [detectionResult, setDetectionResult] =
+    useState<SubscriptionDetectionResult | null>(null);
 
   // Form state
   const [name, setName] = useState("");
   const [frequency, setFrequency] = useState<SubscriptionFrequency>("monthly");
   const [categoryId, setCategoryId] = useState<string>("");
   const [importance, setImportance] = useState(2);
-  const [selectedTransactionIds, setSelectedTransactionIds] = useState<Set<string>>(new Set());
+  const [selectedTransactionIds, setSelectedTransactionIds] = useState<
+    Set<string>
+  >(new Set());
 
   // Run detection when dialog opens
   useEffect(() => {
@@ -100,7 +107,9 @@ export function SubscriptionDetectionDialog({
         setImportance(2);
 
         // Select all matched transactions by default
-        setSelectedTransactionIds(new Set(result.matchedTransactions.map((t) => t.id)));
+        setSelectedTransactionIds(
+          new Set(result.matchedTransactions.map((t) => t.id)),
+        );
       }
     } catch (error) {
       console.error("Detection failed:", error);
@@ -129,7 +138,10 @@ export function SubscriptionDetectionDialog({
 
       if (result.success) {
         toast.success(
-          translate("subscriptionCreatedWithLinkedTransactionS", { name: name, value2: result.linkedCount })
+          translate("subscriptionCreatedWithLinkedTransactionS", {
+            name: name,
+            value2: result.linkedCount,
+          }),
         );
         onSuccess();
         onOpenChange(false);
@@ -153,13 +165,24 @@ export function SubscriptionDetectionDialog({
     setSelectedTransactionIds(newSet);
   };
 
-  const getConfidenceLabel = (confidence: number): { label: string; className: string } => {
+  const getConfidenceLabel = (
+    confidence: number,
+  ): { label: string; className: string } => {
     if (confidence >= 70) {
-      return { label: translate("high"), className: "bg-green-500/10 text-green-700 dark:text-green-400" };
+      return {
+        label: translate("high"),
+        className: "bg-green-500/10 text-green-700 dark:text-green-400",
+      };
     } else if (confidence >= 40) {
-      return { label: translate("medium"), className: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400" };
+      return {
+        label: translate("medium"),
+        className: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+      };
     } else {
-      return { label: translate("low"), className: "bg-muted text-muted-foreground" };
+      return {
+        label: translate("low"),
+        className: "bg-muted text-muted-foreground",
+      };
     }
   };
 
@@ -176,7 +199,9 @@ export function SubscriptionDetectionDialog({
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 gap-4">
             <RiLoader4Line className="h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">{translate("detectingSubscriptionPattern")}</p>
+            <p className="text-sm text-muted-foreground">
+              {translate("detectingSubscriptionPattern")}
+            </p>
           </div>
         ) : detectionResult && detectionResult.success ? (
           <div className="space-y-6">
@@ -184,14 +209,21 @@ export function SubscriptionDetectionDialog({
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary" className={frequencyColors[frequency]}>
                 <RiRepeatLine className="mr-1 h-3 w-3" />
-                {frequencyOptions.find((f) => f.value === frequency)?.label || translate("monthly")}
+                {frequencyOptions.find((f) => f.value === frequency)?.label ||
+                  translate("monthly")}
               </Badge>
-              <Badge variant="secondary" className={getConfidenceLabel(detectionResult.confidence).className}>
+              <Badge
+                variant="secondary"
+                className={
+                  getConfidenceLabel(detectionResult.confidence).className
+                }
+              >
                 <RiLightbulbLine className="mr-1 h-3 w-3" />
                 {getConfidenceLabel(detectionResult.confidence).label}
               </Badge>
               <span className="text-xs text-muted-foreground">
-                {detectionResult.matchedTransactions.length} {translate("matchingTransactionS")}
+                {detectionResult.matchedTransactions.length}{" "}
+                {translate("matchingTransactionS")}
               </span>
             </div>
 
@@ -200,7 +232,8 @@ export function SubscriptionDetectionDialog({
               {/* Name */}
               <div className="space-y-2">
                 <Label htmlFor="sub-name">
-                  {translate("name")} <span className="text-destructive">*</span>
+                  {translate("name")}{" "}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="sub-name"
@@ -215,9 +248,15 @@ export function SubscriptionDetectionDialog({
                 {/* Frequency */}
                 <div className="space-y-2 col-span-1">
                   <Label htmlFor="sub-frequency">
-                    {translate("frequency")} <span className="text-destructive">*</span>
+                    {translate("frequency")}{" "}
+                    <span className="text-destructive">*</span>
                   </Label>
-                  <Select value={frequency} onValueChange={(v) => setFrequency(v as SubscriptionFrequency)}>
+                  <Select
+                    value={frequency}
+                    onValueChange={(v) =>
+                      setFrequency(v as SubscriptionFrequency)
+                    }
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
@@ -225,7 +264,8 @@ export function SubscriptionDetectionDialog({
                       {frequencyOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
-                          {detectionResult.detectedFrequency === option.value && translate("detected")}
+                          {detectionResult.detectedFrequency === option.value &&
+                            translate("detected")}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -235,16 +275,30 @@ export function SubscriptionDetectionDialog({
                 {/* Category */}
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="sub-category">{translate("category")}</Label>
-                  <Select value={categoryId || "uncategorized"} onValueChange={(v) => setCategoryId(v === "uncategorized" || v === null ? "" : v)}>
+                  <Select
+                    value={categoryId || "uncategorized"}
+                    onValueChange={(v) =>
+                      setCategoryId(
+                        v === "uncategorized" || v === null ? "" : v,
+                      )
+                    }
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder={translate("selectCategory")}>
                         {categoryId ? (
                           <div className="flex items-center gap-2">
                             <div
                               className="h-3 w-3 shrink-0"
-                              style={{ backgroundColor: categories.find((c) => c.id === categoryId)?.color || "#A1A1AA" }}
+                              style={{
+                                backgroundColor:
+                                  categories.find((c) => c.id === categoryId)
+                                    ?.color || "#A1A1AA",
+                              }}
                             />
-                            <span>{categories.find((c) => c.id === categoryId)?.name || translate("unknown")}</span>
+                            <span>
+                              {categories.find((c) => c.id === categoryId)
+                                ?.name || translate("unknown")}
+                            </span>
                           </div>
                         ) : (
                           <span>{translate("uncategorized")}</span>
@@ -252,13 +306,17 @@ export function SubscriptionDetectionDialog({
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="uncategorized">{translate("uncategorized")}</SelectItem>
+                      <SelectItem value="uncategorized">
+                        {translate("uncategorized")}
+                      </SelectItem>
                       {categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           <div className="flex items-center gap-2">
                             <div
                               className="h-3 w-3 shrink-0"
-                              style={{ backgroundColor: cat.color || "#A1A1AA" }}
+                              style={{
+                                backgroundColor: cat.color || "#A1A1AA",
+                              }}
                             />
                             {cat.name}
                           </div>
@@ -289,7 +347,9 @@ export function SubscriptionDetectionDialog({
                       />
                     );
                   })}
-                  <span className="ml-2 text-sm text-muted-foreground">({importance}/3)</span>
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    ({importance}/3)
+                  </span>
                 </div>
               </div>
             </div>
@@ -300,12 +360,23 @@ export function SubscriptionDetectionDialog({
             {detectionResult.matchedTransactions.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label>{translate("transactionsToLink")}{selectedTransactionIds.size} {translate("selected23f30d")}</Label>
+                  <Label>
+                    {translate("transactionsToLink")}
+                    {selectedTransactionIds.size} {translate("selected23f30d")}
+                  </Label>
                   <div className="flex gap-2">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setSelectedTransactionIds(new Set(detectionResult.matchedTransactions.map((t) => t.id)))}
+                      onClick={() =>
+                        setSelectedTransactionIds(
+                          new Set(
+                            detectionResult.matchedTransactions.map(
+                              (t) => t.id,
+                            ),
+                          ),
+                        )
+                      }
                     >
                       {translate("selectAll86a599")}
                     </Button>
@@ -334,7 +405,9 @@ export function SubscriptionDetectionDialog({
                       <div className="flex-1 min-w-0 w-0">
                         <div className="flex items-center gap-2">
                           <p className="text-sm truncate flex-1">
-                            {txn.merchant || txn.description || translate("transaction")}
+                            {txn.merchant ||
+                              txn.description ||
+                              translate("transaction")}
                           </p>
                           <span className="text-sm font-mono shrink-0">
                             {Math.abs(txn.amount).toFixed(2)}
@@ -354,20 +427,27 @@ export function SubscriptionDetectionDialog({
           <div className="flex flex-col items-center justify-center py-12 gap-4">
             <RiAlertLine className="h-8 w-8 text-destructive" />
             <p className="text-sm text-muted-foreground">
-              {detectionResult?.error || translate("failedToDetectSubscriptionPattern")}
+              {detectionResult?.error ||
+                translate("failedToDetectSubscriptionPattern")}
             </p>
           </div>
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isCreating}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isCreating}
+          >
             {translate("cancel")}
           </Button>
           <Button
             onClick={handleCreate}
             disabled={isLoading || isCreating || !name.trim()}
           >
-            {isCreating ? translate("creating") : translate("createSubscription")}
+            {isCreating
+              ? translate("creating")
+              : translate("createSubscription")}
           </Button>
         </DialogFooter>
       </DialogContent>

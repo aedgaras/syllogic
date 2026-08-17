@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -85,7 +84,7 @@ const UNCATEGORIZED_COLOR = "#6B7280";
 
 function groupByCategory(
   items: SubscriptionOrSuggestion[],
-  totalMonthly: number
+  totalMonthly: number,
 ): CategoryGroup[] {
   const map = new Map<string, CategoryGroup>();
 
@@ -118,21 +117,22 @@ function groupByCategory(
   return Array.from(map.values())
     .map((group) => ({
       ...group,
-      percentage: totalMonthly > 0 ? (group.monthlyTotal / totalMonthly) * 100 : 0,
+      percentage:
+        totalMonthly > 0 ? (group.monthlyTotal / totalMonthly) * 100 : 0,
       items: group.items
         .slice()
         .sort(
           (a, b) =>
             Math.abs(parseFloat(b.amount || "0")) -
-            Math.abs(parseFloat(a.amount || "0"))
+            Math.abs(parseFloat(a.amount || "0")),
         ),
     }))
     .sort((a, b) => {
-    if (b.monthlyTotal !== a.monthlyTotal) {
-      return b.monthlyTotal - a.monthlyTotal;
-    }
-    return a.name.localeCompare(b.name);
-  });
+      if (b.monthlyTotal !== a.monthlyTotal) {
+        return b.monthlyTotal - a.monthlyTotal;
+      }
+      return a.name.localeCompare(b.name);
+    });
 }
 
 export function SubscriptionsGroupedList({
@@ -173,7 +173,7 @@ export function SubscriptionsGroupedList({
 
     const totalMonthlyActive = active.reduce(
       (sumValue, item) => sumValue + calculateMonthlyEquivalent(item),
-      0
+      0,
     );
 
     return {
@@ -190,7 +190,7 @@ export function SubscriptionsGroupedList({
       <div
         className={cn(
           "flex flex-col gap-2 px-4 py-2 bg-muted/40 text-xs font-semibold uppercase text-muted-foreground sm:flex-row sm:items-center sm:justify-between",
-          muted && "opacity-60"
+          muted && "opacity-60",
         )}
       >
         <div className="flex items-center gap-2">
@@ -204,7 +204,10 @@ export function SubscriptionsGroupedList({
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <WeightBarVisualizer percentage={group.percentage} color={group.color} />
+            <WeightBarVisualizer
+              percentage={group.percentage}
+              color={group.color}
+            />
             <span className="text-xs font-medium">
               {group.percentage.toFixed(0)}%
             </span>
@@ -228,7 +231,7 @@ export function SubscriptionsGroupedList({
               "h-3 w-5 border",
               i < normalized
                 ? "bg-foreground border-foreground"
-                : "bg-background border-border"
+                : "bg-background border-border",
             )}
           />
         ))}
@@ -238,7 +241,7 @@ export function SubscriptionsGroupedList({
 
   const renderSubscriptionRow = (
     item: SubscriptionOrSuggestion,
-    muted = false
+    muted = false,
   ) => {
     const amount = parseFloat(item.amount || "0");
     const currency = item.currency || "EUR";
@@ -253,7 +256,7 @@ export function SubscriptionsGroupedList({
         className={cn(
           "flex flex-col gap-3 px-4 py-3 hover:bg-muted/40 sm:flex-row sm:items-center sm:gap-4",
           !item.isSuggestion && "cursor-pointer",
-          muted && "opacity-60"
+          muted && "opacity-60",
         )}
         onClick={() => {
           if (!item.isSuggestion) {
@@ -262,7 +265,11 @@ export function SubscriptionsGroupedList({
         }}
       >
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <CompanyLogo name={item.name} logoUrl={item.logoUrl || null} size="sm" />
+          <CompanyLogo
+            name={item.name}
+            logoUrl={item.logoUrl || null}
+            size="sm"
+          />
           <div className="min-w-0">
             <div className="truncate font-medium">{item.name}</div>
             {item.merchant && (
@@ -277,9 +284,13 @@ export function SubscriptionsGroupedList({
             )}
             {item.isSuggestion && (
               <div className="truncate text-xs text-muted-foreground">
-                {item.confidence}{translate("confidence")}
+                {item.confidence}
+                {translate("confidence")}
                 {item.matchCount &&
-                  translate("txn", { value1: item.matchCount, value2: item.matchCount !== 1 ? "s" : "" })}
+                  translate("txn", {
+                    value1: item.matchCount,
+                    value2: item.matchCount !== 1 ? "s" : "",
+                  })}
               </div>
             )}
           </div>
@@ -296,9 +307,12 @@ export function SubscriptionsGroupedList({
           <span className="whitespace-nowrap font-mono text-sm">
             {amount.toFixed(2)} {currency}
           </span>
-          {!item.isSuggestion && (
-            item.isActive ? (
-              <Badge variant="default" className="bg-green-500/10 text-green-700">
+          {!item.isSuggestion &&
+            (item.isActive ? (
+              <Badge
+                variant="default"
+                className="bg-green-500/10 text-green-700"
+              >
                 <RiCheckLine className="mr-1 h-3 w-3" />
                 {translate("active")}
               </Badge>
@@ -307,16 +321,23 @@ export function SubscriptionsGroupedList({
                 <RiCloseLine className="mr-1 h-3 w-3" />
                 {translate("inactive09af57")}
               </Badge>
-            )
-          )}
+            ))}
           <div onClick={(event) => event.stopPropagation()}>
             {item.isSuggestion ? (
               <div className="flex flex-wrap items-center gap-1">
-                <Button size="sm" variant="default" onClick={() => onVerify(item)}>
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => onVerify(item)}
+                >
                   <RiCheckLine className="mr-1 h-3 w-3" />
                   {translate("verify")}
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => onDismiss(item)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onDismiss(item)}
+                >
                   <RiCloseLine className="h-4 w-4" />
                 </Button>
               </div>
@@ -366,13 +387,16 @@ export function SubscriptionsGroupedList({
     <>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-lg font-semibold">{translate("subscriptions")}</h2>
+          <h2 className="text-lg font-semibold">
+            {translate("subscriptions")}
+          </h2>
           <span className="text-sm text-muted-foreground">
             ({subscriptionCount})
           </span>
           {suggestionCount > 0 && (
             <span className="text-sm text-yellow-600">
-              +{suggestionCount} {translate("suggestion")}{suggestionCount !== 1 ? "s" : ""}
+              +{suggestionCount} {translate("suggestion")}
+              {suggestionCount !== 1 ? "s" : ""}
             </span>
           )}
         </div>
@@ -405,7 +429,10 @@ export function SubscriptionsGroupedList({
       )}
 
       {suggestionRows.length > 0 && (
-        <div className="border border-border rounded-sm overflow-hidden" data-walkthrough="walkthrough-suggestions">
+        <div
+          className="border border-border rounded-sm overflow-hidden"
+          data-walkthrough="walkthrough-suggestions"
+        >
           <div className="bg-muted/40 px-4 py-2 text-xs font-semibold uppercase text-muted-foreground">
             {translate("suggestions")}
           </div>
@@ -436,9 +463,13 @@ export function SubscriptionsGroupedList({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{translate("deleteSubscription")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {translate("deleteSubscription")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {translate("areYouSureYouWantToDelete")}{rowToDelete?.name}{translate("thisActionCannotBeUndoneLinkedTransactionsWillBe")}
+              {translate("areYouSureYouWantToDelete")}
+              {rowToDelete?.name}
+              {translate("thisActionCannotBeUndoneLinkedTransactionsWillBe")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

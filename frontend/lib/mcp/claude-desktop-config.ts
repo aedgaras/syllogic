@@ -24,7 +24,7 @@ function resolveMcpServerUrl(mcpUrl?: string): string {
 
 export function buildClaudeDesktopMcpConfig(
   apiKey: string,
-  mcpUrl?: string
+  mcpUrl?: string,
 ): ClaudeDesktopMcpConfig {
   const resolvedMcpUrl = resolveMcpServerUrl(mcpUrl);
   const args = [
@@ -56,7 +56,7 @@ export function buildClaudeDesktopMcpConfig(
 
 export function stringifyClaudeDesktopMcpConfig(
   apiKey: string,
-  mcpUrl?: string
+  mcpUrl?: string,
 ): string {
   return JSON.stringify(buildClaudeDesktopMcpConfig(apiKey, mcpUrl), null, 2);
 }

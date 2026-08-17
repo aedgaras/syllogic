@@ -1,9 +1,17 @@
 import { storage } from "@/lib/storage";
 
-const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const ALLOWED_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 
-export async function uploadPersonAvatar(personId: string, file: File): Promise<string> {
+export async function uploadPersonAvatar(
+  personId: string,
+  file: File,
+): Promise<string> {
   if (!ALLOWED_MIME.has(file.type)) {
     throw new Error(`Unsupported avatar type: ${file.type}`);
   }

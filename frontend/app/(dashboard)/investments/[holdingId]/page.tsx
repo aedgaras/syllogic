@@ -25,7 +25,10 @@ export default async function HoldingDetailPage({
   // so we fetch holdings + portfolio first, validate the ID, then fetch history.
   // This ensures notFound() is called before getHoldingHistory so an invalid
   // holdingId never reaches the backend history endpoint.
-  const [holdings, portfolio] = await Promise.all([listHoldings(), getPortfolio()]);
+  const [holdings, portfolio] = await Promise.all([
+    listHoldings(),
+    getPortfolio(),
+  ]);
   const holding = holdings.find((h) => h.id === holdingId);
   if (!holding) return notFound();
   const [history, trades, lots, session] = await Promise.all([

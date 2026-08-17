@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,7 +47,10 @@ interface SubscriptionFormDialogProps {
   suggestion?: SubscriptionSuggestionViewModel | null;
   accounts: Array<{ id: string; name: string }>;
   categories: Array<{ id: string; name: string; color: string | null }>;
-  onSuccess?: (suggestionId?: string, newSubscription?: SubscriptionViewModel) => void;
+  onSuccess?: (
+    suggestionId?: string,
+    newSubscription?: SubscriptionViewModel,
+  ) => void;
 }
 
 const frequencyOptions = [
@@ -111,7 +113,10 @@ export function SubscriptionFormDialog({
         // Set logo
         setLogoId(subscription.logoId || null);
         setLogoUrl(
-          withAssetVersion(subscription.logo?.logoUrl, subscription.logo?.updatedAt)
+          withAssetVersion(
+            subscription.logo?.logoUrl,
+            subscription.logo?.updatedAt,
+          ),
         );
         setLogoSearch("");
         setLogoSearchAttempted(false);
@@ -163,7 +168,9 @@ export function SubscriptionFormDialog({
 
       if (result.success && result.logo) {
         setLogoId(result.logo.id);
-        setLogoUrl(withAssetVersion(result.logo.logoUrl, result.logo.updatedAt));
+        setLogoUrl(
+          withAssetVersion(result.logo.logoUrl, result.logo.updatedAt),
+        );
         toast.success(translate("logoFound"));
       } else if (result.success) {
         toast.info(translate("noLogoFoundForThisCompany"));
@@ -179,7 +186,14 @@ export function SubscriptionFormDialog({
 
   // Auto-search for logo when name changes (only on create/verify mode, debounced)
   useEffect(() => {
-    if (!open || isEditMode || logoSearchAttempted || !name.trim() || logoId || !logoApiEnabled) {
+    if (
+      !open ||
+      isEditMode ||
+      logoSearchAttempted ||
+      !name.trim() ||
+      logoId ||
+      !logoApiEnabled
+    ) {
       return;
     }
 
@@ -188,7 +202,15 @@ export function SubscriptionFormDialog({
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [name, open, isEditMode, logoSearchAttempted, logoId, logoApiEnabled, handleLogoSearch]);
+  }, [
+    name,
+    open,
+    isEditMode,
+    logoSearchAttempted,
+    logoId,
+    logoApiEnabled,
+    handleLogoSearch,
+  ]);
 
   // Clear logo
   const handleClearLogo = () => {
@@ -256,10 +278,12 @@ export function SubscriptionFormDialog({
             importance,
             frequency,
             description: description.trim() || null,
-            logo: logoId && logoUrl
-              ? { id: logoId, logoUrl, updatedAt: new Date() }
-              : null,
-            account: accounts.find((account) => account.id === accountId) || null,
+            logo:
+              logoId && logoUrl
+                ? { id: logoId, logoUrl, updatedAt: new Date() }
+                : null,
+            account:
+              accounts.find((account) => account.id === accountId) || null,
             updatedAt: new Date(),
           };
           onSuccess?.(undefined, updatedSubscription);
@@ -285,11 +309,19 @@ export function SubscriptionFormDialog({
           const skipped = result.skippedCountDifferentAccount || 0;
           const message =
             skipped > 0
-              ? translate("subscriptionCreatedLinkedTransactionSSkippedFromOtherAccount", { value1: result.linkedCount || 0, skipped: skipped })
-              : translate("subscriptionCreatedAndTransactionSLinked", { value1: result.linkedCount || 0 });
+              ? translate(
+                  "subscriptionCreatedLinkedTransactionSSkippedFromOtherAccount",
+                  { value1: result.linkedCount || 0, skipped: skipped },
+                )
+              : translate("subscriptionCreatedAndTransactionSLinked", {
+                  value1: result.linkedCount || 0,
+                });
           toast.success(message);
           onOpenChange(false);
-          onSuccess?.(suggestion.id, result.subscription as SubscriptionViewModel);
+          onSuccess?.(
+            suggestion.id,
+            result.subscription as SubscriptionViewModel,
+          );
         } else {
           toast.error(result.error || translate("failedToVerify"));
         }
@@ -337,15 +369,20 @@ export function SubscriptionFormDialog({
             {isEditMode
               ? translate("editSubscription")
               : isVerifyMode
-              ? translate("verifySubscription")
-              : translate("addSubscription")}
+                ? translate("verifySubscription")
+                : translate("addSubscription")}
           </DialogTitle>
           <DialogDescription>
             {isEditMode
               ? translate("updateTheDetailsOfThisSubscription")
               : isVerifyMode
-              ? translate("weDetectedThisRecurringPaymentPatternReviewAndConfirm", { value1: suggestion?.matchCount || 0 })
-              : translate("createANewSubscriptionToTrackRecurringPaymentsAnd")}
+                ? translate(
+                    "weDetectedThisRecurringPaymentPatternReviewAndConfirm",
+                    { value1: suggestion?.matchCount || 0 },
+                  )
+                : translate(
+                    "createANewSubscriptionToTrackRecurringPaymentsAnd",
+                  )}
           </DialogDescription>
         </DialogHeader>
 
@@ -435,7 +472,8 @@ export function SubscriptionFormDialog({
             {/* Amount */}
             <div className="grid gap-2">
               <Label htmlFor="amount">
-                {translate("amount")} <span className="text-destructive">*</span>
+                {translate("amount")}{" "}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="amount"
@@ -452,7 +490,8 @@ export function SubscriptionFormDialog({
             {/* Account */}
             <div className="grid gap-2">
               <Label htmlFor="account">
-                {translate("account85dfa3")} <span className="text-destructive">*</span>
+                {translate("account85dfa3")}{" "}
+                <span className="text-destructive">*</span>
               </Label>
               {isVerifyMode && suggestion?.accountId ? (
                 <div className="flex h-10 items-center rounded-md border border-border px-3 text-sm">
@@ -461,11 +500,15 @@ export function SubscriptionFormDialog({
                     translate("detectedAccount")}
                 </div>
               ) : (
-                <Select value={accountId} onValueChange={(value) => setAccountId(value ?? "")}>
+                <Select
+                  value={accountId}
+                  onValueChange={(value) => setAccountId(value ?? "")}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder={translate("selectAnAccount")}>
                       {accountId
-                        ? accounts.find((account) => account.id === accountId)?.name || translate("selectAnAccount")
+                        ? accounts.find((account) => account.id === accountId)
+                            ?.name || translate("selectAnAccount")
                         : translate("selectAnAccount")}
                     </SelectValue>
                   </SelectTrigger>
@@ -483,11 +526,15 @@ export function SubscriptionFormDialog({
             {/* Category */}
             <div className="grid gap-2">
               <Label htmlFor="category">{translate("category")}</Label>
-              <Select value={categoryId} onValueChange={(value) => setCategoryId(value ?? "")}>
+              <Select
+                value={categoryId}
+                onValueChange={(value) => setCategoryId(value ?? "")}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder={translate("selectACategory")}>
                     {categoryId
-                      ? categories.find((c) => c.id === categoryId)?.name || translate("uncategorized")
+                      ? categories.find((c) => c.id === categoryId)?.name ||
+                        translate("uncategorized")
                       : translate("uncategorized")}
                   </SelectValue>
                 </SelectTrigger>
@@ -505,9 +552,15 @@ export function SubscriptionFormDialog({
             {/* Frequency */}
             <div className="grid gap-2">
               <Label htmlFor="frequency">
-                {translate("frequency")} <span className="text-destructive">*</span>
+                {translate("frequency")}{" "}
+                <span className="text-destructive">*</span>
               </Label>
-              <Select value={frequency} onValueChange={(value) => setFrequency((value ?? "monthly") as SubscriptionFrequency)}>
+              <Select
+                value={frequency}
+                onValueChange={(value) =>
+                  setFrequency((value ?? "monthly") as SubscriptionFrequency)
+                }
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -524,7 +577,8 @@ export function SubscriptionFormDialog({
             {/* Importance - 3 blocks */}
             <div className="grid gap-2">
               <Label>
-                {translate("importance")} <span className="text-destructive">*</span>
+                {translate("importance")}{" "}
+                <span className="text-destructive">*</span>
               </Label>
               <div className="flex items-center gap-1">
                 {Array.from({ length: 3 }).map((_, i) => {
@@ -551,7 +605,9 @@ export function SubscriptionFormDialog({
 
             {/* Description */}
             <div className="grid gap-2">
-              <Label htmlFor="description">{translate("description55f8eb")}</Label>
+              <Label htmlFor="description">
+                {translate("description55f8eb")}
+              </Label>
               <Textarea
                 id="description"
                 placeholder={translate("optionalNotesAboutThisSubscription")}

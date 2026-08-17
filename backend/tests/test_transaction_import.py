@@ -1,6 +1,7 @@
 """
 Test transaction import API endpoint.
 """
+
 import sys
 import os
 import json
@@ -25,11 +26,11 @@ def setup_test_data():
     try:
         # Create tables if they don't exist
         Base.metadata.create_all(bind=engine)
-        
+
         # Get or create system user
         user = get_or_create_system_user(db)
         user_id = str(user.id)
-        
+
         # Create a test account
         account = Account(
             user_id=user_id,
@@ -39,12 +40,12 @@ def setup_test_data():
             currency="EUR",
             balance_available=Decimal("1000.00"),
             starting_balance=Decimal("1000.00"),
-            functional_balance=Decimal("1000.00")
+            functional_balance=Decimal("1000.00"),
         )
         db.add(account)
         db.commit()
         db.refresh(account)
-        
+
         # Create test categories
         categories = [
             Category(user_id=user_id, name="Groceries", category_type="expense", is_system=False),
@@ -53,7 +54,7 @@ def setup_test_data():
         for cat in categories:
             db.add(cat)
         db.commit()
-        
+
         return user_id, str(account.id)
     finally:
         db.close()
@@ -62,15 +63,15 @@ def setup_test_data():
 def test_transaction_import():
     """Test that transaction import API works correctly."""
     print("Testing Transaction Import API...")
-    
+
     try:
         # Setup test data
         user_id, account_id = setup_test_data()
-        
+
         # Test transaction import
         url = f"{BASE_URL}/transactions/import"
         path_with_query = "/api/transactions/import"
-        
+
         payload = {
             "transactions": [
                 {
@@ -80,7 +81,7 @@ def test_transaction_import():
                     "merchant": "Tesco",
                     "booked_at": datetime.now(timezone.utc).isoformat(),
                     "transaction_type": "debit",
-                    "currency": "EUR"
+                    "currency": "EUR",
                 },
                 {
                     "account_id": account_id,
@@ -89,27 +90,32 @@ def test_transaction_import():
                     "merchant": "Employer",
                     "booked_at": datetime.now(timezone.utc).isoformat(),
                     "transaction_type": "credit",
-                    "currency": "EUR"
-                }
+                    "currency": "EUR",
+                },
             ],
             "sync_exchange_rates": False,
             "update_functional_amounts": False,
-            "calculate_balances": False
+            "calculate_balances": False,
         }
 
         request_body = json.dumps(payload).encode("utf-8")
         response = requests.post(
             url,
             data=request_body,
-            headers={"Content-Type": "application/json", **build_internal_auth_headers("POST", path_with_query, user_id, request_body)},
+            headers={
+                "Content-Type": "application/json",
+                **build_internal_auth_headers("POST", path_with_query, user_id, request_body),
+            },
             timeout=30,
         )
-        
+
         if response.status_code == 200:
             result = response.json()
             assert result.get("success") == True, "Import should succeed"
             assert result.get("transactions_inserted", 0) == 2, "Should import 2 transactions"
-            print(f"✓ Transaction Import API test passed ({result.get('transactions_inserted')} transactions imported)")
+            print(
+                f"✓ Transaction Import API test passed ({result.get('transactions_inserted')} transactions imported)"
+            )
             return True
         else:
             print(f"✗ Transaction Import API test failed: {response.status_code}")
@@ -118,6 +124,7 @@ def test_transaction_import():
     except Exception as e:
         print(f"✗ Test setup failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -129,5 +136,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"✗ Test failed with exception: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

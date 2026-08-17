@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { RiDownloadLine } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -22,7 +21,9 @@ export function ExportButton({ transactions, disabled }: ExportButtonProps) {
 
     try {
       exportTransactionsToCSV(transactions);
-      toast.success(translate("exportedTransactions", { value1: transactions.length }));
+      toast.success(
+        translate("exportedTransactions", { value1: transactions.length }),
+      );
     } catch {
       toast.error(translate("failedToExportTransactions"));
     }

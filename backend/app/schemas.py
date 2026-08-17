@@ -135,14 +135,18 @@ class AccountSummary(BaseModel):
 # Transaction Input/Output Schemas
 class TransactionInput(BaseModel):
     """Input transaction for categorization."""
+
     description: Optional[str] = None
     merchant: Optional[str] = None
     amount: Decimal
-    transaction_type: Optional[str] = None  # "debit" or "credit" - helps determine if expense or income
+    transaction_type: Optional[str] = (
+        None  # "debit" or "credit" - helps determine if expense or income
+    )
 
 
 class TransactionResult(BaseModel):
     """Result of categorization for a single transaction."""
+
     description: Optional[str]
     merchant: Optional[str]
     amount: Decimal
@@ -157,6 +161,7 @@ class TransactionResult(BaseModel):
 
 class UserOverride(BaseModel):
     """User override for a specific transaction pattern."""
+
     description: Optional[str] = None
     merchant: Optional[str] = None
     amount: Optional[Decimal] = None
@@ -165,6 +170,7 @@ class UserOverride(BaseModel):
 
 class BatchCategorizationRequest(BaseModel):
     """Request for batch categorization."""
+
     transactions: List[TransactionInput]
     use_llm: bool = True
     user_overrides: Optional[List[UserOverride]] = None  # User-defined category overrides
@@ -173,6 +179,7 @@ class BatchCategorizationRequest(BaseModel):
 
 class BatchCategorizationResponse(BaseModel):
     """Response for batch categorization."""
+
     results: List[TransactionResult]
     total_transactions: int
     categorized_count: int
@@ -188,6 +195,7 @@ class BatchCategorizationResponse(BaseModel):
 # Production categorization schemas
 class CategorizeTransactionRequest(BaseModel):
     """Request to categorize a single transaction."""
+
     description: Optional[str] = None
     merchant: Optional[str] = None
     amount: Decimal
@@ -199,6 +207,7 @@ class CategorizeTransactionRequest(BaseModel):
 
 class CategorizeTransactionResponse(BaseModel):
     """Response for single transaction categorization."""
+
     category_id: Optional[UUID] = None
     category_name: Optional[str] = None
     method: str  # 'override', 'deterministic', 'llm', or 'none'
@@ -210,14 +219,20 @@ class CategorizeTransactionResponse(BaseModel):
 
 class BatchCategorizeRequest(BaseModel):
     """Request to categorize multiple transactions."""
+
     transactions: List[TransactionInput]
     use_llm: bool = True
-    user_overrides: Optional[List[UserOverride]] = None  # User-defined category overrides (applies to all transactions)
-    additional_instructions: Optional[List[str]] = None  # User guidance for categorization (applies to all transactions)
+    user_overrides: Optional[List[UserOverride]] = (
+        None  # User-defined category overrides (applies to all transactions)
+    )
+    additional_instructions: Optional[List[str]] = (
+        None  # User guidance for categorization (applies to all transactions)
+    )
 
 
 class BatchCategorizeResponse(BaseModel):
     """Response for batch transaction categorization."""
+
     results: List[TransactionResult]
     total_transactions: int
     categorized_count: int
@@ -233,6 +248,7 @@ class BatchCategorizeResponse(BaseModel):
 # Daily Balance Import Schemas
 class DailyBalanceImport(BaseModel):
     """Daily balance data extracted from CSV for import."""
+
     date: str  # ISO date format YYYY-MM-DD
     balance: Decimal
 
@@ -317,6 +333,7 @@ class ValuationPoint(BaseModel):
 
 class HoldingTrade(BaseModel):
     """One BrokerTrade row enriched with running quantity / cost."""
+
     id: UUID
     trade_date: _date_date
     symbol: str
@@ -333,6 +350,7 @@ class HoldingTrade(BaseModel):
 
 class HoldingLot(BaseModel):
     """One open FIFO lot for a holding."""
+
     open_date: _date_date
     quantity_remaining: Decimal
     cost_per_share_native: Decimal
@@ -391,7 +409,9 @@ class ReportBase(BaseModel):
     account_ids: list[str] = Field(default_factory=list)
     transaction_mode: ReportTransactionMode = "RECENT"  # RECENT, TOP_N
     transaction_count: int = Field(default=10, ge=1, le=100)
-    transaction_direction: ReportTransactionDirection = "ALL"  # ALL, EXPENSE, INCOME, INFLOW, OUTFLOW
+    transaction_direction: ReportTransactionDirection = (
+        "ALL"  # ALL, EXPENSE, INCOME, INFLOW, OUTFLOW
+    )
     frequency: ReportFrequency  # DAILY, WEEKLY, BIWEEKLY, MONTHLY
     send_time: str = "08:00:00"  # HH:MM:SS
     send_day_of_week: Optional[int] = Field(default=None, ge=0, le=6)

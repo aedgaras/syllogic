@@ -7,6 +7,7 @@ Public API:
 - entity_ids_for_people(db, entity, person_ids) -> list[UUID]
 - get_owners(db, entity, entity_id) -> list[dict]
 """
+
 from __future__ import annotations
 
 from typing import Iterable, Literal
@@ -14,7 +15,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.models import Account, AccountOwner, Property, PropertyOwner, Vehicle, VehicleOwner
+from app.models import AccountOwner, PropertyOwner, VehicleOwner
 
 EntityType = Literal["account", "property", "vehicle"]
 

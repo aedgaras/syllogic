@@ -1,5 +1,5 @@
 function getVersionToken(
-  updatedAt?: Date | string | number | null
+  updatedAt?: Date | string | number | null,
 ): string | null {
   if (updatedAt === null || updatedAt === undefined) {
     return null;
@@ -26,7 +26,7 @@ function getVersionToken(
 
 export function withAssetVersion(
   url: string | null | undefined,
-  updatedAt?: Date | string | number | null
+  updatedAt?: Date | string | number | null,
 ): string | null {
   if (!url) {
     return null;

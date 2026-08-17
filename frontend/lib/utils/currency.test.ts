@@ -7,6 +7,5 @@ describe("currencySymbol", () => {
   it("maps GBP to £", () => expect(currencySymbol("GBP")).toBe("£"));
   it("falls back to the code itself for unknown currencies", () =>
     expect(currencySymbol("JPY")).toBe("JPY"));
-  it("is case-insensitive", () =>
-    expect(currencySymbol("usd")).toBe("$"));
+  it("is case-insensitive", () => expect(currencySymbol("usd")).toBe("$"));
 });

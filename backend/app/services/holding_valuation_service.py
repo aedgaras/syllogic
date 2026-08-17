@@ -25,7 +25,9 @@ class HoldingValuationService:
     def compute(self, account_id: UUID, on: date) -> Decimal:
         account = self.db.query(Account).filter_by(id=account_id).one()
         user = self.db.query(User).filter_by(id=account.user_id).one()
-        user_currency = (getattr(user, "functional_currency", None) or account.currency or "EUR").upper()
+        user_currency = (
+            getattr(user, "functional_currency", None) or account.currency or "EUR"
+        ).upper()
         account_currency = (account.currency or user_currency).upper()
         holdings = self.db.query(Holding).filter_by(account_id=account_id).all()
 
@@ -63,12 +65,27 @@ class HoldingValuationService:
         is_stale = gap_days > self.STALE_AFTER_DAYS
         return Decimal(snap.close), snap.currency, is_stale
 
-    def _upsert_valuation(self, holding_id, on: date, qty: Decimal, price: Decimal,
-                          value_user: Decimal, is_stale: bool) -> None:
-        row = self.db.query(HoldingValuation).filter_by(holding_id=holding_id, date=on).one_or_none()
+    def _upsert_valuation(
+        self,
+        holding_id,
+        on: date,
+        qty: Decimal,
+        price: Decimal,
+        value_user: Decimal,
+        is_stale: bool,
+    ) -> None:
+        row = (
+            self.db.query(HoldingValuation).filter_by(holding_id=holding_id, date=on).one_or_none()
+        )
         if row is None:
-            row = HoldingValuation(holding_id=holding_id, date=on, quantity=qty,
-                                   price=price, value_user_currency=value_user, is_stale=is_stale)
+            row = HoldingValuation(
+                holding_id=holding_id,
+                date=on,
+                quantity=qty,
+                price=price,
+                value_user_currency=value_user,
+                is_stale=is_stale,
+            )
             self.db.add(row)
         else:
             row.quantity = qty
@@ -76,8 +93,9 @@ class HoldingValuationService:
             row.value_user_currency = value_user
             row.is_stale = is_stale
 
-    def _upsert_account_balance(self, account: Account, on: date, total_account_ccy: Decimal,
-                                total_user: Decimal) -> None:
+    def _upsert_account_balance(
+        self, account: Account, on: date, total_account_ccy: Decimal, total_user: Decimal
+    ) -> None:
         row = self.db.query(AccountBalance).filter_by(account_id=account.id, date=on).one_or_none()
         if row is None:
             row = AccountBalance(

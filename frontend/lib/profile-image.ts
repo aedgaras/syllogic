@@ -16,11 +16,17 @@ export async function normalizeProfileImage(file: File): Promise<Buffer> {
   try {
     const image = sharp(input, {
       failOn: "error",
-      limitInputPixels: MAX_PROFILE_IMAGE_DIMENSION * MAX_PROFILE_IMAGE_DIMENSION * 16,
+      limitInputPixels:
+        MAX_PROFILE_IMAGE_DIMENSION * MAX_PROFILE_IMAGE_DIMENSION * 16,
     });
     const metadata = await image.metadata();
-    if (!metadata.format || !["jpeg", "png", "webp", "gif"].includes(metadata.format)) {
-      throw new Error("Only JPEG, PNG, WebP, and GIF profile photos are supported");
+    if (
+      !metadata.format ||
+      !["jpeg", "png", "webp", "gif"].includes(metadata.format)
+    ) {
+      throw new Error(
+        "Only JPEG, PNG, WebP, and GIF profile photos are supported",
+      );
     }
 
     // Decode and re-encode to strip active content and untrusted metadata.
@@ -33,7 +39,8 @@ export async function normalizeProfileImage(file: File): Promise<Buffer> {
       .webp({ quality: 85 })
       .toBuffer();
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith("Only ")) throw error;
+    if (error instanceof Error && error.message.startsWith("Only "))
+      throw error;
     throw new Error("Profile photo is not a valid supported image");
   }
 }

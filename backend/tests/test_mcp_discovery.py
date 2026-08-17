@@ -1,4 +1,5 @@
 """Smoke tests for the OAuth 2.0 Protected Resource Metadata endpoint."""
+
 import sys
 from pathlib import Path
 

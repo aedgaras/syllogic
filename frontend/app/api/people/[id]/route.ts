@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { updatePerson, deletePerson, getPeople } from "@/lib/people";
-import { uploadPersonAvatar, deletePersonAvatar, avatarUrl } from "@/lib/people/avatars";
+import {
+  uploadPersonAvatar,
+  deletePersonAvatar,
+  avatarUrl,
+} from "@/lib/people/avatars";
 import { requireAuth } from "@/lib/auth-helpers";
 
 const patchSchema = z.object({
@@ -14,9 +18,13 @@ const patchSchema = z.object({
   clearAvatar: z.string().optional(),
 });
 
-export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function PATCH(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+) {
   const userId = await requireAuth();
-  if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!userId)
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const { id } = await ctx.params;
   const form = await req.formData();
   const parsed = patchSchema.safeParse({
@@ -31,7 +39,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   // Look up current avatar path for cleanup decisions.
   const all = await getPeople(userId);
   const existing = all.find((p) => p.id === id);
-  if (!existing) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (!existing)
+    return NextResponse.json({ error: "not found" }, { status: 404 });
 
   let newAvatarPath: string | null | undefined = undefined;
   let oldAvatarPathToDelete: string | null = null;
@@ -65,9 +74,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   });
 }
 
-export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  _req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+) {
   const userId = await requireAuth();
-  if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!userId)
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const { id } = await ctx.params;
   try {
     // Capture the avatar path before deletion to clean up.
@@ -81,7 +94,7 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     if (code === "SOLE_OWNER") {
       return NextResponse.json(
         { error: (e as Error).message, blockers: (e as any).blockers },
-        { status: 409 }
+        { status: 409 },
       );
     }
     throw e;

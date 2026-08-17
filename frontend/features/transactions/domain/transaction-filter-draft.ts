@@ -6,7 +6,9 @@ export const transactionFilterDraftSchema = z.object({
   maxAmount: z.string(),
 });
 
-export type TransactionFilterDraft = z.infer<typeof transactionFilterDraftSchema>;
+export type TransactionFilterDraft = z.infer<
+  typeof transactionFilterDraftSchema
+>;
 
 export type TransactionFilterDraftAction =
   | { type: "sync"; draft: TransactionFilterDraft }
@@ -14,7 +16,7 @@ export type TransactionFilterDraftAction =
 
 export function transactionFilterDraftReducer(
   state: TransactionFilterDraft,
-  action: TransactionFilterDraftAction
+  action: TransactionFilterDraftAction,
 ): TransactionFilterDraft {
   if (action.type === "sync") {
     return state.search === action.draft.search &&

@@ -30,7 +30,9 @@ def _parse_iso_date(raw: str) -> date:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Seed deterministic demo data for a specific existing user")
+    parser = argparse.ArgumentParser(
+        description="Seed deterministic demo data for a specific existing user"
+    )
     parser.add_argument("--user-id", help="Existing BetterAuth user ID to seed")
     parser.add_argument("--user-email", help="Existing BetterAuth user email to seed")
     parser.add_argument(
@@ -88,9 +90,7 @@ def main() -> int:
         print(f"- categories_created: {summary['categories_created']}")
         print(f"- transactions_created: {summary['transactions_created']}")
         print(f"- currencies: {', '.join(summary['currencies'])}")
-        print(
-            f"- date_range: {summary['date_range']['start']} -> {summary['date_range']['end']}"
-        )
+        print(f"- date_range: {summary['date_range']['start']} -> {summary['date_range']['end']}")
 
         fx = summary.get("exchange_rates_synced")
         if isinstance(fx, dict) and fx.get("error"):

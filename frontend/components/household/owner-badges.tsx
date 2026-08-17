@@ -35,7 +35,10 @@ export function OwnerBadges({
   const { data: people = [] } = usePeopleQuery(peopleProp);
   const { data: ownersRows = [] } = useOwnersQuery(entityType, entityId, {
     enabled: !preloaded,
-    initialOwners: ownerIdsProp?.map<OwnerRow>((personId) => ({ personId, share: null })),
+    initialOwners: ownerIdsProp?.map<OwnerRow>((personId) => ({
+      personId,
+      share: null,
+    })),
   });
   const ownerIds = ownersRows.map((o) => o.personId);
 

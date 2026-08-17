@@ -5,6 +5,7 @@ Handles:
 2. Account timeseries calculation (daily balance snapshots)
 3. Importing daily balances from CSV files
 """
+
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 from typing import Dict, Optional, List, Set
@@ -51,35 +52,37 @@ class AccountBalanceService:
             # Get accounts for user (filtered by account_ids if provided)
             query = self.db.query(Account).filter(Account.user_id == user_id)
             if account_ids:
-                from uuid import UUID
                 query = query.filter(Account.id.in_(account_ids))
                 logger.info(f"[BALANCE] Processing {len(account_ids)} specific account(s)")
             accounts = query.all()
-            
+
             updated_accounts = 0
             failed_accounts = 0
-            
+
             for account in accounts:
                 try:
                     # Sum all transactions for this account in account's currency
-                    transaction_sum_result = self.db.query(func.sum(Transaction.amount)).filter(
-                        Transaction.user_id == user_id,
-                        Transaction.account_id == account.id
-                    ).scalar()
-                    
+                    transaction_sum_result = (
+                        self.db.query(func.sum(Transaction.amount))
+                        .filter(
+                            Transaction.user_id == user_id, Transaction.account_id == account.id
+                        )
+                        .scalar()
+                    )
+
                     # Handle NULL result from sum() when no transactions exist
                     if transaction_sum_result is None:
                         transaction_sum = Decimal("0")
                     else:
                         transaction_sum = Decimal(str(transaction_sum_result))
-                    
+
                     # Calculate balance in account's currency = sum(transactions) + starting_balance
                     starting_balance = account.starting_balance or Decimal("0")
                     balance_in_account_currency = transaction_sum + starting_balance
-                    
+
                     # Convert to functional currency using latest available exchange rate
                     account_currency = account.currency or "EUR"
-                    
+
                     if account_currency == functional_currency:
                         # Same currency, no conversion needed
                         functional_balance = balance_in_account_currency
@@ -92,15 +95,20 @@ class AccountBalanceService:
                         )
                     else:
                         # Get latest exchange rate from database
-                        latest_rate_record = self.db.query(ExchangeRate).filter(
-                            ExchangeRate.base_currency == account_currency,
-                            ExchangeRate.target_currency == functional_currency
-                        ).order_by(desc(ExchangeRate.date)).first()
-                        
+                        latest_rate_record = (
+                            self.db.query(ExchangeRate)
+                            .filter(
+                                ExchangeRate.base_currency == account_currency,
+                                ExchangeRate.target_currency == functional_currency,
+                            )
+                            .order_by(desc(ExchangeRate.date))
+                            .first()
+                        )
+
                         if latest_rate_record:
                             exchange_rate = latest_rate_record.rate
                             functional_balance = balance_in_account_currency * exchange_rate
-                            
+
                             logger.debug(
                                 f"[BALANCE] Account {account.name}: "
                                 f"transaction_sum={transaction_sum}, "
@@ -116,29 +124,28 @@ class AccountBalanceService:
                                 f"Using balance in account currency for account {account.name}"
                             )
                             functional_balance = balance_in_account_currency
-                    
+
                     # Update the account
                     account.functional_balance = functional_balance
                     updated_accounts += 1
-                    
+
                 except Exception as e:
-                    logger.error(f"[BALANCE] Error calculating balance for account {account.name}: {e}")
+                    logger.error(
+                        f"[BALANCE] Error calculating balance for account {account.name}: {e}"
+                    )
                     logger.error(traceback.format_exc())
                     failed_accounts += 1
                     # Continue with other accounts
                     continue
-            
+
             self.db.commit()
-            result = {
-                "accounts_updated": updated_accounts,
-                "accounts_failed": failed_accounts
-            }
+            result = {"accounts_updated": updated_accounts, "accounts_failed": failed_accounts}
             logger.info(
                 f"[BALANCE] Calculated balances for {updated_accounts} accounts "
                 f"({failed_accounts} failed)"
             )
             return result
-            
+
         except Exception as e:
             logger.error(f"[BALANCE] Error calculating balances: {e}")
             logger.error(traceback.format_exc())
@@ -148,7 +155,7 @@ class AccountBalanceService:
         self,
         user_id: str,
         account_ids: Optional[list] = None,
-        skip_dates: Optional[Dict[str, Set[date]]] = None
+        skip_dates: Optional[Dict[str, Set[date]]] = None,
     ) -> Dict:
         """
         Calculate and store daily balance snapshots (timeseries) for accounts of a user.
@@ -181,45 +188,57 @@ class AccountBalanceService:
             # Get accounts for user (filtered by account_ids if provided)
             query = self.db.query(Account).filter(Account.user_id == user_id)
             if account_ids:
-                from uuid import UUID
                 query = query.filter(Account.id.in_(account_ids))
                 logger.info(f"[TIMESERIES] Processing {len(account_ids)} specific account(s)")
             accounts = query.all()
-            
+
             total_days_processed = 0
             total_records_stored = 0
             failed_accounts = 0
-            
+
             for account in accounts:
                 try:
                     # Get minimum transaction date for this account
-                    min_date_result = self.db.query(func.min(Transaction.booked_at)).filter(
-                        Transaction.user_id == user_id,
-                        Transaction.account_id == account.id
-                    ).scalar()
+                    min_date_result = (
+                        self.db.query(func.min(Transaction.booked_at))
+                        .filter(
+                            Transaction.user_id == user_id, Transaction.account_id == account.id
+                        )
+                        .scalar()
+                    )
 
                     if not min_date_result:
                         # No transactions - use account created_at date or today as starting point
                         # This ensures accounts with only starting balance still appear in analytics
-                        logger.info(f"[TIMESERIES] No transactions found for account {account.name}, using starting balance only")
+                        logger.info(
+                            f"[TIMESERIES] No transactions found for account {account.name}, using starting balance only"
+                        )
 
                         # Use account creation date, or today if not available
                         if account.created_at:
-                            min_date = account.created_at.date() if isinstance(account.created_at, datetime) else account.created_at
+                            min_date = (
+                                account.created_at.date()
+                                if isinstance(account.created_at, datetime)
+                                else account.created_at
+                            )
                         else:
                             min_date = datetime.now().date()
                     else:
-                        min_date = min_date_result.date() if isinstance(min_date_result, datetime) else min_date_result
+                        min_date = (
+                            min_date_result.date()
+                            if isinstance(min_date_result, datetime)
+                            else min_date_result
+                        )
 
                     end_date = datetime.now().date()
                     account_currency = account.currency or "EUR"
                     starting_balance = account.starting_balance or Decimal("0")
-                    
+
                     logger.info(
                         f"[TIMESERIES] Calculating timeseries for account {account.name} "
                         f"from {min_date} to {end_date}"
                     )
-                    
+
                     # Calculate balance for each day
                     current_date = min_date
                     days_processed = 0
@@ -227,7 +246,9 @@ class AccountBalanceService:
                     skipped_count = 0
 
                     # Get skip dates for this account (if any)
-                    account_skip_dates = skip_dates.get(str(account.id), set()) if skip_dates else set()
+                    account_skip_dates = (
+                        skip_dates.get(str(account.id), set()) if skip_dates else set()
+                    )
 
                     # Get the max date with CSV data to know when to carry forward balances
                     max_csv_date = max(account_skip_dates) if account_skip_dates else None
@@ -241,13 +262,21 @@ class AccountBalanceService:
                         if current_date in account_skip_dates:
                             # Get the balance from account_balances to track for carry-forward
                             rate_datetime = datetime.combine(current_date, datetime.min.time())
-                            existing_entry = self.db.query(AccountBalance).filter(
-                                AccountBalance.account_id == account.id,
-                                AccountBalance.date == rate_datetime
-                            ).first()
+                            existing_entry = (
+                                self.db.query(AccountBalance)
+                                .filter(
+                                    AccountBalance.account_id == account.id,
+                                    AccountBalance.date == rate_datetime,
+                                )
+                                .first()
+                            )
                             if existing_entry:
-                                last_known_balance_account = existing_entry.balance_in_account_currency
-                                last_known_balance_functional = existing_entry.balance_in_functional_currency
+                                last_known_balance_account = (
+                                    existing_entry.balance_in_account_currency
+                                )
+                                last_known_balance_functional = (
+                                    existing_entry.balance_in_functional_currency
+                                )
 
                             logger.debug(
                                 f"[TIMESERIES] Skipping {current_date} for account {account.name} "
@@ -259,13 +288,21 @@ class AccountBalanceService:
 
                         # For dates after the last CSV date, check if there are transactions on THIS specific date
                         # If no transactions and we have a last known balance, carry it forward
-                        if max_csv_date and current_date > max_csv_date and last_known_balance_account is not None:
+                        if (
+                            max_csv_date
+                            and current_date > max_csv_date
+                            and last_known_balance_account is not None
+                        ):
                             # Check if there are any transactions on this specific date
-                            transactions_on_date = self.db.query(func.count(Transaction.id)).filter(
-                                Transaction.user_id == user_id,
-                                Transaction.account_id == account.id,
-                                func.date(Transaction.booked_at) == current_date
-                            ).scalar()
+                            transactions_on_date = (
+                                self.db.query(func.count(Transaction.id))
+                                .filter(
+                                    Transaction.user_id == user_id,
+                                    Transaction.account_id == account.id,
+                                    func.date(Transaction.booked_at) == current_date,
+                                )
+                                .scalar()
+                            )
 
                             if not transactions_on_date or transactions_on_date == 0:
                                 # No transactions on this date - carry forward the last known balance
@@ -274,17 +311,21 @@ class AccountBalanceService:
 
                                 # Store this balance
                                 rate_datetime = datetime.combine(current_date, datetime.min.time())
-                                existing_timeseries = self.db.query(AccountBalance).filter(
-                                    AccountBalance.account_id == account.id,
-                                    AccountBalance.date == rate_datetime
-                                ).first()
+                                existing_timeseries = (
+                                    self.db.query(AccountBalance)
+                                    .filter(
+                                        AccountBalance.account_id == account.id,
+                                        AccountBalance.date == rate_datetime,
+                                    )
+                                    .first()
+                                )
 
                                 if not existing_timeseries:
                                     timeseries_record = AccountBalance(
                                         account_id=account.id,
                                         date=rate_datetime,
                                         balance_in_account_currency=balance_in_account_currency,
-                                        balance_in_functional_currency=balance_in_functional_currency
+                                        balance_in_functional_currency=balance_in_functional_currency,
                                     )
                                     self.db.add(timeseries_record)
                                     records_stored += 1
@@ -301,11 +342,15 @@ class AccountBalanceService:
 
                         # Calculate cumulative balance up to this date (in account currency)
                         # Sum all transactions up to and including this date
-                        transaction_sum_result = self.db.query(func.sum(Transaction.amount)).filter(
-                            Transaction.user_id == user_id,
-                            Transaction.account_id == account.id,
-                            func.date(Transaction.booked_at) <= current_date
-                        ).scalar()
+                        transaction_sum_result = (
+                            self.db.query(func.sum(Transaction.amount))
+                            .filter(
+                                Transaction.user_id == user_id,
+                                Transaction.account_id == account.id,
+                                func.date(Transaction.booked_at) <= current_date,
+                            )
+                            .scalar()
+                        )
 
                         if transaction_sum_result is None:
                             transaction_sum = Decimal("0")
@@ -314,38 +359,50 @@ class AccountBalanceService:
 
                         # Balance in account currency = starting_balance + sum of transactions up to this date
                         balance_in_account_currency = starting_balance + transaction_sum
-                        
+
                         # Convert to functional currency using exchange rate for this specific date
                         if account_currency == functional_currency:
                             balance_in_functional_currency = balance_in_account_currency
                         else:
                             # Get exchange rate for this specific date
                             rate_datetime = datetime.combine(current_date, datetime.min.time())
-                            exchange_rate_record = self.db.query(ExchangeRate).filter(
-                                ExchangeRate.date == rate_datetime,
-                                ExchangeRate.base_currency == account_currency,
-                                ExchangeRate.target_currency == functional_currency
-                            ).first()
-                            
+                            exchange_rate_record = (
+                                self.db.query(ExchangeRate)
+                                .filter(
+                                    ExchangeRate.date == rate_datetime,
+                                    ExchangeRate.base_currency == account_currency,
+                                    ExchangeRate.target_currency == functional_currency,
+                                )
+                                .first()
+                            )
+
                             if exchange_rate_record:
                                 exchange_rate = exchange_rate_record.rate
-                                balance_in_functional_currency = balance_in_account_currency * exchange_rate
+                                balance_in_functional_currency = (
+                                    balance_in_account_currency * exchange_rate
+                                )
                             else:
                                 # Try to find closest available rate (within 7 days)
                                 found_rate = None
                                 for days_back in range(8):
                                     check_date = rate_datetime - timedelta(days=days_back)
-                                    closest_rate = self.db.query(ExchangeRate).filter(
-                                        ExchangeRate.date == check_date,
-                                        ExchangeRate.base_currency == account_currency,
-                                        ExchangeRate.target_currency == functional_currency
-                                    ).first()
+                                    closest_rate = (
+                                        self.db.query(ExchangeRate)
+                                        .filter(
+                                            ExchangeRate.date == check_date,
+                                            ExchangeRate.base_currency == account_currency,
+                                            ExchangeRate.target_currency == functional_currency,
+                                        )
+                                        .first()
+                                    )
                                     if closest_rate:
                                         found_rate = closest_rate.rate
                                         break
-                                
+
                                 if found_rate:
-                                    balance_in_functional_currency = balance_in_account_currency * found_rate
+                                    balance_in_functional_currency = (
+                                        balance_in_account_currency * found_rate
+                                    )
                                 else:
                                     # No rate found - use account currency balance
                                     logger.warning(
@@ -353,13 +410,17 @@ class AccountBalanceService:
                                         f"on {current_date} for account {account.name}. Using account currency balance."
                                     )
                                     balance_in_functional_currency = balance_in_account_currency
-                        
+
                         # Check if timeseries record already exists for this account and date
                         rate_datetime = datetime.combine(current_date, datetime.min.time())
-                        existing_timeseries = self.db.query(AccountBalance).filter(
-                            AccountBalance.account_id == account.id,
-                            AccountBalance.date == rate_datetime
-                        ).first()
+                        existing_timeseries = (
+                            self.db.query(AccountBalance)
+                            .filter(
+                                AccountBalance.account_id == account.id,
+                                AccountBalance.date == rate_datetime,
+                            )
+                            .first()
+                        )
 
                         if existing_timeseries:
                             # Only skip if this date is in skip_dates (has authoritative CSV data)
@@ -373,8 +434,12 @@ class AccountBalanceService:
                                 skipped_count += 1
                             else:
                                 # Update existing record with newly calculated balance
-                                existing_timeseries.balance_in_account_currency = balance_in_account_currency
-                                existing_timeseries.balance_in_functional_currency = balance_in_functional_currency
+                                existing_timeseries.balance_in_account_currency = (
+                                    balance_in_account_currency
+                                )
+                                existing_timeseries.balance_in_functional_currency = (
+                                    balance_in_functional_currency
+                                )
                                 records_stored += 1
                                 logger.debug(
                                     f"[TIMESERIES] Updated existing balance for {current_date}: "
@@ -386,13 +451,13 @@ class AccountBalanceService:
                                 account_id=account.id,
                                 date=rate_datetime,
                                 balance_in_account_currency=balance_in_account_currency,
-                                balance_in_functional_currency=balance_in_functional_currency
+                                balance_in_functional_currency=balance_in_functional_currency,
                             )
                             self.db.add(timeseries_record)
                             records_stored += 1
                         days_processed += 1
                         current_date += timedelta(days=1)
-                    
+
                     total_days_processed += days_processed
                     total_records_stored += records_stored
 
@@ -406,22 +471,27 @@ class AccountBalanceService:
                             f"[TIMESERIES] Stored {records_stored} timeseries records for account {account.name} "
                             f"({days_processed} days)"
                         )
-                    
+
                 except Exception as e:
-                    logger.error(f"[TIMESERIES] Error calculating timeseries for account {account.name}: {e}")
+                    logger.error(
+                        f"[TIMESERIES] Error calculating timeseries for account {account.name}: {e}"
+                    )
                     logger.error(traceback.format_exc())
                     failed_accounts += 1
                     continue
-            
+
             self.db.commit()
 
             # Update each account's functional_balance from the latest account_balances entry
             # This ensures functional_balance reflects the actual balance (including fees from CSV)
             for account in accounts:
                 try:
-                    latest_balance = self.db.query(AccountBalance).filter(
-                        AccountBalance.account_id == account.id
-                    ).order_by(desc(AccountBalance.date)).first()
+                    latest_balance = (
+                        self.db.query(AccountBalance)
+                        .filter(AccountBalance.account_id == account.id)
+                        .order_by(desc(AccountBalance.date))
+                        .first()
+                    )
 
                     if latest_balance:
                         account.functional_balance = latest_balance.balance_in_functional_currency
@@ -430,7 +500,9 @@ class AccountBalanceService:
                             f"{latest_balance.balance_in_functional_currency} from {latest_balance.date.date()}"
                         )
                 except Exception as e:
-                    logger.error(f"[TIMESERIES] Error updating functional_balance for {account.name}: {e}")
+                    logger.error(
+                        f"[TIMESERIES] Error updating functional_balance for {account.name}: {e}"
+                    )
 
             self.db.commit()
 
@@ -438,7 +510,7 @@ class AccountBalanceService:
                 "accounts_processed": len(accounts) - failed_accounts,
                 "accounts_failed": failed_accounts,
                 "total_days_processed": total_days_processed,
-                "total_records_stored": total_records_stored
+                "total_records_stored": total_records_stored,
             }
             logger.info(
                 f"[TIMESERIES] Timeseries calculation complete: "
@@ -446,17 +518,14 @@ class AccountBalanceService:
                 f"for {len(accounts) - failed_accounts} accounts"
             )
             return result
-            
+
         except Exception as e:
             logger.error(f"[TIMESERIES] Error calculating timeseries: {e}")
             logger.error(traceback.format_exc())
             return {"error": str(e)}
 
     def import_daily_balances(
-        self,
-        account_id: str,
-        daily_balances: List[Dict],
-        functional_currency: str
+        self, account_id: str, daily_balances: List[Dict], functional_currency: str
     ) -> Dict:
         """
         Store provided daily balances directly in account_balances table.
@@ -505,11 +574,15 @@ class AccountBalanceService:
                     else:
                         # Get exchange rate for this specific date
                         rate_datetime = datetime.combine(balance_date, datetime.min.time())
-                        exchange_rate_record = self.db.query(ExchangeRate).filter(
-                            ExchangeRate.date == rate_datetime,
-                            ExchangeRate.base_currency == account_currency,
-                            ExchangeRate.target_currency == functional_currency
-                        ).first()
+                        exchange_rate_record = (
+                            self.db.query(ExchangeRate)
+                            .filter(
+                                ExchangeRate.date == rate_datetime,
+                                ExchangeRate.base_currency == account_currency,
+                                ExchangeRate.target_currency == functional_currency,
+                            )
+                            .first()
+                        )
 
                         if exchange_rate_record:
                             functional_balance = balance_value * exchange_rate_record.rate
@@ -518,11 +591,15 @@ class AccountBalanceService:
                             found_rate = None
                             for days_back in range(8):
                                 check_date = rate_datetime - timedelta(days=days_back)
-                                closest_rate = self.db.query(ExchangeRate).filter(
-                                    ExchangeRate.date == check_date,
-                                    ExchangeRate.base_currency == account_currency,
-                                    ExchangeRate.target_currency == functional_currency
-                                ).first()
+                                closest_rate = (
+                                    self.db.query(ExchangeRate)
+                                    .filter(
+                                        ExchangeRate.date == check_date,
+                                        ExchangeRate.base_currency == account_currency,
+                                        ExchangeRate.target_currency == functional_currency,
+                                    )
+                                    .first()
+                                )
                                 if closest_rate:
                                     found_rate = closest_rate.rate
                                     break
@@ -539,10 +616,14 @@ class AccountBalanceService:
 
                     # Upsert into account_balances
                     rate_datetime = datetime.combine(balance_date, datetime.min.time())
-                    existing = self.db.query(AccountBalance).filter(
-                        AccountBalance.account_id == account_id,
-                        AccountBalance.date == rate_datetime
-                    ).first()
+                    existing = (
+                        self.db.query(AccountBalance)
+                        .filter(
+                            AccountBalance.account_id == account_id,
+                            AccountBalance.date == rate_datetime,
+                        )
+                        .first()
+                    )
 
                     if existing:
                         # Update existing record
@@ -558,7 +639,7 @@ class AccountBalanceService:
                             account_id=account_id,
                             date=rate_datetime,
                             balance_in_account_currency=balance_value,
-                            balance_in_functional_currency=functional_balance
+                            balance_in_functional_currency=functional_balance,
                         )
                         self.db.add(new_balance)
                         logger.debug(
@@ -569,7 +650,9 @@ class AccountBalanceService:
                     records_stored += 1
 
                 except Exception as e:
-                    logger.error(f"[BALANCE_IMPORT] Error importing balance for date {balance_data}: {e}")
+                    logger.error(
+                        f"[BALANCE_IMPORT] Error importing balance for date {balance_data}: {e}"
+                    )
                     continue
 
             self.db.commit()
@@ -579,10 +662,7 @@ class AccountBalanceService:
                 f"({len(imported_dates)} unique dates)"
             )
 
-            return {
-                "imported_dates": imported_dates,
-                "records_stored": records_stored
-            }
+            return {"imported_dates": imported_dates, "records_stored": records_stored}
 
         except Exception as e:
             logger.error(f"[BALANCE_IMPORT] Error importing daily balances: {e}")

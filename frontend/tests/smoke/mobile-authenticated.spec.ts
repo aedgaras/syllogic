@@ -18,7 +18,7 @@ const routes: SmokeRoute[] = [
   route(
     "account-detail",
     `/accounts/${process.env.PLAYWRIGHT_ACCOUNT_ID || ""}`,
-    "PLAYWRIGHT_ACCOUNT_ID"
+    "PLAYWRIGHT_ACCOUNT_ID",
   ),
   route("subscriptions", "/subscriptions"),
   route("investments", "/investments"),
@@ -30,14 +30,14 @@ const routes: SmokeRoute[] = [
     `/transactions/import/mapping?importId=${
       process.env.PLAYWRIGHT_IMPORT_ID || ""
     }`,
-    "PLAYWRIGHT_IMPORT_ID"
+    "PLAYWRIGHT_IMPORT_ID",
   ),
   route(
     "import-preview",
     `/transactions/import/preview?importId=${
       process.env.PLAYWRIGHT_IMPORT_ID || ""
     }`,
-    "PLAYWRIGHT_IMPORT_ID"
+    "PLAYWRIGHT_IMPORT_ID",
   ),
 ];
 
@@ -50,7 +50,7 @@ async function login(page: Page) {
 
   test.skip(
     !email || !password,
-    "Set PLAYWRIGHT_TEST_EMAIL and PLAYWRIGHT_TEST_PASSWORD, or the NEXT_PUBLIC_DEMO_* credentials."
+    "Set PLAYWRIGHT_TEST_EMAIL and PLAYWRIGHT_TEST_PASSWORD, or the NEXT_PUBLIC_DEMO_* credentials.",
   );
   if (!email || !password) {
     return;
@@ -69,7 +69,7 @@ async function assertNoHorizontalOverflow(page: Page) {
       viewportWidth: window.innerWidth,
       scrollWidth: document.documentElement.scrollWidth,
       bodyScrollWidth: document.body.scrollWidth,
-    })
+    }),
   );
 
   expect(scrollWidth).toBeLessThanOrEqual(viewportWidth);
@@ -99,7 +99,7 @@ test.describe("authenticated mobile layout smoke", () => {
     }, testInfo) => {
       test.skip(
         !!smokeRoute.needsEnv && !process.env[smokeRoute.needsEnv],
-        `Set ${smokeRoute.needsEnv} to include ${smokeRoute.name} in smoke coverage.`
+        `Set ${smokeRoute.needsEnv} to include ${smokeRoute.name} in smoke coverage.`,
       );
 
       await page.goto(smokeRoute.path);

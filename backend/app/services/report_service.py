@@ -3,6 +3,7 @@
 (backend/app/mcp/tools/reports.py) so validation/behavior is identical
 regardless of caller.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, time as time_cls
@@ -32,7 +33,14 @@ class ReportDispatchError(Exception):
     style response, not 422."""
 
 
-_NON_NULLABLE_UPDATE_FIELDS = ("name", "account_ids", "recipient_emails", "frequency", "is_active", "timezone")
+_NON_NULLABLE_UPDATE_FIELDS = (
+    "name",
+    "account_ids",
+    "recipient_emails",
+    "frequency",
+    "is_active",
+    "timezone",
+)
 
 
 def _parse_time(value: str) -> time_cls:
@@ -49,11 +57,11 @@ def _validate_account_ids(account_ids: list[str], user_id: str, db: Session) -> 
         try:
             parsed_ids.append(UUID(raw_id))
         except ValueError:
-            raise ReportValidationError("One or more account_ids are invalid or not owned by this user")
+            raise ReportValidationError(
+                "One or more account_ids are invalid or not owned by this user"
+            )
     owned_count = (
-        db.query(Account)
-        .filter(Account.user_id == user_id, Account.id.in_(parsed_ids))
-        .count()
+        db.query(Account).filter(Account.user_id == user_id, Account.id.in_(parsed_ids)).count()
     )
     if owned_count != len(set(parsed_ids)):
         raise ReportValidationError("One or more account_ids are invalid or not owned by this user")
@@ -71,7 +79,9 @@ def _recompute_next_run(report: Report) -> None:
 
 
 def list_reports(db: Session, user_id: str) -> list[Report]:
-    return db.query(Report).filter(Report.user_id == user_id).order_by(Report.created_at.desc()).all()
+    return (
+        db.query(Report).filter(Report.user_id == user_id).order_by(Report.created_at.desc()).all()
+    )
 
 
 def _get_owned_report(db: Session, user_id: str, report_id: str) -> Report:
@@ -144,7 +154,9 @@ def update_report(db: Session, user_id: str, report_id: str, payload: dict) -> R
         report.frequency == "MONTHLY" and report.send_day_of_month is None
     ):
         db.rollback()
-        raise ReportValidationError("send_day_of_week/send_day_of_month is required for the selected frequency")
+        raise ReportValidationError(
+            "send_day_of_week/send_day_of_month is required for the selected frequency"
+        )
 
     _recompute_next_run(report)
     db.commit()

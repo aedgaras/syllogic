@@ -30,11 +30,16 @@ export function detectCsvDelimiter(fileContent: string): CsvDelimiter {
   let bestScore = Number.NEGATIVE_INFINITY;
 
   for (const delimiter of candidates) {
-    const rowLengths = lines.map((line) => parseDelimitedLine(line, delimiter).length);
+    const rowLengths = lines.map(
+      (line) => parseDelimitedLine(line, delimiter).length,
+    );
     const headerLength = rowLengths[0] ?? 0;
-    const matchingRows = rowLengths.filter((length) => length === headerLength && length > 1).length;
+    const matchingRows = rowLengths.filter(
+      (length) => length === headerLength && length > 1,
+    ).length;
     const uniqueLengths = new Set(rowLengths).size;
-    const score = (headerLength > 1 ? 100 : 0) + (matchingRows * 10) - uniqueLengths;
+    const score =
+      (headerLength > 1 ? 100 : 0) + matchingRows * 10 - uniqueLengths;
 
     if (score > bestScore) {
       bestScore = score;
@@ -45,23 +50,28 @@ export function detectCsvDelimiter(fileContent: string): CsvDelimiter {
   return bestDelimiter;
 }
 
-export function parseDelimitedText(fileContent: string, delimiter: CsvDelimiter): ParsedDelimitedText {
+export function parseDelimitedText(
+  fileContent: string,
+  delimiter: CsvDelimiter,
+): ParsedDelimitedText {
   const normalized = normalizeLineEndings(fileContent);
-  const lines = normalized
-    .split("\n")
-    .filter((line) => line.trim().length > 0);
+  const lines = normalized.split("\n").filter((line) => line.trim().length > 0);
 
   if (lines.length === 0) {
     return { headers: [], rows: [] };
   }
 
   const headers = parseDelimitedLine(lines[0], delimiter);
-  const rows = lines.slice(1).map((line) => parseDelimitedLine(line, delimiter));
+  const rows = lines
+    .slice(1)
+    .map((line) => parseDelimitedLine(line, delimiter));
 
   return { headers, rows };
 }
 
-export function inferAmountFormat(samples: Array<string | null | undefined>): InferredAmountFormat {
+export function inferAmountFormat(
+  samples: Array<string | null | undefined>,
+): InferredAmountFormat {
   let dotEvidence = 0;
   let commaEvidence = 0;
 
@@ -118,7 +128,7 @@ export function parseLocalizedNumber(
     amountFormat?: AmountFormat;
     inferredFormat?: InferredAmountFormat;
     allowGroupedIntegersWhenAmbiguous?: boolean;
-  } = {}
+  } = {},
 ): number | null {
   const parsed = parseNumericToken(raw);
   if (!parsed) {
@@ -132,16 +142,20 @@ export function parseLocalizedNumber(
   let normalized: string | null = null;
 
   if (dotCount > 0 && commaCount > 0) {
-    const decimalSeparator = token.lastIndexOf(".") > token.lastIndexOf(",") ? "." : ",";
+    const decimalSeparator =
+      token.lastIndexOf(".") > token.lastIndexOf(",") ? "." : ",";
     normalized = normalizeWithDecimalSeparator(token, decimalSeparator);
   } else if (dotCount > 0 || commaCount > 0) {
     const separator = dotCount > 0 ? "." : ",";
-    const resolvedFormat = resolveAmountFormat(options.amountFormat, options.inferredFormat);
+    const resolvedFormat = resolveAmountFormat(
+      options.amountFormat,
+      options.inferredFormat,
+    );
 
     if (resolvedFormat) {
       normalized = normalizeWithDecimalSeparator(
         token,
-        resolvedFormat === "DOT_DECIMAL" ? "." : ","
+        resolvedFormat === "DOT_DECIMAL" ? "." : ",",
       );
     } else {
       const digitsAfter = token.length - token.lastIndexOf(separator) - 1;
@@ -183,10 +197,10 @@ function parseDelimitedLine(line: string, delimiter: CsvDelimiter): string[] {
   for (let index = 0; index < line.length; index += 1) {
     const char = line[index];
 
-    if (char === "\"") {
+    if (char === '"') {
       const nextChar = line[index + 1];
-      if (inQuotes && nextChar === "\"") {
-        current += "\"";
+      if (inQuotes && nextChar === '"') {
+        current += '"';
         index += 1;
       } else {
         inQuotes = !inQuotes;
@@ -207,7 +221,9 @@ function parseDelimitedLine(line: string, delimiter: CsvDelimiter): string[] {
   return cells;
 }
 
-function parseNumericToken(raw: string | null | undefined): ParsedNumericToken | null {
+function parseNumericToken(
+  raw: string | null | undefined,
+): ParsedNumericToken | null {
   if (!raw) {
     return null;
   }
@@ -262,7 +278,7 @@ function countOccurrences(value: string, search: "." | ","): number {
 
 function resolveAmountFormat(
   amountFormat: AmountFormat | undefined,
-  inferredFormat: InferredAmountFormat | undefined
+  inferredFormat: InferredAmountFormat | undefined,
 ): Exclude<AmountFormat, "AUTO"> | null {
   if (amountFormat && amountFormat !== "AUTO") {
     return amountFormat;
@@ -277,7 +293,7 @@ function resolveAmountFormat(
 
 function normalizeWithDecimalSeparator(
   token: string,
-  decimalSeparator: "." | ","
+  decimalSeparator: "." | ",",
 ): string | null {
   const decimalIndex = token.lastIndexOf(decimalSeparator);
   let normalized = "";
@@ -307,10 +323,11 @@ function normalizeWithDecimalSeparator(
   return normalized;
 }
 
-function normalizeGroupedInteger(token: string, separator: "." | ","): string | null {
-  const groupedIntegerPattern = new RegExp(
-    `^\\d{1,3}(\\${separator}\\d{3})+$`
-  );
+function normalizeGroupedInteger(
+  token: string,
+  separator: "." | ",",
+): string | null {
+  const groupedIntegerPattern = new RegExp(`^\\d{1,3}(\\${separator}\\d{3})+$`);
 
   if (!groupedIntegerPattern.test(token)) {
     return null;

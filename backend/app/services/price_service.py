@@ -26,7 +26,9 @@ class PriceService:
             .all()
         )
         cached = {
-            r.symbol: PriceQuote(symbol=r.symbol, currency=r.currency, date=on, close=Decimal(r.close))
+            r.symbol: PriceQuote(
+                symbol=r.symbol, currency=r.currency, date=on, close=Decimal(r.close)
+            )
             for r in cached_rows
         }
         missing = [s for s in symbols if s not in cached]
@@ -34,16 +36,22 @@ class PriceService:
             try:
                 fetched = self.provider.get_daily_closes(missing, on)
             except Exception as e:
-                logger.warning("price provider %s failed for %s on %s: %s", self.provider.name, missing, on, e)
+                logger.warning(
+                    "price provider %s failed for %s on %s: %s", self.provider.name, missing, on, e
+                )
                 fetched = {}
             for sym, quote in fetched.items():
-                stmt = pg_insert(PriceSnapshot).values(
-                    symbol=quote.symbol,
-                    currency=quote.currency,
-                    date=quote.date,
-                    close=quote.close,
-                    provider=self.provider.name,
-                ).on_conflict_do_nothing(index_elements=["symbol", "date"])
+                stmt = (
+                    pg_insert(PriceSnapshot)
+                    .values(
+                        symbol=quote.symbol,
+                        currency=quote.currency,
+                        date=quote.date,
+                        close=quote.close,
+                        provider=self.provider.name,
+                    )
+                    .on_conflict_do_nothing(index_elements=["symbol", "date"])
+                )
                 self.db.execute(stmt)
                 cached[sym] = quote
             self.db.commit()

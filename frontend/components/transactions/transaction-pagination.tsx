@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { type Table } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,12 +46,21 @@ export function TransactionPagination({
     : Math.max(1, table.getPageCount());
   const selectedRows = table.getSelectedRowModel().rows.length;
   const currentPageRows = table.getRowModel().rows.length;
-  const startRow = resolvedTotalCount === 0 ? 0 : (resolvedPage - 1) * resolvedPageSize + 1;
-  const endRow = resolvedTotalCount === 0
-    ? 0
-    : Math.min(resolvedTotalCount, (resolvedPage - 1) * resolvedPageSize + currentPageRows);
-  const canPrevious = totalCount ? resolvedPage > 1 : table.getCanPreviousPage();
-  const canNext = totalCount ? resolvedPage < pageCount : table.getCanNextPage();
+  const startRow =
+    resolvedTotalCount === 0 ? 0 : (resolvedPage - 1) * resolvedPageSize + 1;
+  const endRow =
+    resolvedTotalCount === 0
+      ? 0
+      : Math.min(
+          resolvedTotalCount,
+          (resolvedPage - 1) * resolvedPageSize + currentPageRows,
+        );
+  const canPrevious = totalCount
+    ? resolvedPage > 1
+    : table.getCanPreviousPage();
+  const canNext = totalCount
+    ? resolvedPage < pageCount
+    : table.getCanNextPage();
   const goToPage = (nextPage: number) => {
     if (onPageChange) {
       onPageChange(nextPage);
@@ -74,11 +82,14 @@ export function TransactionPagination({
         <p className="text-xs text-muted-foreground">
           {selectedRows > 0 ? (
             <>
-              {selectedRows} {translate("of")} {currentPageRows} {translate("rowSSelected")}
+              {selectedRows} {translate("of")} {currentPageRows}{" "}
+              {translate("rowSSelected")}
             </>
           ) : (
             <>
-              {startRow}-{endRow} {translate("of")} {resolvedTotalCount} {translate("transaction41c48b")}{resolvedTotalCount !== 1 ? "s" : ""}
+              {startRow}-{endRow} {translate("of")} {resolvedTotalCount}{" "}
+              {translate("transaction41c48b")}
+              {resolvedTotalCount !== 1 ? "s" : ""}
             </>
           )}
         </p>
@@ -86,7 +97,9 @@ export function TransactionPagination({
 
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <p className="text-xs text-muted-foreground">{translate("rowsPerPage")}</p>
+          <p className="text-xs text-muted-foreground">
+            {translate("rowsPerPage")}
+          </p>
           <Select
             value={resolvedPageSize.toString()}
             onValueChange={(value) => setRowsPerPage(Number(value))}

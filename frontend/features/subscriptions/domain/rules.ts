@@ -8,10 +8,15 @@ const monthlyMultipliers: Record<SubscriptionFrequency, number> = {
   yearly: 1 / 12,
 };
 
-export function monthlyEquivalent(amount: string | number, frequency: string): number {
+export function monthlyEquivalent(
+  amount: string | number,
+  frequency: string,
+): number {
   const parsedAmount = Math.abs(Number(amount));
   if (!Number.isFinite(parsedAmount)) return 0;
-  return parsedAmount * (monthlyMultipliers[frequency as SubscriptionFrequency] ?? 1);
+  return (
+    parsedAmount * (monthlyMultipliers[frequency as SubscriptionFrequency] ?? 1)
+  );
 }
 
 export function validateSubscriptionInput(input: {
@@ -22,10 +27,18 @@ export function validateSubscriptionInput(input: {
 }): string | null {
   if (!input.name?.trim()) return "Name is required";
   if (!input.accountId) return "Account is required";
-  if (input.amount === undefined || !Number.isFinite(input.amount) || input.amount <= 0) {
+  if (
+    input.amount === undefined ||
+    !Number.isFinite(input.amount) ||
+    input.amount <= 0
+  ) {
     return "Amount must be greater than 0";
   }
-  if (input.importance === undefined || input.importance < 1 || input.importance > 3) {
+  if (
+    input.importance === undefined ||
+    input.importance < 1 ||
+    input.importance > 3
+  ) {
     return "Importance must be between 1 and 3";
   }
   return null;

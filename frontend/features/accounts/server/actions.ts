@@ -3,7 +3,10 @@
 import { revalidatePath, updateTag } from "next/cache";
 import { getAuthenticatedSession, requireAuth } from "@/lib/auth-helpers";
 import { CACHE_TAGS } from "@/lib/data/cached";
-import { DEMO_RESTRICTED_ACTION_ERROR, isDemoRestrictedUserEmail } from "@/lib/demo-access";
+import {
+  DEMO_RESTRICTED_ACTION_ERROR,
+  isDemoRestrictedUserEmail,
+} from "@/lib/demo-access";
 import { calculateBalance } from "../domain/balance-history";
 import {
   recalculateAccountTimeseriesUseCase,
@@ -52,12 +55,18 @@ export async function getAccounts() {
   return queryAccounts();
 }
 
-export async function createAccount(input: CreateAccountInput): Promise<CreateAccountResult> {
+export async function createAccount(
+  input: CreateAccountInput,
+): Promise<CreateAccountResult> {
   const userId = await requireAuth();
   if (!userId) return { success: false, error: "Not authenticated" };
   try {
     const account = await insertManualAccount(userId, input);
-    invalidateAccounts(userId, ["/settings", "/transactions/import", "/assets"]);
+    invalidateAccounts(userId, [
+      "/settings",
+      "/transactions/import",
+      "/assets",
+    ]);
     return { success: true, accountId: account.id };
   } catch (error) {
     console.error("Failed to create account:", error);
@@ -65,15 +74,25 @@ export async function createAccount(input: CreateAccountInput): Promise<CreateAc
   }
 }
 
-export async function updateAccount(accountId: string, input: UpdateAccountInput) {
+export async function updateAccount(
+  accountId: string,
+  input: UpdateAccountInput,
+) {
   const userId = await requireAuth();
   if (!userId) return { success: false, error: "Not authenticated" };
   try {
-    if (!await findOwnedAccount(userId, accountId)) {
+    if (!(await findOwnedAccount(userId, accountId))) {
       return { success: false, error: "Account not found" };
     }
     await updateOwnedAccount(accountId, input);
-    invalidateAccounts(userId, ["/assets", "/accounts", `/accounts/${accountId}`, "/transactions", "/settings", "/"]);
+    invalidateAccounts(userId, [
+      "/assets",
+      "/accounts",
+      `/accounts/${accountId}`,
+      "/transactions",
+      "/settings",
+      "/",
+    ]);
     return { success: true };
   } catch (error) {
     console.error("Failed to update account:", error);
@@ -85,7 +104,7 @@ export async function deleteAccount(accountId: string) {
   const userId = await requireAuth();
   if (!userId) return { success: false, error: "Not authenticated" };
   try {
-    if (!await findOwnedAccount(userId, accountId)) {
+    if (!(await findOwnedAccount(userId, accountId))) {
       return { success: false, error: "Account not found" };
     }
     await deactivateAccount(accountId);
@@ -97,11 +116,13 @@ export async function deleteAccount(accountId: string) {
   }
 }
 
-export async function hardDeleteAccount(accountId: string): Promise<DeleteAccountResult> {
+export async function hardDeleteAccount(
+  accountId: string,
+): Promise<DeleteAccountResult> {
   const userId = await requireAuth();
   if (!userId) return { success: false, error: "Not authenticated" };
   try {
-    if (!await findOwnedAccount(userId, accountId)) {
+    if (!(await findOwnedAccount(userId, accountId))) {
       return { success: false, error: "Account not found" };
     }
     const counts = await permanentlyDeleteAccount(userId, accountId);
@@ -109,7 +130,10 @@ export async function hardDeleteAccount(accountId: string): Promise<DeleteAccoun
     return { success: true, ...counts };
   } catch (error) {
     console.error("Failed to hard delete account:", error);
-    return { success: false, error: "Failed to delete account and associated data" };
+    return {
+      success: false,
+      error: "Failed to delete account and associated data",
+    };
   }
 }
 
@@ -120,11 +144,14 @@ export async function recalculateStartingBalance(
   const userId = await requireAuth();
   if (!userId) return { success: false, error: "Not authenticated" };
   try {
-    const result = await recalculateStartingBalanceUseCase(recalculationDependencies, {
-      userId,
-      accountId,
-      knownCurrentBalance,
-    });
+    const result = await recalculateStartingBalanceUseCase(
+      recalculationDependencies,
+      {
+        userId,
+        accountId,
+        knownCurrentBalance,
+      },
+    );
     if (!result.success) return result;
     invalidateAccounts(userId, ["/settings", "/transactions", "/", "/assets"]);
     return result;
@@ -144,7 +171,10 @@ export async function getAccountBalanceOnDate(
   if (!account) return { balance: 0, found: false };
   const stored = await getLatestStoredBalance(accountId, date);
   if (stored) {
-    return { balance: Number.parseFloat(stored.balanceInAccountCurrency), found: true };
+    return {
+      balance: Number.parseFloat(stored.balanceInAccountCurrency),
+      found: true,
+    };
   }
   const endOfDay = new Date(date);
   endOfDay.setHours(23, 59, 59, 999);
@@ -157,24 +187,37 @@ export async function getAccountBalanceOnDate(
   };
 }
 
-export async function recalculateAccountTimeseries(accountId: string): Promise<RecalculateAccountResult> {
+export async function recalculateAccountTimeseries(
+  accountId: string,
+): Promise<RecalculateAccountResult> {
   const userId = await requireAuth();
   if (!userId) return { success: false, error: "Not authenticated" };
   try {
-    const result = await recalculateAccountTimeseriesUseCase(recalculationDependencies, {
-      userId,
-      accountId,
-    });
+    const result = await recalculateAccountTimeseriesUseCase(
+      recalculationDependencies,
+      {
+        userId,
+        accountId,
+      },
+    );
     if (!result.success) return result;
     invalidateAccounts(userId, ["/settings", "/", "/transactions", "/assets"]);
     return result;
   } catch (error) {
     console.error("Failed to recalculate timeseries:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Failed to recalculate timeseries" };
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to recalculate timeseries",
+    };
   }
 }
 
-export async function createPocketAccount(input: CreatePocketAccountInput): Promise<CreateAccountResult> {
+export async function createPocketAccount(
+  input: CreatePocketAccountInput,
+): Promise<CreateAccountResult> {
   const session = await getAuthenticatedSession();
   const userId = session?.user?.id;
   if (!userId) return { success: false, error: "Not authenticated" };
@@ -189,10 +232,24 @@ export async function createPocketAccount(input: CreatePocketAccountInput): Prom
       startingBalance: input.startingBalance ?? 0,
       iban: input.iban,
     });
-    invalidateAccounts(userId, ["/settings", "/assets", "/transactions/import"]);
-    return { success: true, accountId: result.account_id, backfilledCount: result.backfilled_count };
+    invalidateAccounts(userId, [
+      "/settings",
+      "/assets",
+      "/transactions/import",
+    ]);
+    return {
+      success: true,
+      accountId: result.account_id,
+      backfilledCount: result.backfilled_count,
+    };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Failed to create pocket account" };
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to create pocket account",
+    };
   }
 }
 
@@ -208,6 +265,12 @@ export async function unlinkInternalTransfer(transferId: string) {
     invalidateAccounts(userId, ["/transactions", "/assets"]);
     return { success: true };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Failed to unlink internal transfer" };
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to unlink internal transfer",
+    };
   }
 }

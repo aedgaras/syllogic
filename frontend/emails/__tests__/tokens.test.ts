@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { dark, fmtMoney, fontStack, light, radius } from "../components/report/tokens";
+import {
+  dark,
+  fmtMoney,
+  fontStack,
+  light,
+  radius,
+} from "../components/report/tokens";
 
 describe("email tokens", () => {
   it("pins light tokens to the stone ramp", () => {

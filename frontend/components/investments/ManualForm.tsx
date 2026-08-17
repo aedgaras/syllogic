@@ -20,10 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Field, Input } from "./_form-bits";
 
 const NEW = "__new__";
@@ -150,7 +147,9 @@ export function ManualForm({
     <Card className="border-t-2 border-t-primary">
       <CardContent className="p-6 space-y-4">
         <form onSubmit={submit} className="space-y-4">
-          <div className="text-sm font-semibold">{translate("addHoldings")}</div>
+          <div className="text-sm font-semibold">
+            {translate("addHoldings")}
+          </div>
 
           <div className="flex gap-3">
             <Field label={translate("account85dfa3")} className="flex-1">
@@ -167,7 +166,9 @@ export function ManualForm({
                       {a.name} · {a.base_currency}
                     </SelectItem>
                   ))}
-                  <SelectItem value={NEW}>{translate("createNewAccount")}</SelectItem>
+                  <SelectItem value={NEW}>
+                    {translate("createNewAccount")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </Field>
@@ -175,7 +176,10 @@ export function ManualForm({
 
           {accountId === NEW && (
             <div className="flex gap-3">
-              <Field label={translate("newAccountName")} className="flex-[2_1_0%]">
+              <Field
+                label={translate("newAccountName")}
+                className="flex-[2_1_0%]"
+              >
                 <Input
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
@@ -201,7 +205,8 @@ export function ManualForm({
 
           <div className="space-y-3">
             <div className="text-xs uppercase tracking-wider text-muted-foreground">
-              {translate("holdings93ec09")}{rows.length})
+              {translate("holdings93ec09")}
+              {rows.length})
             </div>
             {rows.map((r, i) => (
               <HoldingRow
@@ -234,7 +239,10 @@ export function ManualForm({
             <Button type="submit" disabled={busy}>
               {busy
                 ? translate("addingffb2e6")
-                : translate("addHolding385635", { value1: rows.length, value2: rows.length === 1 ? "" : "s" })}
+                : translate("addHolding385635", {
+                    value1: rows.length,
+                    value2: rows.length === 1 ? "" : "s",
+                  })}
             </Button>
           </div>
         </form>
@@ -295,9 +303,7 @@ function HoldingRow({
         <Field label={symbolLabel} className="flex-[2_1_0%]">
           <SymbolSearchInput
             value={row.symbol}
-            onChange={(v) =>
-              onChange({ symbol: v, symbolConfirmed: false })
-            }
+            onChange={(v) => onChange({ symbol: v, symbolConfirmed: false })}
             onSelect={(r: SymbolSearchResult) =>
               onChange({
                 symbol: r.symbol,
@@ -322,18 +328,12 @@ function HoldingRow({
           <ToggleGroup
             multiple={false}
             value={[row.type]}
-            onValueChange={(v) =>
-              v[0] && onChange({ type: v[0] as Inst })
-            }
+            onValueChange={(v) => v[0] && onChange({ type: v[0] as Inst })}
             variant="outline"
             size="sm"
           >
             {(["etf", "equity", "cash"] as Inst[]).map((t) => (
-              <ToggleGroupItem
-                key={t}
-                value={t}
-                className="capitalize flex-1"
-              >
+              <ToggleGroupItem key={t} value={t} className="capitalize flex-1">
                 {t === "etf" ? translate("etf") : t}
               </ToggleGroupItem>
             ))}
@@ -373,9 +373,7 @@ function HoldingRow({
           />
         </Field>
       </div>
-      {row.error && (
-        <div className="text-destructive text-xs">{row.error}</div>
-      )}
+      {row.error && <div className="text-destructive text-xs">{row.error}</div>}
     </div>
   );
 }

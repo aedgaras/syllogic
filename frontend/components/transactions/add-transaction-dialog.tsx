@@ -1,11 +1,14 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { RiArrowDownLine, RiArrowUpLine, RiExchangeLine } from "@remixicon/react";
+import {
+  RiArrowDownLine,
+  RiArrowUpLine,
+  RiExchangeLine,
+} from "@remixicon/react";
 import {
   Dialog,
   DialogContent,
@@ -42,7 +45,13 @@ import {
 } from "@/lib/actions/transactions";
 import type { TransactionWithRelations } from "@/features/transactions/public";
 import { getUserCategories } from "@/lib/actions/categories";
-type Account = { id: string; name: string; institution: string | null; accountType: string; currency: string | null };
+type Account = {
+  id: string;
+  name: string;
+  institution: string | null;
+  accountType: string;
+  currency: string | null;
+};
 import type { CategoryDisplay } from "@/shared/domain/display-contracts";
 import { getCategoriesForTransactionType } from "@/lib/utils/category-utils";
 
@@ -53,7 +62,7 @@ interface AddTransactionDialogProps {
   transaction?: TransactionWithRelations | null;
   onTransactionUpdated?: (
     id: string,
-    updates: Partial<TransactionWithRelations>
+    updates: Partial<TransactionWithRelations>,
   ) => void;
 }
 
@@ -72,7 +81,9 @@ export function AddTransactionDialog({
   const [categories, setCategories] = useState<CategoryDisplay[]>([]);
 
   // Form state
-  const [transactionType, setTransactionType] = useState<"debit" | "credit" | "transfer">("debit");
+  const [transactionType, setTransactionType] = useState<
+    "debit" | "credit" | "transfer"
+  >("debit");
   const [accountId, setAccountId] = useState<string>("");
   const [destinationAccountId, setDestinationAccountId] = useState<string>("");
   const [amount, setAmount] = useState<string>("");
@@ -99,13 +110,17 @@ export function AddTransactionDialog({
           if (transaction.internalTransfer) {
             setTransactionType("transfer");
             setAccountId(
-              transaction.internalTransfer.sourceAccount?.id || transaction.accountId
+              transaction.internalTransfer.sourceAccount?.id ||
+                transaction.accountId,
             );
             setDestinationAccountId(
-              transaction.internalTransfer.pocketAccount?.id || transaction.accountId
+              transaction.internalTransfer.pocketAccount?.id ||
+                transaction.accountId,
             );
           } else {
-            setTransactionType(transaction.transactionType === "credit" ? "credit" : "debit");
+            setTransactionType(
+              transaction.transactionType === "credit" ? "credit" : "debit",
+            );
             setAccountId(transaction.accountId);
             setDestinationAccountId("");
           }
@@ -115,7 +130,9 @@ export function AddTransactionDialog({
           setBookedAt(new Date(transaction.bookedAt));
           setMerchant(transaction.merchant || "");
         } else if (accountsData.length > 0) {
-          setAccountId((currentAccountId) => currentAccountId || accountsData[0].id);
+          setAccountId(
+            (currentAccountId) => currentAccountId || accountsData[0].id,
+          );
         }
       };
       loadData();
@@ -132,14 +149,19 @@ export function AddTransactionDialog({
     setMerchant("");
   };
 
-  const handleTransactionTypeChange = (nextType: "debit" | "credit" | "transfer") => {
+  const handleTransactionTypeChange = (
+    nextType: "debit" | "credit" | "transfer",
+  ) => {
     setTransactionType(nextType);
     if (nextType === "transfer") {
       setCategoryId("");
       return;
     }
     if (categoryId) {
-      const nextCategories = getCategoriesForTransactionType(categories, nextType);
+      const nextCategories = getCategoriesForTransactionType(
+        categories,
+        nextType,
+      );
       if (!nextCategories.some((category) => category.id === categoryId)) {
         setCategoryId("");
       }
@@ -206,7 +228,9 @@ export function AddTransactionDialog({
           bookedAt,
         });
         if (!result.success) {
-          toast.error(result.error || translate("failedToConvertTransactionToTransfer"));
+          toast.error(
+            result.error || translate("failedToConvertTransactionToTransfer"),
+          );
           return;
         }
         toast.success(translate("transactionConvertedToTransfer"));
@@ -215,7 +239,8 @@ export function AddTransactionDialog({
         return;
       }
 
-      const standardTransactionType = transactionType === "transfer" ? "debit" : transactionType;
+      const standardTransactionType =
+        transactionType === "transfer" ? "debit" : transactionType;
       const transactionInput = {
         accountId,
         amount: parsedAmount,
@@ -237,7 +262,9 @@ export function AddTransactionDialog({
 
       if (result.success) {
         if (transaction) {
-          const selectedAccount = accounts.find((account) => account.id === accountId);
+          const selectedAccount = accounts.find(
+            (account) => account.id === accountId,
+          );
           const selectedCategory = categoryId
             ? categories.find((category) => category.id === categoryId) || null
             : null;
@@ -249,12 +276,16 @@ export function AddTransactionDialog({
                   name: selectedAccount.name,
                   institution: selectedAccount.institution,
                   accountType: selectedAccount.accountType,
-                  logo: selectedAccount.id === transaction.account?.id
-                    ? transaction.account.logo
-                    : null,
+                  logo:
+                    selectedAccount.id === transaction.account?.id
+                      ? transaction.account.logo
+                      : null,
                 }
               : transaction.account,
-            amount: standardTransactionType === "debit" ? -parsedAmount : parsedAmount,
+            amount:
+              standardTransactionType === "debit"
+                ? -parsedAmount
+                : parsedAmount,
             currency: selectedAccount?.currency || transaction.currency,
             description: description.trim(),
             merchant: merchant.trim() || null,
@@ -271,7 +302,12 @@ export function AddTransactionDialog({
         onOpenChange(false);
         router.refresh();
       } else {
-        toast.error(result.error || translate("failedToTransaction", { value1: isEditing ? "update" : "add" }));
+        toast.error(
+          result.error ||
+            translate("failedToTransaction", {
+              value1: isEditing ? "update" : "add",
+            }),
+        );
       }
     } catch {
       toast.error(translate("anErrorOccurredPleaseTryAgain"));
@@ -283,18 +319,18 @@ export function AddTransactionDialog({
   // Filter categories based on transaction type
   const filteredCategories = getCategoriesForTransactionType(
     categories,
-    transactionType === "transfer" ? "debit" : transactionType
+    transactionType === "transfer" ? "debit" : transactionType,
   );
   const selectedAccount = accounts.find((account) => account.id === accountId);
   const eligibleDestinationAccounts = selectedAccount
     ? accounts.filter(
         (account) =>
           account.id !== accountId &&
-          (account.currency || "EUR") === (selectedAccount.currency || "EUR")
+          (account.currency || "EUR") === (selectedAccount.currency || "EUR"),
       )
     : [];
   const selectedDestinationAccount = accounts.find(
-    (account) => account.id === destinationAccountId
+    (account) => account.id === destinationAccountId,
   );
 
   return (
@@ -302,14 +338,18 @@ export function AddTransactionDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {isLinkedTransfer ? translate("transferDetails") : isEditing ? translate("editTransaction") : translate("addTransaction")}
+            {isLinkedTransfer
+              ? translate("transferDetails")
+              : isEditing
+                ? translate("editTransaction")
+                : translate("addTransaction")}
           </DialogTitle>
           <DialogDescription>
             {isLinkedTransfer
               ? translate("viewTheLinkedEntriesForThisAccountTransfer")
               : isEditing
-              ? translate("updateTheDetailsForYourTransaction")
-              : translate("enterTheDetailsForYourTransaction")}
+                ? translate("updateTheDetailsForYourTransaction")
+                : translate("enterTheDetailsForYourTransaction")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -351,7 +391,9 @@ export function AddTransactionDialog({
             {/* Account Select */}
             <div className="space-y-2">
               <Label htmlFor="account">
-                {transactionType === "transfer" ? translate("fromAccount") : translate("account85dfa3")}
+                {transactionType === "transfer"
+                  ? translate("fromAccount")
+                  : translate("account85dfa3")}
               </Label>
               {accounts.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
@@ -364,9 +406,11 @@ export function AddTransactionDialog({
                   onValueChange={(value) => {
                     if (!value) return;
                     setAccountId(value);
-                    const nextSource = accounts.find((account) => account.id === value);
+                    const nextSource = accounts.find(
+                      (account) => account.id === value,
+                    );
                     const currentDestination = accounts.find(
-                      (account) => account.id === destinationAccountId
+                      (account) => account.id === destinationAccountId,
                     );
                     if (
                       value === destinationAccountId ||
@@ -380,14 +424,28 @@ export function AddTransactionDialog({
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder={translate("selectAnAccount")}>
                       {selectedAccount
-                        ? translate("message50844f", { value1: selectedAccount.name, value2: selectedAccount.currency ? ` (${selectedAccount.currency})` : "" })
+                        ? translate("message50844f", {
+                            value1: selectedAccount.name,
+                            value2: selectedAccount.currency
+                              ? ` (${selectedAccount.currency})`
+                              : "",
+                          })
                         : translate("selectAnAccount")}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
                     {accounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id} className="pr-10">
-                        {account.name}{account.currency ? translate("messagecd176d", { value1: account.currency }) : ""}
+                      <SelectItem
+                        key={account.id}
+                        value={account.id}
+                        className="pr-10"
+                      >
+                        {account.name}
+                        {account.currency
+                          ? translate("messagecd176d", {
+                              value1: account.currency,
+                            })
+                          : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -397,32 +455,55 @@ export function AddTransactionDialog({
 
             {transactionType === "transfer" && (
               <div className="space-y-2">
-                <Label htmlFor="destination-account">{translate("toAccount")}</Label>
+                <Label htmlFor="destination-account">
+                  {translate("toAccount")}
+                </Label>
                 <Select
                   value={destinationAccountId}
                   disabled={isLinkedTransfer}
-                  onValueChange={(value) => value && setDestinationAccountId(value)}
+                  onValueChange={(value) =>
+                    value && setDestinationAccountId(value)
+                  }
                 >
                   <SelectTrigger id="destination-account" className="w-full">
-                    <SelectValue placeholder={translate("selectADestinationAccount")}>
+                    <SelectValue
+                      placeholder={translate("selectADestinationAccount")}
+                    >
                       {selectedDestinationAccount
-                        ? translate("message50844f", { value1: selectedDestinationAccount.name, value2: selectedDestinationAccount.currency ? ` (${selectedDestinationAccount.currency})` : "" })
+                        ? translate("message50844f", {
+                            value1: selectedDestinationAccount.name,
+                            value2: selectedDestinationAccount.currency
+                              ? ` (${selectedDestinationAccount.currency})`
+                              : "",
+                          })
                         : translate("selectADestinationAccount")}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
                     {eligibleDestinationAccounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id} className="pr-10">
-                        {account.name}{account.currency ? translate("messagecd176d", { value1: account.currency }) : ""}
+                      <SelectItem
+                        key={account.id}
+                        value={account.id}
+                        className="pr-10"
+                      >
+                        {account.name}
+                        {account.currency
+                          ? translate("messagecd176d", {
+                              value1: account.currency,
+                            })
+                          : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedAccount && eligibleDestinationAccounts.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    {translate("addAnother")} {selectedAccount.currency || translate("sameCurrency")} {translate("accountToMakeATransfer")}
-                  </p>
-                )}
+                {selectedAccount &&
+                  eligibleDestinationAccounts.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      {translate("addAnother")}{" "}
+                      {selectedAccount.currency || translate("sameCurrency")}{" "}
+                      {translate("accountToMakeATransfer")}
+                    </p>
+                  )}
               </div>
             )}
 
@@ -452,10 +533,12 @@ export function AddTransactionDialog({
                       disabled={isLinkedTransfer}
                       className={cn(
                         "w-full justify-start text-left font-normal",
-                        !bookedAt && "text-muted-foreground"
+                        !bookedAt && "text-muted-foreground",
                       )}
                     >
-                      {bookedAt ? format(bookedAt, "PPP") : translate("pickADate")}
+                      {bookedAt
+                        ? format(bookedAt, "PPP")
+                        : translate("pickADate")}
                     </Button>
                   }
                 />
@@ -472,7 +555,9 @@ export function AddTransactionDialog({
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="description">{translate("description55f8eb")}</Label>
+              <Label htmlFor="description">
+                {translate("description55f8eb")}
+              </Label>
               <Textarea
                 id="description"
                 placeholder={
@@ -488,39 +573,52 @@ export function AddTransactionDialog({
             </div>
 
             {/* Merchant (optional) */}
-            {transactionType !== "transfer" && <div className="space-y-2">
-              <Label htmlFor="merchant">{translate("merchantOptional")}</Label>
-              <Input
-                id="merchant"
-                placeholder={translate("eGAmazonStarbucks")}
-                value={merchant}
-                onChange={(e) => setMerchant(e.target.value)}
-              />
-            </div>}
+            {transactionType !== "transfer" && (
+              <div className="space-y-2">
+                <Label htmlFor="merchant">
+                  {translate("merchantOptional")}
+                </Label>
+                <Input
+                  id="merchant"
+                  placeholder={translate("eGAmazonStarbucks")}
+                  value={merchant}
+                  onChange={(e) => setMerchant(e.target.value)}
+                />
+              </div>
+            )}
 
             {/* Category */}
-            {transactionType !== "transfer" && <div className="space-y-2">
-              <Label htmlFor="category">{translate("categoryOptional")}</Label>
-              <Select value={categoryId} onValueChange={(v) => setCategoryId(v ?? "")}>
-                <SelectTrigger>
-                  <SelectValue placeholder={translate("selectACategory")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">{translate("noCategory")}</SelectItem>
-                  {filteredCategories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: category.color || "#666" }}
-                        />
-                        {category.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>}
+            {transactionType !== "transfer" && (
+              <div className="space-y-2">
+                <Label htmlFor="category">
+                  {translate("categoryOptional")}
+                </Label>
+                <Select
+                  value={categoryId}
+                  onValueChange={(v) => setCategoryId(v ?? "")}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={translate("selectACategory")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">{translate("noCategory")}</SelectItem>
+                    {filteredCategories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="h-3 w-3 rounded-full"
+                            style={{
+                              backgroundColor: category.color || "#666",
+                            }}
+                          />
+                          {category.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             {isLinkedTransfer && (
@@ -536,20 +634,29 @@ export function AddTransactionDialog({
             >
               {isLinkedTransfer ? translate("close") : translate("cancel")}
             </Button>
-            {!isLinkedTransfer && <Button
-              type="submit"
-              disabled={
-                isLoading ||
-                accounts.length === 0 ||
-                (transactionType === "transfer" && eligibleDestinationAccounts.length === 0)
-              }
-            >
-              {isLoading
-                ? isEditing ? translate("saving") : translate("adding")
-                : transactionType === "transfer"
-                  ? isEditing ? translate("convertToTransfer") : translate("createTransfer")
-                  : isEditing ? translate("saveChangesfa2984") : translate("addTransaction")}
-            </Button>}
+            {!isLinkedTransfer && (
+              <Button
+                type="submit"
+                disabled={
+                  isLoading ||
+                  accounts.length === 0 ||
+                  (transactionType === "transfer" &&
+                    eligibleDestinationAccounts.length === 0)
+                }
+              >
+                {isLoading
+                  ? isEditing
+                    ? translate("saving")
+                    : translate("adding")
+                  : transactionType === "transfer"
+                    ? isEditing
+                      ? translate("convertToTransfer")
+                      : translate("createTransfer")
+                    : isEditing
+                      ? translate("saveChangesfa2984")
+                      : translate("addTransaction")}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>

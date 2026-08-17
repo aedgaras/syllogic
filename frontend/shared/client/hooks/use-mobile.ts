@@ -6,7 +6,9 @@ const MOBILE_BREAKPOINT = 768;
 
 /** Adapts the browser viewport to the shared responsive UI breakpoint. */
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);
+  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(
+    undefined,
+  );
 
   React.useEffect(() => {
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);

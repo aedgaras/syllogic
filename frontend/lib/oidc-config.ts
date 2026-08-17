@@ -19,7 +19,9 @@ function normalizeUrl(value: string): string {
   return parsed.toString();
 }
 
-export function validateOidcConfig(config: OidcRuntimeConfig): OidcRuntimeConfig {
+export function validateOidcConfig(
+  config: OidcRuntimeConfig,
+): OidcRuntimeConfig {
   const normalized = {
     ...config,
     displayName: config.displayName.trim() || "Single Sign-On",
@@ -29,8 +31,14 @@ export function validateOidcConfig(config: OidcRuntimeConfig): OidcRuntimeConfig
   };
 
   if (normalized.enabled) {
-    if (!normalized.discoveryUrl || !normalized.clientId || !normalized.clientSecret) {
-      throw new Error("Discovery URL, client ID, and client secret are required before enabling OIDC.");
+    if (
+      !normalized.discoveryUrl ||
+      !normalized.clientId ||
+      !normalized.clientSecret
+    ) {
+      throw new Error(
+        "Discovery URL, client ID, and client secret are required before enabling OIDC.",
+      );
     }
     normalized.discoveryUrl = normalizeUrl(normalized.discoveryUrl);
   } else if (normalized.discoveryUrl) {
@@ -40,7 +48,10 @@ export function validateOidcConfig(config: OidcRuntimeConfig): OidcRuntimeConfig
   if (normalized.displayName.length > 80) {
     throw new Error("Provider name must be 80 characters or fewer.");
   }
-  if (normalized.clientId.length > 500 || normalized.clientSecret.length > 2000) {
+  if (
+    normalized.clientId.length > 500 ||
+    normalized.clientSecret.length > 2000
+  ) {
     throw new Error("OIDC client credentials are too long.");
   }
 

@@ -16,6 +16,7 @@ Usage:
     if subscription:
         transaction.recurring_transaction_id = subscription.id
 """
+
 import os
 import logging
 from typing import Optional, List, Dict
@@ -33,9 +34,9 @@ logger = logging.getLogger(__name__)
 
 
 # Configuration
-ENABLE_AUTO_SUBSCRIPTION_MATCHING = os.getenv(
-    "ENABLE_AUTO_SUBSCRIPTION_MATCHING", "true"
-).lower() == "true"
+ENABLE_AUTO_SUBSCRIPTION_MATCHING = (
+    os.getenv("ENABLE_AUTO_SUBSCRIPTION_MATCHING", "true").lower() == "true"
+)
 
 # Minimum match score required to auto-link (0-100)
 MIN_MATCH_SCORE = float(os.getenv("SUBSCRIPTION_MIN_MATCH_SCORE", "60.0"))
@@ -65,10 +66,7 @@ class SubscriptionMatcher:
         self._text_similarity = TextSimilarity()
         self._merchant_extractor = MerchantExtractor()
 
-    def _load_subscriptions(
-        self,
-        account_id: Optional[str] = None
-    ) -> List[RecurringTransaction]:
+    def _load_subscriptions(self, account_id: Optional[str] = None) -> List[RecurringTransaction]:
         """
         Load and cache active subscriptions for the user.
 
@@ -85,8 +83,7 @@ class SubscriptionMatcher:
                     account_uuid = None
 
             query = self.db.query(RecurringTransaction).filter(
-                RecurringTransaction.user_id == self.user_id,
-                RecurringTransaction.is_active == True
+                RecurringTransaction.user_id == self.user_id, RecurringTransaction.is_active == True
             )
             if account_uuid:
                 query = query.filter(
@@ -114,7 +111,7 @@ class SubscriptionMatcher:
     def _amount_matches(
         subscription_amount: Decimal,
         transaction_amount: Decimal,
-        tolerance_percent: float = AMOUNT_TOLERANCE_PERCENT
+        tolerance_percent: float = AMOUNT_TOLERANCE_PERCENT,
     ) -> bool:
         """
         Check if transaction amount matches subscription amount within tolerance.
@@ -149,7 +146,7 @@ class SubscriptionMatcher:
         subscription: RecurringTransaction,
         description: Optional[str],
         merchant: Optional[str],
-        amount: Decimal
+        amount: Decimal,
     ) -> tuple[float, str]:
         """
         Calculate match score between a subscription and transaction.
@@ -172,7 +169,7 @@ class SubscriptionMatcher:
             subscription_name=subscription.name,
             subscription_merchant=subscription.merchant,
             transaction_description=description,
-            transaction_merchant=merchant
+            transaction_merchant=merchant,
         )
 
         if text_score == 0:
@@ -192,7 +189,7 @@ class SubscriptionMatcher:
         merchant: Optional[str],
         amount: Decimal,
         account_id: Optional[str] = None,
-        min_score: float = MIN_MATCH_SCORE
+        min_score: float = MIN_MATCH_SCORE,
     ) -> Optional[RecurringTransaction]:
         """
         Find the best matching subscription for a transaction.
@@ -231,10 +228,7 @@ class SubscriptionMatcher:
 
         for subscription in subscriptions:
             score, reason = self._calculate_match_score(
-                subscription=subscription,
-                description=description,
-                merchant=merchant,
-                amount=amount
+                subscription=subscription, description=description, merchant=merchant, amount=amount
             )
 
             # Prefer account-scoped matches over legacy account-agnostic matches.
@@ -266,9 +260,7 @@ class SubscriptionMatcher:
         return None
 
     def match_transactions_batch(
-        self,
-        transactions: List[Dict],
-        min_score: float = MIN_MATCH_SCORE
+        self, transactions: List[Dict], min_score: float = MIN_MATCH_SCORE
     ) -> Dict[str, RecurringTransaction]:
         """
         Match multiple transactions to subscriptions in batch.
@@ -287,11 +279,11 @@ class SubscriptionMatcher:
         matched_count = 0
 
         for txn in transactions:
-            txn_id = txn.get('id')
-            description = txn.get('description')
-            merchant = txn.get('merchant')
-            amount = txn.get('amount')
-            account_id = txn.get('account_id')
+            txn_id = txn.get("id")
+            description = txn.get("description")
+            merchant = txn.get("merchant")
+            amount = txn.get("amount")
+            account_id = txn.get("account_id")
 
             if amount is None:
                 continue
@@ -305,7 +297,7 @@ class SubscriptionMatcher:
                 merchant=merchant,
                 amount=amount,
                 account_id=account_id,
-                min_score=min_score
+                min_score=min_score,
             )
 
             if match:

@@ -3,7 +3,10 @@ import { defaultLocale } from "./config";
 import messages from "@/messages/en.json";
 
 type TranslationKey = keyof typeof messages;
-type TranslationValues = Record<string, string | number | Date | null | undefined>;
+type TranslationValues = Record<
+  string,
+  string | number | Date | null | undefined
+>;
 
 const translate = createTranslator({ locale: defaultLocale, messages });
 

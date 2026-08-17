@@ -3,7 +3,7 @@ import { buildConservativeSankey } from "@/lib/dashboard/sankey";
 
 function sumOutgoingBySource(
   links: { source: number; target: number; value: number }[],
-  source: number
+  source: number,
 ): number {
   return links
     .filter((link) => link.source === source)
@@ -12,7 +12,7 @@ function sumOutgoingBySource(
 
 function sumIncomingByTarget(
   links: { source: number; target: number; value: number }[],
-  target: number
+  target: number,
 ): number {
   return links
     .filter((link) => link.target === target)
@@ -23,14 +23,39 @@ describe("buildConservativeSankey", () => {
   it("preserves totals for balanced income and expense categories", () => {
     const result = buildConservativeSankey(
       [
-        { categoryId: "i1", categoryName: "Salary", total: 3000, categoryType: "income" },
-        { categoryId: "i2", categoryName: "Freelance", total: 500, categoryType: "income" },
+        {
+          categoryId: "i1",
+          categoryName: "Salary",
+          total: 3000,
+          categoryType: "income",
+        },
+        {
+          categoryId: "i2",
+          categoryName: "Freelance",
+          total: 500,
+          categoryType: "income",
+        },
       ],
       [
-        { categoryId: "e1", categoryName: "Rent", total: 1500, categoryType: "expense" },
-        { categoryId: "e2", categoryName: "Food", total: 1000, categoryType: "expense" },
-        { categoryId: "e3", categoryName: "Other", total: 1000, categoryType: "expense" },
-      ]
+        {
+          categoryId: "e1",
+          categoryName: "Rent",
+          total: 1500,
+          categoryType: "expense",
+        },
+        {
+          categoryId: "e2",
+          categoryName: "Food",
+          total: 1000,
+          categoryType: "expense",
+        },
+        {
+          categoryId: "e3",
+          categoryName: "Other",
+          total: 1000,
+          categoryType: "expense",
+        },
+      ],
     );
 
     const incomeNodes = result.nodes
@@ -41,18 +66,38 @@ describe("buildConservativeSankey", () => {
       .filter(({ node }) => node.categoryType === "expense");
 
     for (const { node, index } of incomeNodes) {
-      expect(sumOutgoingBySource(result.links, index)).toBeCloseTo(node.total ?? 0, 6);
+      expect(sumOutgoingBySource(result.links, index)).toBeCloseTo(
+        node.total ?? 0,
+        6,
+      );
     }
 
     for (const { node, index } of expenseNodes) {
-      expect(sumIncomingByTarget(result.links, index)).toBeCloseTo(node.total ?? 0, 6);
+      expect(sumIncomingByTarget(result.links, index)).toBeCloseTo(
+        node.total ?? 0,
+        6,
+      );
     }
   });
 
   it("adds synthetic Savings expense node when income exceeds expenses", () => {
     const result = buildConservativeSankey(
-      [{ categoryId: "i1", categoryName: "Salary", total: 4000, categoryType: "income" }],
-      [{ categoryId: "e1", categoryName: "Rent", total: 2500, categoryType: "expense" }]
+      [
+        {
+          categoryId: "i1",
+          categoryName: "Salary",
+          total: 4000,
+          categoryType: "income",
+        },
+      ],
+      [
+        {
+          categoryId: "e1",
+          categoryName: "Rent",
+          total: 2500,
+          categoryType: "expense",
+        },
+      ],
     );
 
     const savingsNode = result.nodes.find((node) => node.name === "Savings");
@@ -68,11 +113,27 @@ describe("buildConservativeSankey", () => {
 
   it("adds synthetic Funding Gap income node when expenses exceed income", () => {
     const result = buildConservativeSankey(
-      [{ categoryId: "i1", categoryName: "Salary", total: 1000, categoryType: "income" }],
-      [{ categoryId: "e1", categoryName: "Rent", total: 1900, categoryType: "expense" }]
+      [
+        {
+          categoryId: "i1",
+          categoryName: "Salary",
+          total: 1000,
+          categoryType: "income",
+        },
+      ],
+      [
+        {
+          categoryId: "e1",
+          categoryName: "Rent",
+          total: 1900,
+          categoryType: "expense",
+        },
+      ],
     );
 
-    const fundingGapNode = result.nodes.find((node) => node.name === "Funding Gap");
+    const fundingGapNode = result.nodes.find(
+      (node) => node.name === "Funding Gap",
+    );
     expect(fundingGapNode).toBeDefined();
     expect(fundingGapNode?.categoryId).toBeUndefined();
     expect(fundingGapNode?.categoryType).toBe("income");
@@ -85,10 +146,16 @@ describe("buildConservativeSankey", () => {
       .filter(({ node }) => node.categoryType === "expense");
 
     for (const { node, index } of incomeNodes) {
-      expect(sumOutgoingBySource(result.links, index)).toBeCloseTo(node.total ?? 0, 6);
+      expect(sumOutgoingBySource(result.links, index)).toBeCloseTo(
+        node.total ?? 0,
+        6,
+      );
     }
     for (const { node, index } of expenseNodes) {
-      expect(sumIncomingByTarget(result.links, index)).toBeCloseTo(node.total ?? 0, 6);
+      expect(sumIncomingByTarget(result.links, index)).toBeCloseTo(
+        node.total ?? 0,
+        6,
+      );
     }
   });
 });

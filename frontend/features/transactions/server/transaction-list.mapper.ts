@@ -24,8 +24,18 @@ export interface TransactionListRow {
     logoId: string | null;
     logo: { id: string; logoUrl: string | null; updatedAt: Date | null } | null;
   } | null;
-  category: { id: string; name: string; color: string | null; icon: string | null } | null;
-  categorySystem: { id: string; name: string; color: string | null; icon: string | null } | null;
+  category: {
+    id: string;
+    name: string;
+    color: string | null;
+    icon: string | null;
+  } | null;
+  categorySystem: {
+    id: string;
+    name: string;
+    color: string | null;
+    icon: string | null;
+  } | null;
   recurringTransaction: {
     id: string;
     name: string;
@@ -43,7 +53,9 @@ export interface TransactionListRow {
   } | null;
 }
 
-export function mapTransactionListRow(row: TransactionListRow): TransactionListItem | null {
+export function mapTransactionListRow(
+  row: TransactionListRow,
+): TransactionListItem | null {
   if (!row.account) return null;
 
   return {
@@ -94,7 +106,7 @@ export function mapTransactionListRow(row: TransactionListRow): TransactionListI
 
 export function mapTransactionListRows(
   rows: TransactionListRow[],
-  onMissingAccount?: (row: TransactionListRow) => void
+  onMissingAccount?: (row: TransactionListRow) => void,
 ): TransactionListItem[] {
   return rows.flatMap((row) => {
     const mapped = mapTransactionListRow(row);
@@ -106,12 +118,12 @@ export function mapTransactionListRows(
 
 export function mapTransactionRowsForUi(
   rows: TransactionListRow[],
-  contextLabel: string
+  contextLabel: string,
 ): TransactionListItem[] {
   return mapTransactionListRows(rows, (row) =>
     console.warn(`[${contextLabel}] Transaction missing account relation`, {
       transactionId: row.id,
       accountId: row.accountId,
-    })
+    }),
   );
 }

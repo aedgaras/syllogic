@@ -5,6 +5,7 @@ its query IDs — never the plaintext. Run inside the backend service:
 
     python scripts/check_ibkr_token_sharing.py
 """
+
 from __future__ import annotations
 import hashlib
 from collections import defaultdict
@@ -31,7 +32,9 @@ def main() -> None:
 
         token_groups: dict[str, list[str]] = defaultdict(list)
         missing_token: list[str] = []
-        print(f"{'account_id':<38} {'name':<24} {'token_fp':<14} {'qpos_fp':<14} {'qtrd_fp':<14} {'last_status':<12} {'last_error'}")
+        print(
+            f"{'account_id':<38} {'name':<24} {'token_fp':<14} {'qpos_fp':<14} {'qtrd_fp':<14} {'last_status':<12} {'last_error'}"
+        )
         for conn, acct in rows:
             try:
                 creds = decrypt(conn.credentials_encrypted)
@@ -39,8 +42,16 @@ def main() -> None:
                 print(f"{acct.id} {acct.name[:24]:<24} <DECRYPT FAILED: {e}>")
                 continue
             raw_token = creds.get("flex_token") or ""
-            qp = fp(creds.get("query_id_positions") or "") if (creds.get("query_id_positions") or "") else "<missing>"
-            qt = fp(creds.get("query_id_trades") or "") if (creds.get("query_id_trades") or "") else "<missing>"
+            qp = (
+                fp(creds.get("query_id_positions") or "")
+                if (creds.get("query_id_positions") or "")
+                else "<missing>"
+            )
+            qt = (
+                fp(creds.get("query_id_trades") or "")
+                if (creds.get("query_id_trades") or "")
+                else "<missing>"
+            )
             if raw_token:
                 tfp = fp(raw_token)
                 token_groups[tfp].append(str(acct.id))
@@ -55,14 +66,18 @@ def main() -> None:
         print("\nToken-sharing summary:")
         shared = {fp_: ids for fp_, ids in token_groups.items() if len(ids) > 1}
         if not shared:
-            print("  No token sharing detected — every IBKR connection with a token uses a distinct flex_token.")
+            print(
+                "  No token sharing detected — every IBKR connection with a token uses a distinct flex_token."
+            )
         else:
             for fp_, ids in shared.items():
                 print(f"  token_fp={fp_} shared by {len(ids)} accounts:")
                 for aid in ids:
                     print(f"    - {aid}")
         if missing_token:
-            print(f"\n  WARNING: {len(missing_token)} connection(s) have no flex_token (excluded from sharing analysis):")
+            print(
+                f"\n  WARNING: {len(missing_token)} connection(s) have no flex_token (excluded from sharing analysis):"
+            )
             for aid in missing_token:
                 print(f"    - {aid}")
     finally:

@@ -3,6 +3,7 @@
 Run with:
     cd backend && .venv/bin/pytest tests/test_report_routes.py -v
 """
+
 from __future__ import annotations
 
 import base64
@@ -38,7 +39,9 @@ from app.models import User  # noqa: E402
 
 
 def _seed_user(db) -> User:
-    user = User(id=f"test-user-{uuid.uuid4()}", email=f"{uuid.uuid4()}@example.com", name="Test User")
+    user = User(
+        id=f"test-user-{uuid.uuid4()}", email=f"{uuid.uuid4()}@example.com", name="Test User"
+    )
     db.add(user)
     db.commit()
     return user
@@ -46,7 +49,9 @@ def _seed_user(db) -> User:
 
 def _signed_headers(method: str, path_with_query: str, user_id: str, body: bytes = b"") -> dict:
     timestamp = str(int(time.time()))
-    payload = "\n".join([method.upper(), path_with_query, user_id, timestamp, hashlib.sha256(body).hexdigest()])
+    payload = "\n".join(
+        [method.upper(), path_with_query, user_id, timestamp, hashlib.sha256(body).hexdigest()]
+    )
     signature = hmac.new(
         INTERNAL_AUTH_SECRET.encode("utf-8"),
         payload.encode("utf-8"),
@@ -217,7 +222,9 @@ def test_create_report_rejects_out_of_bounds_send_day_of_month():
         client = _client_for_user(user.id)
         resp = client.post(
             "/api/reports",
-            json=_base_report_payload(frequency="MONTHLY", send_day_of_week=None, send_day_of_month=29),
+            json=_base_report_payload(
+                frequency="MONTHLY", send_day_of_week=None, send_day_of_month=29
+            ),
         )
         assert resp.status_code == 422, resp.text
     finally:
@@ -285,7 +292,9 @@ def test_create_report_rejects_invalid_recipient_email():
     try:
         user = _seed_user(db)
         client = _client_for_user(user.id)
-        resp = client.post("/api/reports", json=_base_report_payload(recipient_emails=["not-an-email"]))
+        resp = client.post(
+            "/api/reports", json=_base_report_payload(recipient_emails=["not-an-email"])
+        )
         assert resp.status_code == 422, resp.text
     finally:
         db.query(User).filter(User.id == user.id).delete()

@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -17,9 +16,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CURRENCIES, ACCOUNT_TYPES } from "@/lib/constants";
-import { createAccount, createPocketAccount } from "@/features/accounts/client/actions";
-import { OwnersField, type OwnerValue } from "@/components/household/owners-field";
-import { saveOwners, usePeopleQuery, type ClientPerson } from "@/lib/people/client";
+import {
+  createAccount,
+  createPocketAccount,
+} from "@/features/accounts/client/actions";
+import {
+  OwnersField,
+  type OwnerValue,
+} from "@/components/household/owners-field";
+import {
+  saveOwners,
+  usePeopleQuery,
+  type ClientPerson,
+} from "@/lib/people/client";
 
 const IBAN_RE = /^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/;
 
@@ -56,8 +65,13 @@ export function AccountForm({
   const [owners, setOwners] = useState<OwnerValue[]>([]);
   const [ownersError, setOwnersError] = useState<string | null>(null);
   const saveAccountOwnersMutation = useMutation({
-    mutationFn: ({ entityId, owners }: { entityId: string; owners: OwnerValue[] }) =>
-      saveOwners("account", entityId, owners),
+    mutationFn: ({
+      entityId,
+      owners,
+    }: {
+      entityId: string;
+      owners: OwnerValue[];
+    }) => saveOwners("account", entityId, owners),
   });
 
   useEffect(() => {
@@ -89,13 +103,19 @@ export function AccountForm({
     const allNull = owners.every((o) => o.share === null);
     const allSet = owners.every((o) => o.share !== null);
     if (!allNull && !allSet) {
-      setOwnersError(translate("allOwnersMustEitherSplitEquallyOrSpecifyShares"));
+      setOwnersError(
+        translate("allOwnersMustEitherSplitEquallyOrSpecifyShares"),
+      );
       return false;
     }
     if (allSet) {
       const sum = owners.reduce((acc, o) => acc + (o.share as number), 0);
       if (Math.abs(sum - 1) > 0.0001) {
-        setOwnersError(translate("sharesMustSumTo100Currentlyc8e2ea", { value1: Math.round(sum * 100) }));
+        setOwnersError(
+          translate("sharesMustSumTo100Currentlyc8e2ea", {
+            value1: Math.round(sum * 100),
+          }),
+        );
         return false;
       }
     }
@@ -107,7 +127,10 @@ export function AccountForm({
     try {
       await saveAccountOwnersMutation.mutateAsync({ entityId, owners });
     } catch (err) {
-      toast.error((err as Error).message || translate("accountCreatedButFailedToSaveOwnershipYouCan"));
+      toast.error(
+        (err as Error).message ||
+          translate("accountCreatedButFailedToSaveOwnershipYouCan"),
+      );
     }
   };
 
@@ -140,9 +163,9 @@ export function AccountForm({
         return;
       }
       if (
-        !IBAN_RE.test(normalizedIban)
-        || normalizedIban.length < 15
-        || normalizedIban.length > 34
+        !IBAN_RE.test(normalizedIban) ||
+        normalizedIban.length < 15 ||
+        normalizedIban.length > 34
       ) {
         toast.error(translate("pleaseEnterAValidIban"));
         return;
@@ -182,12 +205,19 @@ export function AccountForm({
         }
 
         const backfilled =
-          isPocket && "backfilledCount" in result && typeof result.backfilledCount === "number"
+          isPocket &&
+          "backfilledCount" in result &&
+          typeof result.backfilledCount === "number"
             ? result.backfilledCount
             : 0;
-        const message = backfilled > 0
-          ? translate("existingTransferLinked", { successMessage: successMessage, backfilled: backfilled, value3: backfilled === 1 ? "" : "s" })
-          : successMessage;
+        const message =
+          backfilled > 0
+            ? translate("existingTransferLinked", {
+                successMessage: successMessage,
+                backfilled: backfilled,
+                value3: backfilled === 1 ? "" : "s",
+              })
+            : successMessage;
         toast.success(message);
         resetForm();
         onSuccess?.();
@@ -221,7 +251,10 @@ export function AccountForm({
 
         <div className="space-y-2">
           <Label htmlFor="account-type">{translate("accountType")}</Label>
-          <Select value={accountType} onValueChange={(v) => v && setAccountType(v)}>
+          <Select
+            value={accountType}
+            onValueChange={(v) => v && setAccountType(v)}
+          >
             <SelectTrigger>
               <SelectValue placeholder={translate("selectAccountType")} />
             </SelectTrigger>
@@ -237,7 +270,9 @@ export function AccountForm({
 
         {!isPocket && (
           <div className="space-y-2">
-            <Label htmlFor="account-institution">{translate("institutionOptional")}</Label>
+            <Label htmlFor="account-institution">
+              {translate("institutionOptional")}
+            </Label>
             <Input
               id="account-institution"
               placeholder={translate("eGBankOfAmerica")}
@@ -264,7 +299,9 @@ export function AccountForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="account-balance">{translate("initialBalanceOptional")}</Label>
+          <Label htmlFor="account-balance">
+            {translate("initialBalanceOptional")}
+          </Label>
           <Input
             id="account-balance"
             type="number"
@@ -327,7 +364,12 @@ export function AccountForm({
       </div>
       <div className="flex justify-end gap-2">
         {showCancel && (
-          <Button type="button" variant="outline" onClick={handleCancel} disabled={isLoading}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isLoading}
+          >
             {cancelLabel}
           </Button>
         )}

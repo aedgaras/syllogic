@@ -74,35 +74,53 @@ function validUTCDate(year: number, month: number, day: number): Date | null {
 }
 
 function parseTextDate(value: string, format: ImportDateFormat): Date | null {
-  const match = format === "DD MMM YYYY"
-    ? value.match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})(?:[T\s].*)?$/i)
-    : value.match(/^([a-z]+)\s+(\d{1,2}),?\s+(\d{4})(?:[T\s].*)?$/i);
+  const match =
+    format === "DD MMM YYYY"
+      ? value.match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})(?:[T\s].*)?$/i)
+      : value.match(/^([a-z]+)\s+(\d{1,2}),?\s+(\d{4})(?:[T\s].*)?$/i);
 
   if (!match) return null;
 
   const day = Number(format === "DD MMM YYYY" ? match[1] : match[2]);
-  const monthName = (format === "DD MMM YYYY" ? match[2] : match[1]).toLowerCase();
+  const monthName = (
+    format === "DD MMM YYYY" ? match[2] : match[1]
+  ).toLowerCase();
   const year = Number(match[3]);
   const month = MONTHS[monthName];
   return month ? validUTCDate(year, month, day) : null;
 }
 
-function parseCompactDate(value: string, format: ImportDateFormat): Date | null {
+function parseCompactDate(
+  value: string,
+  format: ImportDateFormat,
+): Date | null {
   if (!/^\d{8}$/.test(value)) return null;
 
   if (format === "YYYYMMDD") {
-    return validUTCDate(Number(value.slice(0, 4)), Number(value.slice(4, 6)), Number(value.slice(6, 8)));
+    return validUTCDate(
+      Number(value.slice(0, 4)),
+      Number(value.slice(4, 6)),
+      Number(value.slice(6, 8)),
+    );
   }
   if (format === "DDMMYYYY") {
-    return validUTCDate(Number(value.slice(4, 8)), Number(value.slice(2, 4)), Number(value.slice(0, 2)));
+    return validUTCDate(
+      Number(value.slice(4, 8)),
+      Number(value.slice(2, 4)),
+      Number(value.slice(0, 2)),
+    );
   }
-  return validUTCDate(Number(value.slice(4, 8)), Number(value.slice(0, 2)), Number(value.slice(2, 4)));
+  return validUTCDate(
+    Number(value.slice(4, 8)),
+    Number(value.slice(0, 2)),
+    Number(value.slice(2, 4)),
+  );
 }
 
 /** Parse a CSV date without relying on the host locale or timezone. */
 export function parseImportDate(
   rawValue: string | null | undefined,
-  format: ImportDateFormat
+  format: ImportDateFormat,
 ): Date | null {
   if (typeof rawValue !== "string") return null;
   const value = rawValue.replace(/['"]/g, "").trim();
@@ -115,14 +133,24 @@ export function parseImportDate(
     return parseCompactDate(value, format);
   }
 
-  const separator = format.includes("-") ? "-" : format.includes("/") ? "/" : ".";
+  const separator = format.includes("-")
+    ? "-"
+    : format.includes("/")
+      ? "/"
+      : ".";
   const escapedSeparator = separator === "." ? "\\." : separator;
   const tokens = format.split(separator);
-  const capture = tokens.map((token) => token === "YYYY" ? "(\\d{4})" : "(\\d{1,2})");
-  const match = value.match(new RegExp(`^${capture.join(escapedSeparator)}(?:[T\\s].*)?$`));
+  const capture = tokens.map((token) =>
+    token === "YYYY" ? "(\\d{4})" : "(\\d{1,2})",
+  );
+  const match = value.match(
+    new RegExp(`^${capture.join(escapedSeparator)}(?:[T\\s].*)?$`),
+  );
   if (!match) return null;
 
-  const parts = Object.fromEntries(tokens.map((token, index) => [token, Number(match[index + 1])]));
+  const parts = Object.fromEntries(
+    tokens.map((token, index) => [token, Number(match[index + 1])]),
+  );
   const year = parts.YYYY ?? expandYear(parts.YY);
   return validUTCDate(year, parts.MM, parts.DD);
 }

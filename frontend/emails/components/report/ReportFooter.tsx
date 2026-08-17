@@ -2,14 +2,35 @@ import { t as translate } from "@/i18n/translate";
 import { Hr, Link, Section, Text } from "@react-email/components";
 import { light } from "./tokens";
 
-export function ReportFooter({ manageUrl, sentAt }: { manageUrl: string; sentAt: string }) {
+export function ReportFooter({
+  manageUrl,
+  sentAt,
+}: {
+  manageUrl: string;
+  sentAt: string;
+}) {
   const formatted = new Date(sentAt).toLocaleString("en-GB");
   return (
     <Section style={{ padding: "24px 28px 28px" }}>
-      <Hr className="sy-rule" style={{ borderColor: light.border, margin: "0 0 14px" }} />
-      <Text className="sy-muted" style={{ fontSize: "11px", color: light.mutedForeground, margin: 0, lineHeight: 1.6 }}>
+      <Hr
+        className="sy-rule"
+        style={{ borderColor: light.border, margin: "0 0 14px" }}
+      />
+      <Text
+        className="sy-muted"
+        style={{
+          fontSize: "11px",
+          color: light.mutedForeground,
+          margin: 0,
+          lineHeight: 1.6,
+        }}
+      >
         {translate("sent")} {formatted} ·{" "}
-        <Link href={manageUrl} className="sy-fg" style={{ color: light.foreground, textDecoration: "underline" }}>
+        <Link
+          href={manageUrl}
+          className="sy-fg"
+          style={{ color: light.foreground, textDecoration: "underline" }}
+        >
           {translate("manageThisReport")}
         </Link>
       </Text>

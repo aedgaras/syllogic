@@ -6,7 +6,10 @@ import type {
   VehicleAssetViewModel,
 } from "../domain/contracts";
 
-export function toAccountAssetViewModel(row: AccountViewModel, ownerIds: string[] = []): AccountAssetViewModel {
+export function toAccountAssetViewModel(
+  row: AccountViewModel,
+  ownerIds: string[] = [],
+): AccountAssetViewModel {
   return {
     id: row.id,
     name: row.name,
@@ -19,10 +22,34 @@ export function toAccountAssetViewModel(row: AccountViewModel, ownerIds: string[
   };
 }
 
-export function toPropertyAssetViewModel(row: Property, ownerIds: string[] = []): PropertyAssetViewModel {
-  return { id: row.id, name: row.name, propertyType: row.propertyType, address: row.address, currency: row.currency ?? "EUR", value: row.currentValue ?? "0", ownerIds };
+export function toPropertyAssetViewModel(
+  row: Property,
+  ownerIds: string[] = [],
+): PropertyAssetViewModel {
+  return {
+    id: row.id,
+    name: row.name,
+    propertyType: row.propertyType,
+    address: row.address,
+    currency: row.currency ?? "EUR",
+    value: row.currentValue ?? "0",
+    ownerIds,
+  };
 }
 
-export function toVehicleAssetViewModel(row: Vehicle, ownerIds: string[] = []): VehicleAssetViewModel {
-  return { id: row.id, name: row.name, vehicleType: row.vehicleType, make: row.make, model: row.model, year: row.year, currency: row.currency ?? "EUR", value: row.currentValue ?? "0", ownerIds };
+export function toVehicleAssetViewModel(
+  row: Vehicle,
+  ownerIds: string[] = [],
+): VehicleAssetViewModel {
+  return {
+    id: row.id,
+    name: row.name,
+    vehicleType: row.vehicleType,
+    make: row.make,
+    model: row.model,
+    year: row.year,
+    currency: row.currency ?? "EUR",
+    value: row.currentValue ?? "0",
+    ownerIds,
+  };
 }

@@ -1,7 +1,10 @@
 import { t as translate } from "@/i18n/translate";
 import { Suspense } from "react";
 import { Header } from "@/components/layout/header";
-import { TableSkeleton, FiltersSkeleton } from "@/components/skeletons/page-skeletons";
+import {
+  TableSkeleton,
+  FiltersSkeleton,
+} from "@/components/skeletons/page-skeletons";
 import { parseTransactionsSearchParams } from "@/features/transactions/public";
 import { TransactionsSection } from "@/features/transactions/orchestration/transactions-section";
 
@@ -11,7 +14,9 @@ interface TransactionsPageProps {
   }>;
 }
 
-export default async function TransactionsPage({ searchParams }: TransactionsPageProps) {
+export default async function TransactionsPage({
+  searchParams,
+}: TransactionsPageProps) {
   const params = await searchParams;
   const queryState = parseTransactionsSearchParams(params);
 

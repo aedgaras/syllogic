@@ -3,7 +3,10 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { deleteTransactions, getDeleteImpact } from "@/lib/actions/transactions";
+import {
+  deleteTransactions,
+  getDeleteImpact,
+} from "@/lib/actions/transactions";
 import type { DeleteImpact } from "../public";
 
 export function useDeleteTransactionsController() {
@@ -23,11 +26,13 @@ export function useDeleteTransactionsController() {
           return false;
         }
         const count = result.deletedCount ?? ids.length;
-        toast.success(`${count === 1 ? "Transaction" : `${count} transactions`} deleted`);
+        toast.success(
+          `${count === 1 ? "Transaction" : `${count} transactions`} deleted`,
+        );
         router.refresh();
         return true;
       },
     }),
-    [router]
+    [router],
   );
 }

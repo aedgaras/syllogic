@@ -21,7 +21,10 @@ interface AccountTransactionsProps {
   accountId: string;
   transactions: TransactionWithRelations[];
   categories: CategoryDisplay[];
-  onUpdateTransaction?: (id: string, updates: Partial<TransactionWithRelations>) => void;
+  onUpdateTransaction?: (
+    id: string,
+    updates: Partial<TransactionWithRelations>,
+  ) => void;
   onDeleteTransaction?: (id: string) => void;
   onBulkUpdate?: (transactionIds: string[], categoryId: string | null) => void;
   onBulkDelete?: (deletedIds: string[]) => void;
@@ -38,7 +41,8 @@ export function AccountTransactions({
 }: AccountTransactionsProps) {
   const router = useRouter();
   const bulkActions = useBulkTransactionActions();
-  const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithRelations | null>(null);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<TransactionWithRelations | null>(null);
   const [tableKey, setTableKey] = useState("default");
   const hasInitializedRef = useRef(false);
 
@@ -85,43 +89,49 @@ export function AccountTransactions({
   }, [isMounted, savedFilters.length]);
 
   // Save filters to localStorage when they change
-  const handleColumnFiltersChange = useCallback((filters: ColumnFiltersState) => {
-    try {
-      if (!hasInitializedRef.current) {
-        hasInitializedRef.current = true;
-        if (filters.length === 0) {
-          return;
+  const handleColumnFiltersChange = useCallback(
+    (filters: ColumnFiltersState) => {
+      try {
+        if (!hasInitializedRef.current) {
+          hasInitializedRef.current = true;
+          if (filters.length === 0) {
+            return;
+          }
         }
-      }
 
-      // Convert dates to ISO strings for storage
-      const serializable = filters.map((filter) => {
-        if (filter.id === "bookedAt" && filter.value) {
-          const val = filter.value as DateRange;
-          return {
-            ...filter,
-            value: {
-              from: val.from?.toISOString(),
-              to: val.to?.toISOString(),
-            },
-          };
-        }
-        return filter;
-      });
-      localStorage.setItem(storageKey, JSON.stringify(serializable));
-    } catch {
-      // Ignore storage errors
-    }
-  }, [storageKey]);
+        // Convert dates to ISO strings for storage
+        const serializable = filters.map((filter) => {
+          if (filter.id === "bookedAt" && filter.value) {
+            const val = filter.value as DateRange;
+            return {
+              ...filter,
+              value: {
+                from: val.from?.toISOString(),
+                to: val.to?.toISOString(),
+              },
+            };
+          }
+          return filter;
+        });
+        localStorage.setItem(storageKey, JSON.stringify(serializable));
+      } catch {
+        // Ignore storage errors
+      }
+    },
+    [storageKey],
+  );
 
   const handleRowClick = (transaction: TransactionWithRelations) => {
     setSelectedTransaction(transaction);
   };
 
-  const handleUpdateTransaction = (id: string, updates: Partial<TransactionWithRelations>) => {
+  const handleUpdateTransaction = (
+    id: string,
+    updates: Partial<TransactionWithRelations>,
+  ) => {
     onUpdateTransaction?.(id, updates);
     if (selectedTransaction?.id === id) {
-      setSelectedTransaction((prev) => prev ? { ...prev, ...updates } : null);
+      setSelectedTransaction((prev) => (prev ? { ...prev, ...updates } : null));
     }
   };
 

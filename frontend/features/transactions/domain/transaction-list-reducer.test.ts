@@ -3,7 +3,12 @@ import type { TransactionWithRelations } from "./contracts";
 import { transactionListReducer } from "./transaction-list-reducer";
 
 const transaction = (id: string): TransactionWithRelations =>
-  ({ id, categoryId: null, category: null, includeInAnalytics: true }) as TransactionWithRelations;
+  ({
+    id,
+    categoryId: null,
+    category: null,
+    includeInAnalytics: true,
+  }) as TransactionWithRelations;
 
 describe("transactionListReducer", () => {
   it("applies optimistic updates without mutating the source list", () => {
@@ -24,7 +29,7 @@ describe("transactionListReducer", () => {
       transactionListReducer([transaction("local")], {
         type: "replace",
         transactions: authoritative,
-      })
+      }),
     ).toBe(authoritative);
   });
 });

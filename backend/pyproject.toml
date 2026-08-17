@@ -1,0 +1,17 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = [
+    "E402", # Legacy scripts intentionally adjust sys.path before importing.
+    "E702", # Preserve compact legacy statements until they are refactored.
+    "E712", # SQLAlchemy boolean comparisons must not be rewritten as Python booleans.
+    "E722", # Preserve existing broad exception handling behavior.
+    "E741", # Existing domain code uses conventional short variable names.
+    "F841", # Removing assignments can remove side effects.
+]
+
+[tool.ruff.format]
+docstring-code-format = true

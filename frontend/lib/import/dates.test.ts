@@ -42,8 +42,12 @@ describe("parseImportDate", () => {
   });
 
   it("uses the selected ordering for ambiguous dates", () => {
-    expect(toInvariantDate(parseImportDate("01/02/2025", "DD/MM/YYYY")!)).toBe("2025-02-01");
-    expect(toInvariantDate(parseImportDate("01/02/2025", "MM/DD/YYYY")!)).toBe("2025-01-02");
+    expect(toInvariantDate(parseImportDate("01/02/2025", "DD/MM/YYYY")!)).toBe(
+      "2025-02-01",
+    );
+    expect(toInvariantDate(parseImportDate("01/02/2025", "MM/DD/YYYY")!)).toBe(
+      "2025-01-02",
+    );
   });
 
   it("rejects invalid dates instead of allowing rollover", () => {

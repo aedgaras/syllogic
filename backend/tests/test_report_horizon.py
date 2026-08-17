@@ -3,6 +3,7 @@
 Run with:
     cd backend && .venv/bin/pytest tests/test_report_horizon.py -v
 """
+
 from __future__ import annotations
 
 import os

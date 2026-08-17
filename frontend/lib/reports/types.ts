@@ -1,5 +1,10 @@
 export type TransactionMode = "RECENT" | "TOP_N";
-export type TransactionDirection = "ALL" | "EXPENSE" | "INCOME" | "INFLOW" | "OUTFLOW";
+export type TransactionDirection =
+  | "ALL"
+  | "EXPENSE"
+  | "INCOME"
+  | "INFLOW"
+  | "OUTFLOW";
 export type ReportFrequency = "DAILY" | "WEEKLY" | "BIWEEKLY" | "MONTHLY";
 export type ReportRunStatus = "SCHEDULED" | "RUNNING" | "SUCCEEDED" | "FAILED";
 
@@ -34,4 +39,7 @@ export type ReportRun = {
   created_at: string;
 };
 
-export type ReportInput = Omit<Report, "id" | "next_run_at" | "created_at" | "updated_at">;
+export type ReportInput = Omit<
+  Report,
+  "id" | "next_run_at" | "created_at" | "updated_at"
+>;

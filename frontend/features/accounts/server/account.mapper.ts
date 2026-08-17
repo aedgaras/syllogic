@@ -37,4 +37,3 @@ export function toAccountViewModel(row: AccountRow): AccountViewModel {
       : null,
   };
 }
-

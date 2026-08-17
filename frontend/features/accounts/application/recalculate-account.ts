@@ -1,4 +1,7 @@
-import { calculateBalance, calculateStartingBalance } from "../domain/balance-history";
+import {
+  calculateBalance,
+  calculateStartingBalance,
+} from "../domain/balance-history";
 import type { RecalculateAccountResult } from "../domain/contracts";
 
 interface AccountBalanceRecord {
@@ -12,20 +15,26 @@ interface RecalculationResponse {
 }
 
 export interface AccountRecalculationDependencies {
-  findAccount(userId: string, accountId: string): Promise<AccountBalanceRecord | undefined>;
+  findAccount(
+    userId: string,
+    accountId: string,
+  ): Promise<AccountBalanceRecord | undefined>;
   transactionSum(accountId: string): Promise<number>;
   updateBalances(
     accountId: string,
     values: { startingBalance?: number; functionalBalance: number },
   ): Promise<void>;
-  recalculateTimeseries(accountId: string, userId: string): Promise<RecalculationResponse>;
+  recalculateTimeseries(
+    accountId: string,
+    userId: string,
+  ): Promise<RecalculationResponse>;
 }
 
 export async function recalculateStartingBalanceUseCase(
   dependencies: AccountRecalculationDependencies,
   input: { userId: string; accountId: string; knownCurrentBalance: number },
 ): Promise<RecalculateAccountResult> {
-  if (!await dependencies.findAccount(input.userId, input.accountId)) {
+  if (!(await dependencies.findAccount(input.userId, input.accountId))) {
     return { success: false, error: "Account not found" };
   }
   const newStartingBalance = calculateStartingBalance(
@@ -50,7 +59,10 @@ export async function recalculateAccountTimeseriesUseCase(
 ): Promise<RecalculateAccountResult> {
   const account = await dependencies.findAccount(input.userId, input.accountId);
   if (!account) return { success: false, error: "Account not found" };
-  const response = await dependencies.recalculateTimeseries(input.accountId, input.userId);
+  const response = await dependencies.recalculateTimeseries(
+    input.accountId,
+    input.userId,
+  );
   await dependencies.updateBalances(input.accountId, {
     functionalBalance: calculateBalance(
       Number.parseFloat(account.startingBalance ?? "0"),
@@ -64,4 +76,3 @@ export async function recalculateAccountTimeseriesUseCase(
     recordsStored: response.records_stored,
   };
 }
-

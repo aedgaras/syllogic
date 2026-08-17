@@ -28,9 +28,18 @@ const eslintConfig = defineConfig([
     rules: {
       "no-restricted-globals": [
         "error",
-        ...["window", "document", "navigator", "localStorage", "sessionStorage", "EventSource", "FileReader"].map(
-          (name) => ({ name, message: "Domain modules cannot use browser APIs." })
-        ),
+        ...[
+          "window",
+          "document",
+          "navigator",
+          "localStorage",
+          "sessionStorage",
+          "EventSource",
+          "FileReader",
+        ].map((name) => ({
+          name,
+          message: "Domain modules cannot use browser APIs.",
+        })),
       ],
     },
   },

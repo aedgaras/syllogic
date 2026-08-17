@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -15,7 +14,10 @@ export default function EditReportPage() {
     data: report,
     isLoading: reportLoading,
     isError: reportError,
-  } = useQuery({ queryKey: ["reports", params.id], queryFn: () => getReport(params.id) });
+  } = useQuery({
+    queryKey: ["reports", params.id],
+    queryFn: () => getReport(params.id),
+  });
   const {
     data: accounts,
     isLoading: accountsLoading,
@@ -26,7 +28,9 @@ export default function EditReportPage() {
     return (
       <>
         <Header title={translate("editReport")} />
-        <div className="p-4 pt-0 text-sm text-muted-foreground">{translate("loading")}</div>
+        <div className="p-4 pt-0 text-sm text-muted-foreground">
+          {translate("loading")}
+        </div>
       </>
     );
   }
@@ -37,7 +41,10 @@ export default function EditReportPage() {
         <Header title={translate("editReport")} />
         <div className="p-4 pt-0 text-sm text-muted-foreground">
           {translate("reportNotFoundOrFailedToLoad")}{" "}
-          <Link href="/reports" className="text-foreground underline underline-offset-4">
+          <Link
+            href="/reports"
+            className="text-foreground underline underline-offset-4"
+          >
             {translate("backToReports")}
           </Link>
         </div>

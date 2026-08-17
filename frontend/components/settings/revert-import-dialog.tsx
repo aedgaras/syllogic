@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState } from "react";
 import {
   Dialog,
@@ -14,7 +13,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { RiDeleteBinLine, RiLoader4Line, RiAlertLine, RiErrorWarningLine } from "@remixicon/react";
+import {
+  RiDeleteBinLine,
+  RiLoader4Line,
+  RiAlertLine,
+  RiErrorWarningLine,
+} from "@remixicon/react";
 import { toast } from "sonner";
 import { revertCsvImport } from "@/lib/actions/csv-import";
 import type { CsvImportWithStats } from "@/features/csv-import/public";
@@ -53,7 +57,11 @@ export function RevertImportDialog({
       const result = await revertCsvImport(csvImport.id);
       if (result.success) {
         toast.success(
-          translate("revertedTransactionDeleted", { value1: csvImport.fileName, value2: result.deletedCount, value3: result.deletedCount !== 1 ? "s" : "" })
+          translate("revertedTransactionDeleted", {
+            value1: csvImport.fileName,
+            value2: result.deletedCount,
+            value3: result.deletedCount !== 1 ? "s" : "",
+          }),
         );
         onSuccess();
         onOpenChange(false);
@@ -74,7 +82,9 @@ export function RevertImportDialog({
             {translate("revertImport")}
           </DialogTitle>
           <DialogDescription>
-            {translate("thisWillPermanentlyDeleteAllTransactionsFromThisImport")}
+            {translate(
+              "thisWillPermanentlyDeleteAllTransactionsFromThisImport",
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -82,17 +92,25 @@ export function RevertImportDialog({
         <div className="space-y-1 rounded-none border px-3 py-2.5 text-xs">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">{translate("file")}</span>
-            <span className="font-mono font-medium truncate max-w-[200px]">{csvImport.fileName}</span>
+            <span className="font-mono font-medium truncate max-w-[200px]">
+              {csvImport.fileName}
+            </span>
           </div>
           {csvImport.account && (
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">{translate("account85dfa3")}</span>
+              <span className="text-muted-foreground">
+                {translate("account85dfa3")}
+              </span>
               <span className="font-medium">{csvImport.account.name}</span>
             </div>
           )}
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">{translate("transactionsToDelete")}</span>
-            <span className="font-mono font-medium">{csvImport.transactionCount}</span>
+            <span className="text-muted-foreground">
+              {translate("transactionsToDelete")}
+            </span>
+            <span className="font-mono font-medium">
+              {csvImport.transactionCount}
+            </span>
           </div>
         </div>
 
@@ -120,7 +138,9 @@ export function RevertImportDialog({
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
             {translate("type")}{" "}
-            <span className="font-mono text-foreground">{translate("deleteTransactions")}</span>{" "}
+            <span className="font-mono text-foreground">
+              {translate("deleteTransactions")}
+            </span>{" "}
             {translate("toConfirm12ef9b")}
           </p>
           <Input
@@ -129,13 +149,18 @@ export function RevertImportDialog({
             placeholder={translate("deleteTransactions")}
             className="font-mono text-xs"
             onKeyDown={(e) => {
-              if (e.key === "Enter" && isConfirmed && !reverting) handleRevert();
+              if (e.key === "Enter" && isConfirmed && !reverting)
+                handleRevert();
             }}
           />
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={reverting}>
+          <Button
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={reverting}
+          >
             {translate("cancel")}
           </Button>
           <Button

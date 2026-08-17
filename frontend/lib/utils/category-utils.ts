@@ -9,26 +9,29 @@ export type CategoryType = "expense" | "income" | "transfer";
  * Filter out categories that should be hidden from manual selection
  * (e.g., "Balancing Transfer" which is system-assigned only)
  */
-export function filterSelectableCategories<T extends { hideFromSelection?: boolean | null; name?: string }>(
-  categories: T[]
-): T[] {
+export function filterSelectableCategories<
+  T extends { hideFromSelection?: boolean | null; name?: string },
+>(categories: T[]): T[] {
   return categories.filter((c) => !c.hideFromSelection);
 }
 
 /**
  * Filter categories by a specific type
  */
-export function filterCategoriesByType<T extends { categoryType: string | null }>(
-  categories: T[],
-  type: CategoryType
-): T[] {
+export function filterCategoriesByType<
+  T extends { categoryType: string | null },
+>(categories: T[], type: CategoryType): T[] {
   return categories.filter((c) => c.categoryType === type);
 }
 
 /**
  * Group categories by their type
  */
-export function groupCategoriesByType<T extends { categoryType: string | null }>(categories: T[]): {
+export function groupCategoriesByType<
+  T extends { categoryType: string | null },
+>(
+  categories: T[],
+): {
   expense: T[];
   income: T[];
   transfer: T[];
@@ -46,18 +49,17 @@ export function groupCategoriesByType<T extends { categoryType: string | null }>
  * For credits: income and transfer categories
  * Automatically filters out categories hidden from selection
  */
-export function getCategoriesForTransactionType<T extends { categoryType: string | null; hideFromSelection?: boolean | null }>(
-  categories: T[],
-  transactionType: "debit" | "credit"
-): T[] {
+export function getCategoriesForTransactionType<
+  T extends { categoryType: string | null; hideFromSelection?: boolean | null },
+>(categories: T[], transactionType: "debit" | "credit"): T[] {
   const selectableCategories = filterSelectableCategories(categories);
   if (transactionType === "debit") {
     return selectableCategories.filter(
-      (c) => c.categoryType === "expense" || c.categoryType === "transfer"
+      (c) => c.categoryType === "expense" || c.categoryType === "transfer",
     );
   }
   return selectableCategories.filter(
-    (c) => c.categoryType === "income" || c.categoryType === "transfer"
+    (c) => c.categoryType === "income" || c.categoryType === "transfer",
   );
 }
 

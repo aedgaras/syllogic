@@ -3,6 +3,7 @@
 Run with:
     cd backend && .venv/bin/pytest tests/test_mcp_reports_tools.py -v
 """
+
 from __future__ import annotations
 
 import base64
@@ -29,7 +30,9 @@ from app.mcp.tools import reports as report_tools  # noqa: E402
 
 
 def _seed_user(db) -> User:
-    user = User(id=f"test-user-{uuid.uuid4()}", email=f"{uuid.uuid4()}@example.com", name="Test User")
+    user = User(
+        id=f"test-user-{uuid.uuid4()}", email=f"{uuid.uuid4()}@example.com", name="Test User"
+    )
     db.add(user)
     db.commit()
     return user
@@ -46,8 +49,11 @@ def test_create_report_success_shape():
     user = _seed_user(db)
     try:
         result = report_tools.create_report(
-            user_id=user.id, name="Weekly summary", frequency="WEEKLY",
-            send_day_of_week=0, recipient_emails=["me@example.com"],
+            user_id=user.id,
+            name="Weekly summary",
+            frequency="WEEKLY",
+            send_day_of_week=0,
+            recipient_emails=["me@example.com"],
         )
         assert result["success"] is True
         assert result["report"]["name"] == "Weekly summary"
@@ -62,7 +68,10 @@ def test_create_report_validation_error_shape():
     user = _seed_user(db)
     try:
         result = report_tools.create_report(
-            user_id=user.id, name="Bad", frequency="YEARLY", recipient_emails=["me@example.com"],
+            user_id=user.id,
+            name="Bad",
+            frequency="YEARLY",
+            recipient_emails=["me@example.com"],
         )
         assert result["success"] is False
         assert "error" in result
@@ -76,7 +85,10 @@ def test_list_reports_returns_dicts():
     user = _seed_user(db)
     try:
         report_tools.create_report(
-            user_id=user.id, name="R1", frequency="DAILY", recipient_emails=["me@example.com"],
+            user_id=user.id,
+            name="R1",
+            frequency="DAILY",
+            recipient_emails=["me@example.com"],
         )
         out = report_tools.list_reports(user_id=user.id)
         assert isinstance(out, list)
@@ -103,7 +115,10 @@ def test_update_report_success_and_error_shapes():
     user = _seed_user(db)
     try:
         created = report_tools.create_report(
-            user_id=user.id, name="R1", frequency="DAILY", recipient_emails=["me@example.com"],
+            user_id=user.id,
+            name="R1",
+            frequency="DAILY",
+            recipient_emails=["me@example.com"],
         )
         report_id = created["report"]["id"]
 
@@ -111,7 +126,9 @@ def test_update_report_success_and_error_shapes():
         assert ok["success"] is True
         assert ok["report"]["is_active"] is False
 
-        bad = report_tools.update_report(user_id=user.id, report_id=str(uuid.uuid4()), is_active=False)
+        bad = report_tools.update_report(
+            user_id=user.id, report_id=str(uuid.uuid4()), is_active=False
+        )
         assert bad["success"] is False
     finally:
         _cleanup(db, user.id)
@@ -123,7 +140,10 @@ def test_delete_report_success_and_not_found():
     user = _seed_user(db)
     try:
         created = report_tools.create_report(
-            user_id=user.id, name="R1", frequency="DAILY", recipient_emails=["me@example.com"],
+            user_id=user.id,
+            name="R1",
+            frequency="DAILY",
+            recipient_emails=["me@example.com"],
         )
         report_id = created["report"]["id"]
 
@@ -142,7 +162,10 @@ def test_send_test_report_enqueues():
     user = _seed_user(db)
     try:
         created = report_tools.create_report(
-            user_id=user.id, name="R1", frequency="DAILY", recipient_emails=["me@example.com"],
+            user_id=user.id,
+            name="R1",
+            frequency="DAILY",
+            recipient_emails=["me@example.com"],
         )
         report_id = created["report"]["id"]
         with patch("app.services.report_service.send_report_run") as mock_task:
@@ -160,7 +183,10 @@ def test_list_report_runs():
     user = _seed_user(db)
     try:
         created = report_tools.create_report(
-            user_id=user.id, name="R1", frequency="DAILY", recipient_emails=["me@example.com"],
+            user_id=user.id,
+            name="R1",
+            frequency="DAILY",
+            recipient_emails=["me@example.com"],
         )
         report_id = created["report"]["id"]
         with patch("app.services.report_service.send_report_run"):

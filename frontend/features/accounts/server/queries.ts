@@ -3,7 +3,10 @@ import "server-only";
 import { getCachedFullUserAccounts } from "@/lib/data/cached";
 import { requireAuth } from "@/lib/auth-helpers";
 import { resolveMissingAccountLogo } from "@/lib/actions/account-logos";
-import { buildBalanceHistory, calculateBalance } from "../domain/balance-history";
+import {
+  buildBalanceHistory,
+  calculateBalance,
+} from "../domain/balance-history";
 import type { BalanceHistoryPoint } from "../domain/contracts";
 import { toAccountViewModel } from "./account.mapper";
 import {
@@ -64,11 +67,13 @@ export async function getAccountBalanceHistory(
   return buildBalanceHistory(
     effectiveStart,
     new Date(),
-    calculateBalance(Number.parseFloat(account.startingBalance ?? "0"), priorSum),
+    calculateBalance(
+      Number.parseFloat(account.startingBalance ?? "0"),
+      priorSum,
+    ),
     changes.map((item) => ({
       date: item.date,
       amount: Number.parseFloat(item.amount),
     })),
   );
 }
-

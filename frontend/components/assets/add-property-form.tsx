@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -18,8 +17,15 @@ import {
 import { CURRENCIES } from "@/lib/constants/currencies";
 import { createProperty } from "@/lib/actions/properties";
 import { PROPERTY_TYPES } from "./types";
-import { OwnersField, type OwnerValue } from "@/components/household/owners-field";
-import { saveOwners, usePeopleQuery, type ClientPerson } from "@/lib/people/client";
+import {
+  OwnersField,
+  type OwnerValue,
+} from "@/components/household/owners-field";
+import {
+  saveOwners,
+  usePeopleQuery,
+  type ClientPerson,
+} from "@/lib/people/client";
 
 interface AddPropertyFormProps {
   onSuccess?: () => void;
@@ -42,8 +48,13 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
   const [owners, setOwners] = useState<OwnerValue[]>([]);
   const [ownersError, setOwnersError] = useState<string | null>(null);
   const savePropertyOwnersMutation = useMutation({
-    mutationFn: ({ entityId, owners }: { entityId: string; owners: OwnerValue[] }) =>
-      saveOwners("property", entityId, owners),
+    mutationFn: ({
+      entityId,
+      owners,
+    }: {
+      entityId: string;
+      owners: OwnerValue[];
+    }) => saveOwners("property", entityId, owners),
   });
 
   useEffect(() => {
@@ -61,13 +72,19 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
     const allNull = owners.every((o) => o.share === null);
     const allSet = owners.every((o) => o.share !== null);
     if (!allNull && !allSet) {
-      setOwnersError(translate("allOwnersMustEitherSplitEquallyOrSpecifyShares"));
+      setOwnersError(
+        translate("allOwnersMustEitherSplitEquallyOrSpecifyShares"),
+      );
       return false;
     }
     if (allSet) {
       const sum = owners.reduce((acc, o) => acc + (o.share as number), 0);
       if (Math.abs(sum - 1) > 0.0001) {
-        setOwnersError(translate("sharesMustSumTo100Currentlyc8e2ea", { value1: Math.round(sum * 100) }));
+        setOwnersError(
+          translate("sharesMustSumTo100Currentlyc8e2ea", {
+            value1: Math.round(sum * 100),
+          }),
+        );
         return false;
       }
     }
@@ -79,7 +96,10 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
     try {
       await savePropertyOwnersMutation.mutateAsync({ entityId, owners });
     } catch (err) {
-      toast.error((err as Error).message || translate("propertyCreatedButFailedToSaveOwnershipYouCan"));
+      toast.error(
+        (err as Error).message ||
+          translate("propertyCreatedButFailedToSaveOwnershipYouCan"),
+      );
     }
   };
 
@@ -158,7 +178,10 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
         {/* Property Type */}
         <div className="space-y-2">
           <Label htmlFor="property-type">{translate("propertyType")}</Label>
-          <Select value={propertyType} onValueChange={(v) => v && setPropertyType(v)}>
+          <Select
+            value={propertyType}
+            onValueChange={(v) => v && setPropertyType(v)}
+          >
             <SelectTrigger>
               <SelectValue placeholder={translate("selectPropertyType")} />
             </SelectTrigger>
@@ -174,7 +197,9 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
 
         {/* Address */}
         <div className="space-y-2">
-          <Label htmlFor="property-address">{translate("addressOptional")}</Label>
+          <Label htmlFor="property-address">
+            {translate("addressOptional")}
+          </Label>
           <Input
             id="property-address"
             placeholder={translate("eG123MainStCityState")}

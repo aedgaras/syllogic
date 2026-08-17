@@ -1,6 +1,7 @@
 """
 Simple script to show Kraken account balances.
 """
+
 import os
 from dotenv import load_dotenv
 from app.integrations.kraken_adapter import KrakenAdapter

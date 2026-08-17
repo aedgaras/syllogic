@@ -1,9 +1,11 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import type { SubscriptionListRow as SubscriptionOrSuggestion } from "@/features/subscriptions/public";
-import { calculateMonthlyEquivalent, getCurrencyFallback } from "./subscription-math";
+import {
+  calculateMonthlyEquivalent,
+  getCurrencyFallback,
+} from "./subscription-math";
 
 interface SubscriptionsSummaryRowProps {
   data: SubscriptionOrSuggestion[];

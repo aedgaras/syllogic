@@ -1,7 +1,11 @@
 import { t as translate } from "@/i18n/translate";
 import { Suspense } from "react";
 import { Header } from "@/components/layout/header";
-import { ChartSkeleton, FiltersSkeleton, TableSkeleton } from "@/components/skeletons/page-skeletons";
+import {
+  ChartSkeleton,
+  FiltersSkeleton,
+  TableSkeleton,
+} from "@/components/skeletons/page-skeletons";
 import { parseCategorySpendingSearchParams } from "@/lib/category-spending/query-params";
 import { parseTransactionsSearchParams } from "@/features/transactions/public";
 import { CategorySpendingSection } from "./_sections";
@@ -12,7 +16,9 @@ interface CategorySpendingPageProps {
   }>;
 }
 
-export default async function CategorySpendingPage({ searchParams }: CategorySpendingPageProps) {
+export default async function CategorySpendingPage({
+  searchParams,
+}: CategorySpendingPageProps) {
   const params = await searchParams;
   const parsed = parseCategorySpendingSearchParams(params);
   const tableQueryState = parseTransactionsSearchParams(params);
@@ -30,7 +36,10 @@ export default async function CategorySpendingPage({ searchParams }: CategorySpe
           </div>
         }
       >
-        <CategorySpendingSection parsed={parsed} tableQueryState={tableQueryState} />
+        <CategorySpendingSection
+          parsed={parsed}
+          tableQueryState={tableQueryState}
+        />
       </Suspense>
     </>
   );

@@ -26,7 +26,9 @@ export function useLinkTransactionsController() {
       async loadAccounts(): Promise<TransactionLinkAccountOption[]> {
         return getUserAccountsForLinking();
       },
-      async loadGroup(transactionId: string): Promise<TransactionLinkGroup | null> {
+      async loadGroup(
+        transactionId: string,
+      ): Promise<TransactionLinkGroup | null> {
         return getTransactionLinkGroup(transactionId);
       },
       async unlinkGroup(groupId: string): Promise<boolean> {
@@ -43,7 +45,9 @@ export function useLinkTransactionsController() {
           return false;
         }
       },
-      async removeFromGroup(transactionId: string): Promise<{ success: boolean; groupDeleted: boolean }> {
+      async removeFromGroup(
+        transactionId: string,
+      ): Promise<{ success: boolean; groupDeleted: boolean }> {
         try {
           const result = await removeTransactionFromLinkGroup(transactionId);
           if (!result.success) {
@@ -60,8 +64,11 @@ export function useLinkTransactionsController() {
       async search(
         transactionId: string,
         isExpense: boolean,
-        filters: TransactionLinkSearchFilters
-      ): Promise<{ transactions: SuggestedTransactionLink[]; totalCount: number } | null> {
+        filters: TransactionLinkSearchFilters,
+      ): Promise<{
+        transactions: SuggestedTransactionLink[];
+        totalCount: number;
+      } | null> {
         try {
           return isExpense
             ? await findPotentialReimbursements(transactionId, filters)
@@ -74,7 +81,7 @@ export function useLinkTransactionsController() {
       async link(
         transactionId: string,
         selectedIds: string[],
-        linkType: "reimbursement" | "expense"
+        linkType: "reimbursement" | "expense",
       ): Promise<boolean> {
         if (selectedIds.length === 0) {
           toast.error("Please select at least one transaction to link");
@@ -85,8 +92,8 @@ export function useLinkTransactionsController() {
           if (existingLink) {
             const outcomes = await Promise.all(
               selectedIds.map((id) =>
-                addTransactionToLinkGroup(existingLink.groupId, id, linkType)
-              )
+                addTransactionToLinkGroup(existingLink.groupId, id, linkType),
+              ),
             );
             const count = outcomes.filter((result) => result.success).length;
             if (count === 0) {
@@ -100,7 +107,7 @@ export function useLinkTransactionsController() {
           const result = await createTransactionLinkGroup(
             transactionId,
             selectedIds,
-            linkType
+            linkType,
           );
           if (!result.success) {
             toast.error(result.error || "Failed to link transactions");
@@ -114,6 +121,6 @@ export function useLinkTransactionsController() {
         }
       },
     }),
-    []
+    [],
   );
 }

@@ -119,7 +119,10 @@ export function SubscriptionsClient({
     await toggle(subscription);
   };
 
-  const handleFormSuccess = (suggestionId?: string, subscriptionData?: SubscriptionViewModel) => {
+  const handleFormSuccess = (
+    suggestionId?: string,
+    subscriptionData?: SubscriptionViewModel,
+  ) => {
     if (subscriptionData) {
       upsert(subscriptionData, suggestionId);
     }

@@ -1,8 +1,8 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 /**
@@ -19,7 +19,7 @@ export function formatCurrency(
     maximumFractionDigits?: number;
     locale?: string;
     showSign?: boolean;
-  }
+  },
 ): string {
   const {
     minimumFractionDigits = 0,
@@ -65,7 +65,7 @@ export function formatAmount(amount: number, currency: string): string {
  */
 export function formatDate(
   date: Date,
-  options?: Intl.DateTimeFormatOptions | "short" | "medium" | "long"
+  options?: Intl.DateTimeFormatOptions | "short" | "medium" | "long",
 ): string {
   const presets: Record<string, Intl.DateTimeFormatOptions> = {
     short: { month: "short", day: "numeric" },
@@ -73,7 +73,10 @@ export function formatDate(
     long: { month: "long", day: "numeric", year: "numeric" },
   };
 
-  const formatOptions = typeof options === "string" ? presets[options] : options ?? presets.medium;
+  const formatOptions =
+    typeof options === "string"
+      ? presets[options]
+      : (options ?? presets.medium);
 
   return new Intl.DateTimeFormat("en-GB", formatOptions).format(date);
 }

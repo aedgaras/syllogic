@@ -2,6 +2,7 @@
 Database configuration for PostgreSQL using SQLAlchemy.
 This mirrors the Drizzle schema.ts structure from the frontend.
 """
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from pydantic_settings import BaseSettings
@@ -49,9 +50,9 @@ class Settings(BaseSettings):
     Database settings. Defaults to PostgreSQL.
     SQLite support has been removed - PostgreSQL is required.
     """
+
     database_url: str = os.getenv(
-        "DATABASE_URL",
-        "postgresql+psycopg://financeuser:financepass@localhost:5433/finance_db"
+        "DATABASE_URL", "postgresql+psycopg://financeuser:financepass@localhost:5433/finance_db"
     )
 
     class Config:
@@ -69,6 +70,7 @@ def _bounded_env_int(name: str, default: int, minimum: int = 0, maximum: int = 1
         value = default
     return max(minimum, min(maximum, value))
 
+
 # Configure database URL - ensure PostgreSQL format
 db_url = settings.database_url
 if db_url.startswith("postgresql://"):
@@ -82,7 +84,11 @@ if db_url.startswith("sqlite"):
         "postgresql+psycopg://user:password@localhost:5432/finance_db"
     )
 
-if _is_production_environment() and _should_enforce_database_ssl(db_url) and not _database_url_requires_ssl(db_url):
+if (
+    _is_production_environment()
+    and _should_enforce_database_ssl(db_url)
+    and not _database_url_requires_ssl(db_url)
+):
     raise ValueError(
         "Production DATABASE_URL must require TLS. "
         "Use one of: '?sslmode=require', '?sslmode=verify-ca', '?sslmode=verify-full', or '?ssl=true'."
@@ -94,7 +100,7 @@ engine = create_engine(
     pool_pre_ping=True,  # Verify connections before using
     pool_size=_bounded_env_int("DB_POOL_SIZE", 10, minimum=1),
     max_overflow=_bounded_env_int("DB_MAX_OVERFLOW", 20),
-    echo=False  # Set to True for SQL query logging
+    echo=False,  # Set to True for SQL query logging
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

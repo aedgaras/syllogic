@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useEffect, useRef } from "react";
 import {
   Sheet,
@@ -37,7 +36,12 @@ import type { TransactionWithRelations } from "@/features/transactions/public";
 import { Switch } from "@/components/ui/switch";
 import type { CategoryDisplay } from "@/shared/domain/display-contracts";
 import { filterSelectableCategories } from "@/lib/utils/category-utils";
-import { RiDeleteBinLine, RiEditLine, RiExchangeLine, RiLoopRightLine } from "@remixicon/react";
+import {
+  RiDeleteBinLine,
+  RiEditLine,
+  RiExchangeLine,
+  RiLoopRightLine,
+} from "@remixicon/react";
 import { useTransactionSheetController } from "@/features/transactions/hooks/use-transaction-sheet-controller";
 import { SubscriptionDetectionDialog } from "./subscription-detection-dialog";
 import { SubscriptionLinkedDialog } from "./subscription-linked-dialog";
@@ -50,7 +54,10 @@ interface TransactionSheetProps {
   transaction: TransactionWithRelations | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdateTransaction?: (id: string, updates: Partial<TransactionWithRelations>) => void;
+  onUpdateTransaction?: (
+    id: string,
+    updates: Partial<TransactionWithRelations>,
+  ) => void;
   onDeleteTransaction?: (id: string) => void;
   categories?: CategoryDisplay[];
   canDelete?: boolean;
@@ -71,7 +78,9 @@ export function TransactionSheet({
   // Filter out categories hidden from manual selection (e.g., Balancing Transfer)
   const selectableCategories = filterSelectableCategories(categories);
 
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null,
+  );
   const [includeInAnalytics, setIncludeInAnalytics] = useState<boolean>(true);
   const [instructions, setInstructions] = useState<string>("");
   const [hasChanges, setHasChanges] = useState(false);
@@ -79,16 +88,20 @@ export function TransactionSheet({
   const [isReverting, setIsReverting] = useState(false);
   const [isTogglingAnalytics, setIsTogglingAnalytics] = useState(false);
   const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
-  const [showLinkedSubscriptionDialog, setShowLinkedSubscriptionDialog] = useState(false);
-  const [showLinkReimbursementsDialog, setShowLinkReimbursementsDialog] = useState(false);
+  const [showLinkedSubscriptionDialog, setShowLinkedSubscriptionDialog] =
+    useState(false);
+  const [showLinkReimbursementsDialog, setShowLinkReimbursementsDialog] =
+    useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [isUnlinkingTransfer, setIsUnlinkingTransfer] = useState(false);
 
-  const isBalancingTransfer = transaction?.category?.name === "Balancing Transfer";
+  const isBalancingTransfer =
+    transaction?.category?.name === "Balancing Transfer";
   const isExpense = transaction?.transactionType === "debit";
   const hasLinkedSubscription = !!transaction?.recurringTransactionId;
-  const pocketAccountName = transaction?.internalTransfer?.pocketAccount?.name ?? null;
+  const pocketAccountName =
+    transaction?.internalTransfer?.pocketAccount?.name ?? null;
   const internalTransferId = transaction?.internalTransferId ?? null;
 
   // Track previous transaction ID to only reset state when a different transaction is opened
@@ -204,7 +217,10 @@ export function TransactionSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-md flex flex-col h-full overflow-hidden px-2.5">
+      <SheetContent
+        side="right"
+        className="sm:max-w-md flex flex-col h-full overflow-hidden px-2.5"
+      >
         {/* Fixed Header */}
         <SheetHeader className="space-y-1 p-0 pt-4 shrink-0">
           <SheetDescription className="text-muted-foreground">
@@ -216,7 +232,7 @@ export function TransactionSheet({
           <div
             className={cn(
               "text-3xl font-semibold tracking-tight pt-2",
-              transaction.amount > 0 && "text-[#22C55E]"
+              transaction.amount > 0 && "text-[#22C55E]",
             )}
           >
             {formatAmount(transaction.amount, transaction.currency || "EUR")}
@@ -240,7 +256,9 @@ export function TransactionSheet({
                 onClick={handleUnlinkInternalTransfer}
                 disabled={isUnlinkingTransfer}
               >
-                {isUnlinkingTransfer ? translate("unlinking") : translate("unlink")}
+                {isUnlinkingTransfer
+                  ? translate("unlinking")
+                  : translate("unlink")}
               </button>
             </div>
           )}
@@ -260,19 +278,21 @@ export function TransactionSheet({
                         className="h-3 w-3 shrink-0"
                         style={{
                           backgroundColor:
-                            categories.find((c) => c.id === selectedCategoryId)?.color ||
-                            "#A1A1AA",
+                            categories.find((c) => c.id === selectedCategoryId)
+                              ?.color || "#A1A1AA",
                         }}
                       />
                       <span>
-                        {categories.find((c) => c.id === selectedCategoryId)?.name ||
-                          translate("unknown")}
+                        {categories.find((c) => c.id === selectedCategoryId)
+                          ?.name || translate("unknown")}
                       </span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
                       <div className="h-3 w-3 shrink-0 bg-muted-foreground/30" />
-                      <span className="text-muted-foreground">{translate("uncategorized")}</span>
+                      <span className="text-muted-foreground">
+                        {translate("uncategorized")}
+                      </span>
                     </div>
                   )}
                 </SelectValue>
@@ -302,12 +322,13 @@ export function TransactionSheet({
               transaction.categorySystemId !== selectedCategoryId && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                   <span>{translate("aiSuggested")}</span>
-                  <span
-                    className="inline-flex items-center gap-1"
-                  >
+                  <span className="inline-flex items-center gap-1">
                     <span
                       className="h-2 w-2 shrink-0 inline-block"
-                      style={{ backgroundColor: transaction.categorySystem?.color || "#A1A1AA" }}
+                      style={{
+                        backgroundColor:
+                          transaction.categorySystem?.color || "#A1A1AA",
+                      }}
                     />
                     {transaction.categorySystem?.name || translate("unknown")}
                   </span>
@@ -327,10 +348,14 @@ export function TransactionSheet({
 
           {/* Categorization Instructions */}
           <div className="space-y-3">
-            <Label htmlFor="instructions">{translate("categorizationInstructions")}</Label>
+            <Label htmlFor="instructions">
+              {translate("categorizationInstructions")}
+            </Label>
             <Textarea
               id="instructions"
-              placeholder={translate("addInstructionsForHowThisMerchantOrSimilarTransactions")}
+              placeholder={translate(
+                "addInstructionsForHowThisMerchantOrSimilarTransactions",
+              )}
               value={instructions}
               onChange={(e) => handleInstructionsChange(e.target.value)}
               className="min-h-[100px] resize-none"
@@ -340,7 +365,9 @@ export function TransactionSheet({
           {/* Include in Analytics Toggle */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="include-analytics">{translate("includeInAnalytics")}</Label>
+              <Label htmlFor="include-analytics">
+                {translate("includeInAnalytics")}
+              </Label>
               <p className="text-xs text-muted-foreground">
                 {translate("whenDisabledThisTransactionWonTAppearInCharts")}
               </p>
@@ -361,32 +388,52 @@ export function TransactionSheet({
 
             <div className="grid gap-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{translate("merchant")}</span>
+                <span className="text-muted-foreground">
+                  {translate("merchant")}
+                </span>
                 <span>{transaction.merchant || "-"}</span>
               </div>
               {transaction.creditor && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">{translate("creditor")}</span>
-                  <span className="text-right max-w-[60%] break-words">{transaction.creditor}</span>
+                  <span className="text-muted-foreground">
+                    {translate("creditor")}
+                  </span>
+                  <span className="text-right max-w-[60%] break-words">
+                    {transaction.creditor}
+                  </span>
                 </div>
               )}
               {transaction.debtor && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">{translate("debtor")}</span>
-                  <span className="text-right max-w-[60%] break-words">{transaction.debtor}</span>
+                  <span className="text-muted-foreground">
+                    {translate("debtor")}
+                  </span>
+                  <span className="text-right max-w-[60%] break-words">
+                    {transaction.debtor}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{translate("account85dfa3")}</span>
+                <span className="text-muted-foreground">
+                  {translate("account85dfa3")}
+                </span>
                 <span>{transaction.account?.name || translate("unknown")}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{translate("institution")}</span>
+                <span className="text-muted-foreground">
+                  {translate("institution")}
+                </span>
                 <span>{transaction.account?.institution || "—"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{translate("status")}</span>
-                <span>{transaction.pending ? translate("pending") : translate("completed")}</span>
+                <span className="text-muted-foreground">
+                  {translate("status")}
+                </span>
+                <span>
+                  {transaction.pending
+                    ? translate("pending")
+                    : translate("completed")}
+                </span>
               </div>
             </div>
           </div>
@@ -401,7 +448,9 @@ export function TransactionSheet({
               onClick={() => setShowEditDialog(true)}
             >
               <RiEditLine className="h-4 w-4 mr-2" />
-              {internalTransferId ? translate("viewTransferDetails") : translate("editTransaction")}
+              {internalTransferId
+                ? translate("viewTransferDetails")
+                : translate("editTransaction")}
             </Button>
           )}
 
@@ -414,7 +463,9 @@ export function TransactionSheet({
             >
               <RiLoopRightLine className="h-4 w-4 mr-2" />
               {hasLinkedSubscription
-                ? translate("linked63de9d", { value1: transaction.recurringTransaction?.name })
+                ? translate("linked63de9d", {
+                    value1: transaction.recurringTransaction?.name,
+                  })
                 : translate("markAsSubscription")}
             </Button>
           )}
@@ -451,15 +502,21 @@ export function TransactionSheet({
                     disabled={isReverting}
                   >
                     <RiDeleteBinLine className="h-4 w-4 mr-2" />
-                    {isReverting ? translate("revertingd78047") : translate("revertBalancingTransfer")}
+                    {isReverting
+                      ? translate("revertingd78047")
+                      : translate("revertBalancingTransfer")}
                   </Button>
                 }
               />
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>{translate("revertBalancingTransfer49544b")}</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    {translate("revertBalancingTransfer49544b")}
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    {translate("thisWillDeleteTheBalancingTransferAndRecalculateThe")}
+                    {translate(
+                      "thisWillDeleteTheBalancingTransferAndRecalculateThe",
+                    )}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

@@ -2,13 +2,23 @@
 Main FastMCP server setup for Syllogic.
 Registers all tools from the tools modules.
 """
+
 from fastmcp import FastMCP
 from fastmcp.server.auth import RemoteAuthProvider
 from pydantic import AnyHttpUrl
 
 from app.db_helpers import get_mcp_user_id
 from app.mcp.auth import CompositeAuthProvider, AS_ISSUER, MCP_PUBLIC_URL
-from app.mcp.tools import accounts, categories, transactions, analytics, recurring, investments, people as people_tools, reports as report_tools
+from app.mcp.tools import (
+    accounts,
+    categories,
+    transactions,
+    analytics,
+    recurring,
+    investments,
+    people as people_tools,
+    reports as report_tools,
+)
 
 _auth = RemoteAuthProvider(
     token_verifier=CompositeAuthProvider(),
@@ -118,6 +128,7 @@ happened.
 # Account Tools
 # ============================================================================
 
+
 @mcp.tool
 def list_accounts(
     user_id: str | None = None,
@@ -142,7 +153,9 @@ def list_accounts(
         List of account dictionaries with id, name, account_type, asset_class,
         institution, currency, balance, etc.
     """
-    return accounts.list_accounts(get_mcp_user_id(user_id), include_inactive, asset_class, person_ids)
+    return accounts.list_accounts(
+        get_mcp_user_id(user_id), include_inactive, asset_class, person_ids
+    )
 
 
 @mcp.tool
@@ -190,6 +203,7 @@ def get_account_balance_history(
 # ============================================================================
 # Category Tools
 # ============================================================================
+
 
 @mcp.tool
 def list_categories(user_id: str | None = None, category_type: str | None = None) -> list[dict]:
@@ -276,6 +290,7 @@ def get_category_tree(user_id: str | None = None) -> list[dict]:
 # Transaction Tools
 # ============================================================================
 
+
 @mcp.tool
 def list_transactions(
     account_id: str | None = None,
@@ -313,8 +328,18 @@ def list_transactions(
         Dict with transactions list, limit, page (or None), and next_cursor
     """
     return transactions.list_transactions(
-        get_mcp_user_id(user_id), account_id, category_id, from_date, to_date, search,
-        limit, page, cursor, sort_by, uncategorized, category_type,
+        get_mcp_user_id(user_id),
+        account_id,
+        category_id,
+        from_date,
+        to_date,
+        search,
+        limit,
+        page,
+        cursor,
+        sort_by,
+        uncategorized,
+        category_type,
     )
 
 
@@ -387,8 +412,16 @@ def search_transactions(
         )
     """
     return transactions.search_transactions(
-        get_mcp_user_id(user_id), query, exclude_category_id, match_mode, ids_only,
-        limit, page, cursor, sort_by, account_id,
+        get_mcp_user_id(user_id),
+        query,
+        exclude_category_id,
+        match_mode,
+        ids_only,
+        limit,
+        page,
+        cursor,
+        sort_by,
+        account_id,
     )
 
 
@@ -452,16 +485,21 @@ def search_transactions_multi(
         )
     """
     return transactions.search_transactions_multi(
-        get_mcp_user_id(user_id), queries, exclude_category_id, match_mode, ids_only,
-        max_results, cursor, sort_by, account_id,
+        get_mcp_user_id(user_id),
+        queries,
+        exclude_category_id,
+        match_mode,
+        ids_only,
+        max_results,
+        cursor,
+        sort_by,
+        account_id,
     )
 
 
 @mcp.tool
 def update_transaction_category(
-    transaction_id: str,
-    category_id: str,
-    user_id: str | None = None
+    transaction_id: str, category_id: str, user_id: str | None = None
 ) -> dict:
     """
     Update the category of a transaction (user override).
@@ -477,7 +515,9 @@ def update_transaction_category(
     Returns:
         Dict with success status and updated transaction, or error message
     """
-    return transactions.update_transaction_category(get_mcp_user_id(user_id), transaction_id, category_id)
+    return transactions.update_transaction_category(
+        get_mcp_user_id(user_id), transaction_id, category_id
+    )
 
 
 @mcp.tool
@@ -530,6 +570,7 @@ def bulk_update_transaction_categories(
 # ============================================================================
 # Analytics Tools
 # ============================================================================
+
 
 @mcp.tool
 def get_spending_by_category(
@@ -671,10 +712,10 @@ def get_top_merchants(
 # Recurring Transaction Tools
 # ============================================================================
 
+
 @mcp.tool
 def list_recurring_transactions(
-    is_active: bool | None = None,
-    user_id: str | None = None
+    is_active: bool | None = None, user_id: str | None = None
 ) -> list[dict]:
     """
     List recurring transactions (subscriptions/bills) for a user.
@@ -721,6 +762,7 @@ def get_recurring_summary(user_id: str | None = None) -> dict:
 # ============================================================================
 # Investment Tools
 # ============================================================================
+
 
 @mcp.tool
 def list_holdings(
@@ -793,7 +835,9 @@ def get_portfolio_history(
     Returns:
         List of {date, value_user_currency} entries sorted by date.
     """
-    return investments.get_portfolio_history(get_mcp_user_id(user_id), from_date, to_date, person_ids)
+    return investments.get_portfolio_history(
+        get_mcp_user_id(user_id), from_date, to_date, person_ids
+    )
 
 
 @mcp.tool
@@ -859,9 +903,7 @@ def import_broker_trades(
             - errors (list): per-trade validation errors with {index, trade, reason}
             - affected_symbols (list[str]): symbols touched (Holding rows recomputed)
     """
-    return investments.import_broker_trades(
-        get_mcp_user_id(user_id), account_id, trades, dry_run
-    )
+    return investments.import_broker_trades(get_mcp_user_id(user_id), account_id, trades, dry_run)
 
 
 @mcp.tool
@@ -954,6 +996,7 @@ def get_holding_trades(
 # People & Household Tools
 # ============================================================================
 
+
 @mcp.tool
 def list_people(user_id: str | None = None) -> list[dict]:
     """
@@ -991,6 +1034,7 @@ def get_household_summary(
 # ============================================================================
 # Report Tools
 # ============================================================================
+
 
 @mcp.tool
 def list_reports(user_id: str | None = None) -> list[dict]:

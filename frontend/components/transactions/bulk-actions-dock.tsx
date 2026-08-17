@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useMemo } from "react";
 import {
   RiPriceTag3Line,
@@ -68,15 +67,20 @@ export function BulkActionsDock({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Check if any selected transaction is already linked
-  const hasLinkedTransactions = selectedTransactions.some((t) => t.transactionLink !== null);
+  const hasLinkedTransactions = selectedTransactions.some(
+    (t) => t.transactionLink !== null,
+  );
 
   // Filter out categories hidden from selection, then apply search filter
-  const selectableCategories = useMemo(() => filterSelectableCategories(categories), [categories]);
+  const selectableCategories = useMemo(
+    () => filterSelectableCategories(categories),
+    [categories],
+  );
 
   const filteredCategories = useMemo(() => {
     if (!searchQuery.trim()) return selectableCategories;
     return selectableCategories.filter((cat) =>
-      cat.name.toLowerCase().includes(searchQuery.toLowerCase())
+      cat.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
   }, [selectableCategories, searchQuery]);
 
@@ -135,7 +139,9 @@ export function BulkActionsDock({
       >
         {/* Selection count */}
         <div className="flex items-center gap-2 px-2 text-sm font-medium">
-          <span>{selectedCount} {translate("selected")}</span>
+          <span>
+            {selectedCount} {translate("selected")}
+          </span>
         </div>
 
         <Separator orientation="vertical" className="h-8" />
@@ -150,11 +156,21 @@ export function BulkActionsDock({
         >
           <PopoverTrigger
             nativeButton={false}
-            render={<DockIcon className="bg-muted hover:bg-muted/80" title={translate("categorize")} />}
+            render={
+              <DockIcon
+                className="bg-muted hover:bg-muted/80"
+                title={translate("categorize")}
+              />
+            }
           >
             <RiPriceTag3Line className="size-5" />
           </PopoverTrigger>
-          <PopoverContent className="w-56 p-0" align="center" side="top" sideOffset={12}>
+          <PopoverContent
+            className="w-56 p-0"
+            align="center"
+            side="top"
+            sideOffset={12}
+          >
             <div className="p-2 border-b space-y-2">
               <p className="text-xs font-medium text-muted-foreground">
                 {translate("selectCategory")}
@@ -212,11 +228,21 @@ export function BulkActionsDock({
         >
           <PopoverTrigger
             nativeButton={false}
-            render={<DockIcon className="bg-muted hover:bg-muted/80" title={translate("analytics")} />}
+            render={
+              <DockIcon
+                className="bg-muted hover:bg-muted/80"
+                title={translate("analytics")}
+              />
+            }
           >
             <RiLineChartLine className="size-5" />
           </PopoverTrigger>
-          <PopoverContent className="w-48 p-0" align="center" side="top" sideOffset={12}>
+          <PopoverContent
+            className="w-48 p-0"
+            align="center"
+            side="top"
+            sideOffset={12}
+          >
             <div className="p-2 border-b">
               <p className="text-xs font-medium text-muted-foreground">
                 {translate("analytics")}
@@ -256,7 +282,9 @@ export function BulkActionsDock({
                       ? "opacity-50 cursor-not-allowed"
                       : "hover:bg-muted/80"
                   }`}
-                  onClick={hasLinkedTransactions ? undefined : handleLinkTransactions}
+                  onClick={
+                    hasLinkedTransactions ? undefined : handleLinkTransactions
+                  }
                 />
               }
             >

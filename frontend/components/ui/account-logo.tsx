@@ -23,7 +23,7 @@ export function AccountLogo({
 }: AccountLogoProps) {
   const resolvedLogoUrl = useMemo(
     () => withAssetVersion(logoUrl, updatedAt),
-    [logoUrl, updatedAt]
+    [logoUrl, updatedAt],
   );
 
   return (

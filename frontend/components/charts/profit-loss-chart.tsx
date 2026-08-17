@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import * as React from "react";
 import {
   Bar,
@@ -47,15 +46,15 @@ const chartConfig = {
   income: {
     label: translate("income1c89b1"),
     theme: {
-      light: "oklch(0.147 0.004 49.25)",   // near black in light mode
-      dark: "oklch(0.985 0.001 106.423)",  // near white in dark mode
+      light: "oklch(0.147 0.004 49.25)", // near black in light mode
+      dark: "oklch(0.985 0.001 106.423)", // near white in dark mode
     },
   },
   expenses: {
     label: translate("expenses"),
     theme: {
-      light: "oklch(0.553 0.013 58.071)",  // muted gray in light mode
-      dark: "oklch(0.553 0.013 58.071)",   // muted gray in dark mode
+      light: "oklch(0.553 0.013 58.071)", // muted gray in light mode
+      dark: "oklch(0.553 0.013 58.071)", // muted gray in dark mode
     },
   },
 } satisfies ChartConfig;
@@ -86,7 +85,12 @@ interface CustomTooltipProps {
   currency: string;
 }
 
-function CustomTooltip({ active, payload, label, currency }: CustomTooltipProps) {
+function CustomTooltip({
+  active,
+  payload,
+  label,
+  currency,
+}: CustomTooltipProps) {
   if (!active || !payload?.length) {
     return null;
   }
@@ -106,7 +110,9 @@ function CustomTooltip({ active, payload, label, currency }: CustomTooltipProps)
               className="h-3 w-1 shrink-0"
               style={{ backgroundColor: "var(--color-income)" }}
             />
-            <span className="text-muted-foreground">{translate("income1c89b1")}</span>
+            <span className="text-muted-foreground">
+              {translate("income1c89b1")}
+            </span>
           </div>
           <span className="font-mono font-medium tabular-nums">
             {formatCurrency(income, currency)}
@@ -118,7 +124,9 @@ function CustomTooltip({ active, payload, label, currency }: CustomTooltipProps)
               className="h-3 w-1 shrink-0"
               style={{ backgroundColor: "var(--color-expenses)" }}
             />
-            <span className="text-muted-foreground">{translate("expenses")}</span>
+            <span className="text-muted-foreground">
+              {translate("expenses")}
+            </span>
           </div>
           <span className="font-mono font-medium tabular-nums">
             {formatCurrency(expenses, currency)}
@@ -129,7 +137,7 @@ function CustomTooltip({ active, payload, label, currency }: CustomTooltipProps)
           <span
             className={cn(
               "font-mono font-medium tabular-nums",
-              net >= 0 ? "text-emerald-500" : "text-red-500"
+              net >= 0 ? "text-emerald-500" : "text-red-500",
             )}
           >
             {net >= 0 ? "+" : ""}
@@ -154,10 +162,15 @@ export function ProfitLossChart({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium">{translate("incomeVsExpenses")}</CardTitle>
+        <CardTitle className="text-sm font-medium">
+          {translate("incomeVsExpenses")}
+        </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        <ChartContainer config={chartConfig} className="h-[260px] w-full sm:h-[300px]">
+        <ChartContainer
+          config={chartConfig}
+          className="h-[260px] w-full sm:h-[300px]"
+        >
           <ComposedChart
             data={data}
             margin={{ top: 20, right: 8, left: -8, bottom: 20 }}
@@ -174,7 +187,9 @@ export function ProfitLossChart({
               tickLine={false}
               tick={({ x, y, payload }) => {
                 const axisLabel =
-                  typeof payload.value === "string" ? payload.value : String(payload.value);
+                  typeof payload.value === "string"
+                    ? payload.value
+                    : String(payload.value);
                 return (
                   <g transform={`translate(${x},${y})`}>
                     <text
@@ -220,7 +235,9 @@ export function ProfitLossChart({
                 strokeDasharray="5 5"
                 strokeWidth={1}
                 label={{
-                  value: translate("avg", { value1: formatCompactNumber(average) }),
+                  value: translate("avg", {
+                    value1: formatCompactNumber(average),
+                  }),
                   position: "right",
                   fill: "var(--muted-foreground)",
                   fontSize: 11,

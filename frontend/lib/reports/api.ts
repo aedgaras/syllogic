@@ -23,11 +23,20 @@ export function getReport(id: string): Promise<Report> {
 }
 
 export function createReport(input: Partial<ReportInput>): Promise<Report> {
-  return request<Report>("/reports", { method: "POST", body: JSON.stringify(input) });
+  return request<Report>("/reports", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
-export function updateReport(id: string, input: Partial<ReportInput>): Promise<Report> {
-  return request<Report>(`/reports/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export function updateReport(
+  id: string,
+  input: Partial<ReportInput>,
+): Promise<Report> {
+  return request<Report>(`/reports/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
 }
 
 export function deleteReport(id: string): Promise<void> {
@@ -63,7 +72,7 @@ export async function listPeople(): Promise<{ id: string; name: string }[]> {
 }
 
 export async function listOwners(
-  accountIds: string[]
+  accountIds: string[],
 ): Promise<Record<string, { personId: string }[]>> {
   if (accountIds.length === 0) return {};
   const res = await fetch("/api/owners/batch", {

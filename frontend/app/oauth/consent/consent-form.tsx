@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -24,8 +23,8 @@ export function ConsentForm({ params }: Props) {
     try {
       const oauthQuery = new URLSearchParams(
         Object.entries(params).flatMap(([k, v]) =>
-          typeof v === "string" ? [[k, v] as [string, string]] : []
-        )
+          typeof v === "string" ? [[k, v] as [string, string]] : [],
+        ),
       ).toString();
       const scope = typeof params.scope === "string" ? params.scope : undefined;
       const { response, body } = await consentMutation.mutateAsync({
@@ -48,7 +47,9 @@ export function ConsentForm({ params }: Props) {
       }
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : translate("somethingWentWrongTryAgain")
+        err instanceof Error
+          ? err.message
+          : translate("somethingWentWrongTryAgain"),
       );
     } finally {
       setPending(null);
@@ -63,7 +64,9 @@ export function ConsentForm({ params }: Props) {
           disabled={pending !== null}
           onClick={() => submit("allow")}
         >
-          {pending === "allow" ? translate("authorizing") : translate("allow3ad0e3")}
+          {pending === "allow"
+            ? translate("authorizing")
+            : translate("allow3ad0e3")}
         </Button>
         <Button
           variant="outline"

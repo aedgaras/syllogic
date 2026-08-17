@@ -1,6 +1,7 @@
 """
 Transaction tools for the MCP server.
 """
+
 from __future__ import annotations
 
 import base64
@@ -13,7 +14,7 @@ from sqlalchemy import or_, and_, func
 from sqlalchemy.orm import joinedload
 
 from app.mcp.dependencies import get_db, validate_uuid, validate_date
-from app.models import Transaction, Account, Category
+from app.models import Transaction, Category
 
 
 # Type alias for match modes
@@ -151,10 +152,10 @@ def list_transactions(
             query = query.filter(Transaction.account_id == account_uuid)
         if category_uuid:
             query = query.filter(
-                (Transaction.category_id == category_uuid) |
-                and_(
+                (Transaction.category_id == category_uuid)
+                | and_(
                     Transaction.category_id.is_(None),
-                    Transaction.category_system_id == category_uuid
+                    Transaction.category_system_id == category_uuid,
                 )
             )
         if uncategorized:
@@ -165,9 +166,8 @@ def list_transactions(
         if category_type:
             query = query.join(
                 Category,
-                Category.id == func.coalesce(
-                    Transaction.category_id, Transaction.category_system_id
-                ),
+                Category.id
+                == func.coalesce(Transaction.category_id, Transaction.category_system_id),
             ).filter(Category.category_type == category_type)
         if from_dt:
             query = query.filter(Transaction.booked_at >= from_dt)
@@ -206,13 +206,17 @@ def list_transactions(
                     "description": txn.description,
                     "merchant": txn.merchant,
                     "category_id": str(txn.category_id) if txn.category_id else None,
-                    "category_system_id": str(txn.category_system_id) if txn.category_system_id else None,
+                    "category_system_id": str(txn.category_system_id)
+                    if txn.category_system_id
+                    else None,
                     "category_name": txn.category.name if txn.category else None,
                     "booked_at": txn.booked_at.isoformat() if txn.booked_at else None,
                     "pending": txn.pending,
                     "transaction_type": txn.transaction_type,
                     "include_in_analytics": txn.include_in_analytics,
-                    "recurring_transaction_id": str(txn.recurring_transaction_id) if txn.recurring_transaction_id else None,
+                    "recurring_transaction_id": str(txn.recurring_transaction_id)
+                    if txn.recurring_transaction_id
+                    else None,
                 }
                 for txn in transactions_rows
             ],
@@ -240,10 +244,7 @@ def get_transaction(user_id: str, transaction_id: str) -> dict | None:
     with get_db() as db:
         txn = (
             db.query(Transaction)
-            .filter(
-                Transaction.id == txn_uuid,
-                Transaction.user_id == user_id
-            )
+            .filter(Transaction.id == txn_uuid, Transaction.user_id == user_id)
             .options(joinedload(Transaction.account), joinedload(Transaction.category))
             .first()
         )
@@ -270,7 +271,9 @@ def get_transaction(user_id: str, transaction_id: str) -> dict | None:
             "categorization_instructions": txn.categorization_instructions,
             "enrichment_data": txn.enrichment_data,
             "include_in_analytics": txn.include_in_analytics,
-            "recurring_transaction_id": str(txn.recurring_transaction_id) if txn.recurring_transaction_id else None,
+            "recurring_transaction_id": str(txn.recurring_transaction_id)
+            if txn.recurring_transaction_id
+            else None,
             "created_at": txn.created_at.isoformat() if txn.created_at else None,
             "updated_at": txn.updated_at.isoformat() if txn.updated_at else None,
         }
@@ -298,14 +301,14 @@ def _build_search_filter(query_str: str, match_mode: MatchMode):
         # We use regex-like patterns: look for word at start, end, or surrounded by non-word chars
         # PostgreSQL ILIKE doesn't support regex, so we approximate with multiple conditions
         patterns = [
-            f"{query_str}",           # Exact match
-            f"{query_str} %",         # Word at start
-            f"% {query_str}",         # Word at end
-            f"% {query_str} %",       # Word in middle
-            f"{query_str},%",         # Word before comma
-            f"%,{query_str}",         # Word after comma
-            f"{query_str}.%",         # Word before period
-            f"%.{query_str}",         # Word after period
+            f"{query_str}",  # Exact match
+            f"{query_str} %",  # Word at start
+            f"% {query_str}",  # Word at end
+            f"% {query_str} %",  # Word in middle
+            f"{query_str},%",  # Word before comma
+            f"%,{query_str}",  # Word after comma
+            f"{query_str}.%",  # Word before period
+            f"%.{query_str}",  # Word after period
         ]
         description_conditions = [Transaction.description.ilike(p) for p in patterns]
         merchant_conditions = [Transaction.merchant.ilike(p) for p in patterns]
@@ -375,18 +378,14 @@ def search_transactions(
     with get_db() as db:
         # Build base query with user filter
         base_filter = and_(
-            Transaction.user_id == user_id,
-            _build_search_filter(query_str, match_mode)
+            Transaction.user_id == user_id, _build_search_filter(query_str, match_mode)
         )
 
         # Add category exclusion if specified
         if exclude_cat_uuid:
             base_filter = and_(
                 base_filter,
-                or_(
-                    Transaction.category_id != exclude_cat_uuid,
-                    Transaction.category_id.is_(None)
-                )
+                or_(Transaction.category_id != exclude_cat_uuid, Transaction.category_id.is_(None)),
             )
 
         # Add account filter if specified
@@ -402,8 +401,7 @@ def search_transactions(
         # Only load relationships if we need full data
         if not ids_only:
             query_obj = query_obj.options(
-                joinedload(Transaction.account),
-                joinedload(Transaction.category)
+                joinedload(Transaction.account), joinedload(Transaction.category)
             )
 
         # Apply cursor or offset pagination
@@ -420,7 +418,9 @@ def search_transactions(
 
         rows = paginated.all()
         next_cursor = _build_next_cursor(rows, sort_by, limit)
-        has_more = next_cursor is not None if cursor else ((page - 1) * limit + len(rows) < total_count)
+        has_more = (
+            next_cursor is not None if cursor else ((page - 1) * limit + len(rows) < total_count)
+        )
 
         if ids_only:
             return {
@@ -523,19 +523,13 @@ def search_transactions_multi(
             return {"error": "No valid queries provided", "success": False}
 
         # Combine all query filters with OR
-        combined_filter = and_(
-            Transaction.user_id == user_id,
-            or_(*query_filters)
-        )
+        combined_filter = and_(Transaction.user_id == user_id, or_(*query_filters))
 
         # Add category exclusion if specified
         if exclude_cat_uuid:
             combined_filter = and_(
                 combined_filter,
-                or_(
-                    Transaction.category_id != exclude_cat_uuid,
-                    Transaction.category_id.is_(None)
-                )
+                or_(Transaction.category_id != exclude_cat_uuid, Transaction.category_id.is_(None)),
             )
 
         # Add account filter if specified
@@ -550,8 +544,7 @@ def search_transactions_multi(
 
         if not ids_only:
             query_obj = query_obj.options(
-                joinedload(Transaction.account),
-                joinedload(Transaction.category)
+                joinedload(Transaction.account), joinedload(Transaction.category)
             )
 
         # cursor is not None means cursor mode is opted-in (even empty string)
@@ -560,10 +553,14 @@ def search_transactions_multi(
             paginated = _paginate_query(query_obj, cursor or None, sort_by, max_results)
         else:
             primary_col, direction = _sort_expr(sort_by)
-            paginated = query_obj.order_by(direction(primary_col), direction(Transaction.id)).limit(max_results)
+            paginated = query_obj.order_by(direction(primary_col), direction(Transaction.id)).limit(
+                max_results
+            )
 
         transactions_rows = paginated.all()
-        next_cursor = _build_next_cursor(transactions_rows, sort_by, max_results) if cursor_mode else None
+        next_cursor = (
+            _build_next_cursor(transactions_rows, sort_by, max_results) if cursor_mode else None
+        )
 
         # Count matches per query (for transparency)
         query_counts = {}
@@ -571,8 +568,7 @@ def search_transactions_multi(
             q_str = q[:500] if q else ""
             if q_str:
                 q_filter = and_(
-                    Transaction.user_id == user_id,
-                    _build_search_filter(q_str, match_mode)
+                    Transaction.user_id == user_id, _build_search_filter(q_str, match_mode)
                 )
                 if account_uuid:
                     q_filter = and_(q_filter, Transaction.account_id == account_uuid)
@@ -581,14 +577,16 @@ def search_transactions_multi(
                         q_filter,
                         or_(
                             Transaction.category_id != exclude_cat_uuid,
-                            Transaction.category_id.is_(None)
-                        )
+                            Transaction.category_id.is_(None),
+                        ),
                     )
                 query_counts[q] = db.query(func.count(Transaction.id)).filter(q_filter).scalar()
 
         result = {
             "total_count": total_count,
-            "capped": (not cursor_mode) and (len(transactions_rows) >= max_results) and (total_count > max_results),
+            "capped": (not cursor_mode)
+            and (len(transactions_rows) >= max_results)
+            and (total_count > max_results),
             "query_counts": query_counts,
             "next_cursor": next_cursor,
         }
@@ -615,11 +613,7 @@ def search_transactions_multi(
         return result
 
 
-def update_transaction_category(
-    user_id: str,
-    transaction_id: str,
-    category_id: str
-) -> dict:
+def update_transaction_category(user_id: str, transaction_id: str, category_id: str) -> dict:
     """
     Update the category of a transaction (user override).
 
@@ -645,19 +639,19 @@ def update_transaction_category(
 
     with get_db() as db:
         # Verify transaction belongs to user
-        txn = db.query(Transaction).filter(
-            Transaction.id == txn_uuid,
-            Transaction.user_id == user_id
-        ).first()
+        txn = (
+            db.query(Transaction)
+            .filter(Transaction.id == txn_uuid, Transaction.user_id == user_id)
+            .first()
+        )
 
         if not txn:
             return {"success": False, "error": "Transaction not found"}
 
         # Verify category belongs to user
-        category = db.query(Category).filter(
-            Category.id == cat_uuid,
-            Category.user_id == user_id
-        ).first()
+        category = (
+            db.query(Category).filter(Category.id == cat_uuid, Category.user_id == user_id).first()
+        )
 
         if not category:
             return {"success": False, "error": "Category not found"}
@@ -680,7 +674,7 @@ def update_transaction_category(
                 "description": txn.description,
                 "merchant": txn.merchant,
                 "amount": float(txn.amount),
-            }
+            },
         }
 
 
@@ -720,10 +714,14 @@ def bulk_update_transaction_categories(
 
     with get_db() as db:
         # Verify category belongs to user
-        category = db.query(Category).filter(
-            Category.id == cat_uuid,
-            Category.user_id == user_id,
-        ).first()
+        category = (
+            db.query(Category)
+            .filter(
+                Category.id == cat_uuid,
+                Category.user_id == user_id,
+            )
+            .first()
+        )
 
         if not category:
             return {"success": False, "error": "Category not found"}
@@ -738,14 +736,18 @@ def bulk_update_transaction_categories(
                 invalid_ids.append(tid)
 
         found = (
-            db.query(Transaction)
-            .filter(
-                Transaction.user_id == user_id,
-                Transaction.id.in_(valid_uuids),
+            (
+                db.query(Transaction)
+                .filter(
+                    Transaction.user_id == user_id,
+                    Transaction.id.in_(valid_uuids),
+                )
+                .options(joinedload(Transaction.category))
+                .all()
             )
-            .options(joinedload(Transaction.category))
-            .all()
-        ) if valid_uuids else []
+            if valid_uuids
+            else []
+        )
 
         found_by_id = {str(t.id): t for t in found}
         not_found_ids = [str(u) for u in valid_uuids if str(u) not in found_by_id]
@@ -787,10 +789,14 @@ def bulk_update_transaction_categories(
             change_uuids = [t.id for t in to_change]
             updated = 0
             if change_uuids:
-                updated = db.query(Transaction).filter(
-                    Transaction.user_id == user_id,
-                    Transaction.id.in_(change_uuids),
-                ).update({Transaction.category_id: cat_uuid}, synchronize_session=False)
+                updated = (
+                    db.query(Transaction)
+                    .filter(
+                        Transaction.user_id == user_id,
+                        Transaction.id.in_(change_uuids),
+                    )
+                    .update({Transaction.category_id: cat_uuid}, synchronize_session=False)
+                )
                 db.commit()
         except Exception as e:
             db.rollback()

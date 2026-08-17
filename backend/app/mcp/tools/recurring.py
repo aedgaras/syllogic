@@ -1,6 +1,7 @@
 """
 Recurring transaction tools for the MCP server.
 """
+
 from typing import Optional
 
 from sqlalchemy.orm import joinedload
@@ -9,10 +10,7 @@ from app.mcp.dependencies import get_db, validate_uuid
 from app.models import RecurringTransaction
 
 
-def list_recurring_transactions(
-    user_id: str,
-    is_active: Optional[bool] = None
-) -> list[dict]:
+def list_recurring_transactions(user_id: str, is_active: Optional[bool] = None) -> list[dict]:
     """
     List recurring transactions (subscriptions/bills) for a user.
 
@@ -24,11 +22,13 @@ def list_recurring_transactions(
         List of recurring transactions with details
     """
     with get_db() as db:
-        query = db.query(RecurringTransaction).filter(
-            RecurringTransaction.user_id == user_id
-        ).options(
-            joinedload(RecurringTransaction.category),
-            joinedload(RecurringTransaction.account),
+        query = (
+            db.query(RecurringTransaction)
+            .filter(RecurringTransaction.user_id == user_id)
+            .options(
+                joinedload(RecurringTransaction.category),
+                joinedload(RecurringTransaction.account),
+            )
         )
 
         if is_active is not None:
@@ -58,10 +58,7 @@ def list_recurring_transactions(
         ]
 
 
-def get_recurring_transaction(
-    user_id: str,
-    recurring_id: str
-) -> dict | None:
+def get_recurring_transaction(user_id: str, recurring_id: str) -> dict | None:
     """
     Get a single recurring transaction by ID.
 
@@ -80,8 +77,7 @@ def get_recurring_transaction(
         recurring = (
             db.query(RecurringTransaction)
             .filter(
-                RecurringTransaction.id == recurring_uuid,
-                RecurringTransaction.user_id == user_id
+                RecurringTransaction.id == recurring_uuid, RecurringTransaction.user_id == user_id
             )
             .options(joinedload(RecurringTransaction.category))
             .options(joinedload(RecurringTransaction.account))
@@ -121,18 +117,19 @@ def get_recurring_summary(user_id: str) -> dict:
         Summary with totals by frequency and overall statistics
     """
     with get_db() as db:
-        recurring = db.query(RecurringTransaction).filter(
-            RecurringTransaction.user_id == user_id,
-            RecurringTransaction.is_active == True
-        ).all()
+        recurring = (
+            db.query(RecurringTransaction)
+            .filter(RecurringTransaction.user_id == user_id, RecurringTransaction.is_active == True)
+            .all()
+        )
 
         # Calculate monthly equivalent for each frequency
         frequency_multipliers = {
-            "weekly": 4.33,      # ~4.33 weeks per month
-            "biweekly": 2.17,   # ~2.17 biweeks per month
+            "weekly": 4.33,  # ~4.33 weeks per month
+            "biweekly": 2.17,  # ~2.17 biweeks per month
             "monthly": 1,
-            "quarterly": 0.33,   # 1/3 of a quarter
-            "yearly": 0.083,     # 1/12 of a year
+            "quarterly": 0.33,  # 1/3 of a quarter
+            "yearly": 0.083,  # 1/12 of a year
         }
 
         total_monthly = 0
@@ -154,18 +151,18 @@ def get_recurring_summary(user_id: str) -> dict:
             # Group by importance
             importance = r.importance or 3
             if importance in by_importance:
-                by_importance[importance].append({
-                    "name": r.name,
-                    "amount": float(r.amount),
-                    "frequency": r.frequency,
-                })
+                by_importance[importance].append(
+                    {
+                        "name": r.name,
+                        "amount": float(r.amount),
+                        "frequency": r.frequency,
+                    }
+                )
 
         return {
             "total_active": len(recurring),
             "total_monthly_cost": round(total_monthly, 2),
             "total_yearly_cost": round(total_monthly * 12, 2),
             "by_frequency": by_frequency,
-            "by_importance": {
-                k: v for k, v in by_importance.items() if v
-            },
+            "by_importance": {k: v for k, v in by_importance.items() if v},
         }

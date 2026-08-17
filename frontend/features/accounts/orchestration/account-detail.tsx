@@ -1,14 +1,16 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useEffect, useState } from "react";
 import { AccountHeader } from "@/components/accounts/account-header";
 import { AccountBalanceChart } from "@/components/accounts/account-balance-chart";
 import { AccountTransactions } from "@/components/accounts/account-transactions";
 import type { TransactionWithRelations } from "@/features/transactions/public";
 import type { CategoryDisplay } from "@/shared/domain/display-contracts";
-import type { AccountViewModel, BalanceHistoryPoint } from "../domain/contracts";
+import type {
+  AccountViewModel,
+  BalanceHistoryPoint,
+} from "../domain/contracts";
 
 interface AccountDetailProps {
   account: AccountViewModel;
@@ -38,32 +40,46 @@ export function AccountDetail({
       <div className="min-h-[400px]">
         {transactions.length === 0 ? (
           <div className="flex h-48 items-center justify-center rounded border border-dashed">
-            <p className="text-sm text-muted-foreground">{translate("noTransactionsYet")}</p>
+            <p className="text-sm text-muted-foreground">
+              {translate("noTransactionsYet")}
+            </p>
           </div>
         ) : (
           <AccountTransactions
             accountId={account.id}
             transactions={transactions}
             categories={categories}
-            onUpdateTransaction={(id, updates) => setTransactions((current) =>
-              current.map((transaction) => transaction.id === id ? { ...transaction, ...updates } : transaction)
-            )}
-            onDeleteTransaction={(id) => setTransactions((current) =>
-              current.filter((transaction) => transaction.id !== id)
-            )}
+            onUpdateTransaction={(id, updates) =>
+              setTransactions((current) =>
+                current.map((transaction) =>
+                  transaction.id === id
+                    ? { ...transaction, ...updates }
+                    : transaction,
+                ),
+              )
+            }
+            onDeleteTransaction={(id) =>
+              setTransactions((current) =>
+                current.filter((transaction) => transaction.id !== id),
+              )
+            }
             onBulkUpdate={(ids, categoryId) => {
               const category = categoryId
-                ? categories.find((item) => item.id === categoryId) ?? null
+                ? (categories.find((item) => item.id === categoryId) ?? null)
                 : null;
-              setTransactions((current) => current.map((transaction) =>
-                ids.includes(transaction.id)
-                  ? { ...transaction, categoryId, category }
-                  : transaction
-              ));
+              setTransactions((current) =>
+                current.map((transaction) =>
+                  ids.includes(transaction.id)
+                    ? { ...transaction, categoryId, category }
+                    : transaction,
+                ),
+              );
             }}
-            onBulkDelete={(ids) => setTransactions((current) =>
-              current.filter((transaction) => !ids.includes(transaction.id))
-            )}
+            onBulkDelete={(ids) =>
+              setTransactions((current) =>
+                current.filter((transaction) => !ids.includes(transaction.id)),
+              )
+            }
           />
         )}
       </div>

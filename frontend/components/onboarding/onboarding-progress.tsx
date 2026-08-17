@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { cn } from "@/lib/utils";
 
 interface Step {
@@ -51,7 +50,7 @@ export function OnboardingProgress({ currentStep }: OnboardingProgressProps) {
                     ? "border-primary bg-primary text-primary-foreground"
                     : currentStep > step.number
                       ? "border-primary bg-primary text-primary-foreground"
-                      : "border-muted-foreground/30 text-muted-foreground"
+                      : "border-muted-foreground/30 text-muted-foreground",
                 )}
               >
                 {currentStep > step.number ? (
@@ -62,7 +61,11 @@ export function OnboardingProgress({ currentStep }: OnboardingProgressProps) {
                     stroke="currentColor"
                     strokeWidth={2}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 ) : (
                   step.number
@@ -72,19 +75,25 @@ export function OnboardingProgress({ currentStep }: OnboardingProgressProps) {
                 <p
                   className={cn(
                     "text-sm font-medium",
-                    currentStep >= step.number ? "text-foreground" : "text-muted-foreground"
+                    currentStep >= step.number
+                      ? "text-foreground"
+                      : "text-muted-foreground",
                   )}
                 >
                   {step.title}
                 </p>
-                <p className="text-xs text-muted-foreground">{step.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {step.description}
+                </p>
               </div>
             </div>
             {index < steps.length - 1 && (
               <div
                 className={cn(
                   "mx-2 h-0.5 min-w-4 flex-1 sm:mx-4 sm:min-w-[60px]",
-                  currentStep > step.number ? "bg-primary" : "bg-muted-foreground/30"
+                  currentStep > step.number
+                    ? "bg-primary"
+                    : "bg-muted-foreground/30",
                 )}
               />
             )}

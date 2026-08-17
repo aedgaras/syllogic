@@ -3,6 +3,7 @@ Exchange rate service for fetching and managing currency conversion rates.
 Uses Yahoo Finance API (via yfinance library) for batch fetching of historical rates.
 Yahoo Finance is free and supports historical data from 1970 onwards.
 """
+
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 from typing import List, Dict, Optional
@@ -12,13 +13,13 @@ import logging
 import time
 
 from app.models import ExchangeRate, Transaction
-from app.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
 # Try to import yfinance
 try:
     import yfinance as yf
+
     YFINANCE_AVAILABLE = True
 except ImportError as e:
     yf = None
@@ -42,10 +43,9 @@ class ExchangeRateService:
         self.db = db
         if not YFINANCE_AVAILABLE:
             raise ImportError(
-                "yfinance package is not available. "
-                "Please install it with: pip install yfinance"
+                "yfinance package is not available. Please install it with: pip install yfinance"
             )
-    
+
     @staticmethod
     def _get_yahoo_ticker(base_currency: str, target_currency: str) -> str:
         """
@@ -82,15 +82,11 @@ class ExchangeRateService:
             return self.DEFAULT_CURRENCIES
 
     def fetch_exchange_rates_batch(
-        self,
-        base_currency: str,
-        target_currencies: List[str],
-        start_date: date,
-        end_date: date
+        self, base_currency: str, target_currencies: List[str], start_date: date, end_date: date
     ) -> Dict[date, Dict[str, Decimal]]:
         """
         Fetch exchange rates for a date range using Yahoo Finance API.
-        
+
         Args:
             base_currency: Base currency (transaction currency) - what we're converting FROM
             target_currencies: List of target currencies (EUR, USD) - what we're converting TO
@@ -102,11 +98,11 @@ class ExchangeRateService:
             Where rate = how many target_currency = 1 base_currency
         """
         rates_by_date = {}
-        
+
         # Convert dates to datetime for yfinance
         start_datetime = datetime.combine(start_date, datetime.min.time())
         end_datetime = datetime.combine(end_date, datetime.min.time())
-        
+
         # Fetch rates for each target currency
         for target_currency in target_currencies:
             try:
@@ -120,55 +116,53 @@ class ExchangeRateService:
                         rates_by_date[current_date][target_currency] = Decimal("1.0")
                         current_date += timedelta(days=1)
                     continue
-                
+
                 # Get Yahoo Finance ticker symbol
                 ticker_symbol = self._get_yahoo_ticker(base_currency, target_currency)
-                
+
                 logger.debug(f"Fetching {ticker_symbol} from {start_date} to {end_date}")
-                
+
                 # Fetch historical data from Yahoo Finance
                 ticker = yf.Ticker(ticker_symbol)
                 hist = ticker.history(start=start_datetime, end=end_datetime)
-                
+
                 if hist.empty:
                     logger.warning(f"No data returned for {ticker_symbol}")
                     continue
-                
+
                 # Process historical data
                 # Yahoo Finance returns: 1 base_currency = X target_currency (using Close price)
                 for date_index, row in hist.iterrows():
                     # date_index is a Timestamp, convert to date
                     rate_date = date_index.date()
-                    
+
                     # Use Close price as the exchange rate
-                    rate_value = Decimal(str(row['Close']))
-                    
+                    rate_value = Decimal(str(row["Close"]))
+
                     if rate_date not in rates_by_date:
                         rates_by_date[rate_date] = {}
-                    
+
                     rates_by_date[rate_date][target_currency] = rate_value
-                
+
                 logger.info(f"Fetched {len(hist)} rates for {base_currency} -> {target_currency}")
-                
+
                 # Small delay to avoid rate limiting
                 time.sleep(0.2)
-                
+
             except Exception as e:
                 logger.error(f"Error fetching rates for {base_currency} -> {target_currency}: {e}")
                 # Continue with other currencies
                 continue
-        
+
         logger.info(f"Fetched rates for {len(rates_by_date)} dates from {start_date} to {end_date}")
         return rates_by_date
-    
+
     def fetch_current_exchange_rates(
-        self,
-        base_currency: str,
-        target_currencies: List[str]
+        self, base_currency: str, target_currencies: List[str]
     ) -> Dict[str, Decimal]:
         """
         Fetch current exchange rates using Yahoo Finance API.
-        
+
         Args:
             base_currency: Base currency (transaction currency)
             target_currencies: List of target currencies (EUR, USD)
@@ -177,7 +171,7 @@ class ExchangeRateService:
             Dictionary mapping target_currency -> rate
         """
         result_dict = {}
-        
+
         # Fetch rates for each target currency
         for target_currency in target_currencies:
             try:
@@ -185,34 +179,33 @@ class ExchangeRateService:
                 if base_currency == target_currency:
                     result_dict[target_currency] = Decimal("1.0")
                     continue
-                
+
                 # Get Yahoo Finance ticker symbol
                 ticker_symbol = self._get_yahoo_ticker(base_currency, target_currency)
-                
+
                 # Fetch current rate (last 1 day of data)
                 ticker = yf.Ticker(ticker_symbol)
                 hist = ticker.history(period="1d")
-                
+
                 if hist.empty:
                     logger.warning(f"No current data for {ticker_symbol}")
                     continue
-                
+
                 # Use the most recent Close price
-                latest_rate = hist['Close'].iloc[-1]
+                latest_rate = hist["Close"].iloc[-1]
                 result_dict[target_currency] = Decimal(str(latest_rate))
-                
+
             except Exception as e:
-                logger.error(f"Error fetching current rate for {base_currency} -> {target_currency}: {e}")
+                logger.error(
+                    f"Error fetching current rate for {base_currency} -> {target_currency}: {e}"
+                )
                 # Continue with other currencies
                 continue
-        
+
         return result_dict
 
     def store_exchange_rates(
-        self,
-        target_currency: str,
-        rates: Dict[str, Decimal],
-        for_date: date
+        self, target_currency: str, rates: Dict[str, Decimal], for_date: date
     ) -> int:
         """
         Store exchange rates in the database.
@@ -233,13 +226,17 @@ class ExchangeRateService:
 
             for base_currency, rate in rates.items():
                 # Check if rate already exists
-                existing = self.db.query(ExchangeRate).filter(
-                    and_(
-                        ExchangeRate.date == rate_datetime,
-                        ExchangeRate.base_currency == base_currency,
-                        ExchangeRate.target_currency == target_currency
+                existing = (
+                    self.db.query(ExchangeRate)
+                    .filter(
+                        and_(
+                            ExchangeRate.date == rate_datetime,
+                            ExchangeRate.base_currency == base_currency,
+                            ExchangeRate.target_currency == target_currency,
+                        )
                     )
-                ).first()
+                    .first()
+                )
 
                 if existing:
                     # Update existing rate
@@ -252,7 +249,7 @@ class ExchangeRateService:
                         date=rate_datetime,
                         base_currency=base_currency,
                         target_currency=target_currency,
-                        rate=rate
+                        rate=rate,
                     )
                     self.db.add(new_rate)
                     logger.debug(f"Stored new rate: {base_currency}/{target_currency} = {rate}")
@@ -269,9 +266,7 @@ class ExchangeRateService:
             raise Exception(f"Failed to store exchange rates: {e}")
 
     def sync_exchange_rates(
-        self,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None
+        self, start_date: Optional[date] = None, end_date: Optional[date] = None
     ) -> Dict[str, int]:
         """
         Sync exchange rates for a date range using batch API calls.
@@ -293,20 +288,22 @@ class ExchangeRateService:
 
         # Get distinct currencies from transactions for reference
         transaction_currencies = self.get_distinct_transaction_currencies()
-        logger.info(f"Found {len(transaction_currencies)} distinct currencies in transactions: {transaction_currencies}")
-        
+        logger.info(
+            f"Found {len(transaction_currencies)} distinct currencies in transactions: {transaction_currencies}"
+        )
+
         # Always use default currencies as base currencies
         # This ensures we have rates for common currencies even if they're not in transactions yet
         base_currencies = self.DEFAULT_CURRENCIES.copy()
-        
+
         # Also include any additional currencies found in transactions that aren't in defaults
         for curr in transaction_currencies:
             if curr not in base_currencies:
                 base_currencies.append(curr)
                 logger.info(f"Added transaction currency {curr} to base currencies")
-        
+
         logger.info(f"Using {len(base_currencies)} base currencies: {base_currencies}")
-        
+
         # Target currencies are always EUR and USD (functional currencies)
         target_currencies = self.FUNCTIONAL_CURRENCIES.copy()
         logger.info(f"Target currencies (functional): {target_currencies}")
@@ -318,13 +315,15 @@ class ExchangeRateService:
 
         # Process in batches to avoid rate limits
         current_batch_start = start_date
-        
-        print(f"  Fetching rates for {len(base_currencies)} base currencies -> EUR/USD in batches of {self.BATCH_SIZE_DAYS} days...")
-        
+
+        print(
+            f"  Fetching rates for {len(base_currencies)} base currencies -> EUR/USD in batches of {self.BATCH_SIZE_DAYS} days..."
+        )
+
         # Process each base currency
         for base_currency in base_currencies:
             current_batch_start = start_date  # Reset for each currency
-            
+
             # Special handling for EUR and USD: they convert to themselves at 1.0
             # AND we need to fetch cross-conversion rates (EUR->USD, USD->EUR)
             if base_currency in ["EUR", "USD"]:
@@ -334,31 +333,37 @@ class ExchangeRateService:
                 current_date = start_date
                 while current_date <= end_date:
                     rate_datetime = datetime.combine(current_date, datetime.min.time())
-                    existing = self.db.query(ExchangeRate).filter(
-                        and_(
-                            ExchangeRate.date == rate_datetime,
-                            ExchangeRate.base_currency == base_currency,
-                            ExchangeRate.target_currency == target
+                    existing = (
+                        self.db.query(ExchangeRate)
+                        .filter(
+                            and_(
+                                ExchangeRate.date == rate_datetime,
+                                ExchangeRate.base_currency == base_currency,
+                                ExchangeRate.target_currency == target,
+                            )
                         )
-                    ).first()
-                    
+                        .first()
+                    )
+
                     if not existing:
                         new_rate = ExchangeRate(
                             date=rate_datetime,
                             base_currency=base_currency,
                             target_currency=target,
-                            rate=Decimal("1.0")
+                            rate=Decimal("1.0"),
                         )
                         self.db.add(new_rate)
                         total_stored += 1
                         stored_self_conversion += 1
-                    
+
                     dates_processed += 1
                     current_date += timedelta(days=1)
-                
+
                 self.db.commit()
-                print(f"  {base_currency} -> {base_currency}: Stored {stored_self_conversion} rates (1.0)")
-                
+                print(
+                    f"  {base_currency} -> {base_currency}: Stored {stored_self_conversion} rates (1.0)"
+                )
+
                 # Now fetch cross-conversion rates (EUR->USD or USD->EUR)
                 # Determine the other functional currency
                 if base_currency == "EUR":
@@ -367,108 +372,133 @@ class ExchangeRateService:
                     cross_target = "EUR"
                 else:
                     cross_target = None
-                
+
                 # Fetch cross-conversion rates if needed
                 if cross_target:
                     current_batch_start = start_date
                     while current_batch_start <= end_date:
                         current_batch_end = min(
-                            current_batch_start + timedelta(days=self.BATCH_SIZE_DAYS - 1),
-                            end_date
+                            current_batch_start + timedelta(days=self.BATCH_SIZE_DAYS - 1), end_date
                         )
-                        
+
                         batch_days = (current_batch_end - current_batch_start).days + 1
-                        progress = ((total_days - (end_date - current_batch_start).days) / total_days) * 100
-                        
+                        progress = (
+                            (total_days - (end_date - current_batch_start).days) / total_days
+                        ) * 100
+
                         try:
-                            print(f"  [{progress:.1f}%] {base_currency} -> {cross_target}: {current_batch_start} to {current_batch_end}...", end=" ", flush=True)
-                            
+                            print(
+                                f"  [{progress:.1f}%] {base_currency} -> {cross_target}: {current_batch_start} to {current_batch_end}...",
+                                end=" ",
+                                flush=True,
+                            )
+
                             # Fetch rates: base_currency -> cross_target
                             rates_batch = self.fetch_exchange_rates_batch(
-                                base_currency, [cross_target], current_batch_start, current_batch_end
+                                base_currency,
+                                [cross_target],
+                                current_batch_start,
+                                current_batch_end,
                             )
-                            
+
                             # Store rates for each date
                             batch_stored = 0
                             for rate_date, rates in rates_batch.items():
                                 if cross_target in rates:
-                                    count = self.store_exchange_rates(cross_target, {base_currency: rates[cross_target]}, rate_date)
+                                    count = self.store_exchange_rates(
+                                        cross_target,
+                                        {base_currency: rates[cross_target]},
+                                        rate_date,
+                                    )
                                     batch_stored += count
                                     dates_processed += 1
-                            
+
                             total_stored += batch_stored
                             print(f"✓ ({batch_stored} rates)")
-                            
+
                             # Small delay between batches
                             if current_batch_start < date.today():
                                 time.sleep(0.3)
-                            
+
                         except Exception as e:
-                            failed_batches.append((base_currency, current_batch_start, current_batch_end))
+                            failed_batches.append(
+                                (base_currency, current_batch_start, current_batch_end)
+                            )
                             print(f"✗ Error: {e}")
-                            logger.error(f"Error fetching batch {base_currency} {current_batch_start} to {current_batch_end}: {e}")
-                        
+                            logger.error(
+                                f"Error fetching batch {base_currency} {current_batch_start} to {current_batch_end}: {e}"
+                            )
+
                         current_batch_start = current_batch_end + timedelta(days=1)
-                    
+
                     # Small delay between currencies
                     time.sleep(0.2)
                     continue  # Skip the regular processing below
-            
+
             # For other currencies, fetch from API
             while current_batch_start <= end_date:
                 # Calculate batch end date
                 current_batch_end = min(
-                    current_batch_start + timedelta(days=self.BATCH_SIZE_DAYS - 1),
-                    end_date
+                    current_batch_start + timedelta(days=self.BATCH_SIZE_DAYS - 1), end_date
                 )
-                
+
                 batch_days = (current_batch_end - current_batch_start).days + 1
                 progress = ((total_days - (end_date - current_batch_start).days) / total_days) * 100
-                
+
                 try:
-                    print(f"  [{progress:.1f}%] {base_currency} -> EUR/USD: {current_batch_start} to {current_batch_end}...", end=" ", flush=True)
-                    
+                    print(
+                        f"  [{progress:.1f}%] {base_currency} -> EUR/USD: {current_batch_start} to {current_batch_end}...",
+                        end=" ",
+                        flush=True,
+                    )
+
                     # Fetch rates: base_currency -> EUR/USD
                     rates_batch = self.fetch_exchange_rates_batch(
                         base_currency, target_currencies, current_batch_start, current_batch_end
                     )
-                    
+
                     # Store rates for each date
                     batch_stored = 0
                     for rate_date, rates in rates_batch.items():
                         # Store EUR rate
                         if "EUR" in rates:
-                            count = self.store_exchange_rates("EUR", {base_currency: rates["EUR"]}, rate_date)
+                            count = self.store_exchange_rates(
+                                "EUR", {base_currency: rates["EUR"]}, rate_date
+                            )
                             batch_stored += count
-                        
+
                         # Store USD rate
                         if "USD" in rates:
-                            count = self.store_exchange_rates("USD", {base_currency: rates["USD"]}, rate_date)
+                            count = self.store_exchange_rates(
+                                "USD", {base_currency: rates["USD"]}, rate_date
+                            )
                             batch_stored += count
-                        
+
                         dates_processed += 1
-                    
+
                     total_stored += batch_stored
                     print(f"✓ ({batch_stored} rates)")
-                    
+
                     # Small delay between batches to avoid rate limiting
                     if current_batch_start < date.today():
                         time.sleep(0.3)  # 300ms delay between batches
-                    
+
                 except Exception as e:
                     failed_batches.append((base_currency, current_batch_start, current_batch_end))
                     print(f"✗ Error: {e}")
-                    logger.error(f"Error fetching batch {base_currency} {current_batch_start} to {current_batch_end}: {e}")
+                    logger.error(
+                        f"Error fetching batch {base_currency} {current_batch_start} to {current_batch_end}: {e}"
+                    )
                     # Continue with next batch
-                
+
                 # Move to next batch
                 current_batch_start = current_batch_end + timedelta(days=1)
-            
+
             # Small delay between currencies
             time.sleep(0.2)
-        
+
         print(f"  ✓ Completed: {dates_processed} dates processed, {total_stored} rates stored")
-        
+
         if failed_batches:
             print(f"  ⚠️  Failed batches: {len(failed_batches)}")
             logger.warning(f"Failed batches: {failed_batches}")
@@ -480,17 +510,14 @@ class ExchangeRateService:
             "end_date": end_date.isoformat(),
             "base_currencies": base_currencies,
             "target_currencies": target_currencies,
-            "failed_batches": len(failed_batches)
+            "failed_batches": len(failed_batches),
         }
-        
+
         logger.info(f"Exchange rate sync completed successfully. Result: {result}")
         return result
 
     def get_exchange_rate(
-        self,
-        base_currency: str,
-        target_currency: str,
-        for_date: date
+        self, base_currency: str, target_currency: str, for_date: date
     ) -> Optional[Decimal]:
         """
         Get exchange rate for a specific date.
@@ -511,13 +538,17 @@ class ExchangeRateService:
             rate_datetime = datetime.combine(for_date, datetime.min.time())
 
             # Query database
-            rate_record = self.db.query(ExchangeRate).filter(
-                and_(
-                    ExchangeRate.date == rate_datetime,
-                    ExchangeRate.base_currency == base_currency,
-                    ExchangeRate.target_currency == target_currency
+            rate_record = (
+                self.db.query(ExchangeRate)
+                .filter(
+                    and_(
+                        ExchangeRate.date == rate_datetime,
+                        ExchangeRate.base_currency == base_currency,
+                        ExchangeRate.target_currency == target_currency,
+                    )
                 )
-            ).first()
+                .first()
+            )
 
             if rate_record:
                 return rate_record.rate
@@ -525,13 +556,17 @@ class ExchangeRateService:
             # If not found, try to find closest date (within 7 days)
             for days_back in range(1, 8):
                 past_date = rate_datetime - timedelta(days=days_back)
-                rate_record = self.db.query(ExchangeRate).filter(
-                    and_(
-                        ExchangeRate.date == past_date,
-                        ExchangeRate.base_currency == base_currency,
-                        ExchangeRate.target_currency == target_currency
+                rate_record = (
+                    self.db.query(ExchangeRate)
+                    .filter(
+                        and_(
+                            ExchangeRate.date == past_date,
+                            ExchangeRate.base_currency == base_currency,
+                            ExchangeRate.target_currency == target_currency,
+                        )
                     )
-                ).first()
+                    .first()
+                )
 
                 if rate_record:
                     logger.warning(
@@ -539,7 +574,9 @@ class ExchangeRateService:
                     )
                     return rate_record.rate
 
-            logger.warning(f"No exchange rate found for {base_currency}/{target_currency} on {for_date}")
+            logger.warning(
+                f"No exchange rate found for {base_currency}/{target_currency} on {for_date}"
+            )
             return None
 
         except Exception as e:
@@ -547,11 +584,7 @@ class ExchangeRateService:
             return None
 
     def convert_amount(
-        self,
-        amount: Decimal,
-        from_currency: str,
-        to_currency: str,
-        for_date: date
+        self, amount: Decimal, from_currency: str, to_currency: str, for_date: date
     ) -> Optional[Decimal]:
         """
         Convert an amount from one currency to another.
@@ -639,8 +672,7 @@ class ExchangeRateService:
                         return rate
         except Exception as e:
             logger.warning(
-                f"yfinance fallback failed for {base_currency}/{target_currency} "
-                f"on {for_date}: {e}"
+                f"yfinance fallback failed for {base_currency}/{target_currency} on {for_date}: {e}"
             )
 
         # 3. Final fallback: today's rate (DB hit first, then yfinance current).

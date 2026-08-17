@@ -1,7 +1,4 @@
 """Tests for SYL-32 / SYL-29 prompt enrichment."""
-from unittest.mock import MagicMock
-
-import pytest
 
 from app.services.category_matcher import CategoryMatcher
 
@@ -42,6 +39,7 @@ def test_render_category_list_truncates_long_description():
 def test_prompt_includes_category_descriptions(monkeypatch, db_session):
     # Use the real CategoryMatcher with a stub DB; assert prompt contains descriptions.
     import app.services.category_matcher as cm_module
+
     captured = {}
 
     class StubClient:
@@ -50,9 +48,13 @@ def test_prompt_includes_category_descriptions(monkeypatch, db_session):
                 @staticmethod
                 def create(**kwargs):
                     captured["messages"] = kwargs["messages"]
+
                     class R:
-                        choices = [type("X", (), {"message": type("M", (), {"content": "UNKNOWN"})()})()]
+                        choices = [
+                            type("X", (), {"message": type("M", (), {"content": "UNKNOWN"})()})()
+                        ]
                         usage = type("U", (), {"prompt_tokens": 1, "completion_tokens": 1})()
+
                     return R()
 
     m = cm_module.CategoryMatcher(db=db_session, user_id="prompt-user")
@@ -95,12 +97,17 @@ def test_account_context_with_last_four_and_patterns():
 
 def test_prompt_includes_account_context_and_transfer_rule(monkeypatch, db_session):
     import app.services.category_matcher as cm_module
+
     captured = {}
 
-    _stub_response = type("R", (), {
-        "choices": [type("X", (), {"message": type("M", (), {"content": "UNKNOWN"})()})()],
-        "usage": type("U", (), {"prompt_tokens": 1, "completion_tokens": 1})(),
-    })
+    _stub_response = type(
+        "R",
+        (),
+        {
+            "choices": [type("X", (), {"message": type("M", (), {"content": "UNKNOWN"})()})()],
+            "usage": type("U", (), {"prompt_tokens": 1, "completion_tokens": 1})(),
+        },
+    )
 
     class StubClient:
         class chat:
@@ -113,9 +120,7 @@ def test_prompt_includes_account_context_and_transfer_rule(monkeypatch, db_sessi
     m = cm_module.CategoryMatcher(db=db_session, user_id="tr-user")
     monkeypatch.setattr(m, "_get_openai_client", lambda: StubClient())
     monkeypatch.setattr(m, "_load_categories", lambda: {})
-    m._account_cache = [
-        FakeAccount("Revolut Pro", alias_patterns=["Apple Pay Top-Up by *1234"])
-    ]
+    m._account_cache = [FakeAccount("Revolut Pro", alias_patterns=["Apple Pay Top-Up by *1234"])]
     cats = [FakeCategory("Transfers", "Internal transfers", category_type="transfer")]
     m.match_category_llm(
         description="Apple Pay Top-Up by *1234",
@@ -131,12 +136,17 @@ def test_prompt_includes_account_context_and_transfer_rule(monkeypatch, db_sessi
 
 def test_prompt_instructions_numbered_correctly_without_accounts(monkeypatch, db_session):
     import app.services.category_matcher as cm_module
+
     captured = {}
 
-    _stub_response = type("R", (), {
-        "choices": [type("X", (), {"message": type("M", (), {"content": "UNKNOWN"})()})()],
-        "usage": type("U", (), {"prompt_tokens": 1, "completion_tokens": 1})(),
-    })
+    _stub_response = type(
+        "R",
+        (),
+        {
+            "choices": [type("X", (), {"message": type("M", (), {"content": "UNKNOWN"})()})()],
+            "usage": type("U", (), {"prompt_tokens": 1, "completion_tokens": 1})(),
+        },
+    )
 
     class StubClient:
         class chat:
@@ -179,6 +189,7 @@ def test_prompt_instructions_numbered_correctly_without_accounts(monkeypatch, db
 # Task 8: Prompt budget degradation
 # ---------------------------------------------------------------------------
 
+
 def test_prompt_budget_degrades_descriptions_first():
     m = CategoryMatcher.__new__(CategoryMatcher)
     # Simulate oversized input: 30 categories each with a 200-char description.
@@ -200,14 +211,11 @@ def test_prompt_budget_stage4_drops_account_block_when_still_oversized():
     cats = [FakeCategory(f"Category With A Very Long Name {i:03d}") for i in range(100)]
     # 50 accounts → thin_account_block adds several hundred characters
     m._account_cache = [
-        FakeAccount(f"Account Bank Name {j:02d}", external_id=f"NL91ABNA{j:08d}")
-        for j in range(50)
+        FakeAccount(f"Account Bank Name {j:02d}", external_id=f"NL91ABNA{j:08d}") for j in range(50)
     ]
     category_list, account_block = m._compose_prompt_context(cats)
     total = sum(len(x) for x in (category_list, account_block))
-    assert total <= 2000, (
-        f"Output exceeded budget ({total} chars); stage-4 fallback not applied"
-    )
+    assert total <= 2000, f"Output exceeded budget ({total} chars); stage-4 fallback not applied"
     # Category names must still be present
     assert "Category With A Very Long Name 000" in category_list
 
@@ -216,15 +224,21 @@ def test_prompt_budget_stage4_drops_account_block_when_still_oversized():
 # Task 9: Feature flag
 # ---------------------------------------------------------------------------
 
+
 def test_feature_flag_disabled_falls_back_to_names_only(monkeypatch, db_session):
     import app.services.category_matcher as cm_module
+
     monkeypatch.setattr(cm_module, "ENRICHED_PROMPT_ENABLED", False)
     captured = {}
 
-    _stub_response = type("R", (), {
-        "choices": [type("X", (), {"message": type("M", (), {"content": "UNKNOWN"})()})()],
-        "usage": type("U", (), {"prompt_tokens": 1, "completion_tokens": 1})(),
-    })
+    _stub_response = type(
+        "R",
+        (),
+        {
+            "choices": [type("X", (), {"message": type("M", (), {"content": "UNKNOWN"})()})()],
+            "usage": type("U", (), {"prompt_tokens": 1, "completion_tokens": 1})(),
+        },
+    )
 
     class StubClient:
         class chat:

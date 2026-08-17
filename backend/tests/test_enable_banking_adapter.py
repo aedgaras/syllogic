@@ -4,7 +4,6 @@ import os
 import sys
 import unittest
 from decimal import Decimal
-from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -188,6 +187,7 @@ class TestFetchAccountsIban(unittest.TestCase):
     def test_fetch_accounts_extracts_iban_from_raw(self):
         """A session-data response with iban populated must surface it on AccountData."""
         from unittest.mock import MagicMock
+
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "aspsp": {"name": "ABN AMRO"},
@@ -215,6 +215,7 @@ class TestFetchAccountsIban(unittest.TestCase):
     def test_fetch_accounts_iban_is_none_when_missing(self):
         """Accounts without an IBAN (e.g. some credit cards) must yield iban=None."""
         from unittest.mock import MagicMock
+
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "aspsp": {"name": "ABN AMRO"},
@@ -247,6 +248,7 @@ class TestFetchAccountIban(unittest.TestCase):
     def test_extracts_iban_from_nested_account_id(self):
         """The /details endpoint nests IBAN under account_id, not at top level."""
         from unittest.mock import MagicMock
+
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "account_id": {"iban": "NL91 ABNA 0417 1643 00"},
@@ -265,6 +267,7 @@ class TestFetchAccountIban(unittest.TestCase):
     def test_falls_back_to_all_account_ids_when_primary_missing(self):
         """If account_id.iban isn't present, all_account_ids[] may carry it."""
         from unittest.mock import MagicMock
+
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "account_id": {"identification": "fallback", "scheme_name": "BBAN"},
@@ -283,6 +286,7 @@ class TestFetchAccountIban(unittest.TestCase):
     def test_returns_none_when_no_iban_anywhere(self):
         """Some accounts (rare credit cards) genuinely don't have an IBAN."""
         from unittest.mock import MagicMock
+
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "account_id": {"identification": "1234", "scheme_name": "BBAN"},

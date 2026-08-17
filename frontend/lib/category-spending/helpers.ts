@@ -32,20 +32,28 @@ export function getTouchedMonthKeys(startDate: Date, endDate: Date): string[] {
     cursor <= lastMonth;
     cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)
   ) {
-    keys.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
+    keys.push(
+      `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`,
+    );
   }
 
   return keys;
 }
 
-export function computePreviousWindow(startDate: Date, endDate: Date): {
+export function computePreviousWindow(
+  startDate: Date,
+  endDate: Date,
+): {
   comparisonStart: Date;
   comparisonEnd: Date;
   spanDays: number;
 } {
   const normalizedStart = startOfDay(startDate);
   const normalizedEnd = endOfDay(endDate);
-  const spanDays = Math.max(1, differenceInCalendarDays(normalizedEnd, normalizedStart) + 1);
+  const spanDays = Math.max(
+    1,
+    differenceInCalendarDays(normalizedEnd, normalizedStart) + 1,
+  );
 
   const comparisonEnd = endOfDay(subDays(normalizedStart, 1));
   const comparisonStart = startOfDay(subDays(comparisonEnd, spanDays - 1));
@@ -59,7 +67,7 @@ export function computePreviousWindow(startDate: Date, endDate: Date): {
 
 export function resolveCategoryColor(
   color: string | null | undefined,
-  index: number
+  index: number,
 ): string {
   if (color && color.trim().length > 0) {
     return color;

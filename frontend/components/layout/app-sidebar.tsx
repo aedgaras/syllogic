@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -120,7 +119,7 @@ function subscribeToGlobalFilterStorage(onStoreChange: () => void) {
 function getStoredGlobalFilterQueryString() {
   try {
     return normalizeGlobalFilterQueryString(
-      localStorage.getItem(GLOBAL_FILTER_STORAGE_KEY)
+      localStorage.getItem(GLOBAL_FILTER_STORAGE_KEY),
     );
   } catch {
     return "";
@@ -144,7 +143,7 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
   const storedFilterQueryString = useSyncExternalStore(
     subscribeToGlobalFilterStorage,
     getStoredGlobalFilterQueryString,
-    getServerGlobalFilterQueryString
+    getServerGlobalFilterQueryString,
   );
   const isCollapsed = !isMobile && state === "collapsed";
   const brandImageSrc =
@@ -159,7 +158,7 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
 
   const currentFilterQueryString = useMemo(
     () => normalizeGlobalFilterQueryString(searchParams.toString()),
-    [searchParams]
+    [searchParams],
   );
 
   const sharedFilterQueryString =
@@ -218,7 +217,9 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
                 </div>
                 {!isCollapsed && (
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{translate("syllogic")}</span>
+                    <span className="truncate font-medium">
+                      {translate("syllogic")}
+                    </span>
                   </div>
                 )}
               </SidebarMenuButton>
@@ -245,7 +246,8 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
               const isActive =
                 item.href === "/"
                   ? pathname === "/"
-                  : pathname === item.href || pathname.startsWith(item.href + "/");
+                  : pathname === item.href ||
+                    pathname.startsWith(item.href + "/");
               return (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
@@ -256,8 +258,8 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
                           item.href === "/"
                             ? homePathWithFilters
                             : item.href === "/transactions"
-                            ? transactionsPathWithFilters
-                            : item.href
+                              ? transactionsPathWithFilters
+                              : item.href
                         }
                         prefetch
                         onClick={() => {
@@ -283,7 +285,11 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => setOpen((prev) => !prev)}
-                  aria-label={isCollapsed ? translate("expandSidebar") : translate("collapseSidebar")}
+                  aria-label={
+                    isCollapsed
+                      ? translate("expandSidebar")
+                      : translate("collapseSidebar")
+                  }
                 >
                   {isCollapsed ? (
                     <RiArrowRightSLine className="shrink-0" />

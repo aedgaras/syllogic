@@ -1,4 +1,5 @@
 """Tests for SYL-31 audit filters."""
+
 from datetime import datetime
 from decimal import Decimal
 
@@ -22,22 +23,27 @@ def audit_data(db_session):
     db_session.flush()
     # 3 uncategorized, 2 expense-categorized, 1 income-categorized
     specs = [
-        (None, -10, "debit"), (None, -20, "debit"), (None, -30, "debit"),
-        (expense_cat.id, -40, "debit"), (expense_cat.id, -50, "debit"),
+        (None, -10, "debit"),
+        (None, -20, "debit"),
+        (None, -30, "debit"),
+        (expense_cat.id, -40, "debit"),
+        (expense_cat.id, -50, "debit"),
         (income_cat.id, 100, "credit"),
     ]
     for i, (cid, amt, ttype) in enumerate(specs):
-        db_session.add(Transaction(
-            user_id=user.id,
-            account_id=acc.id,
-            amount=Decimal(str(amt)),
-            currency="EUR",
-            description=f"Txn {i}",
-            merchant=f"M{i}",
-            category_id=cid,
-            booked_at=datetime(2026, 4, 1 + i),
-            transaction_type=ttype,
-        ))
+        db_session.add(
+            Transaction(
+                user_id=user.id,
+                account_id=acc.id,
+                amount=Decimal(str(amt)),
+                currency="EUR",
+                description=f"Txn {i}",
+                merchant=f"M{i}",
+                category_id=cid,
+                booked_at=datetime(2026, 4, 1 + i),
+                transaction_type=ttype,
+            )
+        )
     db_session.commit()
     try:
         yield user, acc, expense_cat, income_cat
@@ -100,7 +106,9 @@ def test_top_merchants_mutual_exclusion(audit_data):
     user, _, expense_cat, _ = audit_data
     with pytest.raises(ValueError):
         an_tools.get_top_merchants(
-            user_id=user.id, category_id=str(expense_cat.id), uncategorized=True,
+            user_id=user.id,
+            category_id=str(expense_cat.id),
+            uncategorized=True,
         )
 
 

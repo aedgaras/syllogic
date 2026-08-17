@@ -11,6 +11,7 @@ correct identity fallback when external_id misses.
 Run with:
     cd backend && pytest tests/test_account_iban_dedupe.py -v
 """
+
 import base64
 import os
 import sys
@@ -108,17 +109,11 @@ def _sync(db, user_id: str, accounts: list[AccountData]) -> None:
 
 
 def _rows(db, user_id: str) -> list[Account]:
-    return (
-        db.query(Account)
-        .filter(Account.user_id == user_id, Account.provider == PROVIDER)
-        .all()
-    )
+    return db.query(Account).filter(Account.user_id == user_id, Account.provider == PROVIDER).all()
 
 
 def _cleanup(db, user_id: str) -> None:
-    db.query(Account).filter(
-        Account.user_id == user_id, Account.provider == PROVIDER
-    ).delete()
+    db.query(Account).filter(Account.user_id == user_id, Account.provider == PROVIDER).delete()
     db.commit()
 
 
@@ -272,8 +267,7 @@ def test_iban_matching_ignores_spacing_and_case():
 
         rows = _rows(db, user_id)
         assert len(rows) == 1, (
-            "Same IBAN written with different spacing/case must match; "
-            f"got {len(rows)} rows."
+            f"Same IBAN written with different spacing/case must match; got {len(rows)} rows."
         )
     finally:
         if user_id:

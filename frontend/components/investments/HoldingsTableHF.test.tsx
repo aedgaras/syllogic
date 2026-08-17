@@ -5,7 +5,9 @@ import { HoldingsTableHF } from "./HoldingsTableHF";
 import type { Holding } from "@/lib/api/investments";
 
 const mockPush = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mockPush, refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush, refresh: vi.fn() }),
+}));
 vi.mock("@/lib/api/investments", () => ({
   updateHolding: vi.fn(),
 }));
@@ -126,9 +128,13 @@ describe("HoldingsTableHF row navigation", () => {
         onDelete={onDelete}
       />,
     );
-    const msftRow = within(screen.getByRole("table")).getByText("MSFT").closest("tr");
+    const msftRow = within(screen.getByRole("table"))
+      .getByText("MSFT")
+      .closest("tr");
     expect(msftRow).not.toBeNull();
-    fireEvent.click(within(msftRow!).getByRole("button", { name: "Row actions" }));
+    fireEvent.click(
+      within(msftRow!).getByRole("button", { name: "Row actions" }),
+    );
     const deleteItem = await screen.findByRole("menuitem", { name: "Delete" });
     fireEvent.click(deleteItem);
     // AlertDialog "Delete" button confirms

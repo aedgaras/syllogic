@@ -1,14 +1,29 @@
 import { t as translate } from "@/i18n/translate";
 import { Section, Text } from "@react-email/components";
 
-type Buy = { symbol: string; amount: number; source: "pinned" | "discretionary" };
+type Buy = {
+  symbol: string;
+  amount: number;
+  source: "pinned" | "discretionary";
+};
 
-export function SuggestedBuysTable({ buys, currency }: { buys: Buy[]; currency: string }) {
+export function SuggestedBuysTable({
+  buys,
+  currency,
+}: {
+  buys: Buy[];
+  currency: string;
+}) {
   if (buys.length === 0) return null;
   return (
     <Section style={{ marginBottom: "16px" }}>
-      <Text style={{ fontSize: "16px", fontWeight: 600 }}>{translate("suggestedBuysThisMonth")}</Text>
-      <table cellPadding={6} style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
+      <Text style={{ fontSize: "16px", fontWeight: 600 }}>
+        {translate("suggestedBuysThisMonth")}
+      </Text>
+      <table
+        cellPadding={6}
+        style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}
+      >
         <thead>
           <tr style={{ borderBottom: "1px solid #ddd", textAlign: "left" }}>
             <th>{translate("symbol")}</th>

@@ -17,6 +17,7 @@ Rate Limiting:
     Add delays between API calls to avoid hitting rate limits.
     Recommended delays: Starter=3s, Intermediate=2s, Pro=1s
 """
+
 import base64
 import hashlib
 import hmac
@@ -53,11 +54,7 @@ class KrakenAdapter(BankAdapter):
 
         # Initialize HTTP client
         self.client = httpx.Client(
-            base_url=self.BASE_URL,
-            timeout=30.0,
-            headers={
-                "User-Agent": "Personal-Finance-App/1.0"
-            }
+            base_url=self.BASE_URL, timeout=30.0, headers={"User-Agent": "Personal-Finance-App/1.0"}
         )
 
     def _get_kraken_signature(self, urlpath: str, data: Dict[str, Any], nonce: str) -> str:
@@ -76,18 +73,11 @@ class KrakenAdapter(BankAdapter):
         encoded = (str(nonce) + postdata).encode()
         message = urlpath.encode() + hashlib.sha256(encoded).digest()
 
-        signature = hmac.new(
-            base64.b64decode(self.private_key),
-            message,
-            hashlib.sha512
-        )
+        signature = hmac.new(base64.b64decode(self.private_key), message, hashlib.sha512)
         return base64.b64encode(signature.digest()).decode()
 
     def _make_request(
-        self,
-        endpoint: str,
-        data: Optional[Dict[str, Any]] = None,
-        authenticated: bool = False
+        self, endpoint: str, data: Optional[Dict[str, Any]] = None, authenticated: bool = False
     ) -> Dict[str, Any]:
         """
         Make request to Kraken API.
@@ -106,7 +96,11 @@ class KrakenAdapter(BankAdapter):
         if data is None:
             data = {}
 
-        urlpath = f"/{self.API_VERSION}/private/{endpoint}" if authenticated else f"/{self.API_VERSION}/public/{endpoint}"
+        urlpath = (
+            f"/{self.API_VERSION}/private/{endpoint}"
+            if authenticated
+            else f"/{self.API_VERSION}/public/{endpoint}"
+        )
 
         headers = {}
 
@@ -172,19 +166,17 @@ class KrakenAdapter(BankAdapter):
             # Normalize asset name (Kraken uses X prefix for some assets)
             display_asset = self._normalize_asset_name(asset)
 
-            accounts.append(AccountData(
-                external_id=f"kraken_{asset}",
-                name=f"Kraken {display_asset}",
-                account_type="investment",  # Crypto is treated as investment
-                institution="Kraken",
-                currency=display_asset,
-                balance_available=balance,  # All crypto is immediately available
-                metadata={
-                    "asset": asset,
-                    "platform": "kraken",
-                    "account_type": "spot"
-                }
-            ))
+            accounts.append(
+                AccountData(
+                    external_id=f"kraken_{asset}",
+                    name=f"Kraken {display_asset}",
+                    account_type="investment",  # Crypto is treated as investment
+                    institution="Kraken",
+                    currency=display_asset,
+                    balance_available=balance,  # All crypto is immediately available
+                    metadata={"asset": asset, "platform": "kraken", "account_type": "spot"},
+                )
+            )
 
         return accounts
 
@@ -222,7 +214,7 @@ class KrakenAdapter(BankAdapter):
         asset: Optional[str] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
-        ledger_type: Optional[str] = None
+        ledger_type: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Get ledger entries (deposits, withdrawals, trades, etc.).
@@ -288,11 +280,7 @@ class KrakenAdapter(BankAdapter):
             end_date = datetime.now()
 
         # Get ledger entries
-        ledgers = self.get_ledgers(
-            asset=asset,
-            start_time=start_date,
-            end_time=end_date
-        )
+        ledgers = self.get_ledgers(asset=asset, start_time=start_date, end_time=end_date)
 
         transactions = []
         for ledger in ledgers:
@@ -306,9 +294,7 @@ class KrakenAdapter(BankAdapter):
         return transactions
 
     def normalize_transaction(
-        self,
-        raw: Dict[str, Any],
-        account_external_id: Optional[str] = None
+        self, raw: Dict[str, Any], account_external_id: Optional[str] = None
     ) -> TransactionData:
         """
         Convert Kraken ledger entry to TransactionData format.
@@ -380,7 +366,7 @@ class KrakenAdapter(BankAdapter):
                 "fee": str(fee),
                 "balance": str(balance),
                 "asset": asset,
-            }
+            },
         )
 
     def get_deposit_methods(self, asset: str) -> List[Dict[str, Any]]:
@@ -393,11 +379,7 @@ class KrakenAdapter(BankAdapter):
         Returns:
             List of deposit methods
         """
-        result = self._make_request(
-            "DepositMethods",
-            data={"asset": asset},
-            authenticated=True
-        )
+        result = self._make_request("DepositMethods", data={"asset": asset}, authenticated=True)
         return result
 
     def get_deposit_addresses(self, asset: str, method: str) -> List[Dict[str, Any]]:
@@ -412,16 +394,12 @@ class KrakenAdapter(BankAdapter):
             List of deposit addresses
         """
         result = self._make_request(
-            "DepositAddresses",
-            data={"asset": asset, "method": method},
-            authenticated=True
+            "DepositAddresses", data={"asset": asset, "method": method}, authenticated=True
         )
         return result
 
     def get_trades_history(
-        self,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None
+        self, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None
     ) -> Dict[str, Any]:
         """
         Get trade history.
@@ -446,5 +424,5 @@ class KrakenAdapter(BankAdapter):
 
     def __del__(self):
         """Cleanup HTTP client on deletion."""
-        if hasattr(self, 'client'):
+        if hasattr(self, "client"):
             self.client.close()

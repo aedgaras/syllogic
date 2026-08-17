@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { Suspense } from "react";
 import { RiArrowLeftLine, RiCheckLine, RiAlertLine } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,17 @@ import { cn } from "@/lib/utils";
 import { usePreviewController } from "@/features/csv-import/hooks/use-preview-controller";
 
 function PreviewPageContent() {
-  const { isLoading, isImporting, selectedIndices, setSelectedIndices, balanceVerification, toImport, skipped, enqueue, goBack } = usePreviewController("dashboard");
+  const {
+    isLoading,
+    isImporting,
+    selectedIndices,
+    setSelectedIndices,
+    balanceVerification,
+    toImport,
+    skipped,
+    enqueue,
+    goBack,
+  } = usePreviewController("dashboard");
 
   if (isLoading) {
     return (
@@ -22,7 +31,9 @@ function PreviewPageContent() {
           <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
             <div className="text-center">
               <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-              <p className="text-muted-foreground">{translate("loadingPreview")}</p>
+              <p className="text-muted-foreground">
+                {translate("loadingPreview")}
+              </p>
             </div>
           </div>
         </div>
@@ -43,7 +54,7 @@ function PreviewPageContent() {
                 ? "border-muted bg-muted/30"
                 : balanceVerification.isVerified
                   ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950"
-                  : "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950"
+                  : "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950",
             )}
           >
             <div className="flex items-center gap-2 mb-3">
@@ -65,7 +76,9 @@ function PreviewPageContent() {
             <div className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
               {balanceVerification.fileStartingBalance !== null && (
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">{translate("startingBalancebc3b92")}</span>
+                  <span className="text-muted-foreground">
+                    {translate("startingBalancebc3b92")}
+                  </span>
                   <span className="font-mono">
                     {balanceVerification.fileStartingBalance.toFixed(2)}
                   </span>
@@ -73,7 +86,9 @@ function PreviewPageContent() {
               )}
               {balanceVerification.fileEndingBalance !== null && (
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">{translate("endingBalanceFile")}</span>
+                  <span className="text-muted-foreground">
+                    {translate("endingBalanceFile")}
+                  </span>
                   <span className="font-mono">
                     {balanceVerification.fileEndingBalance.toFixed(2)}
                   </span>
@@ -81,7 +96,9 @@ function PreviewPageContent() {
               )}
               {balanceVerification.calculatedEndingBalance !== null && (
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">{translate("calculatedEnding")}</span>
+                  <span className="text-muted-foreground">
+                    {translate("calculatedEnding")}
+                  </span>
                   <span className="font-mono">
                     {balanceVerification.calculatedEndingBalance.toFixed(2)}
                   </span>
@@ -120,7 +137,11 @@ function PreviewPageContent() {
                 {toImport.length}
               </span>
             </TabsTrigger>
-            <TabsTrigger value="skipped" className="gap-2" disabled={skipped.length === 0}>
+            <TabsTrigger
+              value="skipped"
+              className="gap-2"
+              disabled={skipped.length === 0}
+            >
               {translate("skipped")}
               <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
                 {skipped.length}
@@ -156,11 +177,7 @@ function PreviewPageContent() {
 
         {/* Footer Actions - always visible */}
         <div className="mt-4 flex shrink-0 flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={goBack}
-          >
+          <Button type="button" variant="outline" onClick={goBack}>
             <RiArrowLeftLine className="mr-2 h-4 w-4" />
             {translate("backToMapping")}
           </Button>
@@ -168,7 +185,11 @@ function PreviewPageContent() {
             onClick={enqueue}
             disabled={isImporting || selectedIndices.length === 0}
           >
-            {isImporting ? translate("importing") : translate("importTransactions", { value1: selectedIndices.length })}
+            {isImporting
+              ? translate("importing")
+              : translate("importTransactions", {
+                  value1: selectedIndices.length,
+                })}
             <RiCheckLine className="ml-2 h-4 w-4" />
           </Button>
         </div>
@@ -187,7 +208,9 @@ export default function PreviewPage() {
             <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
               <div className="text-center">
                 <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-                <p className="text-muted-foreground">{translate("loadingb04ba4")}</p>
+                <p className="text-muted-foreground">
+                  {translate("loadingb04ba4")}
+                </p>
               </div>
             </div>
           </div>

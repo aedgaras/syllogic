@@ -8,10 +8,7 @@ import {
   encryptValue,
   isDataEncryptionEnabled,
 } from "@/lib/security/data-encryption";
-import {
-  validateOidcConfig,
-  type OidcRuntimeConfig,
-} from "@/lib/oidc-config";
+import { validateOidcConfig, type OidcRuntimeConfig } from "@/lib/oidc-config";
 
 export type { OidcRuntimeConfig } from "@/lib/oidc-config";
 
@@ -64,12 +61,18 @@ export async function getOidcAdminSettings(): Promise<OidcAdminSettings> {
     where: eq(appSettings.key, OIDC_SETTINGS_KEY),
   });
   if (!row?.valueEncrypted) {
-    return { ...disabledSettings, encryptionConfigured: isDataEncryptionEnabled() };
+    return {
+      ...disabledSettings,
+      encryptionConfigured: isDataEncryptionEnabled(),
+    };
   }
 
   const decrypted = decryptValue(row.valueEncrypted);
   if (!decrypted) {
-    return { ...disabledSettings, encryptionConfigured: isDataEncryptionEnabled() };
+    return {
+      ...disabledSettings,
+      encryptionConfigured: isDataEncryptionEnabled(),
+    };
   }
   const config = parseStoredConfig(decrypted);
   return {
@@ -86,7 +89,7 @@ export async function getOidcAdminSettings(): Promise<OidcAdminSettings> {
 
 export async function saveOidcSettings(
   input: Omit<OidcRuntimeConfig, "clientSecret"> & { clientSecret?: string },
-  updatedByUserId: string
+  updatedByUserId: string,
 ): Promise<OidcAdminSettings> {
   const existing = await getOidcRuntimeConfigIncludingDisabled();
   const config = validateOidcConfig({
@@ -95,7 +98,9 @@ export async function saveOidcSettings(
   });
   const encrypted = encryptValue(JSON.stringify(config));
   if (!encrypted) {
-    throw new Error("DATA_ENCRYPTION_KEY_CURRENT is required to store OIDC credentials.");
+    throw new Error(
+      "DATA_ENCRYPTION_KEY_CURRENT is required to store OIDC credentials.",
+    );
   }
 
   await db

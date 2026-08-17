@@ -1,10 +1,13 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine } from "@remixicon/react";
+import {
+  RiArrowLeftLine,
+  RiArrowRightLine,
+  RiCloseLine,
+} from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import {
   useWalkthroughStore,
@@ -17,9 +20,17 @@ interface WalkthroughPopoverProps {
 }
 
 export function WalkthroughPopover({ step }: WalkthroughPopoverProps) {
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
-  const { currentPage, currentStepIndex, nextStep, previousStep, skipWalkthrough } =
-    useWalkthroughStore();
+  const [position, setPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const {
+    currentPage,
+    currentStepIndex,
+    nextStep,
+    previousStep,
+    skipWalkthrough,
+  } = useWalkthroughStore();
 
   const updatePosition = useCallback(() => {
     if (!step?.target) {

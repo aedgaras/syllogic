@@ -26,9 +26,7 @@ def create_eb_jwt(application_id: str, private_key_pem: str, ttl: int = 3600) ->
     Returns:
         Signed JWT string.
     """
-    private_key = serialization.load_pem_private_key(
-        private_key_pem.encode("utf-8"), password=None
-    )
+    private_key = serialization.load_pem_private_key(private_key_pem.encode("utf-8"), password=None)
     now = int(time.time())
     payload = {
         "iss": "enablebanking.com",

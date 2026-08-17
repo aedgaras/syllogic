@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { RiArrowLeftLine, RiCheckLine, RiAlertLine } from "@remixicon/react";
@@ -14,7 +13,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OnboardingProgress } from "@/components/onboarding/onboarding-progress";
 import { CsvPreviewTable } from "@/components/transactions/csv-preview-table";
@@ -48,7 +53,20 @@ function ShortcutKeys({ keys }: { keys: string[] }) {
 
 function PreviewPageContent() {
   const router = useRouter();
-  const { isLoading, isImporting, hasStartedImport, showSuccessModal, setShowSuccessModal, selectedIndices, setSelectedIndices, balanceVerification, toImport, skipped, enqueue, goBack } = usePreviewController("onboarding");
+  const {
+    isLoading,
+    isImporting,
+    hasStartedImport,
+    showSuccessModal,
+    setShowSuccessModal,
+    selectedIndices,
+    setSelectedIndices,
+    balanceVerification,
+    toImport,
+    skipped,
+    enqueue,
+    goBack,
+  } = usePreviewController("onboarding");
 
   useEffect(() => {
     if (!showSuccessModal) return;
@@ -96,7 +114,9 @@ function PreviewPageContent() {
           <CardContent className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-              <p className="text-muted-foreground">{translate("loadingPreview")}</p>
+              <p className="text-muted-foreground">
+                {translate("loadingPreview")}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -123,7 +143,7 @@ function PreviewPageContent() {
                   ? "border-muted bg-muted/30"
                   : balanceVerification.isVerified
                     ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950"
-                    : "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950"
+                    : "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950",
               )}
             >
               <div className="flex items-center gap-2 mb-3">
@@ -145,7 +165,9 @@ function PreviewPageContent() {
               <div className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
                 {balanceVerification.fileStartingBalance !== null && (
                   <div className="flex justify-between gap-3">
-                    <span className="text-muted-foreground">{translate("startingBalancebc3b92")}</span>
+                    <span className="text-muted-foreground">
+                      {translate("startingBalancebc3b92")}
+                    </span>
                     <span className="font-mono">
                       {balanceVerification.fileStartingBalance.toFixed(2)}
                     </span>
@@ -153,7 +175,9 @@ function PreviewPageContent() {
                 )}
                 {balanceVerification.fileEndingBalance !== null && (
                   <div className="flex justify-between gap-3">
-                    <span className="text-muted-foreground">{translate("endingBalanceFile")}</span>
+                    <span className="text-muted-foreground">
+                      {translate("endingBalanceFile")}
+                    </span>
                     <span className="font-mono">
                       {balanceVerification.fileEndingBalance.toFixed(2)}
                     </span>
@@ -161,7 +185,9 @@ function PreviewPageContent() {
                 )}
                 {balanceVerification.calculatedEndingBalance !== null && (
                   <div className="flex justify-between gap-3">
-                    <span className="text-muted-foreground">{translate("calculatedEnding")}</span>
+                    <span className="text-muted-foreground">
+                      {translate("calculatedEnding")}
+                    </span>
                     <span className="font-mono">
                       {balanceVerification.calculatedEndingBalance.toFixed(2)}
                     </span>
@@ -191,7 +217,10 @@ function PreviewPageContent() {
             </div>
           )}
 
-          <Tabs defaultValue="to-import" className="flex min-h-0 flex-1 flex-col">
+          <Tabs
+            defaultValue="to-import"
+            className="flex min-h-0 flex-1 flex-col"
+          >
             <TabsList className="mb-2 w-full sm:w-fit">
               <TabsTrigger value="to-import" className="gap-2">
                 {translate("toImport")}
@@ -199,7 +228,11 @@ function PreviewPageContent() {
                   {toImport.length}
                 </span>
               </TabsTrigger>
-              <TabsTrigger value="skipped" className="gap-2" disabled={skipped.length === 0}>
+              <TabsTrigger
+                value="skipped"
+                className="gap-2"
+                disabled={skipped.length === 0}
+              >
                 {translate("skipped")}
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
                   {skipped.length}
@@ -233,19 +266,21 @@ function PreviewPageContent() {
           </Tabs>
         </CardContent>
         <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={goBack}
-          >
+          <Button type="button" variant="outline" onClick={goBack}>
             <RiArrowLeftLine className="mr-2 h-4 w-4" />
             {translate("backToMapping")}
           </Button>
           <Button
             onClick={enqueue}
-            disabled={isImporting || selectedIndices.length === 0 || hasStartedImport}
+            disabled={
+              isImporting || selectedIndices.length === 0 || hasStartedImport
+            }
           >
-            {isImporting ? translate("importing") : translate("importTransactions", { value1: selectedIndices.length })}
+            {isImporting
+              ? translate("importing")
+              : translate("importTransactions", {
+                  value1: selectedIndices.length,
+                })}
             <RiCheckLine className="ml-2 h-4 w-4" />
           </Button>
         </CardFooter>
@@ -254,7 +289,9 @@ function PreviewPageContent() {
       <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{translate("yourFirstAccountIsBeingCreated")}</DialogTitle>
+            <DialogTitle>
+              {translate("yourFirstAccountIsBeingCreated")}
+            </DialogTitle>
             <DialogDescription>
               {translate("thisCanTakeAFewMinutesDependingOnThe")}
             </DialogDescription>
@@ -268,14 +305,18 @@ function PreviewPageContent() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">{translate("shortcuts")}</p>
+              <p className="text-xs font-medium text-muted-foreground">
+                {translate("shortcuts")}
+              </p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {SHORTCUTS.map((shortcut) => (
                   <div
                     key={`${shortcut.label}-${shortcut.keys.join("-")}`}
                     className="flex flex-col gap-1 rounded border bg-background px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <span className="text-muted-foreground">{shortcut.label}</span>
+                    <span className="text-muted-foreground">
+                      {shortcut.label}
+                    </span>
                     <ShortcutKeys keys={shortcut.keys} />
                   </div>
                 ))}
@@ -313,7 +354,9 @@ export default function PreviewPage() {
             <CardContent className="flex items-center justify-center py-12">
               <div className="text-center">
                 <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-                <p className="text-muted-foreground">{translate("loadingb04ba4")}</p>
+                <p className="text-muted-foreground">
+                  {translate("loadingb04ba4")}
+                </p>
               </div>
             </CardContent>
           </Card>

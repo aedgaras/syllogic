@@ -50,5 +50,5 @@ export const VEHICLE_TYPES = [
   { value: "other", label: translate("other") },
 ] as const;
 
-export type PropertyType = typeof PROPERTY_TYPES[number]["value"];
-export type VehicleType = typeof VEHICLE_TYPES[number]["value"];
+export type PropertyType = (typeof PROPERTY_TYPES)[number]["value"];
+export type VehicleType = (typeof VEHICLE_TYPES)[number]["value"];

@@ -1,6 +1,7 @@
 """
 Test categorizer API endpoint.
 """
+
 import sys
 import os
 import json
@@ -25,7 +26,7 @@ def setup_test_data():
         Base.metadata.create_all(bind=engine)
         user = get_or_create_system_user(db)
         user_id = str(user.id)
-        
+
         # Create a test account
         account = Account(
             user_id=user_id,
@@ -35,11 +36,11 @@ def setup_test_data():
             currency="EUR",
             balance_available=Decimal("1000.00"),
             starting_balance=Decimal("1000.00"),
-            functional_balance=Decimal("1000.00")
+            functional_balance=Decimal("1000.00"),
         )
         db.add(account)
         db.commit()
-        
+
         # Create test categories
         categories = [
             Category(user_id=user_id, name="Groceries", category_type="expense", is_system=False),
@@ -49,7 +50,7 @@ def setup_test_data():
         for cat in categories:
             db.add(cat)
         db.commit()
-        
+
         return user_id
     finally:
         db.close()
@@ -58,28 +59,31 @@ def setup_test_data():
 def test_categorizer_single():
     """Test single transaction categorization."""
     print("Testing Categorizer API (single transaction)...")
-    
+
     try:
         user_id = setup_test_data()
         url = f"{BASE_URL}/categories/categorize"
         path_with_query = "/api/categories/categorize"
-        
+
         payload = {
             "description": "TESCO SUPERMARKET",
             "merchant": "Tesco",
             "amount": -25.50,
             "transaction_type": "debit",
-            "use_llm": False  # Use deterministic matching for faster tests
+            "use_llm": False,  # Use deterministic matching for faster tests
         }
-        
+
         request_body = json.dumps(payload).encode("utf-8")
         response = requests.post(
             url,
             data=request_body,
-            headers={"Content-Type": "application/json", **build_internal_auth_headers("POST", path_with_query, user_id, request_body)},
+            headers={
+                "Content-Type": "application/json",
+                **build_internal_auth_headers("POST", path_with_query, user_id, request_body),
+            },
             timeout=30,
         )
-    
+
         if response.status_code == 200:
             result = response.json()
             # Should return a category (or None if no match)
@@ -94,6 +98,7 @@ def test_categorizer_single():
     except Exception as e:
         print(f"✗ Test setup failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -101,50 +106,55 @@ def test_categorizer_single():
 def test_categorizer_batch():
     """Test batch transaction categorization."""
     print("Testing Categorizer API (batch)...")
-    
+
     try:
         user_id = setup_test_data()
         url = f"{BASE_URL}/categories/categorize/batch"
         path_with_query = "/api/categories/categorize/batch"
-        
+
         payload = {
             "transactions": [
                 {
                     "description": "TESCO SUPERMARKET",
                     "merchant": "Tesco",
                     "amount": -25.50,
-                    "transaction_type": "debit"
+                    "transaction_type": "debit",
                 },
                 {
                     "description": "UBER RIDE",
                     "merchant": "Uber",
                     "amount": -15.00,
-                    "transaction_type": "debit"
+                    "transaction_type": "debit",
                 },
                 {
                     "description": "SALARY PAYMENT",
                     "merchant": "Employer",
                     "amount": 100.00,
-                    "transaction_type": "credit"
-                }
+                    "transaction_type": "credit",
+                },
             ],
-            "use_llm": False  # Use deterministic matching for faster tests
+            "use_llm": False,  # Use deterministic matching for faster tests
         }
-        
+
         request_body = json.dumps(payload).encode("utf-8")
         response = requests.post(
             url,
             data=request_body,
-            headers={"Content-Type": "application/json", **build_internal_auth_headers("POST", path_with_query, user_id, request_body)},
+            headers={
+                "Content-Type": "application/json",
+                **build_internal_auth_headers("POST", path_with_query, user_id, request_body),
+            },
             timeout=30,
         )
-    
+
         if response.status_code == 200:
             result = response.json()
             assert "results" in result
             assert len(result["results"]) == 3, "Should return 3 results"
             assert result.get("total_transactions") == 3
-            print(f"✓ Batch categorization test passed ({result.get('categorized_count', 0)} categorized)")
+            print(
+                f"✓ Batch categorization test passed ({result.get('categorized_count', 0)} categorized)"
+            )
             return True
         else:
             print(f"✗ Batch categorization test failed: {response.status_code}")
@@ -153,6 +163,7 @@ def test_categorizer_batch():
     except Exception as e:
         print(f"✗ Test setup failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -165,5 +176,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"✗ Test failed with exception: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -79,7 +78,9 @@ export function PeopleList(props: { initialPeople: ClientPerson[] }) {
       const blockers = (err as { blockers?: unknown[] }).blockers;
       if (!blockers) throw err;
       alert(
-        translate("cannotDeleteThisPersonIsTheSoleOwnerOf", { value1: blockers.length })
+        translate("cannotDeleteThisPersonIsTheSoleOwnerOf", {
+          value1: blockers.length,
+        }),
       );
     }
   }
@@ -92,9 +93,15 @@ export function PeopleList(props: { initialPeople: ClientPerson[] }) {
             <PersonAvatar person={p} size={36} />
             <span className="flex-1 font-medium">{p.name}</span>
             {p.kind === "self" && (
-              <span className="text-xs text-muted-foreground">{translate("you")}</span>
+              <span className="text-xs text-muted-foreground">
+                {translate("you")}
+              </span>
             )}
-            <Button variant="ghost" size="sm" onClick={() => setEditingId(p.id)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEditingId(p.id)}
+            >
               {translate("edit")}
             </Button>
             {p.kind !== "self" && (
@@ -115,7 +122,8 @@ export function PeopleList(props: { initialPeople: ClientPerson[] }) {
             initial={{
               name: people.find((p) => p.id === editingId)!.name,
               color: people.find((p) => p.id === editingId)!.color ?? undefined,
-              avatarUrl: people.find((p) => p.id === editingId)!.avatarUrl ?? undefined,
+              avatarUrl:
+                people.find((p) => p.id === editingId)!.avatarUrl ?? undefined,
             }}
             submitLabel="Save"
             onSubmit={(v) => update(editingId, v)}

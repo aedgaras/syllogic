@@ -23,7 +23,12 @@ import {
 import type { SupportedHorizon } from "@/lib/dashboard/query-params";
 import { getAuthenticatedSession } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
-import { categories, transactions, transactionLinks, users } from "@/lib/db/schema";
+import {
+  categories,
+  transactions,
+  transactionLinks,
+  users,
+} from "@/lib/db/schema";
 import { resolveMissingAccountLogos } from "@/lib/actions/account-logos";
 import type { TransactionWithRelations } from "@/features/transactions/public";
 import type {
@@ -190,7 +195,9 @@ function normalizeCategoryIds(categoryIds?: string[]): string[] {
     return [];
   }
 
-  return Array.from(new Set(categoryIds.map((id) => id.trim()).filter(Boolean)));
+  return Array.from(
+    new Set(categoryIds.map((id) => id.trim()).filter(Boolean)),
+  );
 }
 
 function normalizePage(value?: number): number {
@@ -209,7 +216,7 @@ function normalizePageSize(value?: number): number {
 
 function resolveTransactionSortOrder(
   sort: CategorySpendingSortField,
-  order: CategorySpendingSortOrder
+  order: CategorySpendingSortOrder,
 ) {
   if (sort === "amount") {
     return order === "asc"
@@ -244,7 +251,7 @@ async function getUserCurrency(userId: string): Promise<string> {
 
 async function getLatestTransactionDate(
   userId: string,
-  accountIds: string[]
+  accountIds: string[],
 ): Promise<Date> {
   const conditions = [eq(transactions.userId, userId)];
   if (accountIds.length > 0) {
@@ -264,7 +271,7 @@ async function getLatestTransactionDate(
 
 function resolvePrimaryRange(
   filters: CategorySpendingFilters,
-  referenceDate: Date
+  referenceDate: Date,
 ): {
   startDate: Date;
   endDate: Date;
@@ -306,7 +313,7 @@ async function fetchCategoryAmounts(
   userId: string,
   startDate: Date,
   endDate: Date,
-  accountIds: string[]
+  accountIds: string[],
 ): Promise<RawCategoryAmount[]> {
   const baseConditions = [
     eq(transactions.userId, userId),
@@ -347,9 +354,12 @@ async function fetchCategoryAmounts(
     .from(transactions)
     .innerJoin(
       categories,
-      sql`${categories.id} = COALESCE(${transactions.categoryId}, ${transactions.categorySystemId})`
+      sql`${categories.id} = COALESCE(${transactions.categoryId}, ${transactions.categorySystemId})`,
     )
-    .leftJoin(transactionLinks, eq(transactions.id, transactionLinks.transactionId))
+    .leftJoin(
+      transactionLinks,
+      eq(transactions.id, transactionLinks.transactionId),
+    )
     .where(and(...baseConditions, eq(categories.categoryType, "expense")))
     .groupBy(categories.id, categories.name, categories.color, categories.icon)
     .orderBy(
@@ -370,8 +380,8 @@ async function fetchCategoryAmounts(
             WHEN ${transactionLinks.linkRole} IS NOT NULL THEN 0
             ELSE ABS(${transactions.amount})
           END
-        ), 0)`
-      )
+        ), 0)`,
+      ),
     );
 
   const uncategorizedResult = await db
@@ -379,14 +389,17 @@ async function fetchCategoryAmounts(
       amount: sql<string>`COALESCE(SUM(ABS(${transactions.amount})), 0)`,
     })
     .from(transactions)
-    .leftJoin(transactionLinks, eq(transactions.id, transactionLinks.transactionId))
+    .leftJoin(
+      transactionLinks,
+      eq(transactions.id, transactionLinks.transactionId),
+    )
     .where(
       and(
         ...baseConditions,
         isNull(transactions.categoryId),
         isNull(transactions.categorySystemId),
-        isNull(transactionLinks.linkRole)
-      )
+        isNull(transactionLinks.linkRole),
+      ),
     );
 
   const items: RawCategoryAmount[] = categorizedResult.map((row) => ({
@@ -412,14 +425,17 @@ async function fetchCategoryAmounts(
 }
 
 function mapCategorySpendingTransactionRowsForUi(
-  rows: CategorySpendingTransactionRowWithRelations[]
+  rows: CategorySpendingTransactionRowWithRelations[],
 ): TransactionWithRelations[] {
   return rows.flatMap((tx) => {
     if (!tx.account) {
-      console.warn("[getCategorySpendingTransactionsPage] Transaction missing account relation", {
-        transactionId: tx.id,
-        accountId: tx.accountId,
-      });
+      console.warn(
+        "[getCategorySpendingTransactionsPage] Transaction missing account relation",
+        {
+          transactionId: tx.id,
+          accountId: tx.accountId,
+        },
+      );
       return [];
     }
 
@@ -501,7 +517,7 @@ function mapCategorySpendingTransactionRowsForUi(
 }
 
 async function hydrateCategorySpendingTransactionRowsWithResolvedAccountLogos(
-  rows: CategorySpendingTransactionRowWithRelations[]
+  rows: CategorySpendingTransactionRowWithRelations[],
 ): Promise<CategorySpendingTransactionRowWithRelations[]> {
   const uniqueAccounts = Array.from(
     new Map(
@@ -515,12 +531,14 @@ async function hydrateCategorySpendingTransactionRowsWithResolvedAccountLogos(
             logoId: row.account!.logoId,
             logo: row.account!.logo,
           },
-        ])
-    ).values()
+        ]),
+    ).values(),
   );
 
   const resolvedAccounts = await resolveMissingAccountLogos(uniqueAccounts);
-  const resolvedById = new Map(resolvedAccounts.map((account) => [account.id, account]));
+  const resolvedById = new Map(
+    resolvedAccounts.map((account) => [account.id, account]),
+  );
 
   return rows.map((row) => {
     if (!row.account) {
@@ -550,7 +568,7 @@ async function hydrateCategorySpendingTransactionRowsWithResolvedAccountLogos(
 }
 
 export async function getCategorySpendingData(
-  filters: CategorySpendingFilters = {}
+  filters: CategorySpendingFilters = {},
 ): Promise<CategorySpendingData> {
   const session = await getAuthenticatedSession();
 
@@ -581,45 +599,62 @@ export async function getCategorySpendingData(
   ]);
 
   const { startDate, endDate } = resolvePrimaryRange(filters, referenceDate);
-  const { comparisonStart, comparisonEnd } = computePreviousWindow(startDate, endDate);
+  const { comparisonStart, comparisonEnd } = computePreviousWindow(
+    startDate,
+    endDate,
+  );
 
   const [currentCategories, previousCategories] = await Promise.all([
-    fetchCategoryAmounts(session.user.id, startDate, endDate, normalizedAccountIds),
+    fetchCategoryAmounts(
+      session.user.id,
+      startDate,
+      endDate,
+      normalizedAccountIds,
+    ),
     fetchCategoryAmounts(
       session.user.id,
       comparisonStart,
       comparisonEnd,
-      normalizedAccountIds
+      normalizedAccountIds,
     ),
   ]);
 
-  const previousById = new Map(previousCategories.map((item) => [item.id, item.amount]));
-  const totalSpend = currentCategories.reduce((sum, item) => sum + item.amount, 0);
-  const monthCount = Math.max(1, getTouchedMonthKeys(startDate, endDate).length);
+  const previousById = new Map(
+    previousCategories.map((item) => [item.id, item.amount]),
+  );
+  const totalSpend = currentCategories.reduce(
+    (sum, item) => sum + item.amount,
+    0,
+  );
+  const monthCount = Math.max(
+    1,
+    getTouchedMonthKeys(startDate, endDate).length,
+  );
 
-  const categoriesWithMetrics: CategorySpendingCategory[] = currentCategories.map((item, index) => {
-    const previousAmount = previousById.get(item.id) ?? 0;
-    const deltaAmount = item.amount - previousAmount;
-    const deltaPct =
-      previousAmount > 0
-        ? (deltaAmount / previousAmount) * 100
-        : item.amount > 0
-          ? 100
-          : 0;
+  const categoriesWithMetrics: CategorySpendingCategory[] =
+    currentCategories.map((item, index) => {
+      const previousAmount = previousById.get(item.id) ?? 0;
+      const deltaAmount = item.amount - previousAmount;
+      const deltaPct =
+        previousAmount > 0
+          ? (deltaAmount / previousAmount) * 100
+          : item.amount > 0
+            ? 100
+            : 0;
 
-    return {
-      id: item.id,
-      name: item.name,
-      color: item.color,
-      icon: item.icon,
-      fill: resolveCategoryColor(item.color, index),
-      amount: item.amount,
-      sharePct: totalSpend > 0 ? (item.amount / totalSpend) * 100 : 0,
-      deltaAmount,
-      deltaPct,
-      averageMonthlyAmount: item.amount / monthCount,
-    };
-  });
+      return {
+        id: item.id,
+        name: item.name,
+        color: item.color,
+        icon: item.icon,
+        fill: resolveCategoryColor(item.color, index),
+        amount: item.amount,
+        sharePct: totalSpend > 0 ? (item.amount / totalSpend) * 100 : 0,
+        deltaAmount,
+        deltaPct,
+        averageMonthlyAmount: item.amount / monthCount,
+      };
+    });
 
   const topCategory = categoriesWithMetrics[0]
     ? {
@@ -649,7 +684,7 @@ export async function getCategorySpendingData(
 }
 
 export async function getCategorySpendingTransactionsPage(
-  filters: CategorySpendingTransactionsFilters = {}
+  filters: CategorySpendingTransactionsFilters = {},
 ): Promise<CategorySpendingTransactionsPageResult> {
   const session = await getAuthenticatedSession();
 
@@ -671,18 +706,26 @@ export async function getCategorySpendingTransactionsPage(
   const normalizedCategoryIds = normalizeCategoryIds(filters.categoryIds);
   const userId = session.user.id;
 
-  const referenceDate = await getLatestTransactionDate(userId, normalizedAccountIds);
+  const referenceDate = await getLatestTransactionDate(
+    userId,
+    normalizedAccountIds,
+  );
   const { startDate, endDate } = resolvePrimaryRange(filters, referenceDate);
 
   const expenseCategories = await db
     .select({ id: categories.id })
     .from(categories)
-    .where(and(eq(categories.userId, userId), eq(categories.categoryType, "expense")));
+    .where(
+      and(
+        eq(categories.userId, userId),
+        eq(categories.categoryType, "expense"),
+      ),
+    );
 
   const expenseCategoryIds = expenseCategories.map((category) => category.id);
   const uncategorizedCondition = and(
     isNull(transactions.categoryId),
-    isNull(transactions.categorySystemId)
+    isNull(transactions.categorySystemId),
   )!;
 
   const conditions: SQLWrapper[] = [
@@ -703,25 +746,28 @@ export async function getCategorySpendingTransactionsPage(
         uncategorizedCondition,
         sql`COALESCE(${transactions.categoryId}, ${transactions.categorySystemId}) IN (${sql.join(
           expenseCategoryIds.map((id) => sql`${id}`),
-          sql`, `
-        )})`
-      )!
+          sql`, `,
+        )})`,
+      )!,
     );
   } else {
     conditions.push(uncategorizedCondition);
   }
 
   if (normalizedCategoryIds.length > 0) {
-    const includesUncategorized = normalizedCategoryIds.includes("uncategorized");
-    const concreteIds = normalizedCategoryIds.filter((id) => id !== "uncategorized");
+    const includesUncategorized =
+      normalizedCategoryIds.includes("uncategorized");
+    const concreteIds = normalizedCategoryIds.filter(
+      (id) => id !== "uncategorized",
+    );
     const selectedConditions: SQLWrapper[] = [];
 
     if (concreteIds.length > 0) {
       selectedConditions.push(
         sql`COALESCE(${transactions.categoryId}, ${transactions.categorySystemId}) IN (${sql.join(
           concreteIds.map((id) => sql`${id}`),
-          sql`, `
-        )})`
+          sql`, `,
+        )})`,
       );
     }
 
@@ -786,9 +832,8 @@ export async function getCategorySpendingTransactionsPage(
     }),
   ]);
 
-  const hydratedRows = await hydrateCategorySpendingTransactionRowsWithResolvedAccountLogos(
-    rows
-  );
+  const hydratedRows =
+    await hydrateCategorySpendingTransactionRowsWithResolvedAccountLogos(rows);
 
   return {
     rows: mapCategorySpendingTransactionRowsForUi(hydratedRows),

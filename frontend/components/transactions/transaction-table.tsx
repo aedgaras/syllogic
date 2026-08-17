@@ -1,17 +1,17 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import * as React from "react";
-import {
-  type ColumnDef,
-} from "@tanstack/react-table";
+import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import type {
   FilteredTransactionTotals,
   TransactionWithRelations,
 } from "@/features/transactions/public";
-import type { CategoryDisplay, AccountForFilter } from "@/shared/domain/display-contracts";
+import type {
+  CategoryDisplay,
+  AccountForFilter,
+} from "@/shared/domain/display-contracts";
 import { TransactionSheet } from "./transaction-sheet";
 import { transactionColumns } from "./columns";
 import { TransactionFilters } from "./transaction-filters";
@@ -32,10 +32,16 @@ interface TransactionTableProps {
   queryState: TransactionsQueryState;
   categories?: CategoryDisplay[];
   accounts?: AccountForFilter[];
-  onUpdateTransaction?: (id: string, updates: Partial<TransactionWithRelations>) => void;
+  onUpdateTransaction?: (
+    id: string,
+    updates: Partial<TransactionWithRelations>,
+  ) => void;
   onDeleteTransaction?: (id: string) => void;
   onBulkUpdate?: (transactionIds: string[], categoryId: string | null) => void;
-  onBulkAnalyticsUpdate?: (transactionIds: string[], includeInAnalytics: boolean) => void;
+  onBulkAnalyticsUpdate?: (
+    transactionIds: string[],
+    includeInAnalytics: boolean,
+  ) => void;
   onBulkDelete?: (deletedIds: string[]) => void;
   onLinkSuccess?: () => void;
   canDelete?: boolean;
@@ -73,7 +79,8 @@ export function TransactionTable({
   columns,
   bulkActions,
 }: TransactionTableProps) {
-  const [selectedTransaction, setSelectedTransaction] = React.useState<TransactionWithRelations | null>(null);
+  const [selectedTransaction, setSelectedTransaction] =
+    React.useState<TransactionWithRelations | null>(null);
   const {
     searchParams,
     updateQueryState,
@@ -92,7 +99,10 @@ export function TransactionTable({
     : null;
 
   const recurringOptions = React.useMemo(() => {
-    const byId = new Map<string, { id: string; name: string; merchant?: string; frequency: string }>();
+    const byId = new Map<
+      string,
+      { id: string; name: string; merchant?: string; frequency: string }
+    >();
     transactions.forEach((transaction) => {
       const recurring = transaction.recurringTransaction;
       if (!recurring || byId.has(recurring.id)) {
@@ -122,7 +132,10 @@ export function TransactionTable({
     setSelectedTransaction(transaction);
   };
 
-  const handleUpdateTransaction = (id: string, updates: Partial<TransactionWithRelations>) => {
+  const handleUpdateTransaction = (
+    id: string,
+    updates: Partial<TransactionWithRelations>,
+  ) => {
     onUpdateTransaction?.(id, updates);
     if (selectedTransaction?.id === id) {
       setSelectedTransaction((prev) => (prev ? { ...prev, ...updates } : null));
@@ -174,7 +187,7 @@ export function TransactionTable({
                         sort: "bookedAt",
                         order: "desc",
                       },
-                      { resetPage: false }
+                      { resetPage: false },
                     )
                   }
                 />
@@ -187,7 +200,9 @@ export function TransactionTable({
             totalCount={totalCount}
             page={queryState.page}
             pageSize={queryState.pageSize}
-            onPageChange={(page) => updateQueryState({ page }, { resetPage: false })}
+            onPageChange={(page) =>
+              updateQueryState({ page }, { resetPage: false })
+            }
             onPageSizeChange={(pageSize) =>
               updateQueryState({ pageSize, page: 1 }, { resetPage: false })
             }
@@ -226,19 +241,25 @@ export function TransactionTable({
         tableContainerClassName="min-h-0 flex-1 overflow-y-auto"
         mobileCards
         tableContainerProps={
-          { "data-walkthrough": "walkthrough-table" } as React.HTMLAttributes<HTMLDivElement>
+          {
+            "data-walkthrough": "walkthrough-table",
+          } as React.HTMLAttributes<HTMLDivElement>
         }
         footer={
           resolvedFilteredTotals ? (
             <div className="-mt-px flex items-center justify-end gap-8 border-x border-b bg-muted/25 px-4 py-2">
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground">{translate("totalIn")}</span>
+                <span className="text-muted-foreground">
+                  {translate("totalIn")}
+                </span>
                 <span className="font-mono font-medium text-emerald-700">
                   +{formatSummaryAmount(resolvedFilteredTotals.totalIn)}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground">{translate("totalOut")}</span>
+                <span className="text-muted-foreground">
+                  {translate("totalOut")}
+                </span>
                 <span className="font-mono font-medium text-rose-700">
                   -{formatSummaryAmount(resolvedFilteredTotals.totalOut)}
                 </span>

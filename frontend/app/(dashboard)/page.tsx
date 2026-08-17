@@ -144,7 +144,10 @@ async function DashboardContent({
 
       {/* Row 2: Charts */}
       <div className="grid gap-4 md:grid-cols-5">
-        <div data-walkthrough="walkthrough-profit-loss" className="md:col-span-3">
+        <div
+          data-walkthrough="walkthrough-profit-loss"
+          className="md:col-span-3"
+        >
           <ProfitLossChart
             data={data.incomeExpense}
             currency={data.balance.currency}

@@ -34,10 +34,4 @@ export const authClient = createAuthClient({
   plugins: [genericOAuthClient()],
 });
 
-export const {
-  signIn,
-  signOut,
-  signUp,
-  useSession,
-  getSession,
-} = authClient;
+export const { signIn, signOut, signUp, useSession, getSession } = authClient;

@@ -12,6 +12,7 @@ A synthetic mirror transaction is created only when the destination is a
 manual pocket and no real counterpart exists. Synced/CSV destinations get
 their own transaction from their import source.
 """
+
 from __future__ import annotations
 
 import logging
@@ -197,9 +198,7 @@ class InternalTransferService:
             if existing_link is not None:
                 existing_link.mirror_txn_id = txn.id
                 self.db.flush()
-                self._mark_transaction_as_transfer(
-                    txn, existing_link.id, transfer_category_id
-                )
+                self._mark_transaction_as_transfer(txn, existing_link.id, transfer_category_id)
                 # The first side was already marked by IBAN detection; apply
                 # the category again in case the category was created later.
                 self._mark_transaction_as_transfer(
@@ -219,12 +218,8 @@ class InternalTransferService:
                 )
                 self.db.add(link)
                 self.db.flush()
-                self._mark_transaction_as_transfer(
-                    debit, link.id, transfer_category_id
-                )
-                self._mark_transaction_as_transfer(
-                    credit, link.id, transfer_category_id
-                )
+                self._mark_transaction_as_transfer(debit, link.id, transfer_category_id)
+                self._mark_transaction_as_transfer(credit, link.id, transfer_category_id)
 
             paired += 1
 
@@ -253,9 +248,7 @@ class InternalTransferService:
             return empty_result
 
         transfer_category_id = self._resolve_transfer_category_id()
-        detected = self._detect_transaction_pairs(
-            transaction_ids, transfer_category_id
-        )
+        detected = self._detect_transaction_pairs(transaction_ids, transfer_category_id)
 
         pocket_map = self._load_user_account_iban_map()
         if not pocket_map:
@@ -345,9 +338,7 @@ class InternalTransferService:
             self.db.add(link)
             self.db.flush()  # assigns link.id (server_default gen_random_uuid())
 
-            self._mark_transaction_as_transfer(
-                src, link.id, transfer_category_id
-            )
+            self._mark_transaction_as_transfer(src, link.id, transfer_category_id)
 
             # Only manual destinations get added to the recalc set — they're the
             # only ones where a mirror transaction was created and the balance
@@ -385,11 +376,7 @@ class InternalTransferService:
         if link is None:
             return
 
-        src = (
-            self.db.query(Transaction)
-            .filter(Transaction.id == link.source_txn_id)
-            .one_or_none()
-        )
+        src = self.db.query(Transaction).filter(Transaction.id == link.source_txn_id).one_or_none()
         if src is not None:
             src.include_in_analytics = True
             src.internal_transfer_id = None
@@ -400,9 +387,7 @@ class InternalTransferService:
                 .filter(Transaction.id == link.mirror_txn_id)
                 .one_or_none()
             )
-            if mirror is not None and src is not None and self._is_synthetic_mirror(
-                mirror, src.id
-            ):
+            if mirror is not None and src is not None and self._is_synthetic_mirror(mirror, src.id):
                 self.db.delete(mirror)
             elif mirror is not None:
                 # A CSV/synced counterpart is a real transaction, not a mirror

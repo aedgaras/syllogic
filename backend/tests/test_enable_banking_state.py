@@ -59,10 +59,14 @@ def test_legacy_auth_state_still_decodes():
 
 
 def test_create_session_relinks_existing_connection(monkeypatch):
-    redis = FakeRedis(json.dumps({
-        "user_id": "user-1",
-        "connection_id": "connection-1",
-    }))
+    redis = FakeRedis(
+        json.dumps(
+            {
+                "user_id": "user-1",
+                "connection_id": "connection-1",
+            }
+        )
+    )
     monkeypatch.setattr(enable_banking, "_get_redis", lambda: redis)
 
     session_data = {

@@ -59,7 +59,10 @@ export type SymbolSearchResult = {
   currency?: string | null;
 };
 
-function buildUrl(path: string, query?: Record<string, string | undefined>): {
+function buildUrl(
+  path: string,
+  query?: Record<string, string | undefined>,
+): {
   url: string;
   pathWithQuery: string;
 } {
@@ -83,7 +86,8 @@ async function signedFetch(
   const userId = await requireAuth();
   if (!userId) throw new Error("Not authenticated");
   const { url, pathWithQuery } = buildUrl(path, options.query);
-  const body = options.body !== undefined ? JSON.stringify(options.body) : undefined;
+  const body =
+    options.body !== undefined ? JSON.stringify(options.body) : undefined;
   const signatureHeaders = createInternalAuthHeaders({
     method,
     pathWithQuery,
@@ -191,9 +195,7 @@ export async function getHoldingTrades(
   return readJsonOrThrow<HoldingTrade[]>(resp);
 }
 
-export async function getHoldingLots(
-  holdingId: string,
-): Promise<HoldingLot[]> {
+export async function getHoldingLots(holdingId: string): Promise<HoldingLot[]> {
   const resp = await signedFetch(
     "GET",
     `/api/investments/holdings/${holdingId}/lots`,
@@ -217,9 +219,13 @@ export async function createBrokerConnection(payload: {
   base_currency: string;
 }): Promise<{ connection_id: string; account_id: string }> {
   await assertNotDemoRestricted();
-  const resp = await signedFetch("POST", "/api/investments/broker-connections", {
-    body: payload,
-  });
+  const resp = await signedFetch(
+    "POST",
+    "/api/investments/broker-connections",
+    {
+      body: payload,
+    },
+  );
   return readJsonOrThrow<{ connection_id: string; account_id: string }>(resp);
 }
 
@@ -284,9 +290,13 @@ export async function updateHolding(
   if (isDemoRestrictedUserEmail(session.user.email)) {
     throw new Error(DEMO_RESTRICTED_ACTION_ERROR);
   }
-  const resp = await signedFetch("PATCH", `/api/investments/holdings/${holdingId}`, {
-    body: payload,
-  });
+  const resp = await signedFetch(
+    "PATCH",
+    `/api/investments/holdings/${holdingId}`,
+    {
+      body: payload,
+    },
+  );
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
     throw new Error(text || `Request failed: ${resp.status}`);

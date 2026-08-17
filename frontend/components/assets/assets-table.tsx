@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState } from "react";
 import { RiArrowDownSLine, RiArrowRightSLine } from "@remixicon/react";
 import { formatCurrency } from "@/lib/utils";
@@ -14,7 +13,12 @@ interface AssetsTableProps {
 }
 
 // Asset categories that are bank accounts (navigable to account detail)
-const ACCOUNT_CATEGORY_KEYS: AssetCategoryKey[] = ["cash", "savings", "investment", "crypto"];
+const ACCOUNT_CATEGORY_KEYS: AssetCategoryKey[] = [
+  "cash",
+  "savings",
+  "investment",
+  "crypto",
+];
 
 function AccountRow({
   account,
@@ -89,10 +93,14 @@ function CategoryRow({
       <div className="flex flex-col gap-2 border-t px-4 py-3 sm:flex-row sm:items-center">
         <div className="flex flex-1 items-center gap-2">
           <div className="w-4 h-4" /> {/* Spacer for alignment */}
-          <span className="text-sm text-muted-foreground">{category.label}</span>
+          <span className="text-sm text-muted-foreground">
+            {category.label}
+          </span>
         </div>
         <div className="flex w-full items-center gap-4 sm:w-auto">
-          <span className="min-w-36 flex-1 text-sm text-muted-foreground sm:w-36 sm:flex-none sm:text-center">-</span>
+          <span className="min-w-36 flex-1 text-sm text-muted-foreground sm:w-36 sm:flex-none sm:text-center">
+            -
+          </span>
           <span className="text-sm text-muted-foreground sm:w-24 sm:text-right">
             {formatCurrency(0, currency)}
           </span>

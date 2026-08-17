@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState } from "react";
 import { RiAddLine, RiArrowLeftLine } from "@remixicon/react";
 import {
@@ -91,7 +90,15 @@ export function AddAssetDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {showTrigger && (
-        <DialogTrigger render={<Button size="sm" variant="outline" data-walkthrough="walkthrough-add" />}>
+        <DialogTrigger
+          render={
+            <Button
+              size="sm"
+              variant="outline"
+              data-walkthrough="walkthrough-add"
+            />
+          }
+        >
           <RiAddLine className="mr-2 h-4 w-4" />
           {translate("addAsset")}
         </DialogTrigger>
@@ -120,11 +127,17 @@ export function AddAssetDialog({
         )}
 
         {step === "property" && (
-          <AddPropertyForm onSuccess={handleSuccess} onCancel={() => setStep("select")} />
+          <AddPropertyForm
+            onSuccess={handleSuccess}
+            onCancel={() => setStep("select")}
+          />
         )}
 
         {step === "vehicle" && (
-          <AddVehicleForm onSuccess={handleSuccess} onCancel={() => setStep("select")} />
+          <AddVehicleForm
+            onSuccess={handleSuccess}
+            onCancel={() => setStep("select")}
+          />
         )}
 
         {step === "account" && (

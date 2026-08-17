@@ -5,6 +5,7 @@ Exercises the person filter end-to-end:
   - list_accounts with person_ids excludes accounts not owned by the filter set
   - get_household_summary partitions a joint account's balance evenly across owners
 """
+
 from __future__ import annotations
 
 import uuid
@@ -86,10 +87,14 @@ def seeded_household(db_session):
 
     # Ownership rows
     db_session.add(AccountOwner(account_id=self_account.id, person_id=self_person.id, share=None))
-    db_session.add(AccountOwner(account_id=partner_account.id, person_id=partner_person.id, share=None))
+    db_session.add(
+        AccountOwner(account_id=partner_account.id, person_id=partner_person.id, share=None)
+    )
     # Joint: both owners, no explicit share → equal split
     db_session.add(AccountOwner(account_id=joint_account.id, person_id=self_person.id, share=None))
-    db_session.add(AccountOwner(account_id=joint_account.id, person_id=partner_person.id, share=None))
+    db_session.add(
+        AccountOwner(account_id=joint_account.id, person_id=partner_person.id, share=None)
+    )
 
     db_session.commit()
 
@@ -108,7 +113,9 @@ def seeded_household(db_session):
         db_session.query(AccountOwner).filter(
             AccountOwner.account_id.in_([self_account.id, partner_account.id, joint_account.id])
         ).delete(synchronize_session=False)
-        db_session.query(Account).filter(Account.user_id == user_id).delete(synchronize_session=False)
+        db_session.query(Account).filter(Account.user_id == user_id).delete(
+            synchronize_session=False
+        )
         db_session.query(Person).filter(Person.user_id == user_id).delete(synchronize_session=False)
         db_session.query(User).filter(User.id == user_id).delete(synchronize_session=False)
         db_session.commit()

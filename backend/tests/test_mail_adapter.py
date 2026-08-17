@@ -3,6 +3,7 @@
 Run with:
     cd backend && .venv/bin/pytest tests/test_mail_adapter.py -v
 """
+
 from __future__ import annotations
 
 import os
@@ -99,7 +100,11 @@ def test_smtp_adapter_calls_smtplib():
         mock_conn.sendmail.return_value = {}
         mock_smtp_cls.return_value.__enter__.return_value = mock_conn
         adapter = SmtpMailAdapter(
-            host="smtp.example.com", port=587, username="u", password="p", from_addr="reports@example.com"
+            host="smtp.example.com",
+            port=587,
+            username="u",
+            password="p",
+            from_addr="reports@example.com",
         )
         adapter.send(["dest@example.com"], "Subject", "<p>hi</p>", "hi")
         mock_conn.starttls.assert_called_once()
@@ -113,7 +118,11 @@ def test_smtp_adapter_uses_connect_timeout():
         mock_conn.sendmail.return_value = {}
         mock_smtp_cls.return_value.__enter__.return_value = mock_conn
         adapter = SmtpMailAdapter(
-            host="smtp.example.com", port=587, username="u", password="p", from_addr="reports@example.com",
+            host="smtp.example.com",
+            port=587,
+            username="u",
+            password="p",
+            from_addr="reports@example.com",
             timeout=5,
         )
         adapter.send(["dest@example.com"], "Subject", "<p>hi</p>", "hi")
@@ -126,20 +135,30 @@ def test_smtp_adapter_default_timeout_is_30():
         mock_conn.sendmail.return_value = {}
         mock_smtp_cls.return_value.__enter__.return_value = mock_conn
         adapter = SmtpMailAdapter(
-            host="smtp.example.com", port=587, username="u", password="p", from_addr="reports@example.com",
+            host="smtp.example.com",
+            port=587,
+            username="u",
+            password="p",
+            from_addr="reports@example.com",
         )
         adapter.send(["dest@example.com"], "Subject", "<p>hi</p>", "hi")
         mock_smtp_cls.assert_called_once_with("smtp.example.com", 587, timeout=30)
 
 
 def test_smtp_adapter_uses_ssl_on_port_465():
-    with patch("app.integrations.mail_adapter.smtplib.SMTP_SSL") as mock_ssl_cls, \
-         patch("app.integrations.mail_adapter.smtplib.SMTP") as mock_smtp_cls:
+    with (
+        patch("app.integrations.mail_adapter.smtplib.SMTP_SSL") as mock_ssl_cls,
+        patch("app.integrations.mail_adapter.smtplib.SMTP") as mock_smtp_cls,
+    ):
         mock_conn = MagicMock()
         mock_conn.sendmail.return_value = {}
         mock_ssl_cls.return_value.__enter__.return_value = mock_conn
         adapter = SmtpMailAdapter(
-            host="smtp.example.com", port=465, username="u", password="p", from_addr="reports@example.com",
+            host="smtp.example.com",
+            port=465,
+            username="u",
+            password="p",
+            from_addr="reports@example.com",
         )
         adapter.send(["dest@example.com"], "Subject", "<p>hi</p>", "hi")
         mock_ssl_cls.assert_called_once_with("smtp.example.com", 465, timeout=30)
@@ -154,7 +173,11 @@ def test_smtp_adapter_skips_login_when_no_credentials():
         mock_conn.sendmail.return_value = {}
         mock_smtp_cls.return_value.__enter__.return_value = mock_conn
         adapter = SmtpMailAdapter(
-            host="smtp.example.com", port=587, username="", password="", from_addr="reports@example.com",
+            host="smtp.example.com",
+            port=587,
+            username="",
+            password="",
+            from_addr="reports@example.com",
         )
         adapter.send(["dest@example.com"], "Subject", "<p>hi</p>", "hi")
         mock_conn.login.assert_not_called()
@@ -166,7 +189,11 @@ def test_smtp_adapter_raises_on_refused_recipients():
         mock_conn.sendmail.return_value = {"bad@example.com": (550, b"No such user")}
         mock_smtp_cls.return_value.__enter__.return_value = mock_conn
         adapter = SmtpMailAdapter(
-            host="smtp.example.com", port=587, username="u", password="p", from_addr="reports@example.com",
+            host="smtp.example.com",
+            port=587,
+            username="u",
+            password="p",
+            from_addr="reports@example.com",
         )
         try:
             adapter.send(["dest@example.com", "bad@example.com"], "Subject", "<p>hi</p>", "hi")
@@ -185,6 +212,10 @@ def test_resend_adapter_calls_resend_client():
 def test_usesend_adapter_calls_http_post():
     with patch("app.integrations.mail_adapter.requests.post") as mock_post:
         mock_post.return_value = MagicMock(status_code=200, ok=True)
-        adapter = UsesendMailAdapter(api_key="us_123", from_addr="reports@example.com", base_url="https://usesend.example.com")
+        adapter = UsesendMailAdapter(
+            api_key="us_123",
+            from_addr="reports@example.com",
+            base_url="https://usesend.example.com",
+        )
         adapter.send(["dest@example.com"], "Subject", "<p>hi</p>", "hi")
         mock_post.assert_called_once()

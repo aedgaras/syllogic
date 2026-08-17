@@ -1,10 +1,23 @@
 import { t as translate } from "@/i18n/translate";
-import { Body, Container, Head, Html, Preview, Section } from "@react-email/components";
-import { BalancesSection, type BalanceItem } from "./components/report/BalancesSection";
+import {
+  Body,
+  Container,
+  Head,
+  Html,
+  Preview,
+  Section,
+} from "@react-email/components";
+import {
+  BalancesSection,
+  type BalanceItem,
+} from "./components/report/BalancesSection";
 import { ReportFooter } from "./components/report/ReportFooter";
 import { ReportHeader } from "./components/report/ReportHeader";
 import { TotalBalance } from "./components/report/TotalBalance";
-import { TransactionsSection, type TransactionItem } from "./components/report/TransactionsSection";
+import {
+  TransactionsSection,
+  type TransactionItem,
+} from "./components/report/TransactionsSection";
 import { dark, fontStack, light } from "./components/report/tokens";
 
 export type ReportNewsletterProps = {
@@ -59,12 +72,29 @@ export default function ReportNewsletter({
       <Head>
         <style dangerouslySetInnerHTML={{ __html: darkModeCss }} />
       </Head>
-      <Preview>{translate("message5cba94", { reportName: reportName, periodLabel: periodLabel })}</Preview>
+      <Preview>
+        {translate("message5cba94", {
+          reportName: reportName,
+          periodLabel: periodLabel,
+        })}
+      </Preview>
       <Body
         className="sy-body"
-        style={{ backgroundColor: light.secondary, margin: 0, padding: 0, fontFamily: fontStack }}
+        style={{
+          backgroundColor: light.secondary,
+          margin: 0,
+          padding: 0,
+          fontFamily: fontStack,
+        }}
       >
-        <Section className="sy-page" style={{ backgroundColor: light.secondary, width: "100%", padding: "24px 0" }}>
+        <Section
+          className="sy-page"
+          style={{
+            backgroundColor: light.secondary,
+            width: "100%",
+            padding: "24px 0",
+          }}
+        >
           <Container
             className="sy-card"
             style={{
@@ -75,10 +105,17 @@ export default function ReportNewsletter({
               border: `1px solid ${light.border}`,
             }}
           >
-            <ReportHeader reportName={reportName} periodLabel={periodLabel} generatedAt={generatedAt} />
+            <ReportHeader
+              reportName={reportName}
+              periodLabel={periodLabel}
+              generatedAt={generatedAt}
+            />
             <TotalBalance amount={totalBalance} currency={totalCurrency} />
             <BalancesSection accounts={accounts} />
-            <TransactionsSection modeLabel={transactionsModeLabel} items={transactions} />
+            <TransactionsSection
+              modeLabel={transactionsModeLabel}
+              items={transactions}
+            />
             <ReportFooter manageUrl={manageUrl} sentAt={generatedAt} />
           </Container>
         </Section>

@@ -1,20 +1,26 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useRef, useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PersonAvatar } from "./person-avatar";
 
-const COLORS = ["#0EA5E9", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
+const COLORS = [
+  "#0EA5E9",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#8B5CF6",
+  "#EC4899",
+];
 const MAX_BYTES = 2 * 1024 * 1024;
 
 export type PersonFormValues = {
   name: string;
   color: string;
-  avatar?: File;       // present when user picked a new file
+  avatar?: File; // present when user picked a new file
   clearAvatar?: boolean; // true when user explicitly removed the existing avatar
 };
 
@@ -26,7 +32,9 @@ export function PersonForm(props: {
 }) {
   const [name, setName] = useState(props.initial?.name ?? "");
   const [color, setColor] = useState(props.initial?.color ?? COLORS[0]);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(props.initial?.avatarUrl ?? null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    props.initial?.avatarUrl ?? null,
+  );
   const [pickedFile, setPickedFile] = useState<File | undefined>();
   const [cleared, setCleared] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +45,8 @@ export function PersonForm(props: {
   // Revoke object URLs on unmount to avoid memory leaks.
   useEffect(() => {
     return () => {
-      if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current);
+      if (previewObjectUrlRef.current)
+        URL.revokeObjectURL(previewObjectUrlRef.current);
     };
   }, []);
 
@@ -55,7 +64,8 @@ export function PersonForm(props: {
     setPickedFile(file);
     setCleared(false);
     // Revoke prior preview URL before creating a new one.
-    if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current);
+    if (previewObjectUrlRef.current)
+      URL.revokeObjectURL(previewObjectUrlRef.current);
     const url = URL.createObjectURL(file);
     previewObjectUrlRef.current = url;
     setPreviewUrl(url);
@@ -63,7 +73,8 @@ export function PersonForm(props: {
 
   function clearAvatar() {
     setPickedFile(undefined);
-    if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current);
+    if (previewObjectUrlRef.current)
+      URL.revokeObjectURL(previewObjectUrlRef.current);
     previewObjectUrlRef.current = null;
     setPreviewUrl(null);
     setCleared(true);
@@ -90,7 +101,12 @@ export function PersonForm(props: {
     >
       <div className="flex items-center gap-4">
         <PersonAvatar
-          person={{ id: "preview", name: name || "?", color, avatarUrl: previewUrl }}
+          person={{
+            id: "preview",
+            name: name || "?",
+            color,
+            avatarUrl: previewUrl,
+          }}
           size={56}
         />
         <div className="flex flex-col gap-2">
@@ -103,7 +119,12 @@ export function PersonForm(props: {
             {previewUrl ? translate("changePhoto") : translate("uploadPhoto")}
           </Button>
           {previewUrl && (
-            <Button type="button" variant="ghost" size="sm" onClick={clearAvatar}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={clearAvatar}
+            >
               {translate("removePhoto")}
             </Button>
           )}
@@ -121,7 +142,12 @@ export function PersonForm(props: {
 
       <div>
         <Label>{translate("name")}</Label>
-        <Input value={name} onChange={(e) => setName(e.target.value)} required maxLength={255} />
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          maxLength={255}
+        />
       </div>
 
       <div>
@@ -145,7 +171,12 @@ export function PersonForm(props: {
 
       <div className="flex gap-2 justify-end">
         {props.onCancel && (
-          <Button type="button" variant="ghost" onClick={props.onCancel} disabled={busy}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={props.onCancel}
+            disabled={busy}
+          >
             {translate("cancel")}
           </Button>
         )}

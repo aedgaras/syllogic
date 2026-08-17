@@ -10,6 +10,7 @@ Tests that need to query the database via the MCP tools (which call
 `app.mcp.dependencies.get_db`) should use this fixture to seed data, then
 rely on the tools to open their own short-lived sessions.
 """
+
 from __future__ import annotations
 
 import base64

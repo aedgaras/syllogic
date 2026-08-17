@@ -5,6 +5,7 @@ Usage:
   cd backend
   python postgres_migration/backfill_encrypted_fields.py --batch-size 500
 """
+
 from __future__ import annotations
 
 import argparse

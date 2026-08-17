@@ -8,7 +8,16 @@ describe("subscription rules", () => {
   });
 
   it("returns stable validation messages", () => {
-    expect(validateSubscriptionInput({ accountId: "a", amount: 10, importance: 2 })).toBe("Name is required");
-    expect(validateSubscriptionInput({ name: "Plan", accountId: "a", amount: 10, importance: 2 })).toBeNull();
+    expect(
+      validateSubscriptionInput({ accountId: "a", amount: 10, importance: 2 }),
+    ).toBe("Name is required");
+    expect(
+      validateSubscriptionInput({
+        name: "Plan",
+        accountId: "a",
+        amount: 10,
+        importance: 2,
+      }),
+    ).toBeNull();
   });
 });

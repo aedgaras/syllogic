@@ -33,8 +33,8 @@ export default async function ConsentPage({
       "/oauth/consent?" +
       new URLSearchParams(
         Object.entries(params).flatMap(([k, v]) =>
-          typeof v === "string" ? [[k, v] as [string, string]] : []
-        )
+          typeof v === "string" ? [[k, v] as [string, string]] : [],
+        ),
       ).toString();
     redirect(`/login?returnTo=${encodeURIComponent(returnTo)}`);
   }
@@ -61,9 +61,12 @@ export default async function ConsentPage({
 
   return (
     <main className="mx-auto max-w-md p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">{translate("authorize")} {clientName}</h1>
+      <h1 className="text-2xl font-semibold">
+        {translate("authorize")} {clientName}
+      </h1>
       <p className="text-sm text-muted-foreground">
-        <strong>{clientName}</strong> {translate("isRequestingAccessToYourSyllogicAccountIfYou")}
+        <strong>{clientName}</strong>{" "}
+        {translate("isRequestingAccessToYourSyllogicAccountIfYou")}
       </p>
       <ul className="list-disc pl-6 text-sm">
         {scopes.length === 0 && <li>{translate("accessYourSyllogicData")}</li>}

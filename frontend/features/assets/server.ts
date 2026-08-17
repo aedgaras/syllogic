@@ -1,1 +1,5 @@
-export { toAccountAssetViewModel, toPropertyAssetViewModel, toVehicleAssetViewModel } from "./server/view-model.mapper";
+export {
+  toAccountAssetViewModel,
+  toPropertyAssetViewModel,
+  toVehicleAssetViewModel,
+} from "./server/view-model.mapper";

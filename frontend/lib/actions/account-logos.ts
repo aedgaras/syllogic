@@ -25,7 +25,9 @@ export interface AccountLogoCandidate {
   logo?: AccountLogoData | null;
 }
 
-function toLogoData(logo: AccountLogoData | null | undefined): AccountLogoData | null {
+function toLogoData(
+  logo: AccountLogoData | null | undefined,
+): AccountLogoData | null {
   if (!logo) {
     return null;
   }
@@ -65,7 +67,7 @@ async function getPersistedAccountLogo(accountId: string): Promise<{
 
 async function resolveSingleAccountLogo<T extends AccountLogoCandidate>(
   account: T,
-  logoSearches?: Map<string, Promise<LogoSearchResult>>
+  logoSearches?: Map<string, Promise<LogoSearchResult>>,
 ): Promise<T & { logoId: string | null; logo: AccountLogoData | null }> {
   if (account.logoId) {
     return {
@@ -132,17 +134,21 @@ async function resolveSingleAccountLogo<T extends AccountLogoCandidate>(
   };
 }
 
-export async function resolveMissingAccountLogos<T extends AccountLogoCandidate>(
-  accountsToResolve: T[]
+export async function resolveMissingAccountLogos<
+  T extends AccountLogoCandidate,
+>(
+  accountsToResolve: T[],
 ): Promise<Array<T & { logoId: string | null; logo: AccountLogoData | null }>> {
   const logoSearches = new Map<string, Promise<LogoSearchResult>>();
   return Promise.all(
-    accountsToResolve.map((account) => resolveSingleAccountLogo(account, logoSearches))
+    accountsToResolve.map((account) =>
+      resolveSingleAccountLogo(account, logoSearches),
+    ),
   );
 }
 
 export async function resolveMissingAccountLogo<T extends AccountLogoCandidate>(
-  account: T
+  account: T,
 ): Promise<T & { logoId: string | null; logo: AccountLogoData | null }> {
   return resolveSingleAccountLogo(account);
 }

@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import * as React from "react";
 import { Sankey, Tooltip, Rectangle, ResponsiveContainer } from "recharts";
 import { useRouter } from "next/navigation";
@@ -92,7 +91,9 @@ function CustomNode(props: CustomNodeProps) {
     payload.depth === 0 ||
     payload.depth === 1;
   const nodeKey = getCategoryKey(payload);
-  const isSelected = Boolean(selectedCategory && nodeKey === selectedCategory.key);
+  const isSelected = Boolean(
+    selectedCategory && nodeKey === selectedCategory.key,
+  );
 
   let fillColor: string;
   if (isLeftSide) {
@@ -102,13 +103,19 @@ function CustomNode(props: CustomNodeProps) {
   }
 
   if (isSelected) {
-    fillColor = selectedCategory?.type === "income" ? INCOME_HIGHLIGHT : EXPENSE_HIGHLIGHT;
+    fillColor =
+      selectedCategory?.type === "income"
+        ? INCOME_HIGHLIGHT
+        : EXPENSE_HIGHLIGHT;
   }
 
   const fontSize = selectedCategory ? 11 : 12;
 
   return (
-    <g key={`node-${index}`} style={{ cursor: isClickable ? "pointer" : "default" }}>
+    <g
+      key={`node-${index}`}
+      style={{ cursor: isClickable ? "pointer" : "default" }}
+    >
       <Rectangle
         x={x}
         y={y}
@@ -170,7 +177,8 @@ function CustomLink({
       ? sourceKey === selectedCategory.key
       : targetKey === selectedCategory.key
     : false;
-  const highlightColor = selectedCategory?.type === "income" ? INCOME_HIGHLIGHT : EXPENSE_HIGHLIGHT;
+  const highlightColor =
+    selectedCategory?.type === "income" ? INCOME_HIGHLIGHT : EXPENSE_HIGHLIGHT;
   const strokeColor = isSelected ? highlightColor : "#78716c";
   const gradientStartOpacity = isSelected ? 0.85 : hasSelection ? 0.15 : 0.5;
   const gradientEndOpacity = isSelected ? 0.12 : hasSelection ? 0.04 : 0.15;
@@ -192,8 +200,16 @@ function CustomLink({
           x2={gradientX2}
           y2={gradientY2}
         >
-          <stop offset="0%" stopColor={strokeColor} stopOpacity={gradientStartOpacity} />
-          <stop offset="100%" stopColor={strokeColor} stopOpacity={gradientEndOpacity} />
+          <stop
+            offset="0%"
+            stopColor={strokeColor}
+            stopOpacity={gradientStartOpacity}
+          />
+          <stop
+            offset="100%"
+            stopColor={strokeColor}
+            stopOpacity={gradientEndOpacity}
+          />
         </linearGradient>
       </defs>
       <path
@@ -237,7 +253,10 @@ function CustomTooltip({ active, payload, currency }: CustomTooltipProps) {
       <div className="border-border/50 bg-background min-w-[140px] border px-3 py-2.5 text-xs shadow-xl">
         <div className="mb-1 font-medium">{data.name}</div>
         <div className="text-muted-foreground">
-          {translate("total")} <span className="font-mono font-medium text-foreground">{formatCurrency(total, currency)}</span>
+          {translate("total")}{" "}
+          <span className="font-mono font-medium text-foreground">
+            {formatCurrency(total, currency)}
+          </span>
         </div>
       </div>
     );
@@ -250,7 +269,10 @@ function CustomTooltip({ active, payload, currency }: CustomTooltipProps) {
           {data.source.name} → {data.target.name}
         </div>
         <div className="text-muted-foreground">
-          {translate("amount281473")} <span className="font-mono font-medium text-foreground">{formatCurrency(data.value, currency)}</span>
+          {translate("amount281473")}{" "}
+          <span className="font-mono font-medium text-foreground">
+            {formatCurrency(data.value, currency)}
+          </span>
         </div>
       </div>
     );
@@ -271,7 +293,8 @@ export function SankeyFlowChart({
 }: SankeyFlowChartProps) {
   const router = useRouter();
   const isMobile = useIsMobile();
-  const [selectedCategory, setSelectedCategory] = React.useState<SelectedCategory | null>(null);
+  const [selectedCategory, setSelectedCategory] =
+    React.useState<SelectedCategory | null>(null);
 
   const navigateToTransactions = React.useCallback(
     (categoryId?: string | null) => {
@@ -285,11 +308,13 @@ export function SankeyFlowChart({
       });
       router.push(`/transactions?${query}`);
     },
-    [accountIds, dateFrom, dateTo, horizon, router]
+    [accountIds, dateFrom, dateTo, horizon, router],
   );
 
   const selectedNode = selectedCategory?.key
-    ? data.nodes.find((node) => getCategoryKey(node) === selectedCategory.key) ?? null
+    ? (data.nodes.find(
+        (node) => getCategoryKey(node) === selectedCategory.key,
+      ) ?? null)
     : null;
 
   const selectedTotal = (() => {
@@ -317,7 +342,7 @@ export function SankeyFlowChart({
   React.useEffect(() => {
     if (!selectedCategory?.key) return;
     const stillExists = data.nodes.some(
-      (node) => getCategoryKey(node) === selectedCategory.key
+      (node) => getCategoryKey(node) === selectedCategory.key,
     );
     if (!stillExists) {
       setSelectedCategory(null);
@@ -334,7 +359,8 @@ export function SankeyFlowChart({
       const categoryKey = getCategoryKey(el.payload);
       const categoryId = el.payload.categoryId;
       const categoryType: SelectedCategory["type"] =
-        el.payload.categoryType ?? (el.payload.depth === 0 ? "income" : "expense");
+        el.payload.categoryType ??
+        (el.payload.depth === 0 ? "income" : "expense");
 
       if (selectedCategory?.key === categoryKey) {
         if (categoryId) {
@@ -345,7 +371,7 @@ export function SankeyFlowChart({
 
       setSelectedCategory({ key: categoryKey, type: categoryType });
     },
-    [navigateToTransactions, selectedCategory?.key]
+    [navigateToTransactions, selectedCategory?.key],
   );
 
   if (isLoading) {
@@ -356,7 +382,9 @@ export function SankeyFlowChart({
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">{translate("cashFlow")}</CardTitle>
+          <CardTitle className="text-sm font-medium">
+            {translate("cashFlow")}
+          </CardTitle>
           {subtitle && (
             <p className="text-xs text-muted-foreground">{subtitle}</p>
           )}
@@ -373,7 +401,9 @@ export function SankeyFlowChart({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">{translate("cashFlow")}</CardTitle>
+        <CardTitle className="text-sm font-medium">
+          {translate("cashFlow")}
+        </CardTitle>
         {subtitle && (
           <p className="text-xs text-muted-foreground">{subtitle}</p>
         )}

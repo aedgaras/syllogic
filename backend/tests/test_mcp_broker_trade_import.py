@@ -1,5 +1,4 @@
 """MCP-layer tests for broker trade import + P&L tools."""
-from decimal import Decimal
 
 import pytest
 
@@ -14,6 +13,7 @@ from app.mcp.tools.investments import (
 @pytest.fixture
 def investment_account(db_session):
     import uuid
+
     user = User(
         id=f"test-user-{uuid.uuid4()}",
         email=f"{uuid.uuid4()}@test.local",
@@ -45,7 +45,14 @@ def test_import_broker_trades_impl_inserts_trades(db_session, investment_account
         user_id=investment_account["user_id"],
         account_id=investment_account["account_id"],
         trades=[
-            {"symbol": "AAPL", "trade_date": "2024-01-10", "side": "buy", "quantity": "10", "price": "150", "currency": "USD"},
+            {
+                "symbol": "AAPL",
+                "trade_date": "2024-01-10",
+                "side": "buy",
+                "quantity": "10",
+                "price": "150",
+                "currency": "USD",
+            },
         ],
         dry_run=False,
     )
@@ -62,8 +69,22 @@ def test_get_realized_pnl_impl_returns_native_only_when_fx_missing(db_session, i
         user_id=investment_account["user_id"],
         account_id=investment_account["account_id"],
         trades=[
-            {"symbol": "AAPL", "trade_date": "2024-01-10", "side": "buy", "quantity": "10", "price": "150", "currency": "USD"},
-            {"symbol": "AAPL", "trade_date": "2024-06-01", "side": "sell", "quantity": "10", "price": "200", "currency": "USD"},
+            {
+                "symbol": "AAPL",
+                "trade_date": "2024-01-10",
+                "side": "buy",
+                "quantity": "10",
+                "price": "150",
+                "currency": "USD",
+            },
+            {
+                "symbol": "AAPL",
+                "trade_date": "2024-06-01",
+                "side": "sell",
+                "quantity": "10",
+                "price": "200",
+                "currency": "USD",
+            },
         ],
         dry_run=False,
     )
@@ -75,15 +96,20 @@ def test_get_realized_pnl_impl_returns_native_only_when_fx_missing(db_session, i
     assert result[0]["realized_native"] == "500"
 
 
-def test_get_unrealized_pnl_impl_skips_symbols_without_latest_price(
-    db_session, investment_account
-):
+def test_get_unrealized_pnl_impl_skips_symbols_without_latest_price(db_session, investment_account):
     import_broker_trades_impl(
         db_session,
         user_id=investment_account["user_id"],
         account_id=investment_account["account_id"],
         trades=[
-            {"symbol": "AAPL", "trade_date": "2024-01-10", "side": "buy", "quantity": "10", "price": "150", "currency": "USD"},
+            {
+                "symbol": "AAPL",
+                "trade_date": "2024-01-10",
+                "side": "buy",
+                "quantity": "10",
+                "price": "150",
+                "currency": "USD",
+            },
         ],
         dry_run=False,
     )

@@ -11,7 +11,10 @@ describe("category-spending helpers", () => {
     const start = new Date(2026, 1, 10, 0, 0, 0, 0);
     const end = new Date(2026, 1, 19, 23, 59, 59, 999);
 
-    const { comparisonStart, comparisonEnd, spanDays } = computePreviousWindow(start, end);
+    const { comparisonStart, comparisonEnd, spanDays } = computePreviousWindow(
+      start,
+      end,
+    );
 
     expect(spanDays).toBe(10);
     expect(formatIsoDate(comparisonStart)).toBe("2026-01-31");
@@ -19,7 +22,10 @@ describe("category-spending helpers", () => {
   });
 
   it("returns touched month keys inclusive", () => {
-    const keys = getTouchedMonthKeys(new Date(2026, 0, 20), new Date(2026, 2, 2));
+    const keys = getTouchedMonthKeys(
+      new Date(2026, 0, 20),
+      new Date(2026, 2, 2),
+    );
     expect(keys).toEqual(["2026-01", "2026-02", "2026-03"]);
   });
 

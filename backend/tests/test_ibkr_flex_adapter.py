@@ -27,7 +27,10 @@ def test_parse_positions_extracts_holdings_and_cash():
     assert by_sym["AAPL"].currency == "USD"
     assert by_sym["AAPL"].instrument_type == "equity"
     assert by_sym["VWCE"].instrument_type == "etf"
-    assert {c.currency: c.balance for c in parsed.cash} == {"USD": Decimal("1500.00"), "EUR": Decimal("320.50")}
+    assert {c.currency: c.balance for c in parsed.cash} == {
+        "USD": Decimal("1500.00"),
+        "EUR": Decimal("320.50"),
+    }
 
 
 def test_parse_positions_aggregates_per_lot_rows():
@@ -79,7 +82,10 @@ def test_request_statement_returns_reference_code(monkeypatch):
 
     def fake_get(url, params, timeout):
         assert "FlexStatementService.SendRequest" in url
-        return httpx.Response(200, text='<FlexStatementResponse><Status>Success</Status><ReferenceCode>REF1</ReferenceCode><Url>https://x</Url></FlexStatementResponse>')
+        return httpx.Response(
+            200,
+            text="<FlexStatementResponse><Status>Success</Status><ReferenceCode>REF1</ReferenceCode><Url>https://x</Url></FlexStatementResponse>",
+        )
 
     with patch.object(adapter._client, "get", side_effect=fake_get):
         ref = adapter.request_statement("qp")
@@ -88,7 +94,7 @@ def test_request_statement_returns_reference_code(monkeypatch):
 
 def test_fetch_statement_raises_not_ready(monkeypatch):
     adapter = IBKRFlexAdapter(token="t", query_id_positions="qp", query_id_trades="qt")
-    response_xml = '<FlexStatementResponse><Status>Warn</Status><ErrorCode>1019</ErrorCode><ErrorMessage>Statement generation in progress</ErrorMessage></FlexStatementResponse>'
+    response_xml = "<FlexStatementResponse><Status>Warn</Status><ErrorCode>1019</ErrorCode><ErrorMessage>Statement generation in progress</ErrorMessage></FlexStatementResponse>"
     with patch.object(adapter._client, "get", return_value=httpx.Response(200, text=response_xml)):
         with pytest.raises(FlexStatementNotReady):
             adapter.fetch_statement("REF1")
@@ -96,7 +102,7 @@ def test_fetch_statement_raises_not_ready(monkeypatch):
 
 def test_fetch_statement_raises_auth_error():
     adapter = IBKRFlexAdapter(token="t", query_id_positions="qp", query_id_trades="qt")
-    response_xml = '<FlexStatementResponse><Status>Fail</Status><ErrorCode>1012</ErrorCode><ErrorMessage>Token invalid</ErrorMessage></FlexStatementResponse>'
+    response_xml = "<FlexStatementResponse><Status>Fail</Status><ErrorCode>1012</ErrorCode><ErrorMessage>Token invalid</ErrorMessage></FlexStatementResponse>"
     with patch.object(adapter._client, "get", return_value=httpx.Response(200, text=response_xml)):
         with pytest.raises(FlexAuthError):
             adapter.fetch_statement("REF1")
@@ -105,12 +111,15 @@ def test_fetch_statement_raises_auth_error():
 def test_request_statement_retries_on_1001_then_succeeds():
     sleeps: list[float] = []
     adapter = IBKRFlexAdapter(
-        token="t", query_id_positions="qp", query_id_trades="qt",
-        transient_retries=3, transient_backoff_seconds=1.0,
+        token="t",
+        query_id_positions="qp",
+        query_id_trades="qt",
+        transient_retries=3,
+        transient_backoff_seconds=1.0,
         sleep=sleeps.append,
     )
-    transient = '<FlexStatementResponse><Status>Fail</Status><ErrorCode>1001</ErrorCode><ErrorMessage>Statement could not be generated at this time. Please try again shortly.</ErrorMessage></FlexStatementResponse>'
-    success = '<FlexStatementResponse><Status>Success</Status><ReferenceCode>REF1</ReferenceCode></FlexStatementResponse>'
+    transient = "<FlexStatementResponse><Status>Fail</Status><ErrorCode>1001</ErrorCode><ErrorMessage>Statement could not be generated at this time. Please try again shortly.</ErrorMessage></FlexStatementResponse>"
+    success = "<FlexStatementResponse><Status>Success</Status><ReferenceCode>REF1</ReferenceCode></FlexStatementResponse>"
     responses = [
         httpx.Response(200, text=transient),
         httpx.Response(200, text=transient),
@@ -125,11 +134,14 @@ def test_request_statement_retries_on_1001_then_succeeds():
 def test_request_statement_raises_after_exhausting_retries_on_1001():
     sleeps: list[float] = []
     adapter = IBKRFlexAdapter(
-        token="t", query_id_positions="qp", query_id_trades="qt",
-        transient_retries=2, transient_backoff_seconds=1.0,
+        token="t",
+        query_id_positions="qp",
+        query_id_trades="qt",
+        transient_retries=2,
+        transient_backoff_seconds=1.0,
         sleep=sleeps.append,
     )
-    transient = '<FlexStatementResponse><Status>Fail</Status><ErrorCode>1001</ErrorCode><ErrorMessage>Statement could not be generated at this time. Please try again shortly.</ErrorMessage></FlexStatementResponse>'
+    transient = "<FlexStatementResponse><Status>Fail</Status><ErrorCode>1001</ErrorCode><ErrorMessage>Statement could not be generated at this time. Please try again shortly.</ErrorMessage></FlexStatementResponse>"
     with patch.object(adapter._client, "get", return_value=httpx.Response(200, text=transient)):
         with pytest.raises(FlexTransientError):
             adapter.request_statement("qp")

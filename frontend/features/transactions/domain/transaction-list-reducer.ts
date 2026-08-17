@@ -14,7 +14,7 @@ export type TransactionListAction =
 
 export function transactionListReducer(
   state: TransactionWithRelations[],
-  action: TransactionListAction
+  action: TransactionListAction,
 ): TransactionWithRelations[] {
   switch (action.type) {
     case "replace":
@@ -23,7 +23,7 @@ export function transactionListReducer(
       return state.map((transaction) =>
         transaction.id === action.id
           ? { ...transaction, ...action.updates }
-          : transaction
+          : transaction,
       );
     case "delete": {
       const deletedIds = new Set(action.ids);
@@ -38,7 +38,7 @@ export function transactionListReducer(
               categoryId: action.categoryId,
               category: action.category,
             }
-          : transaction
+          : transaction,
       );
     }
     case "set-analytics": {
@@ -46,7 +46,7 @@ export function transactionListReducer(
       return state.map((transaction) =>
         updatedIds.has(transaction.id)
           ? { ...transaction, includeInAnalytics: action.includeInAnalytics }
-          : transaction
+          : transaction,
       );
     }
   }

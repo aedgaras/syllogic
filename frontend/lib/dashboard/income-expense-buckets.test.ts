@@ -73,8 +73,12 @@ describe("income-expense-buckets", () => {
       "2026-01-22",
       "2026-01-29",
     ]);
-    expect(buckets.map((bucket) => bucket.income)).toEqual([70, 70, 70, 70, 20]);
-    expect(buckets.map((bucket) => bucket.expenses)).toEqual([42, 42, 42, 42, 12]);
+    expect(buckets.map((bucket) => bucket.income)).toEqual([
+      70, 70, 70, 70, 20,
+    ]);
+    expect(buckets.map((bucket) => bucket.expenses)).toEqual([
+      42, 42, 42, 42, 12,
+    ]);
     expect(buckets[0].tooltipLabel).toBe("Jan 1, 2026 - Jan 7, 2026");
     expect(buckets[4].tooltipLabel).toBe("Jan 29, 2026 - Jan 30, 2026");
   });

@@ -32,7 +32,7 @@ export class LocalStorageProvider implements StorageProvider {
   async upload(
     filePath: string,
     data: Buffer | Blob,
-    options?: UploadOptions
+    options?: UploadOptions,
   ): Promise<StorageFile> {
     const fullPath = this.getFullPath(filePath);
     const directory = path.dirname(fullPath);
@@ -41,7 +41,8 @@ export class LocalStorageProvider implements StorageProvider {
     await fs.mkdir(directory, { recursive: true });
 
     // Convert Blob to Buffer if needed
-    const buffer = data instanceof Blob ? Buffer.from(await data.arrayBuffer()) : data;
+    const buffer =
+      data instanceof Blob ? Buffer.from(await data.arrayBuffer()) : data;
 
     // Write the file
     await fs.writeFile(fullPath, buffer);

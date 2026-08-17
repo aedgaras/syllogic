@@ -12,4 +12,3 @@ export function getBackendBaseUrl(): string {
   }
   return `http://${raw}`;
 }
-

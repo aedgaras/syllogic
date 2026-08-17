@@ -21,13 +21,19 @@ function dependencies(): AccountRecalculationDependencies {
 describe("account recalculation use cases", () => {
   it("updates the derived starting balance and tolerates an unavailable timeseries gateway", async () => {
     const deps = dependencies();
-    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    vi.mocked(deps.recalculateTimeseries).mockRejectedValue(new Error("offline"));
-    await expect(recalculateStartingBalanceUseCase(deps, {
-      userId: "user-1",
-      accountId: "account-1",
-      knownCurrentBalance: 150,
-    })).resolves.toEqual({ success: true, newStartingBalance: 125 });
+    const warning = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    vi.mocked(deps.recalculateTimeseries).mockRejectedValue(
+      new Error("offline"),
+    );
+    await expect(
+      recalculateStartingBalanceUseCase(deps, {
+        userId: "user-1",
+        accountId: "account-1",
+        knownCurrentBalance: 150,
+      }),
+    ).resolves.toEqual({ success: true, newStartingBalance: 125 });
     expect(deps.updateBalances).toHaveBeenCalledWith("account-1", {
       startingBalance: 125,
       functionalBalance: 150,
@@ -38,20 +44,30 @@ describe("account recalculation use cases", () => {
 
   it("recalculates the functional balance after the backend timeseries", async () => {
     const deps = dependencies();
-    await expect(recalculateAccountTimeseriesUseCase(deps, {
-      userId: "user-1",
-      accountId: "account-1",
-    })).resolves.toMatchObject({ success: true, daysProcessed: 10, recordsStored: 10 });
-    expect(deps.updateBalances).toHaveBeenCalledWith("account-1", { functionalBalance: 125 });
+    await expect(
+      recalculateAccountTimeseriesUseCase(deps, {
+        userId: "user-1",
+        accountId: "account-1",
+      }),
+    ).resolves.toMatchObject({
+      success: true,
+      daysProcessed: 10,
+      recordsStored: 10,
+    });
+    expect(deps.updateBalances).toHaveBeenCalledWith("account-1", {
+      functionalBalance: 125,
+    });
   });
 
   it("does not mutate an account that is not owned by the user", async () => {
     const deps = dependencies();
     vi.mocked(deps.findAccount).mockResolvedValue(undefined);
-    await expect(recalculateAccountTimeseriesUseCase(deps, {
-      userId: "user-1",
-      accountId: "missing",
-    })).resolves.toEqual({ success: false, error: "Account not found" });
+    await expect(
+      recalculateAccountTimeseriesUseCase(deps, {
+        userId: "user-1",
+        accountId: "missing",
+      }),
+    ).resolves.toEqual({ success: false, error: "Account not found" });
     expect(deps.recalculateTimeseries).not.toHaveBeenCalled();
   });
 });

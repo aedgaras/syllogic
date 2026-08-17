@@ -56,8 +56,8 @@ class NumberParsingTests(unittest.TestCase):
         csv_content = "\n".join(
             [
                 "Type,Product,Completed Date,Description,Amount,Fee,Currency,State",
-                "CARD_PAYMENT,Current,02/01/2025 20:48,Grocery Store,\"1.234,56\",\"0,00\",EUR,COMPLETED",
-                "CARD_PAYMENT,Current,03/01/2025 09:15,Coffee,\"-12,34\",\"0,00\",EUR,COMPLETED",
+                'CARD_PAYMENT,Current,02/01/2025 20:48,Grocery Store,"1.234,56","0,00",EUR,COMPLETED',
+                'CARD_PAYMENT,Current,03/01/2025 09:15,Coffee,"-12,34","0,00",EUR,COMPLETED',
             ]
         )
 
@@ -74,8 +74,8 @@ class NumberParsingTests(unittest.TestCase):
         csv_content = "\n".join(
             [
                 "Completed Date,Reference,Paid Out (EUR),Paid In (EUR),State",
-                "02/01/2025 20:48,Rent,\"1.234,56\",\"0,00\",COMPLETED",
-                "03/01/2025 09:15,Salary,\"0,00\",\"2.500,00\",COMPLETED",
+                '02/01/2025 20:48,Rent,"1.234,56","0,00",COMPLETED',
+                '03/01/2025 09:15,Salary,"0,00","2.500,00",COMPLETED',
             ]
         )
 
@@ -92,8 +92,8 @@ class NumberParsingTests(unittest.TestCase):
         csv_content = "\n".join(
             [
                 "Type,Product,Completed Date,Description,Amount,Fee,Currency,State",
-                "CARD_PAYMENT,Current,02/01/2025 20:48,Hotel,\"1,234\",0,EUR,COMPLETED",
-                "CARD_PAYMENT,Current,03/01/2025 09:15,Salary,\"2,000\",0,EUR,COMPLETED",
+                'CARD_PAYMENT,Current,02/01/2025 20:48,Hotel,"1,234",0,EUR,COMPLETED',
+                'CARD_PAYMENT,Current,03/01/2025 09:15,Salary,"2,000",0,EUR,COMPLETED',
             ]
         )
 

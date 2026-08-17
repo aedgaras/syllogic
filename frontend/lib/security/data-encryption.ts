@@ -84,7 +84,10 @@ export function encryptValue(plaintext: string | null): string | null {
 
   const nonce = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", config.currentKey, nonce);
-  const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const ciphertext = Buffer.concat([
+    cipher.update(plaintext, "utf8"),
+    cipher.final(),
+  ]);
   const tag = cipher.getAuthTag();
   const payload = base64urlEncode(Buffer.concat([nonce, ciphertext, tag]));
   return `${ENVELOPE_PREFIX}:${config.keyId}:${payload}`;
@@ -116,7 +119,9 @@ export function decryptValue(ciphertext: string | null): string | null {
 
   const config = getConfig();
   if (!config.currentKey) {
-    throw new Error("Encrypted data found but DATA_ENCRYPTION_KEY_CURRENT is not configured.");
+    throw new Error(
+      "Encrypted data found but DATA_ENCRYPTION_KEY_CURRENT is not configured.",
+    );
   }
 
   const keyCandidates: Buffer[] = [];
@@ -133,21 +138,26 @@ export function decryptValue(ciphertext: string | null): string | null {
     try {
       const decipher = createDecipheriv("aes-256-gcm", key, nonce);
       decipher.setAuthTag(tag);
-      const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+      const decrypted = Buffer.concat([
+        decipher.update(encrypted),
+        decipher.final(),
+      ]);
       return decrypted.toString("utf8");
     } catch (error) {
       lastError = error;
     }
   }
 
-  const error = new Error("Failed to decrypt encrypted value with configured keys.");
+  const error = new Error(
+    "Failed to decrypt encrypted value with configured keys.",
+  );
   (error as Error & { cause?: unknown }).cause = lastError;
   throw error;
 }
 
 export function decryptWithFallback(
   ciphertext: string | null,
-  plaintextFallback: string | null
+  plaintextFallback: string | null,
 ): string | null {
   if (ciphertext) {
     try {
@@ -167,7 +177,9 @@ export function blindIndex(value: string | null): string | null {
     return null;
   }
 
-  return createHmac("sha256", blindIndexKey(config.currentKey)).update(value, "utf8").digest("hex");
+  return createHmac("sha256", blindIndexKey(config.currentKey))
+    .update(value, "utf8")
+    .digest("hex");
 }
 
 export function blindIndexCandidates(value: string | null): string[] {

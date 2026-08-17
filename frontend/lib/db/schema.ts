@@ -34,7 +34,9 @@ export const users = pgTable("users", {
   banned: boolean("banned").default(false),
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),
-  onboardingStatus: varchar("onboarding_status", { length: 20 }).default("pending"), // pending, step_1, step_2, step_3, completed
+  onboardingStatus: varchar("onboarding_status", { length: 20 }).default(
+    "pending",
+  ), // pending, step_1, step_2, step_3, completed
   onboardingCompletedAt: timestamp("onboarding_completed_at"),
   functionalCurrency: char("functional_currency", { length: 3 }).default("EUR"), // User's functional currency for reporting
   profilePhotoPath: text("profile_photo_path"),
@@ -197,13 +199,15 @@ export const apiKeys = pgTable(
   (table) => [
     index("idx_api_keys_user").on(table.userId),
     index("idx_api_keys_hash").on(table.keyHash),
-  ]
+  ],
 );
 
 export const appSettings = pgTable("app_settings", {
   key: varchar("key", { length: 255 }).primaryKey(),
   valueEncrypted: text("value_encrypted"),
-  updatedByUserId: text("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  updatedByUserId: text("updated_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -222,7 +226,9 @@ export const accounts = pgTable(
     name: varchar("name", { length: 255 }).notNull(),
     accountType: varchar("account_type", { length: 50 }).notNull(), // checking, savings, credit
     institution: varchar("institution", { length: 255 }),
-    logoId: uuid("logo_id").references(() => companyLogos.id, { onDelete: "set null" }),
+    logoId: uuid("logo_id").references(() => companyLogos.id, {
+      onDelete: "set null",
+    }),
     currency: char("currency", { length: 3 }).default("EUR"),
     provider: varchar("provider", { length: 50 }), // ponto, gocardless, manual
     externalId: varchar("external_id", { length: 255 }), // Provider's account ID
@@ -230,13 +236,25 @@ export const accounts = pgTable(
     externalIdHash: varchar("external_id_hash", { length: 64 }),
     ibanCiphertext: text("iban_ciphertext"),
     ibanHash: varchar("iban_hash", { length: 64 }),
-    bankConnectionId: uuid("bank_connection_id").references(() => bankConnections.id, { onDelete: "set null" }),
+    bankConnectionId: uuid("bank_connection_id").references(
+      () => bankConnections.id,
+      { onDelete: "set null" },
+    ),
     balanceAvailable: decimal("balance_available", { precision: 15, scale: 2 }),
-    startingBalance: decimal("starting_balance", { precision: 15, scale: 2 }).default("0"), // Starting balance for calculation
-    functionalBalance: decimal("functional_balance", { precision: 15, scale: 2 }), // Calculated balance (sum of transactions + starting_balance)
+    startingBalance: decimal("starting_balance", {
+      precision: 15,
+      scale: 2,
+    }).default("0"), // Starting balance for calculation
+    functionalBalance: decimal("functional_balance", {
+      precision: 15,
+      scale: 2,
+    }), // Calculated balance (sum of transactions + starting_balance)
     balanceIsAnchored: boolean("balance_is_anchored").default(false), // True when startingBalance is derived from known bank data (CSV with verified opening/closing balance)
     isActive: boolean("is_active").default(true),
-    aliasPatterns: jsonb("alias_patterns").$type<string[]>().default([]).notNull(),
+    aliasPatterns: jsonb("alias_patterns")
+      .$type<string[]>()
+      .default([])
+      .notNull(),
     lastSyncedAt: timestamp("last_synced_at"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
@@ -247,12 +265,12 @@ export const accounts = pgTable(
     unique("accounts_user_provider_external_id").on(
       table.userId,
       table.provider,
-      table.externalId
+      table.externalId,
     ),
     unique("accounts_user_provider_external_id_hash").on(
       table.userId,
       table.provider,
-      table.externalIdHash
+      table.externalIdHash,
     ),
     index("idx_accounts_user_iban_hash").on(table.userId, table.ibanHash),
     // Prevent two concurrent create-pocket requests from racing and inserting
@@ -260,8 +278,10 @@ export const accounts = pgTable(
     // pocket and a synced-bank account can still share an IBAN.
     uniqueIndex("accounts_user_iban_hash_manual_uq")
       .on(table.userId, table.ibanHash)
-      .where(sql`${table.provider} = 'manual' AND ${table.ibanHash} IS NOT NULL`),
-  ]
+      .where(
+        sql`${table.provider} = 'manual' AND ${table.ibanHash} IS NOT NULL`,
+      ),
+  ],
 );
 
 export const bankConnections = pgTable(
@@ -271,7 +291,9 @@ export const bankConnections = pgTable(
     userId: text("user_id")
       .references(() => users.id, { onDelete: "cascade" })
       .notNull(),
-    provider: varchar("provider", { length: 50 }).notNull().default("enable_banking"),
+    provider: varchar("provider", { length: 50 })
+      .notNull()
+      .default("enable_banking"),
     sessionId: varchar("session_id", { length: 255 }).notNull(),
     aspspName: varchar("aspsp_name", { length: 255 }).notNull(),
     aspspCountry: char("aspsp_country", { length: 2 }).notNull(),
@@ -292,7 +314,7 @@ export const bankConnections = pgTable(
     index("idx_bank_connections_status").on(table.status),
     index("idx_bank_connections_consent_expires").on(table.consentExpiresAt),
     unique("bank_connections_user_session").on(table.userId, table.sessionId),
-  ]
+  ],
 );
 
 export const categories = pgTable(
@@ -316,8 +338,12 @@ export const categories = pgTable(
   (table) => [
     index("idx_categories_user").on(table.userId),
     index("idx_categories_user_type").on(table.userId, table.categoryType),
-    unique("categories_user_name_parent").on(table.userId, table.name, table.parentId),
-  ]
+    unique("categories_user_name_parent").on(
+      table.userId,
+      table.name,
+      table.parentId,
+    ),
+  ],
 );
 
 export const csvImports = pgTable(
@@ -349,7 +375,7 @@ export const csvImports = pgTable(
   (table) => [
     index("idx_csv_imports_user").on(table.userId),
     index("idx_csv_imports_account").on(table.accountId),
-  ]
+  ],
 );
 
 export const transactions = pgTable(
@@ -375,14 +401,21 @@ export const transactions = pgTable(
     counterpartyIbanHash: varchar("counterparty_iban_hash", { length: 64 }),
     internalTransferId: uuid("internal_transfer_id"), // FK to internal_transfers.id (enforced at DB level in migration 0017)
     categoryId: uuid("category_id").references(() => categories.id), // User-overridden category
-    categorySystemId: uuid("category_system_id").references(() => categories.id), // AI-assigned category (never updated by user)
+    categorySystemId: uuid("category_system_id").references(
+      () => categories.id,
+    ), // AI-assigned category (never updated by user)
     bookedAt: timestamp("booked_at").notNull(),
     pending: boolean("pending").default(false),
     categorizationInstructions: text("categorization_instructions"), // User instructions for AI categorization
     enrichmentData: jsonb("enrichment_data"), // Enriched merchant info, logos, etc.
-    recurringTransactionId: uuid("recurring_transaction_id").references(() => recurringTransactions.id, { onDelete: "set null" }), // Link to recurring transaction label
+    recurringTransactionId: uuid("recurring_transaction_id").references(
+      () => recurringTransactions.id,
+      { onDelete: "set null" },
+    ), // Link to recurring transaction label
     includeInAnalytics: boolean("include_in_analytics").default(true).notNull(), // Whether to include in analytics (charts, KPIs, etc.)
-    csvImportId: uuid("csv_import_id").references(() => csvImports.id, { onDelete: "set null" }), // Source CSV import (null for manual/bank-synced transactions)
+    csvImportId: uuid("csv_import_id").references(() => csvImports.id, {
+      onDelete: "set null",
+    }), // Source CSV import (null for manual/bank-synced transactions)
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
@@ -394,13 +427,26 @@ export const transactions = pgTable(
     index("idx_transactions_category_system").on(table.categorySystemId),
     index("idx_transactions_recurring").on(table.recurringTransactionId),
     // Composite indexes for common query patterns
-    index("idx_transactions_user_category_system").on(table.userId, table.categorySystemId),
-    index("idx_transactions_user_type_date").on(table.userId, table.transactionType, table.bookedAt),
+    index("idx_transactions_user_category_system").on(
+      table.userId,
+      table.categorySystemId,
+    ),
+    index("idx_transactions_user_type_date").on(
+      table.userId,
+      table.transactionType,
+      table.bookedAt,
+    ),
     index("idx_transactions_merchant").on(table.merchant),
     index("idx_transactions_csv_import").on(table.csvImportId),
-    unique("transactions_account_external_id").on(table.accountId, table.externalId),
-    index("idx_transactions_user_counterparty_iban").on(table.userId, table.counterpartyIbanHash),
-  ]
+    unique("transactions_account_external_id").on(
+      table.accountId,
+      table.externalId,
+    ),
+    index("idx_transactions_user_counterparty_iban").on(
+      table.userId,
+      table.counterpartyIbanHash,
+    ),
+  ],
 );
 
 export const internalTransfers = pgTable(
@@ -431,7 +477,7 @@ export const internalTransfers = pgTable(
   (table) => [
     index("idx_internal_transfers_user").on(table.userId),
     index("idx_internal_transfers_pocket").on(table.pocketAccountId),
-  ]
+  ],
 );
 
 export const recurringTransactions = pgTable(
@@ -441,13 +487,17 @@ export const recurringTransactions = pgTable(
     userId: text("user_id")
       .references(() => users.id, { onDelete: "cascade" })
       .notNull(),
-    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    accountId: uuid("account_id").references(() => accounts.id, {
+      onDelete: "set null",
+    }),
     name: varchar("name", { length: 255 }).notNull(),
     merchant: varchar("merchant", { length: 255 }),
     amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
     currency: char("currency", { length: 3 }).default("EUR"),
     categoryId: uuid("category_id").references(() => categories.id),
-    logoId: uuid("logo_id").references(() => companyLogos.id, { onDelete: "set null" }),
+    logoId: uuid("logo_id").references(() => companyLogos.id, {
+      onDelete: "set null",
+    }),
     importance: integer("importance").notNull().default(3), // 1-5 scale
     frequency: varchar("frequency", { length: 20 }).notNull(), // monthly, weekly, yearly, quarterly, biweekly
     isActive: boolean("is_active").default(true),
@@ -460,7 +510,7 @@ export const recurringTransactions = pgTable(
     index("idx_recurring_transactions_account").on(table.accountId),
     index("idx_recurring_transactions_category").on(table.categoryId),
     index("idx_recurring_transactions_active").on(table.isActive),
-  ]
+  ],
 );
 
 export const categorizationRules = pgTable("categorization_rules", {
@@ -486,13 +536,15 @@ export const properties = pgTable(
     name: varchar("name", { length: 255 }).notNull(),
     propertyType: varchar("property_type", { length: 50 }).notNull(), // residential, commercial, land, other
     address: text("address"),
-    currentValue: decimal("current_value", { precision: 15, scale: 2 }).default("0"),
+    currentValue: decimal("current_value", { precision: 15, scale: 2 }).default(
+      "0",
+    ),
     currency: char("currency", { length: 3 }).default("EUR"),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
-  (table) => [index("idx_properties_user").on(table.userId)]
+  (table) => [index("idx_properties_user").on(table.userId)],
 );
 
 export const vehicles = pgTable(
@@ -507,13 +559,15 @@ export const vehicles = pgTable(
     make: varchar("make", { length: 100 }),
     model: varchar("model", { length: 100 }),
     year: integer("year"),
-    currentValue: decimal("current_value", { precision: 15, scale: 2 }).default("0"),
+    currentValue: decimal("current_value", { precision: 15, scale: 2 }).default(
+      "0",
+    ),
     currency: char("currency", { length: 3 }).default("EUR"),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
-  (table) => [index("idx_vehicles_user").on(table.userId)]
+  (table) => [index("idx_vehicles_user").on(table.userId)],
 );
 
 export const exchangeRates = pgTable(
@@ -534,9 +588,9 @@ export const exchangeRates = pgTable(
     unique("exchange_rates_date_base_target").on(
       table.date,
       table.baseCurrency,
-      table.targetCurrency
+      table.targetCurrency,
     ),
-  ]
+  ],
 );
 
 export const subscriptionSuggestions = pgTable(
@@ -550,12 +604,20 @@ export const subscriptionSuggestions = pgTable(
     // Suggestion details
     suggestedName: varchar("suggested_name", { length: 255 }).notNull(),
     suggestedMerchant: varchar("suggested_merchant", { length: 255 }),
-    suggestedAmount: decimal("suggested_amount", { precision: 15, scale: 2 }).notNull(),
+    suggestedAmount: decimal("suggested_amount", {
+      precision: 15,
+      scale: 2,
+    }).notNull(),
     currency: char("currency", { length: 3 }).default("EUR").notNull(),
     detectedFrequency: varchar("detected_frequency", { length: 20 }).notNull(), // weekly, biweekly, monthly, quarterly, yearly
     confidence: integer("confidence").notNull(), // 0-100
-    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
-    suggestedCategoryId: uuid("suggested_category_id").references(() => categories.id, { onDelete: "set null" }),
+    accountId: uuid("account_id").references(() => accounts.id, {
+      onDelete: "set null",
+    }),
+    suggestedCategoryId: uuid("suggested_category_id").references(
+      () => categories.id,
+      { onDelete: "set null" },
+    ),
 
     // Linked transactions (stored as JSON array of IDs)
     matchedTransactionIds: text("matched_transaction_ids").notNull(), // JSON array
@@ -571,8 +633,10 @@ export const subscriptionSuggestions = pgTable(
     index("idx_subscription_suggestions_user").on(table.userId),
     index("idx_subscription_suggestions_status").on(table.status),
     index("idx_subscription_suggestions_account").on(table.accountId),
-    index("idx_subscription_suggestions_category").on(table.suggestedCategoryId),
-  ]
+    index("idx_subscription_suggestions_category").on(
+      table.suggestedCategoryId,
+    ),
+  ],
 );
 
 export const accountBalances = pgTable(
@@ -583,8 +647,14 @@ export const accountBalances = pgTable(
       .references(() => accounts.id, { onDelete: "cascade" })
       .notNull(),
     date: timestamp("date").notNull(), // Date of the balance snapshot
-    balanceInAccountCurrency: decimal("balance_in_account_currency", { precision: 15, scale: 2 }).notNull(), // Balance in account's currency
-    balanceInFunctionalCurrency: decimal("balance_in_functional_currency", { precision: 15, scale: 2 }).notNull(), // Balance converted to functional currency
+    balanceInAccountCurrency: decimal("balance_in_account_currency", {
+      precision: 15,
+      scale: 2,
+    }).notNull(), // Balance in account's currency
+    balanceInFunctionalCurrency: decimal("balance_in_functional_currency", {
+      precision: 15,
+      scale: 2,
+    }).notNull(), // Balance converted to functional currency
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
@@ -592,9 +662,12 @@ export const accountBalances = pgTable(
     index("idx_account_balances_account").on(table.accountId),
     index("idx_account_balances_date").on(table.date),
     // Composite index for efficient "latest balance" lookups
-    index("idx_account_balances_account_date_desc").on(table.accountId, table.date),
+    index("idx_account_balances_account_date_desc").on(
+      table.accountId,
+      table.date,
+    ),
     unique("account_balances_account_date").on(table.accountId, table.date),
-  ]
+  ],
 );
 
 export const transactionLinks = pgTable(
@@ -615,7 +688,7 @@ export const transactionLinks = pgTable(
     index("idx_transaction_links_user").on(table.userId),
     index("idx_transaction_links_group").on(table.groupId),
     unique("transaction_links_transaction_unique").on(table.transactionId),
-  ]
+  ],
 );
 
 export const companyLogos = pgTable(
@@ -634,13 +707,17 @@ export const companyLogos = pgTable(
     index("idx_company_logos_domain").on(table.domain),
     index("idx_company_logos_name").on(table.companyName),
     unique("company_logos_domain_unique").on(table.domain),
-  ]
+  ],
 );
 
 export const brokerConnections = pgTable("broker_connections", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  accountId: uuid("account_id")
+    .notNull()
+    .references(() => accounts.id, { onDelete: "cascade" }),
   provider: text("provider").notNull(),
   credentialsEncrypted: text("credentials_encrypted").notNull(),
   lastSyncAt: timestamp("last_sync_at"),
@@ -650,63 +727,103 @@ export const brokerConnections = pgTable("broker_connections", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const holdings = pgTable("holdings", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
-  symbol: text("symbol").notNull(),
-  providerSymbol: text("provider_symbol"),
-  name: text("name"),
-  currency: text("currency").notNull(),
-  instrumentType: text("instrument_type").notNull(),
-  quantity: numeric("quantity", { precision: 28, scale: 8 }).notNull(),
-  avgCost: numeric("avg_cost", { precision: 28, scale: 8 }),
-  asOfDate: date("as_of_date"),
-  source: text("source").notNull(),
-  lastPriceError: text("last_price_error"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (t) => ({
-  uniqHolding: uniqueIndex("holdings_account_symbol_type_uq").on(t.accountId, t.symbol, t.instrumentType),
-  byAccount: index("idx_holdings_account").on(t.accountId),
-}));
+export const holdings = pgTable(
+  "holdings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    symbol: text("symbol").notNull(),
+    providerSymbol: text("provider_symbol"),
+    name: text("name"),
+    currency: text("currency").notNull(),
+    instrumentType: text("instrument_type").notNull(),
+    quantity: numeric("quantity", { precision: 28, scale: 8 }).notNull(),
+    avgCost: numeric("avg_cost", { precision: 28, scale: 8 }),
+    asOfDate: date("as_of_date"),
+    source: text("source").notNull(),
+    lastPriceError: text("last_price_error"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (t) => ({
+    uniqHolding: uniqueIndex("holdings_account_symbol_type_uq").on(
+      t.accountId,
+      t.symbol,
+      t.instrumentType,
+    ),
+    byAccount: index("idx_holdings_account").on(t.accountId),
+  }),
+);
 
-export const brokerTrades = pgTable("broker_trades", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  accountId: uuid("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
-  symbol: text("symbol").notNull(),
-  tradeDate: date("trade_date").notNull(),
-  side: text("side").notNull(),
-  quantity: numeric("quantity", { precision: 28, scale: 8 }).notNull(),
-  price: numeric("price", { precision: 28, scale: 8 }).notNull(),
-  currency: text("currency").notNull(),
-  externalId: text("external_id").notNull(),
-}, (t) => ({
-  uniqTrade: uniqueIndex("broker_trades_account_external_uq").on(t.accountId, t.externalId),
-}));
+export const brokerTrades = pgTable(
+  "broker_trades",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    symbol: text("symbol").notNull(),
+    tradeDate: date("trade_date").notNull(),
+    side: text("side").notNull(),
+    quantity: numeric("quantity", { precision: 28, scale: 8 }).notNull(),
+    price: numeric("price", { precision: 28, scale: 8 }).notNull(),
+    currency: text("currency").notNull(),
+    externalId: text("external_id").notNull(),
+  },
+  (t) => ({
+    uniqTrade: uniqueIndex("broker_trades_account_external_uq").on(
+      t.accountId,
+      t.externalId,
+    ),
+  }),
+);
 
-export const priceSnapshots = pgTable("price_snapshots", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  symbol: text("symbol").notNull(),
-  currency: text("currency").notNull(),
-  date: date("date").notNull(),
-  close: numeric("close", { precision: 28, scale: 8 }).notNull(),
-  provider: text("provider").notNull(),
-}, (t) => ({
-  uniqSnap: uniqueIndex("price_snapshots_symbol_date_uq").on(t.symbol, t.date),
-}));
+export const priceSnapshots = pgTable(
+  "price_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    symbol: text("symbol").notNull(),
+    currency: text("currency").notNull(),
+    date: date("date").notNull(),
+    close: numeric("close", { precision: 28, scale: 8 }).notNull(),
+    provider: text("provider").notNull(),
+  },
+  (t) => ({
+    uniqSnap: uniqueIndex("price_snapshots_symbol_date_uq").on(
+      t.symbol,
+      t.date,
+    ),
+  }),
+);
 
-export const holdingValuations = pgTable("holding_valuations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  holdingId: uuid("holding_id").notNull().references(() => holdings.id, { onDelete: "cascade" }),
-  date: date("date").notNull(),
-  quantity: numeric("quantity", { precision: 28, scale: 8 }).notNull(),
-  price: numeric("price", { precision: 28, scale: 8 }).notNull(),
-  valueUserCurrency: numeric("value_user_currency", { precision: 15, scale: 2 }).notNull(),
-  isStale: boolean("is_stale").default(false),
-}, (t) => ({
-  uniqVal: uniqueIndex("holding_valuations_holding_date_uq").on(t.holdingId, t.date),
-}));
+export const holdingValuations = pgTable(
+  "holding_valuations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    holdingId: uuid("holding_id")
+      .notNull()
+      .references(() => holdings.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    quantity: numeric("quantity", { precision: 28, scale: 8 }).notNull(),
+    price: numeric("price", { precision: 28, scale: 8 }).notNull(),
+    valueUserCurrency: numeric("value_user_currency", {
+      precision: 15,
+      scale: 2,
+    }).notNull(),
+    isStale: boolean("is_stale").default(false),
+  },
+  (t) => ({
+    uniqVal: uniqueIndex("holding_valuations_holding_date_uq").on(
+      t.holdingId,
+      t.date,
+    ),
+  }),
+);
 
 // ============================================================================
 // People & Household Ownership
@@ -735,7 +852,7 @@ export const people = pgTable(
     uniqueIndex("people_user_self_uq")
       .on(t.userId)
       .where(sql`${t.kind} = 'self'`),
-  ]
+  ],
 );
 
 export const accountOwners = pgTable(
@@ -753,7 +870,7 @@ export const accountOwners = pgTable(
   (t) => [
     primaryKey({ columns: [t.accountId, t.personId] }),
     index("idx_account_owners_person").on(t.personId),
-  ]
+  ],
 );
 
 export const propertyOwners = pgTable(
@@ -771,7 +888,7 @@ export const propertyOwners = pgTable(
   (t) => [
     primaryKey({ columns: [t.propertyId, t.personId] }),
     index("idx_property_owners_person").on(t.personId),
-  ]
+  ],
 );
 
 export const vehicleOwners = pgTable(
@@ -789,7 +906,7 @@ export const vehicleOwners = pgTable(
   (t) => [
     primaryKey({ columns: [t.vehicleId, t.personId] }),
     index("idx_vehicle_owners_person").on(t.personId),
-  ]
+  ],
 );
 
 // ============================================================================
@@ -854,20 +971,26 @@ export const accountsRelations = relations(accounts, ({ one, many }) => ({
   owners: many(accountOwners),
 }));
 
-export const bankConnectionsRelations = relations(bankConnections, ({ one, many }) => ({
-  user: one(users, {
-    fields: [bankConnections.userId],
-    references: [users.id],
+export const bankConnectionsRelations = relations(
+  bankConnections,
+  ({ one, many }) => ({
+    user: one(users, {
+      fields: [bankConnections.userId],
+      references: [users.id],
+    }),
+    accounts: many(accounts),
   }),
-  accounts: many(accounts),
-}));
+);
 
-export const accountBalancesRelations = relations(accountBalances, ({ one }) => ({
-  account: one(accounts, {
-    fields: [accountBalances.accountId],
-    references: [accounts.id],
+export const accountBalancesRelations = relations(
+  accountBalances,
+  ({ one }) => ({
+    account: one(accounts, {
+      fields: [accountBalances.accountId],
+      references: [accounts.id],
+    }),
   }),
-}));
+);
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
   user: one(users, {
@@ -922,63 +1045,72 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
   }),
 }));
 
-export const internalTransfersRelations = relations(internalTransfers, ({ one }) => ({
-  user: one(users, {
-    fields: [internalTransfers.userId],
-    references: [users.id],
+export const internalTransfersRelations = relations(
+  internalTransfers,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [internalTransfers.userId],
+      references: [users.id],
+    }),
+    sourceTxn: one(transactions, {
+      fields: [internalTransfers.sourceTxnId],
+      references: [transactions.id],
+      relationName: "internalTransferSource",
+    }),
+    mirrorTxn: one(transactions, {
+      fields: [internalTransfers.mirrorTxnId],
+      references: [transactions.id],
+      relationName: "internalTransferMirror",
+    }),
+    sourceAccount: one(accounts, {
+      fields: [internalTransfers.sourceAccountId],
+      references: [accounts.id],
+      relationName: "internalTransferSourceAccount",
+    }),
+    pocketAccount: one(accounts, {
+      fields: [internalTransfers.pocketAccountId],
+      references: [accounts.id],
+      relationName: "internalTransferPocketAccount",
+    }),
   }),
-  sourceTxn: one(transactions, {
-    fields: [internalTransfers.sourceTxnId],
-    references: [transactions.id],
-    relationName: "internalTransferSource",
-  }),
-  mirrorTxn: one(transactions, {
-    fields: [internalTransfers.mirrorTxnId],
-    references: [transactions.id],
-    relationName: "internalTransferMirror",
-  }),
-  sourceAccount: one(accounts, {
-    fields: [internalTransfers.sourceAccountId],
-    references: [accounts.id],
-    relationName: "internalTransferSourceAccount",
-  }),
-  pocketAccount: one(accounts, {
-    fields: [internalTransfers.pocketAccountId],
-    references: [accounts.id],
-    relationName: "internalTransferPocketAccount",
-  }),
-}));
+);
 
-export const recurringTransactionsRelations = relations(recurringTransactions, ({ one, many }) => ({
-  user: one(users, {
-    fields: [recurringTransactions.userId],
-    references: [users.id],
+export const recurringTransactionsRelations = relations(
+  recurringTransactions,
+  ({ one, many }) => ({
+    user: one(users, {
+      fields: [recurringTransactions.userId],
+      references: [users.id],
+    }),
+    account: one(accounts, {
+      fields: [recurringTransactions.accountId],
+      references: [accounts.id],
+    }),
+    category: one(categories, {
+      fields: [recurringTransactions.categoryId],
+      references: [categories.id],
+    }),
+    logo: one(companyLogos, {
+      fields: [recurringTransactions.logoId],
+      references: [companyLogos.id],
+    }),
+    linkedTransactions: many(transactions),
   }),
-  account: one(accounts, {
-    fields: [recurringTransactions.accountId],
-    references: [accounts.id],
-  }),
-  category: one(categories, {
-    fields: [recurringTransactions.categoryId],
-    references: [categories.id],
-  }),
-  logo: one(companyLogos, {
-    fields: [recurringTransactions.logoId],
-    references: [companyLogos.id],
-  }),
-  linkedTransactions: many(transactions),
-}));
+);
 
-export const categorizationRulesRelations = relations(categorizationRules, ({ one }) => ({
-  user: one(users, {
-    fields: [categorizationRules.userId],
-    references: [users.id],
+export const categorizationRulesRelations = relations(
+  categorizationRules,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [categorizationRules.userId],
+      references: [users.id],
+    }),
+    category: one(categories, {
+      fields: [categorizationRules.categoryId],
+      references: [categories.id],
+    }),
   }),
-  category: one(categories, {
-    fields: [categorizationRules.categoryId],
-    references: [categories.id],
-  }),
-}));
+);
 
 export const csvImportsRelations = relations(csvImports, ({ one, many }) => ({
   user: one(users, {
@@ -1010,31 +1142,37 @@ export const vehiclesRelations = relations(vehicles, ({ one, many }) => ({
 
 export const exchangeRatesRelations = relations(exchangeRates, () => ({}));
 
-export const subscriptionSuggestionsRelations = relations(subscriptionSuggestions, ({ one }) => ({
-  user: one(users, {
-    fields: [subscriptionSuggestions.userId],
-    references: [users.id],
+export const subscriptionSuggestionsRelations = relations(
+  subscriptionSuggestions,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [subscriptionSuggestions.userId],
+      references: [users.id],
+    }),
+    account: one(accounts, {
+      fields: [subscriptionSuggestions.accountId],
+      references: [accounts.id],
+    }),
+    suggestedCategory: one(categories, {
+      fields: [subscriptionSuggestions.suggestedCategoryId],
+      references: [categories.id],
+    }),
   }),
-  account: one(accounts, {
-    fields: [subscriptionSuggestions.accountId],
-    references: [accounts.id],
-  }),
-  suggestedCategory: one(categories, {
-    fields: [subscriptionSuggestions.suggestedCategoryId],
-    references: [categories.id],
-  }),
-}));
+);
 
-export const transactionLinksRelations = relations(transactionLinks, ({ one }) => ({
-  user: one(users, {
-    fields: [transactionLinks.userId],
-    references: [users.id],
+export const transactionLinksRelations = relations(
+  transactionLinks,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [transactionLinks.userId],
+      references: [users.id],
+    }),
+    transaction: one(transactions, {
+      fields: [transactionLinks.transactionId],
+      references: [transactions.id],
+    }),
   }),
-  transaction: one(transactions, {
-    fields: [transactionLinks.transactionId],
-    references: [transactions.id],
-  }),
-}));
+);
 
 export const companyLogosRelations = relations(companyLogos, ({ many }) => ({
   accounts: many(accounts),
@@ -1049,18 +1187,36 @@ export const peopleRelations = relations(people, ({ one, many }) => ({
 }));
 
 export const accountOwnersRelations = relations(accountOwners, ({ one }) => ({
-  account: one(accounts, { fields: [accountOwners.accountId], references: [accounts.id] }),
-  person: one(people, { fields: [accountOwners.personId], references: [people.id] }),
+  account: one(accounts, {
+    fields: [accountOwners.accountId],
+    references: [accounts.id],
+  }),
+  person: one(people, {
+    fields: [accountOwners.personId],
+    references: [people.id],
+  }),
 }));
 
 export const propertyOwnersRelations = relations(propertyOwners, ({ one }) => ({
-  property: one(properties, { fields: [propertyOwners.propertyId], references: [properties.id] }),
-  person: one(people, { fields: [propertyOwners.personId], references: [people.id] }),
+  property: one(properties, {
+    fields: [propertyOwners.propertyId],
+    references: [properties.id],
+  }),
+  person: one(people, {
+    fields: [propertyOwners.personId],
+    references: [people.id],
+  }),
 }));
 
 export const vehicleOwnersRelations = relations(vehicleOwners, ({ one }) => ({
-  vehicle: one(vehicles, { fields: [vehicleOwners.vehicleId], references: [vehicles.id] }),
-  person: one(people, { fields: [vehicleOwners.personId], references: [people.id] }),
+  vehicle: one(vehicles, {
+    fields: [vehicleOwners.vehicleId],
+    references: [vehicles.id],
+  }),
+  person: one(people, {
+    fields: [vehicleOwners.personId],
+    references: [people.id],
+  }),
 }));
 
 // ============================================================================
@@ -1088,7 +1244,10 @@ export const reports = pgTable(
     sendDayOfWeek: integer("send_day_of_week"), // 0=Monday..6=Sunday, WEEKLY/BIWEEKLY
     sendDayOfMonth: integer("send_day_of_month"), // 1..28, MONTHLY
     timezone: varchar("timezone", { length: 64 }).notNull().default("UTC"),
-    recipientEmails: jsonb("recipient_emails").$type<string[]>().default([]).notNull(),
+    recipientEmails: jsonb("recipient_emails")
+      .$type<string[]>()
+      .default([])
+      .notNull(),
     isActive: boolean("is_active").default(true).notNull(),
     nextRunAt: timestamp("next_run_at"),
     createdAt: timestamp("created_at").defaultNow(),
@@ -1097,7 +1256,7 @@ export const reports = pgTable(
   (table) => [
     index("idx_reports_user").on(table.userId),
     index("idx_reports_next_run_at").on(table.nextRunAt),
-  ]
+  ],
 );
 
 export const reportRuns = pgTable(
@@ -1113,13 +1272,16 @@ export const reportRuns = pgTable(
     finishedAt: timestamp("finished_at"),
     status: varchar("status", { length: 20 }).notNull().default("SCHEDULED"), // SCHEDULED, RUNNING, SUCCEEDED, FAILED
     errorMessage: text("error_message"),
-    recipientEmails: jsonb("recipient_emails").$type<string[]>().default([]).notNull(),
+    recipientEmails: jsonb("recipient_emails")
+      .$type<string[]>()
+      .default([])
+      .notNull(),
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => [
     index("idx_report_runs_report").on(table.reportId),
     index("idx_report_runs_status").on(table.status),
-  ]
+  ],
 );
 
 // ============================================================================
@@ -1147,7 +1309,6 @@ export type NewRecurringTransaction = typeof recurringTransactions.$inferInsert;
 export type CategorizationRule = typeof categorizationRules.$inferSelect;
 export type NewCategorizationRule = typeof categorizationRules.$inferInsert;
 
-
 export type CsvImport = typeof csvImports.$inferSelect;
 export type NewCsvImport = typeof csvImports.$inferInsert;
 
@@ -1163,8 +1324,10 @@ export type NewExchangeRate = typeof exchangeRates.$inferInsert;
 export type AccountBalance = typeof accountBalances.$inferSelect;
 export type NewAccountBalance = typeof accountBalances.$inferInsert;
 
-export type SubscriptionSuggestion = typeof subscriptionSuggestions.$inferSelect;
-export type NewSubscriptionSuggestion = typeof subscriptionSuggestions.$inferInsert;
+export type SubscriptionSuggestion =
+  typeof subscriptionSuggestions.$inferSelect;
+export type NewSubscriptionSuggestion =
+  typeof subscriptionSuggestions.$inferInsert;
 
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;

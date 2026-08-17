@@ -4,6 +4,7 @@ All persisted `next_run_at` values are naive UTC datetimes (matching the
 rest of this codebase's `DateTime` columns, which are naive-UTC by
 convention — see `Transaction.booked_at`).
 """
+
 from __future__ import annotations
 
 from datetime import datetime, time, timedelta

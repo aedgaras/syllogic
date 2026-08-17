@@ -1,6 +1,10 @@
 import type { SupportedHorizon } from "@/lib/dashboard/query-params";
 
-export type TransactionSortField = "bookedAt" | "amount" | "description" | "merchant";
+export type TransactionSortField =
+  | "bookedAt"
+  | "amount"
+  | "description"
+  | "merchant";
 export type TransactionSortOrder = "asc" | "desc";
 
 export interface TransactionFilters {
@@ -39,7 +43,11 @@ export interface TransactionListItem {
     name: string;
     institution: string | null;
     accountType: string;
-    logo: { id: string; logoUrl: string | null; updatedAt?: Date | null } | null;
+    logo: {
+      id: string;
+      logoUrl: string | null;
+      updatedAt?: Date | null;
+    } | null;
   } | null;
   description: string | null;
   merchant: string | null;
@@ -161,7 +169,10 @@ export interface CreateTransactionInput {
   merchant?: string;
 }
 
-export interface UpdateTransactionInput extends Omit<CreateTransactionInput, "categoryId"> {
+export interface UpdateTransactionInput extends Omit<
+  CreateTransactionInput,
+  "categoryId"
+> {
   transactionId: string;
   categoryId?: string | null;
 }

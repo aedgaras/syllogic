@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import * as React from "react";
 import { type DateRange } from "react-day-picker";
 import {
@@ -29,13 +28,55 @@ import { cn } from "@/lib/utils";
 
 // Date range presets
 const datePresets = [
-  { label: translate("thisWeek"), getValue: () => ({ from: startOfWeek(new Date(), { weekStartsOn: 1 }), to: endOfWeek(new Date(), { weekStartsOn: 1 }) }) },
-  { label: translate("thisMonth"), getValue: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }) },
-  { label: translate("lastMonth20fe4f"), getValue: () => ({ from: startOfMonth(subMonths(new Date(), 1)), to: endOfMonth(subMonths(new Date(), 1)) }) },
-  { label: translate("thisQuarter"), getValue: () => ({ from: startOfQuarter(new Date()), to: endOfQuarter(new Date()) }) },
-  { label: translate("lastQuarter"), getValue: () => ({ from: startOfQuarter(subQuarters(new Date(), 1)), to: endOfQuarter(subQuarters(new Date(), 1)) }) },
-  { label: translate("thisYear"), getValue: () => ({ from: startOfYear(new Date()), to: endOfYear(new Date()) }) },
-  { label: translate("lastYear"), getValue: () => ({ from: startOfYear(subYears(new Date(), 1)), to: endOfYear(subYears(new Date(), 1)) }) },
+  {
+    label: translate("thisWeek"),
+    getValue: () => ({
+      from: startOfWeek(new Date(), { weekStartsOn: 1 }),
+      to: endOfWeek(new Date(), { weekStartsOn: 1 }),
+    }),
+  },
+  {
+    label: translate("thisMonth"),
+    getValue: () => ({
+      from: startOfMonth(new Date()),
+      to: endOfMonth(new Date()),
+    }),
+  },
+  {
+    label: translate("lastMonth20fe4f"),
+    getValue: () => ({
+      from: startOfMonth(subMonths(new Date(), 1)),
+      to: endOfMonth(subMonths(new Date(), 1)),
+    }),
+  },
+  {
+    label: translate("thisQuarter"),
+    getValue: () => ({
+      from: startOfQuarter(new Date()),
+      to: endOfQuarter(new Date()),
+    }),
+  },
+  {
+    label: translate("lastQuarter"),
+    getValue: () => ({
+      from: startOfQuarter(subQuarters(new Date(), 1)),
+      to: endOfQuarter(subQuarters(new Date(), 1)),
+    }),
+  },
+  {
+    label: translate("thisYear"),
+    getValue: () => ({
+      from: startOfYear(new Date()),
+      to: endOfYear(new Date()),
+    }),
+  },
+  {
+    label: translate("lastYear"),
+    getValue: () => ({
+      from: startOfYear(subYears(new Date(), 1)),
+      to: endOfYear(subYears(new Date(), 1)),
+    }),
+  },
 ];
 
 interface DateRangePickerProps {
@@ -74,14 +115,14 @@ export function DateRangePicker({
           active
             ? "bg-primary text-primary-foreground hover:bg-primary/90"
             : "bg-transparent text-foreground hover:bg-muted",
-          className
+          className,
         )}
       >
         {showIcon && (
           <RiCalendarLine
             className={cn(
               "h-4 w-4",
-              active ? "text-primary-foreground" : "text-muted-foreground"
+              active ? "text-primary-foreground" : "text-muted-foreground",
             )}
           />
         )}
@@ -89,7 +130,7 @@ export function DateRangePicker({
         <RiArrowDownSLine
           className={cn(
             "h-4 w-4 shrink-0",
-            active ? "text-primary-foreground" : "text-muted-foreground"
+            active ? "text-primary-foreground" : "text-muted-foreground",
           )}
         />
       </PopoverTrigger>
@@ -104,7 +145,7 @@ export function DateRangePicker({
               }}
               className={cn(
                 "w-full whitespace-nowrap px-2 py-1.5 text-left text-xs hover:bg-accent",
-                !value?.from && "bg-accent"
+                !value?.from && "bg-accent",
               )}
             >
               {translate("allTime")}
@@ -117,8 +158,8 @@ export function DateRangePicker({
                   onChange(preset.getValue());
                   setOpen(false);
                 }}
-                  className="w-full whitespace-nowrap px-2 py-1.5 text-left text-xs hover:bg-accent"
-                >
+                className="w-full whitespace-nowrap px-2 py-1.5 text-left text-xs hover:bg-accent"
+              >
                 {preset.label}
               </button>
             ))}

@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -59,18 +58,28 @@ type SyncProgress = {
   started_at?: string;
 };
 
-export function BankConnectionsManager({ connections }: BankConnectionsManagerProps) {
+export function BankConnectionsManager({
+  connections,
+}: BankConnectionsManagerProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
-  const [recategorizingIds, setRecategorizingIds] = useState<Set<string>>(new Set());
-  const [disconnectingIds, setDisconnectingIds] = useState<Set<string>>(new Set());
+  const [recategorizingIds, setRecategorizingIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [disconnectingIds, setDisconnectingIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [relinkingIds, setRelinkingIds] = useState<Set<string>>(new Set());
   const [relinkError, setRelinkError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [pollingIds, setPollingIds] = useState<Set<string>>(new Set());
-  const [syncProgress, setSyncProgress] = useState<Map<string, SyncProgress>>(new Map());
-  const [elapsedSeconds, setElapsedSeconds] = useState<Map<string, number>>(new Map());
+  const [syncProgress, setSyncProgress] = useState<Map<string, SyncProgress>>(
+    new Map(),
+  );
+  const [elapsedSeconds, setElapsedSeconds] = useState<Map<string, number>>(
+    new Map(),
+  );
   const pollingTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const elapsedTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const initialSyncTimes = useRef<Map<string, string | null>>(new Map());
@@ -153,7 +162,9 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
 
           const syncProgressValue = data.sync_progress;
           if (syncProgressValue) {
-            setSyncProgress((prev) => new Map(prev).set(connectionId, syncProgressValue));
+            setSyncProgress((prev) =>
+              new Map(prev).set(connectionId, syncProgressValue),
+            );
           }
 
           const startedAt = initialSyncTimes.current.get(connectionId);
@@ -179,13 +190,17 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
       const timer = setTimeout(poll, 3000);
       pollingTimers.current.set(connectionId, timer);
     },
-    [queryClient, router, stopPolling]
+    [queryClient, router, stopPolling],
   );
 
   // Auto-detect connections that are active but have never synced (initial sync after wizard)
   useEffect(() => {
     for (const conn of connections) {
-      if (conn.status === "active" && !conn.lastSyncedAt && !pollingIds.has(conn.id)) {
+      if (
+        conn.status === "active" &&
+        !conn.lastSyncedAt &&
+        !pollingIds.has(conn.id)
+      ) {
         startPolling(conn.id, null);
         setSyncingIds((prev) => new Set([...prev, conn.id]));
       }
@@ -259,7 +274,7 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
       const result = await initiateAuth(
         connection.aspspName,
         connection.aspspCountry,
-        connection.id
+        connection.id,
       );
       if (result.success && result.url) {
         window.location.assign(result.url);
@@ -278,7 +293,8 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
 
   const isConsentExpired = (connection: BankConnectionItem) =>
     connection.status === "expired" ||
-    (!!connection.consentExpiresAt && connection.consentExpiresAt.getTime() <= now);
+    (!!connection.consentExpiresAt &&
+      connection.consentExpiresAt.getTime() <= now);
 
   const getStatusBadge = (connection: BankConnectionItem) => {
     if (isConsentExpired(connection)) {
@@ -299,7 +315,7 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
   const isConsentExpiringSoon = (connection: BankConnectionItem) => {
     if (!connection.consentExpiresAt) return false;
     const daysUntilExpiry = Math.ceil(
-      (connection.consentExpiresAt.getTime() - now) / (1000 * 60 * 60 * 24)
+      (connection.consentExpiresAt.getTime() - now) / (1000 * 60 * 60 * 24),
     );
     return daysUntilExpiry <= 14 && daysUntilExpiry > 0;
   };
@@ -316,13 +332,17 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
     return `${days} day${days === 1 ? "" : "s"}`;
   };
 
-  const activeConnections = connections.filter((c) => c.status !== "disconnected");
+  const activeConnections = connections.filter(
+    (c) => c.status !== "disconnected",
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">{translate("bankConnections")}</h2>
+          <h2 className="text-lg font-semibold">
+            {translate("bankConnections")}
+          </h2>
           <p className="text-sm text-muted-foreground">
             {translate("connectYourBankAccountsViaOpenBankingToAutomatically")}
           </p>
@@ -353,138 +373,166 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
       ) : (
         <div className="space-y-3">
           {activeConnections.map((connection) => (
-            <div
-              key={connection.id}
-              className="rounded-lg border p-4"
-            >
+            <div key={connection.id} className="rounded-lg border p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                  <RiBankLine className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="break-words font-medium">{connection.aspspName}</span>
-                    {getStatusBadge(connection)}
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                    <RiBankLine className="h-5 w-5" />
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <span>{connection.aspspCountry}</span>
-                    {connection.lastSyncedAt && (
-                      <>
-                        <span>·</span>
-                        <span>
-                          {translate("lastSynced")}{" "}
-                          {new Date(connection.lastSyncedAt).toLocaleDateString()}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  {connection.consentExpiresAt && !isConsentExpired(connection) && (
-                    <div
-                      className={`mt-1 flex items-center gap-1 text-xs ${
-                        isConsentExpiringSoon(connection)
-                          ? "text-amber-600"
-                          : "text-muted-foreground"
-                      }`}
-                      title={translate("consentExpires", { value1: connection.consentExpiresAt.toLocaleString() })}
-                    >
-                      <RiAlertLine className="h-3 w-3" />
-                      <span>
-                        {translate("bankConsentExpiresIn")} {consentTimeRemaining(connection)}.
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="break-words font-medium">
+                        {connection.aspspName}
                       </span>
+                      {getStatusBadge(connection)}
                     </div>
-                  )}
-                  {isConsentExpired(connection) && (
-                    <div className="mt-1 flex items-center gap-1 text-xs text-destructive">
-                      <RiAlertLine className="h-3 w-3" />
-                      <span>{translate("bankConsentExpiredRenewItToResumeSyncing")}</span>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span>{connection.aspspCountry}</span>
+                      {connection.lastSyncedAt && (
+                        <>
+                          <span>·</span>
+                          <span>
+                            {translate("lastSynced")}{" "}
+                            {new Date(
+                              connection.lastSyncedAt,
+                            ).toLocaleDateString()}
+                          </span>
+                        </>
+                      )}
                     </div>
-                  )}
-                  {connection.lastSyncError && connection.status === "error" && (
-                    <p className="mt-1 text-xs text-destructive">
-                      {connection.lastSyncError}
-                    </p>
-                  )}
+                    {connection.consentExpiresAt &&
+                      !isConsentExpired(connection) && (
+                        <div
+                          className={`mt-1 flex items-center gap-1 text-xs ${
+                            isConsentExpiringSoon(connection)
+                              ? "text-amber-600"
+                              : "text-muted-foreground"
+                          }`}
+                          title={translate("consentExpires", {
+                            value1:
+                              connection.consentExpiresAt.toLocaleString(),
+                          })}
+                        >
+                          <RiAlertLine className="h-3 w-3" />
+                          <span>
+                            {translate("bankConsentExpiresIn")}{" "}
+                            {consentTimeRemaining(connection)}.
+                          </span>
+                        </div>
+                      )}
+                    {isConsentExpired(connection) && (
+                      <div className="mt-1 flex items-center gap-1 text-xs text-destructive">
+                        <RiAlertLine className="h-3 w-3" />
+                        <span>
+                          {translate(
+                            "bankConsentExpiredRenewItToResumeSyncing",
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {connection.lastSyncError &&
+                      connection.status === "error" && (
+                        <p className="mt-1 text-xs text-destructive">
+                          {connection.lastSyncError}
+                        </p>
+                      )}
+                  </div>
                 </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {(isConsentExpired(connection) || isConsentExpiringSoon(connection)) && (
-                  <Button
-                    variant={isConsentExpired(connection) ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handleRelink(connection)}
-                    disabled={relinkingIds.has(connection.id)}
-                  >
-                    <RiRefreshLine
-                      className={`mr-1.5 h-4 w-4 ${
-                        relinkingIds.has(connection.id) ? "animate-spin" : ""
-                      }`}
-                    />
-                    {relinkingIds.has(connection.id) ? translate("openingBank") : translate("renewConsent")}
-                  </Button>
-                )}
-                {connection.status === "active" && !isConsentExpired(connection) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSync(connection.id)}
-                    disabled={syncingIds.has(connection.id)}
-                  >
-                    <RiRefreshLine
-                      className={`mr-1.5 h-4 w-4 ${
-                        syncingIds.has(connection.id) ? "animate-spin" : ""
-                      }`}
-                    />
-                    {syncingIds.has(connection.id) ? translate("syncinge5c772") : translate("syncNow")}
-                  </Button>
-                )}
-                {connection.status === "active" && !isConsentExpired(connection) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleRecategorize(connection.id)}
-                    disabled={recategorizingIds.has(connection.id)}
-                  >
-                    <RiPriceTag3Line
-                      className={`mr-1.5 h-4 w-4 ${
-                        recategorizingIds.has(connection.id) ? "animate-spin" : ""
-                      }`}
-                    />
-                    {recategorizingIds.has(connection.id) ? translate("reCategorizing") : translate("fixCategories")}
-                  </Button>
-                )}
-                <AlertDialog>
-                  <AlertDialogTrigger
-                    disabled={disconnectingIds.has(connection.id)}
-                    render={
+                <div className="flex flex-wrap items-center gap-2">
+                  {(isConsentExpired(connection) ||
+                    isConsentExpiringSoon(connection)) && (
+                    <Button
+                      variant={
+                        isConsentExpired(connection) ? "default" : "outline"
+                      }
+                      size="sm"
+                      onClick={() => handleRelink(connection)}
+                      disabled={relinkingIds.has(connection.id)}
+                    >
+                      <RiRefreshLine
+                        className={`mr-1.5 h-4 w-4 ${
+                          relinkingIds.has(connection.id) ? "animate-spin" : ""
+                        }`}
+                      />
+                      {relinkingIds.has(connection.id)
+                        ? translate("openingBank")
+                        : translate("renewConsent")}
+                    </Button>
+                  )}
+                  {connection.status === "active" &&
+                    !isConsentExpired(connection) && (
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={disconnectingIds.has(connection.id)}
+                        onClick={() => handleSync(connection.id)}
+                        disabled={syncingIds.has(connection.id)}
                       >
-                        <RiLinkUnlinkM className="mr-1.5 h-4 w-4" />
-                        {translate("disconnect")}
+                        <RiRefreshLine
+                          className={`mr-1.5 h-4 w-4 ${
+                            syncingIds.has(connection.id) ? "animate-spin" : ""
+                          }`}
+                        />
+                        {syncingIds.has(connection.id)
+                          ? translate("syncinge5c772")
+                          : translate("syncNow")}
                       </Button>
-                    }
-                  />
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>{translate("disconnect")} {connection.aspspName}?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {translate("thisWillRevokeAccessToYourBankDataYour")}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{translate("cancel")}</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDisconnect(connection.id)}
+                    )}
+                  {connection.status === "active" &&
+                    !isConsentExpired(connection) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRecategorize(connection.id)}
+                        disabled={recategorizingIds.has(connection.id)}
                       >
-                        {translate("disconnect")}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
+                        <RiPriceTag3Line
+                          className={`mr-1.5 h-4 w-4 ${
+                            recategorizingIds.has(connection.id)
+                              ? "animate-spin"
+                              : ""
+                          }`}
+                        />
+                        {recategorizingIds.has(connection.id)
+                          ? translate("reCategorizing")
+                          : translate("fixCategories")}
+                      </Button>
+                    )}
+                  <AlertDialog>
+                    <AlertDialogTrigger
+                      disabled={disconnectingIds.has(connection.id)}
+                      render={
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={disconnectingIds.has(connection.id)}
+                        >
+                          <RiLinkUnlinkM className="mr-1.5 h-4 w-4" />
+                          {translate("disconnect")}
+                        </Button>
+                      }
+                    />
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          {translate("disconnect")} {connection.aspspName}?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {translate("thisWillRevokeAccessToYourBankDataYour")}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>
+                          {translate("cancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDisconnect(connection.id)}
+                        >
+                          {translate("disconnect")}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
               {syncingIds.has(connection.id) && (
                 <div className="mt-3 space-y-1.5">
@@ -498,13 +546,19 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
                         return "Preparing sync...";
                       })()}
                     </span>
-                    <span>{elapsedSeconds.get(connection.id) ?? 0}{translate("sElapsed")}</span>
+                    <span>
+                      {elapsedSeconds.get(connection.id) ?? 0}
+                      {translate("sElapsed")}
+                    </span>
                   </div>
                   <Progress
                     value={(() => {
                       const progress = syncProgress.get(connection.id);
                       if (progress && progress.accounts_total > 0) {
-                        return (progress.accounts_done / progress.accounts_total) * 100;
+                        return (
+                          (progress.accounts_done / progress.accounts_total) *
+                          100
+                        );
                       }
                       return 0;
                     })()}

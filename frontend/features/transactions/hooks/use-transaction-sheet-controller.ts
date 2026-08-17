@@ -46,9 +46,15 @@ export function useTransactionSheetController() {
           return false;
         }
       },
-      async setAnalytics(transactionId: string, include: boolean): Promise<boolean> {
+      async setAnalytics(
+        transactionId: string,
+        include: boolean,
+      ): Promise<boolean> {
         try {
-          const result = await updateTransactionIncludeInAnalytics(transactionId, include);
+          const result = await updateTransactionIncludeInAnalytics(
+            transactionId,
+            include,
+          );
           if (!result.success) {
             toast.error(result.error || "Failed to update transaction");
             return false;
@@ -56,7 +62,7 @@ export function useTransactionSheetController() {
           toast.success(
             include
               ? "Transaction included in analytics"
-              : "Transaction excluded from analytics"
+              : "Transaction excluded from analytics",
           );
           router.refresh();
           return true;
@@ -65,9 +71,15 @@ export function useTransactionSheetController() {
           return false;
         }
       },
-      async setCategory(transactionId: string, categoryId: string | null): Promise<boolean> {
+      async setCategory(
+        transactionId: string,
+        categoryId: string | null,
+      ): Promise<boolean> {
         try {
-          const result = await updateTransactionCategory(transactionId, categoryId);
+          const result = await updateTransactionCategory(
+            transactionId,
+            categoryId,
+          );
           if (!result.success) {
             toast.error(result.error || "Failed to update transaction");
             return false;
@@ -80,6 +92,6 @@ export function useTransactionSheetController() {
         }
       },
     }),
-    [router]
+    [router],
   );
 }

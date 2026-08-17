@@ -27,9 +27,7 @@ export function validateOwners(owners: OwnerInput[]): void {
   const allNull = owners.every((o) => o.share === null);
   const allSet = owners.every((o) => o.share !== null);
   if (!allNull && !allSet) {
-    throw new Error(
-      "all owners must either share equally or specify shares"
-    );
+    throw new Error("all owners must either share equally or specify shares");
   }
 
   if (allSet) {

@@ -21,9 +21,7 @@ def test_column_mapping_uses_configured_model(monkeypatch):
                 choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
             )
 
-    client = SimpleNamespace(
-        chat=SimpleNamespace(completions=StubCompletions())
-    )
+    client = SimpleNamespace(chat=SimpleNamespace(completions=StubCompletions()))
     monkeypatch.setattr(llm, "create_llm_client", lambda db: client)
     monkeypatch.setenv("LLM_MODEL", "qwen3:8b")
 

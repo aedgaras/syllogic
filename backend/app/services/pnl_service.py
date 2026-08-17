@@ -4,6 +4,7 @@ Pure FIFO P&L engine.
 `compute_fifo` is a pure function over a list of trades — no DB access,
 no FX, no I/O. DB- and FX-aware wrappers live below.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -15,6 +16,7 @@ from typing import Iterable
 @dataclass(frozen=True)
 class Trade:
     """Input trade for the FIFO engine."""
+
     symbol: str
     trade_date: date
     side: str  # "buy" | "sell"
@@ -27,6 +29,7 @@ class Trade:
 @dataclass(frozen=True)
 class ClosedLot:
     """A realized P&L lot — the result of a sell matching against open buy lots."""
+
     symbol: str
     currency: str
     open_date: date
@@ -40,6 +43,7 @@ class ClosedLot:
 @dataclass(frozen=True)
 class OpenLot:
     """A remaining unmatched buy lot."""
+
     symbol: str
     currency: str
     open_date: date
@@ -55,7 +59,10 @@ class FifoResult:
 
 class OverSellError(Exception):
     """Raised when a sell exceeds available open quantity for a symbol."""
-    def __init__(self, symbol: str, trade_date: date, qty_attempted: Decimal, qty_available: Decimal):
+
+    def __init__(
+        self, symbol: str, trade_date: date, qty_attempted: Decimal, qty_available: Decimal
+    ):
         self.symbol = symbol
         self.trade_date = trade_date
         self.qty_attempted = qty_attempted
@@ -94,16 +101,16 @@ def compute_fifo(trades: Iterable[Trade]) -> FifoResult:
         if t.side == "buy":
             # Buy fees increase cost basis: cost_per_share = (price*qty + fees) / qty
             cost_per_share = (
-                (t.price * t.quantity + t.fees) / t.quantity
-                if t.quantity > 0
-                else t.price
+                (t.price * t.quantity + t.fees) / t.quantity if t.quantity > 0 else t.price
             )
-            lots.append(_MutableLot(
-                open_date=t.trade_date,
-                quantity_remaining=t.quantity,
-                cost_per_share_native=cost_per_share,
-                currency=t.currency,
-            ))
+            lots.append(
+                _MutableLot(
+                    open_date=t.trade_date,
+                    quantity_remaining=t.quantity,
+                    cost_per_share_native=cost_per_share,
+                    currency=t.currency,
+                )
+            )
             continue
 
         # sell — fees reduce proceeds, prorated by consumed quantity vs total sell qty
@@ -119,16 +126,18 @@ def compute_fifo(trades: Iterable[Trade]) -> FifoResult:
             cost = consumed * lot.cost_per_share_native
             fee_share = (t.fees * consumed / sell_total_qty) if sell_total_qty > 0 else Decimal("0")
             proceeds = consumed * t.price - fee_share
-            realized.append(ClosedLot(
-                symbol=t.symbol,
-                currency=t.currency,
-                open_date=lot.open_date,
-                close_date=t.trade_date,
-                quantity=consumed,
-                cost_native=cost,
-                proceeds_native=proceeds,
-                pnl_native=proceeds - cost,
-            ))
+            realized.append(
+                ClosedLot(
+                    symbol=t.symbol,
+                    currency=t.currency,
+                    open_date=lot.open_date,
+                    close_date=t.trade_date,
+                    quantity=consumed,
+                    cost_native=cost,
+                    proceeds_native=proceeds,
+                    pnl_native=proceeds - cost,
+                )
+            )
             lot.quantity_remaining -= consumed
             remaining -= consumed
             if lot.quantity_remaining == 0:
@@ -137,13 +146,15 @@ def compute_fifo(trades: Iterable[Trade]) -> FifoResult:
     open_lots: list[OpenLot] = []
     for (sym, _ccy), lots in open_by_key.items():
         for lot in lots:
-            open_lots.append(OpenLot(
-                symbol=sym,
-                currency=lot.currency,
-                open_date=lot.open_date,
-                quantity_remaining=lot.quantity_remaining,
-                cost_per_share_native=lot.cost_per_share_native,
-            ))
+            open_lots.append(
+                OpenLot(
+                    symbol=sym,
+                    currency=lot.currency,
+                    open_date=lot.open_date,
+                    quantity_remaining=lot.quantity_remaining,
+                    cost_per_share_native=lot.cost_per_share_native,
+                )
+            )
 
     return FifoResult(realized=realized, open_lots=open_lots)
 
@@ -230,23 +241,27 @@ def realized_pnl_from_trades(
                 fx_missing = False
             realized_native_total += lot.pnl_native
             realized_base_total += pnl_base
-            lot_dicts.append({
-                "open_date": lot.open_date.isoformat(),
-                "close_date": lot.close_date.isoformat(),
-                "quantity": lot.quantity,
-                "cost_native": lot.cost_native,
-                "proceeds_native": lot.proceeds_native,
-                "pnl_native": lot.pnl_native,
-                "pnl_base": pnl_base,
-                "fx_missing": fx_missing,
-            })
-        out.append({
-            "symbol": symbol,
-            "currency": symbol_currency,
-            "realized_native": realized_native_total,
-            "realized_base": realized_base_total,
-            "lots_closed": lot_dicts,
-        })
+            lot_dicts.append(
+                {
+                    "open_date": lot.open_date.isoformat(),
+                    "close_date": lot.close_date.isoformat(),
+                    "quantity": lot.quantity,
+                    "cost_native": lot.cost_native,
+                    "proceeds_native": lot.proceeds_native,
+                    "pnl_native": lot.pnl_native,
+                    "pnl_base": pnl_base,
+                    "fx_missing": fx_missing,
+                }
+            )
+        out.append(
+            {
+                "symbol": symbol,
+                "currency": symbol_currency,
+                "realized_native": realized_native_total,
+                "realized_base": realized_base_total,
+                "lots_closed": lot_dicts,
+            }
+        )
     return out
 
 
@@ -299,16 +314,18 @@ def unrealized_pnl_from_trades(
             market_value_base = (market_value_native * rate).quantize(Decimal("0.01"))
             unrealized_base = (unrealized_native * rate).quantize(Decimal("0.01"))
 
-        out.append({
-            "symbol": symbol,
-            "currency": symbol_currency,
-            "quantity": quantity,
-            "cost_basis_native": cost_basis_native,
-            "cost_basis_base": cost_basis_base,
-            "market_value_native": market_value_native,
-            "market_value_base": market_value_base,
-            "unrealized_native": unrealized_native,
-            "unrealized_base": unrealized_base,
-            "fx_missing": fx_missing,
-        })
+        out.append(
+            {
+                "symbol": symbol,
+                "currency": symbol_currency,
+                "quantity": quantity,
+                "cost_basis_native": cost_basis_native,
+                "cost_basis_base": cost_basis_base,
+                "market_value_native": market_value_native,
+                "market_value_base": market_value_base,
+                "unrealized_native": unrealized_native,
+                "unrealized_base": unrealized_base,
+                "fx_missing": fx_missing,
+            }
+        )
     return out

@@ -1,11 +1,11 @@
 """
 API routes for subscriptions management.
 """
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_
+from sqlalchemy import or_
 from typing import List, Optional
-import re
 from uuid import UUID
 from decimal import Decimal
 import logging
@@ -13,7 +13,7 @@ import logging
 from app.database import get_db
 from app.models import RecurringTransaction, Transaction
 from app.db_helpers import get_user_id
-from app.services.text_similarity import TextSimilarity, calculate_text_similarity
+from app.services.text_similarity import TextSimilarity
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -26,6 +26,7 @@ _text_similarity = TextSimilarity()
 
 class MatchTransactionsResponse(BaseModel):
     """Response for matching transactions to a subscription."""
+
     success: bool
     message: str
     matched_count: int
@@ -66,9 +67,13 @@ def _amount_close(amount1: Decimal, amount2: Decimal, tolerance_percent: float =
 def match_transactions(
     subscription_id: UUID,
     user_id: Optional[str] = Query(None, description="User ID (optional, defaults to system user)"),
-    description_similarity_threshold: float = Query(0.6, ge=0.0, le=1.0, description="Minimum similarity ratio for description matching"),
-    amount_tolerance_percent: float = Query(0.05, ge=0.0, le=1.0, description="Maximum percentage difference for amount matching"),
-    db: Session = Depends(get_db)
+    description_similarity_threshold: float = Query(
+        0.6, ge=0.0, le=1.0, description="Minimum similarity ratio for description matching"
+    ),
+    amount_tolerance_percent: float = Query(
+        0.05, ge=0.0, le=1.0, description="Maximum percentage difference for amount matching"
+    ),
+    db: Session = Depends(get_db),
 ):
     """
     Match transactions to a subscription based on description similarity and amount closeness.
@@ -87,16 +92,17 @@ def match_transactions(
         actual_user_id = get_user_id(user_id)
 
         # Get the subscription
-        subscription = db.query(RecurringTransaction).filter(
-            RecurringTransaction.id == subscription_id,
-            RecurringTransaction.user_id == actual_user_id
-        ).first()
+        subscription = (
+            db.query(RecurringTransaction)
+            .filter(
+                RecurringTransaction.id == subscription_id,
+                RecurringTransaction.user_id == actual_user_id,
+            )
+            .first()
+        )
 
         if not subscription:
-            raise HTTPException(
-                status_code=404,
-                detail="Subscription not found"
-            )
+            raise HTTPException(status_code=404, detail="Subscription not found")
 
         logger.info(
             f"[MATCH] Matching transactions for subscription '{subscription.name}' "
@@ -109,8 +115,8 @@ def match_transactions(
             Transaction.user_id == actual_user_id,
             or_(
                 Transaction.recurring_transaction_id.is_(None),
-                Transaction.recurring_transaction_id != subscription_id
-            )
+                Transaction.recurring_transaction_id != subscription_id,
+            ),
         )
         if subscription.account_id:
             candidate_query = candidate_query.filter(
@@ -143,7 +149,7 @@ def match_transactions(
                 subscription_name=subscription.name,
                 subscription_merchant=subscription.merchant,
                 transaction_description=txn.description,
-                transaction_merchant=txn.merchant
+                transaction_merchant=txn.merchant,
             )
 
             # Convert score to 0-1 range for comparison with threshold
@@ -173,7 +179,7 @@ def match_transactions(
             success=True,
             message=f"Matched {len(matched_transactions)} transaction(s) to subscription '{subscription.name}'",
             matched_count=len(matched_transactions),
-            transaction_ids=matched_ids
+            transaction_ids=matched_ids,
         )
 
     except HTTPException:
@@ -181,8 +187,6 @@ def match_transactions(
     except Exception as e:
         logger.error(f"[MATCH] Error matching transactions: {e}")
         import traceback
+
         logger.error(traceback.format_exc())
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to match transactions: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to match transactions: {str(e)}")

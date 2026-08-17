@@ -62,34 +62,34 @@ export function WalkthroughOverlay({ step }: WalkthroughOverlayProps) {
           className="fixed inset-0 z-[9998] pointer-events-none"
           aria-hidden
         >
-        {/* Backdrop with cutout */}
-        <svg
-          className="absolute inset-0 w-full h-full pointer-events-auto"
-          style={{ isolation: "isolate" }}
-        >
-          <defs>
-            <mask id="walkthrough-mask">
-              <rect width="100%" height="100%" fill="white" />
-              {targetRect && (
-                <rect
-                  x={targetRect.left - padding}
-                  y={targetRect.top - padding}
-                  width={targetRect.width + padding * 2}
-                  height={targetRect.height + padding * 2}
-                  rx="2"
-                  fill="black"
-                />
-              )}
-            </mask>
-          </defs>
-          <rect
-            width="100%"
-            height="100%"
-            fill="rgba(0,0,0,0.6)"
-            mask="url(#walkthrough-mask)"
-          />
-        </svg>
-      </motion.div>
+          {/* Backdrop with cutout */}
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-auto"
+            style={{ isolation: "isolate" }}
+          >
+            <defs>
+              <mask id="walkthrough-mask">
+                <rect width="100%" height="100%" fill="white" />
+                {targetRect && (
+                  <rect
+                    x={targetRect.left - padding}
+                    y={targetRect.top - padding}
+                    width={targetRect.width + padding * 2}
+                    height={targetRect.height + padding * 2}
+                    rx="2"
+                    fill="black"
+                  />
+                )}
+              </mask>
+            </defs>
+            <rect
+              width="100%"
+              height="100%"
+              fill="rgba(0,0,0,0.6)"
+              mask="url(#walkthrough-mask)"
+            />
+          </svg>
+        </motion.div>
       )}
     </AnimatePresence>
   );

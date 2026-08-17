@@ -1,5 +1,4 @@
 """Tests for the MCP asset-class mapping helper."""
-import pytest
 
 from app.mcp.tools._asset_class import (
     ASSET_CLASS_KEYS,

@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createInternalAuthHeaders, INTERNAL_AUTH_SIGNATURE_HEADER } from "./internal-auth";
+import {
+  createInternalAuthHeaders,
+  INTERNAL_AUTH_SIGNATURE_HEADER,
+} from "./internal-auth";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -13,8 +16,13 @@ describe("createInternalAuthHeaders", () => {
       timestamp: "1700000000",
     };
     const first = createInternalAuthHeaders({ ...base, body: '{"amount":1}' });
-    const changed = createInternalAuthHeaders({ ...base, body: '{"amount":999}' });
+    const changed = createInternalAuthHeaders({
+      ...base,
+      body: '{"amount":999}',
+    });
 
-    expect(first[INTERNAL_AUTH_SIGNATURE_HEADER]).not.toBe(changed[INTERNAL_AUTH_SIGNATURE_HEADER]);
+    expect(first[INTERNAL_AUTH_SIGNATURE_HEADER]).not.toBe(
+      changed[INTERNAL_AUTH_SIGNATURE_HEADER],
+    );
   });
 });

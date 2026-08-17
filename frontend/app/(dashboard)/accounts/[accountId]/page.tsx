@@ -1,7 +1,10 @@
 import { t as translate } from "@/i18n/translate";
 import { notFound } from "next/navigation";
 import { AccountDetail } from "@/features/accounts/public";
-import { getAccountById, getAccountBalanceHistory } from "@/features/accounts/server";
+import {
+  getAccountById,
+  getAccountBalanceHistory,
+} from "@/features/accounts/server";
 import { getTransactionsForAccount } from "@/lib/actions/transactions";
 import { getUserCategories } from "@/lib/actions/categories";
 import { listHoldings, type Holding } from "@/lib/api/investments";

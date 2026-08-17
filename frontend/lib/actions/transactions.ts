@@ -1,11 +1,35 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, and, desc, inArray, notInArray, sql, gte, lte, gt, asc, ne, or } from "drizzle-orm";
+import {
+  eq,
+  and,
+  desc,
+  inArray,
+  notInArray,
+  sql,
+  gte,
+  lte,
+  gt,
+  asc,
+  ne,
+  or,
+} from "drizzle-orm";
 import { db } from "@/lib/db";
-import { transactions, accounts, categories, accountBalances, exchangeRates, internalTransfers, users } from "@/lib/db/schema";
+import {
+  transactions,
+  accounts,
+  categories,
+  accountBalances,
+  exchangeRates,
+  internalTransfers,
+  users,
+} from "@/lib/db/schema";
 import { requireAuth, getAuthenticatedSession } from "@/lib/auth-helpers";
-import { isDemoRestrictedUserEmail, DEMO_RESTRICTED_ACTION_ERROR } from "@/lib/demo-access";
+import {
+  isDemoRestrictedUserEmail,
+  DEMO_RESTRICTED_ACTION_ERROR,
+} from "@/lib/demo-access";
 import { getBackendBaseUrl } from "@/lib/backend-url";
 import { createInternalAuthHeaders } from "@/lib/internal-auth";
 import type {
@@ -45,7 +69,7 @@ async function recalculateAccountBalancesFromDate(
   accountId: string,
   fromDate: Date,
   startingBalance: number,
-  excludeTransactionId?: string
+  excludeTransactionId?: string,
 ): Promise<void> {
   // Normalize fromDate to start of day
   const startDate = new Date(fromDate);
@@ -64,7 +88,7 @@ async function recalculateAccountBalancesFromDate(
   const balancingCategory = await db.query.categories.findFirst({
     where: and(
       eq(categories.userId, account.userId),
-      eq(categories.name, "Balancing Transfer")
+      eq(categories.name, "Balancing Transfer"),
     ),
   });
 
@@ -76,7 +100,7 @@ async function recalculateAccountBalancesFromDate(
     const conditions = [
       eq(transactions.accountId, accountId),
       eq(transactions.categoryId, balancingCategory.id),
-      gt(transactions.bookedAt, fromDate)
+      gt(transactions.bookedAt, fromDate),
     ];
 
     // Exclude the transaction being deleted if provided
@@ -144,7 +168,7 @@ async function recalculateAccountBalancesFromDate(
     // Build conditions for balance calculation, excluding the deleted transaction
     const balanceConditions = [
       eq(transactions.accountId, accountId),
-      lte(transactions.bookedAt, endOfDay)
+      lte(transactions.bookedAt, endOfDay),
     ];
 
     if (excludeTransactionId) {
@@ -169,7 +193,7 @@ async function recalculateAccountBalancesFromDate(
     const existingRecord = await db.query.accountBalances.findFirst({
       where: and(
         eq(accountBalances.accountId, accountId),
-        eq(accountBalances.date, dateForStorage)
+        eq(accountBalances.date, dateForStorage),
       ),
     });
 
@@ -199,7 +223,7 @@ async function recalculateAccountBalancesFromDate(
 }
 
 export async function createTransaction(
-  input: CreateTransactionInput
+  input: CreateTransactionInput,
 ): Promise<{ success: boolean; error?: string; transactionId?: string }> {
   const userId = await requireAuth();
 
@@ -245,7 +269,10 @@ export async function createTransaction(
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Backend import failed:", response.status, errorText);
-      return { success: false, error: `Failed to create transaction: ${response.status}` };
+      return {
+        success: false,
+        error: `Failed to create transaction: ${response.status}`,
+      };
     }
 
     const backendResponse = await response.json();
@@ -261,7 +288,7 @@ export async function createTransaction(
 
     return {
       success: true,
-      transactionId: backendResponse.transaction_ids?.[0] || undefined
+      transactionId: backendResponse.transaction_ids?.[0] || undefined,
     };
   } catch (error) {
     console.error("Failed to create transaction:", error);
@@ -274,7 +301,7 @@ export async function createTransaction(
  * movement affects account balances without being counted as income/spending.
  */
 export async function createTransferTransaction(
-  input: CreateTransferTransactionInput
+  input: CreateTransferTransactionInput,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -294,23 +321,34 @@ export async function createTransferTransaction(
   if (!Number.isFinite(input.amount) || input.amount <= 0) {
     return { success: false, error: "Amount must be greater than zero" };
   }
-  if (!(input.bookedAt instanceof Date) || Number.isNaN(input.bookedAt.getTime())) {
+  if (
+    !(input.bookedAt instanceof Date) ||
+    Number.isNaN(input.bookedAt.getTime())
+  ) {
     return { success: false, error: "A valid transaction date is required" };
   }
   if (input.sourceAccountId === input.destinationAccountId) {
-    return { success: false, error: "Source and destination accounts must be different" };
+    return {
+      success: false,
+      error: "Source and destination accounts must be different",
+    };
   }
 
   try {
     const ownedAccounts = await db.query.accounts.findMany({
       where: and(
-        inArray(accounts.id, [input.sourceAccountId, input.destinationAccountId]),
-        eq(accounts.userId, userId)
+        inArray(accounts.id, [
+          input.sourceAccountId,
+          input.destinationAccountId,
+        ]),
+        eq(accounts.userId, userId),
       ),
     });
-    const sourceAccount = ownedAccounts.find((account) => account.id === input.sourceAccountId);
+    const sourceAccount = ownedAccounts.find(
+      (account) => account.id === input.sourceAccountId,
+    );
     const destinationAccount = ownedAccounts.find(
-      (account) => account.id === input.destinationAccountId
+      (account) => account.id === input.destinationAccountId,
     );
 
     if (!sourceAccount || !destinationAccount) {
@@ -322,12 +360,16 @@ export async function createTransferTransaction(
     if (sourceCurrency !== destinationCurrency) {
       return {
         success: false,
-        error: "Transfers between accounts with different currencies are not supported yet",
+        error:
+          "Transfers between accounts with different currencies are not supported yet",
       };
     }
 
     const transferCategory = await db.query.categories.findFirst({
-      where: and(eq(categories.userId, userId), eq(categories.categoryType, "transfer")),
+      where: and(
+        eq(categories.userId, userId),
+        eq(categories.categoryType, "transfer"),
+      ),
       orderBy: [desc(categories.isSystem), asc(categories.createdAt)],
     });
 
@@ -337,7 +379,8 @@ export async function createTransferTransaction(
       .where(eq(users.id, userId))
       .limit(1);
     const functionalCurrency = user?.functionalCurrency || "EUR";
-    let functionalRate: number | null = sourceCurrency === functionalCurrency ? 1 : null;
+    let functionalRate: number | null =
+      sourceCurrency === functionalCurrency ? 1 : null;
 
     if (functionalRate === null) {
       const endOfBookedDay = new Date(input.bookedAt);
@@ -350,7 +393,7 @@ export async function createTransferTransaction(
           eq(exchangeRates.baseCurrency, sourceCurrency),
           eq(exchangeRates.targetCurrency, functionalCurrency),
           gte(exchangeRates.date, sevenDaysEarlier),
-          lte(exchangeRates.date, endOfBookedDay)
+          lte(exchangeRates.date, endOfBookedDay),
         ),
         orderBy: [desc(exchangeRates.date)],
       });
@@ -360,12 +403,10 @@ export async function createTransferTransaction(
     const amount = Math.abs(input.amount);
     const sourceAmount = (-amount).toFixed(2);
     const destinationAmount = amount.toFixed(2);
-    const sourceFunctionalAmount = functionalRate === null
-      ? null
-      : (-amount * functionalRate).toFixed(2);
-    const destinationFunctionalAmount = functionalRate === null
-      ? null
-      : (amount * functionalRate).toFixed(2);
+    const sourceFunctionalAmount =
+      functionalRate === null ? null : (-amount * functionalRate).toFixed(2);
+    const destinationFunctionalAmount =
+      functionalRate === null ? null : (amount * functionalRate).toFixed(2);
     const result = await db.transaction(async (tx) => {
       const [sourceTransaction] = await tx
         .insert(transactions)
@@ -418,18 +459,34 @@ export async function createTransferTransaction(
       await tx
         .update(transactions)
         .set({ internalTransferId: transfer.id, updatedAt: new Date() })
-        .where(inArray(transactions.id, [sourceTransaction.id, destinationTransaction.id]));
+        .where(
+          inArray(transactions.id, [
+            sourceTransaction.id,
+            destinationTransaction.id,
+          ]),
+        );
 
       for (const account of [sourceAccount, destinationAccount]) {
         const [balanceResult] = await tx
-          .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+          .select({
+            total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+          })
           .from(transactions)
-          .where(and(eq(transactions.accountId, account.id), eq(transactions.userId, userId)));
-        const newBalance = parseFloat(account.startingBalance || "0")
-          + parseFloat(balanceResult?.total || "0");
+          .where(
+            and(
+              eq(transactions.accountId, account.id),
+              eq(transactions.userId, userId),
+            ),
+          );
+        const newBalance =
+          parseFloat(account.startingBalance || "0") +
+          parseFloat(balanceResult?.total || "0");
         await tx
           .update(accounts)
-          .set({ functionalBalance: newBalance.toFixed(2), updatedAt: new Date() })
+          .set({
+            functionalBalance: newBalance.toFixed(2),
+            updatedAt: new Date(),
+          })
           .where(and(eq(accounts.id, account.id), eq(accounts.userId, userId)));
       }
 
@@ -446,15 +503,18 @@ export async function createTransferTransaction(
       await recalculateAccountBalancesFromDate(
         sourceAccount.id,
         input.bookedAt,
-        parseFloat(sourceAccount.startingBalance || "0")
+        parseFloat(sourceAccount.startingBalance || "0"),
       );
       await recalculateAccountBalancesFromDate(
         destinationAccount.id,
         input.bookedAt,
-        parseFloat(destinationAccount.startingBalance || "0")
+        parseFloat(destinationAccount.startingBalance || "0"),
       );
     } catch (snapshotError) {
-      console.error("Transfer created, but balance snapshot recalculation failed:", snapshotError);
+      console.error(
+        "Transfer created, but balance snapshot recalculation failed:",
+        snapshotError,
+      );
     }
 
     revalidatePath("/transactions");
@@ -476,7 +536,7 @@ export async function createTransferTransaction(
  * account-to-account transfer, then creates and links the destination side.
  */
 export async function convertTransactionToTransfer(
-  input: ConvertTransactionToTransferInput
+  input: ConvertTransactionToTransferInput,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -496,35 +556,55 @@ export async function convertTransactionToTransfer(
   if (!Number.isFinite(input.amount) || input.amount <= 0) {
     return { success: false, error: "Amount must be greater than zero" };
   }
-  if (!(input.bookedAt instanceof Date) || Number.isNaN(input.bookedAt.getTime())) {
+  if (
+    !(input.bookedAt instanceof Date) ||
+    Number.isNaN(input.bookedAt.getTime())
+  ) {
     return { success: false, error: "A valid transaction date is required" };
   }
   if (input.sourceAccountId === input.destinationAccountId) {
-    return { success: false, error: "Source and destination accounts must be different" };
+    return {
+      success: false,
+      error: "Source and destination accounts must be different",
+    };
   }
 
   try {
     const existing = await db.query.transactions.findFirst({
-      where: and(eq(transactions.id, input.transactionId), eq(transactions.userId, userId)),
+      where: and(
+        eq(transactions.id, input.transactionId),
+        eq(transactions.userId, userId),
+      ),
       with: { account: true, category: true },
     });
     if (!existing) return { success: false, error: "Transaction not found" };
     if (existing.internalTransferId) {
-      return { success: false, error: "This transaction is already part of a transfer" };
+      return {
+        success: false,
+        error: "This transaction is already part of a transfer",
+      };
     }
     if (existing.category?.name === "Balancing Transfer") {
-      return { success: false, error: "Balancing transfers cannot be converted" };
+      return {
+        success: false,
+        error: "Balancing transfers cannot be converted",
+      };
     }
 
     const ownedAccounts = await db.query.accounts.findMany({
       where: and(
-        inArray(accounts.id, [input.sourceAccountId, input.destinationAccountId]),
-        eq(accounts.userId, userId)
+        inArray(accounts.id, [
+          input.sourceAccountId,
+          input.destinationAccountId,
+        ]),
+        eq(accounts.userId, userId),
       ),
     });
-    const sourceAccount = ownedAccounts.find((account) => account.id === input.sourceAccountId);
+    const sourceAccount = ownedAccounts.find(
+      (account) => account.id === input.sourceAccountId,
+    );
     const destinationAccount = ownedAccounts.find(
-      (account) => account.id === input.destinationAccountId
+      (account) => account.id === input.destinationAccountId,
     );
     if (!sourceAccount || !destinationAccount) {
       return { success: false, error: "One or both accounts were not found" };
@@ -535,12 +615,16 @@ export async function convertTransactionToTransfer(
     if (sourceCurrency !== destinationCurrency) {
       return {
         success: false,
-        error: "Transfers between accounts with different currencies are not supported yet",
+        error:
+          "Transfers between accounts with different currencies are not supported yet",
       };
     }
 
     const transferCategory = await db.query.categories.findFirst({
-      where: and(eq(categories.userId, userId), eq(categories.categoryType, "transfer")),
+      where: and(
+        eq(categories.userId, userId),
+        eq(categories.categoryType, "transfer"),
+      ),
       orderBy: [desc(categories.isSystem), asc(categories.createdAt)],
     });
     const [user] = await db
@@ -549,7 +633,8 @@ export async function convertTransactionToTransfer(
       .where(eq(users.id, userId))
       .limit(1);
     const functionalCurrency = user?.functionalCurrency || "EUR";
-    let functionalRate: number | null = sourceCurrency === functionalCurrency ? 1 : null;
+    let functionalRate: number | null =
+      sourceCurrency === functionalCurrency ? 1 : null;
     if (functionalRate === null) {
       const endOfBookedDay = new Date(input.bookedAt);
       endOfBookedDay.setHours(23, 59, 59, 999);
@@ -561,7 +646,7 @@ export async function convertTransactionToTransfer(
           eq(exchangeRates.baseCurrency, sourceCurrency),
           eq(exchangeRates.targetCurrency, functionalCurrency),
           gte(exchangeRates.date, sevenDaysEarlier),
-          lte(exchangeRates.date, endOfBookedDay)
+          lte(exchangeRates.date, endOfBookedDay),
         ),
         orderBy: [desc(exchangeRates.date)],
       });
@@ -571,17 +656,21 @@ export async function convertTransactionToTransfer(
     const amount = Math.abs(input.amount);
     const sourceAmount = (-amount).toFixed(2);
     const destinationAmount = amount.toFixed(2);
-    const sourceFunctionalAmount = functionalRate === null
-      ? null
-      : (-amount * functionalRate).toFixed(2);
-    const destinationFunctionalAmount = functionalRate === null
-      ? null
-      : (amount * functionalRate).toFixed(2);
-    const affectedAccounts = new Map<string, { startingBalance: number; fromDate: Date }>();
+    const sourceFunctionalAmount =
+      functionalRate === null ? null : (-amount * functionalRate).toFixed(2);
+    const destinationFunctionalAmount =
+      functionalRate === null ? null : (amount * functionalRate).toFixed(2);
+    const affectedAccounts = new Map<
+      string,
+      { startingBalance: number; fromDate: Date }
+    >();
     if (existing.account) {
       affectedAccounts.set(existing.accountId, {
         startingBalance: parseFloat(existing.account.startingBalance || "0"),
-        fromDate: existing.bookedAt < input.bookedAt ? existing.bookedAt : input.bookedAt,
+        fromDate:
+          existing.bookedAt < input.bookedAt
+            ? existing.bookedAt
+            : input.bookedAt,
       });
     }
     for (const account of [sourceAccount, destinationAccount]) {
@@ -619,7 +708,12 @@ export async function convertTransactionToTransfer(
           includeInAnalytics: false,
           updatedAt: new Date(),
         })
-        .where(and(eq(transactions.id, existing.id), eq(transactions.userId, userId)));
+        .where(
+          and(
+            eq(transactions.id, existing.id),
+            eq(transactions.userId, userId),
+          ),
+        );
 
       const [destinationTransaction] = await tx
         .insert(transactions)
@@ -653,29 +747,55 @@ export async function convertTransactionToTransfer(
       await tx
         .update(transactions)
         .set({ internalTransferId: transfer.id, updatedAt: new Date() })
-        .where(inArray(transactions.id, [existing.id, destinationTransaction.id]));
+        .where(
+          inArray(transactions.id, [existing.id, destinationTransaction.id]),
+        );
 
       for (const [accountId, { startingBalance }] of affectedAccounts) {
         const [balanceResult] = await tx
-          .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+          .select({
+            total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+          })
           .from(transactions)
-          .where(and(eq(transactions.accountId, accountId), eq(transactions.userId, userId)));
-        const newBalance = startingBalance + parseFloat(balanceResult?.total || "0");
+          .where(
+            and(
+              eq(transactions.accountId, accountId),
+              eq(transactions.userId, userId),
+            ),
+          );
+        const newBalance =
+          startingBalance + parseFloat(balanceResult?.total || "0");
         await tx
           .update(accounts)
-          .set({ functionalBalance: newBalance.toFixed(2), updatedAt: new Date() })
+          .set({
+            functionalBalance: newBalance.toFixed(2),
+            updatedAt: new Date(),
+          })
           .where(and(eq(accounts.id, accountId), eq(accounts.userId, userId)));
       }
 
-      return { sourceTransactionId: existing.id, destinationTransactionId: destinationTransaction.id };
+      return {
+        sourceTransactionId: existing.id,
+        destinationTransactionId: destinationTransaction.id,
+      };
     });
 
     try {
-      for (const [accountId, { startingBalance, fromDate }] of affectedAccounts) {
-        await recalculateAccountBalancesFromDate(accountId, fromDate, startingBalance);
+      for (const [
+        accountId,
+        { startingBalance, fromDate },
+      ] of affectedAccounts) {
+        await recalculateAccountBalancesFromDate(
+          accountId,
+          fromDate,
+          startingBalance,
+        );
       }
     } catch (snapshotError) {
-      console.error("Transaction converted, but balance snapshot recalculation failed:", snapshotError);
+      console.error(
+        "Transaction converted, but balance snapshot recalculation failed:",
+        snapshotError,
+      );
     }
 
     revalidatePath("/transactions");
@@ -683,17 +803,21 @@ export async function convertTransactionToTransfer(
     revalidatePath("/settings");
     revalidatePath("/assets");
     revalidatePath("/subscriptions");
-    for (const accountId of affectedAccounts.keys()) revalidatePath(`/accounts/${accountId}`);
+    for (const accountId of affectedAccounts.keys())
+      revalidatePath(`/accounts/${accountId}`);
 
     return { success: true, ...result };
   } catch (error) {
     console.error("Failed to convert transaction to transfer:", error);
-    return { success: false, error: "Failed to convert transaction to transfer" };
+    return {
+      success: false,
+      error: "Failed to convert transaction to transfer",
+    };
   }
 }
 
 export async function updateTransaction(
-  input: UpdateTransactionInput
+  input: UpdateTransactionInput,
 ): Promise<{ success: boolean; error?: string }> {
   const session = await getAuthenticatedSession();
   const userId = session?.user?.id ?? null;
@@ -713,7 +837,10 @@ export async function updateTransaction(
   if (!Number.isFinite(input.amount) || input.amount <= 0) {
     return { success: false, error: "Amount must be greater than zero" };
   }
-  if (!(input.bookedAt instanceof Date) || Number.isNaN(input.bookedAt.getTime())) {
+  if (
+    !(input.bookedAt instanceof Date) ||
+    Number.isNaN(input.bookedAt.getTime())
+  ) {
     return { success: false, error: "A valid transaction date is required" };
   }
   if (input.transactionType !== "debit" && input.transactionType !== "credit") {
@@ -724,7 +851,7 @@ export async function updateTransaction(
     const existing = await db.query.transactions.findFirst({
       where: and(
         eq(transactions.id, input.transactionId),
-        eq(transactions.userId, userId)
+        eq(transactions.userId, userId),
       ),
       with: {
         account: true,
@@ -736,7 +863,10 @@ export async function updateTransaction(
       return { success: false, error: "Transaction not found" };
     }
     if (existing.internalTransferId) {
-      return { success: false, error: "Unlink the internal transfer before editing it" };
+      return {
+        success: false,
+        error: "Unlink the internal transfer before editing it",
+      };
     }
     if (existing.category?.name === "Balancing Transfer") {
       return { success: false, error: "Balancing transfers cannot be edited" };
@@ -753,7 +883,7 @@ export async function updateTransaction(
       const category = await db.query.categories.findFirst({
         where: and(
           eq(categories.id, input.categoryId),
-          eq(categories.userId, userId)
+          eq(categories.userId, userId),
         ),
       });
       if (!category) {
@@ -761,9 +891,10 @@ export async function updateTransaction(
       }
     }
 
-    const signedAmount = input.transactionType === "debit"
-      ? -Math.abs(input.amount)
-      : Math.abs(input.amount);
+    const signedAmount =
+      input.transactionType === "debit"
+        ? -Math.abs(input.amount)
+        : Math.abs(input.amount);
     const amountForStorage = signedAmount.toFixed(2);
     const currency = account.currency || "EUR";
 
@@ -789,7 +920,7 @@ export async function updateTransaction(
           eq(exchangeRates.baseCurrency, currency),
           eq(exchangeRates.targetCurrency, functionalCurrency),
           gte(exchangeRates.date, sevenDaysEarlier),
-          lte(exchangeRates.date, endOfBookedDay)
+          lte(exchangeRates.date, endOfBookedDay),
         ),
         orderBy: [desc(exchangeRates.date)],
       });
@@ -812,12 +943,21 @@ export async function updateTransaction(
         transactionType: input.transactionType,
         updatedAt: new Date(),
       })
-      .where(and(eq(transactions.id, input.transactionId), eq(transactions.userId, userId)));
+      .where(
+        and(
+          eq(transactions.id, input.transactionId),
+          eq(transactions.userId, userId),
+        ),
+      );
 
-    const affectedAccounts = new Map<string, { startingBalance: number; fromDate: Date }>();
+    const affectedAccounts = new Map<
+      string,
+      { startingBalance: number; fromDate: Date }
+    >();
     affectedAccounts.set(existing.accountId, {
       startingBalance: parseFloat(existing.account?.startingBalance || "0"),
-      fromDate: existing.bookedAt < input.bookedAt ? existing.bookedAt : input.bookedAt,
+      fromDate:
+        existing.bookedAt < input.bookedAt ? existing.bookedAt : input.bookedAt,
     });
     if (input.accountId !== existing.accountId) {
       affectedAccounts.set(input.accountId, {
@@ -828,16 +968,31 @@ export async function updateTransaction(
 
     for (const [accountId, { startingBalance, fromDate }] of affectedAccounts) {
       const [balanceResult] = await db
-        .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+        .select({
+          total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+        })
         .from(transactions)
-        .where(and(eq(transactions.accountId, accountId), eq(transactions.userId, userId)));
-      const newBalance = startingBalance + parseFloat(balanceResult?.total || "0");
+        .where(
+          and(
+            eq(transactions.accountId, accountId),
+            eq(transactions.userId, userId),
+          ),
+        );
+      const newBalance =
+        startingBalance + parseFloat(balanceResult?.total || "0");
 
       await db
         .update(accounts)
-        .set({ functionalBalance: newBalance.toFixed(2), updatedAt: new Date() })
+        .set({
+          functionalBalance: newBalance.toFixed(2),
+          updatedAt: new Date(),
+        })
         .where(and(eq(accounts.id, accountId), eq(accounts.userId, userId)));
-      await recalculateAccountBalancesFromDate(accountId, fromDate, startingBalance);
+      await recalculateAccountBalancesFromDate(
+        accountId,
+        fromDate,
+        startingBalance,
+      );
     }
 
     revalidatePath("/transactions");
@@ -855,7 +1010,7 @@ export async function updateTransaction(
 
 export async function updateTransactionCategory(
   transactionId: string,
-  categoryId: string | null
+  categoryId: string | null,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -868,7 +1023,7 @@ export async function updateTransactionCategory(
     const transaction = await db.query.transactions.findFirst({
       where: and(
         eq(transactions.id, transactionId),
-        eq(transactions.userId, userId)
+        eq(transactions.userId, userId),
       ),
     });
 
@@ -881,7 +1036,7 @@ export async function updateTransactionCategory(
       const category = await db.query.categories.findFirst({
         where: and(
           eq(categories.id, categoryId),
-          eq(categories.userId, userId)
+          eq(categories.userId, userId),
         ),
       });
 
@@ -960,14 +1115,18 @@ export async function getTransactions(): Promise<TransactionWithRelations[]> {
         },
       },
     });
-    const hydratedRows = await hydrateTransactionRowsWithResolvedAccountLogos(result);
+    const hydratedRows =
+      await hydrateTransactionRowsWithResolvedAccountLogos(result);
     return mapTransactionRowsForUi(hydratedRows, "getTransactions");
   } catch (error: unknown) {
     const normalizedError =
       error instanceof Error
         ? {
             message: error.message,
-            cause: "cause" in error ? (error as Error & { cause?: unknown }).cause : undefined,
+            cause:
+              "cause" in error
+                ? (error as Error & { cause?: unknown }).cause
+                : undefined,
             stack: error.stack,
           }
         : { message: String(error), cause: undefined, stack: undefined };
@@ -983,7 +1142,7 @@ export async function getTransactions(): Promise<TransactionWithRelations[]> {
 }
 
 export async function getTransactionsForAccount(
-  accountId: string
+  accountId: string,
 ): Promise<TransactionWithRelations[]> {
   const userId = await requireAuth();
 
@@ -993,10 +1152,7 @@ export async function getTransactionsForAccount(
 
   // Verify the account belongs to the user
   const account = await db.query.accounts.findFirst({
-    where: and(
-      eq(accounts.id, accountId),
-      eq(accounts.userId, userId)
-    ),
+    where: and(eq(accounts.id, accountId), eq(accounts.userId, userId)),
   });
 
   if (!account) {
@@ -1007,7 +1163,7 @@ export async function getTransactionsForAccount(
     const result = await db.query.transactions.findMany({
       where: and(
         eq(transactions.userId, userId),
-        eq(transactions.accountId, accountId)
+        eq(transactions.accountId, accountId),
       ),
       orderBy: [desc(transactions.bookedAt)],
       with: {
@@ -1044,14 +1200,18 @@ export async function getTransactionsForAccount(
         },
       },
     });
-    const hydratedRows = await hydrateTransactionRowsWithResolvedAccountLogos(result);
+    const hydratedRows =
+      await hydrateTransactionRowsWithResolvedAccountLogos(result);
     return mapTransactionRowsForUi(hydratedRows, "getTransactionsForAccount");
   } catch (error: unknown) {
     const normalizedError =
       error instanceof Error
         ? {
             message: error.message,
-            cause: "cause" in error ? (error as Error & { cause?: unknown }).cause : undefined,
+            cause:
+              "cause" in error
+                ? (error as Error & { cause?: unknown }).cause
+                : undefined,
             stack: error.stack,
           }
         : { message: String(error), cause: undefined, stack: undefined };
@@ -1069,7 +1229,7 @@ export async function getTransactionsForAccount(
 
 export async function bulkUpdateTransactionCategory(
   transactionIds: string[],
-  categoryId: string | null
+  categoryId: string | null,
 ): Promise<{ success: boolean; error?: string; updatedCount?: number }> {
   const userId = await requireAuth();
 
@@ -1087,7 +1247,7 @@ export async function bulkUpdateTransactionCategory(
       const category = await db.query.categories.findFirst({
         where: and(
           eq(categories.id, categoryId),
-          eq(categories.userId, userId)
+          eq(categories.userId, userId),
         ),
       });
 
@@ -1106,8 +1266,8 @@ export async function bulkUpdateTransactionCategory(
       .where(
         and(
           inArray(transactions.id, transactionIds),
-          eq(transactions.userId, userId)
-        )
+          eq(transactions.userId, userId),
+        ),
       );
 
     revalidatePath("/transactions");
@@ -1120,7 +1280,7 @@ export async function bulkUpdateTransactionCategory(
 
 export async function updateTransactionIncludeInAnalytics(
   transactionId: string,
-  includeInAnalytics: boolean
+  includeInAnalytics: boolean,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -1133,7 +1293,7 @@ export async function updateTransactionIncludeInAnalytics(
     const transaction = await db.query.transactions.findFirst({
       where: and(
         eq(transactions.id, transactionId),
-        eq(transactions.userId, userId)
+        eq(transactions.userId, userId),
       ),
     });
 
@@ -1160,7 +1320,7 @@ export async function updateTransactionIncludeInAnalytics(
 
 export async function bulkUpdateTransactionIncludeInAnalytics(
   transactionIds: string[],
-  includeInAnalytics: boolean
+  includeInAnalytics: boolean,
 ): Promise<{ success: boolean; error?: string; updatedCount?: number }> {
   const userId = await requireAuth();
 
@@ -1183,15 +1343,18 @@ export async function bulkUpdateTransactionIncludeInAnalytics(
       .where(
         and(
           inArray(transactions.id, transactionIds),
-          eq(transactions.userId, userId)
-        )
+          eq(transactions.userId, userId),
+        ),
       );
 
     revalidatePath("/transactions");
     revalidatePath("/");
     return { success: true, updatedCount: transactionIds.length };
   } catch (error) {
-    console.error("Failed to bulk update transaction include_in_analytics:", error);
+    console.error(
+      "Failed to bulk update transaction include_in_analytics:",
+      error,
+    );
     return { success: false, error: "Failed to update transactions" };
   }
 }
@@ -1201,7 +1364,7 @@ export async function bulkUpdateTransactionIncludeInAnalytics(
  * This reverts the balance adjustment as if the transfer never existed.
  */
 export async function deleteBalancingTransaction(
-  transactionId: string
+  transactionId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -1214,7 +1377,7 @@ export async function deleteBalancingTransaction(
     const transaction = await db.query.transactions.findFirst({
       where: and(
         eq(transactions.id, transactionId),
-        eq(transactions.userId, userId)
+        eq(transactions.userId, userId),
       ),
       with: {
         account: true,
@@ -1227,8 +1390,14 @@ export async function deleteBalancingTransaction(
     }
 
     // Verify this is a "Balancing Transfer" category
-    if (!transaction.category || transaction.category.name !== "Balancing Transfer") {
-      return { success: false, error: "Only balancing transfers can be reverted" };
+    if (
+      !transaction.category ||
+      transaction.category.name !== "Balancing Transfer"
+    ) {
+      return {
+        success: false,
+        error: "Only balancing transfers can be reverted",
+      };
     }
 
     const accountId = transaction.accountId;
@@ -1251,7 +1420,7 @@ export async function deleteBalancingTransaction(
       accountId,
       transactionDate,
       startingBalance,
-      transactionId
+      transactionId,
     );
 
     // Update the account's functional_balance
@@ -1299,8 +1468,13 @@ export interface CreateOrUpdateBalancingTransactionInput {
  * In both cases, balances are recalculated.
  */
 export async function createOrUpdateBalancingTransaction(
-  input: CreateOrUpdateBalancingTransactionInput
-): Promise<{ success: boolean; error?: string; transactionId?: string; isUpdate?: boolean }> {
+  input: CreateOrUpdateBalancingTransactionInput,
+): Promise<{
+  success: boolean;
+  error?: string;
+  transactionId?: string;
+  isUpdate?: boolean;
+}> {
   const userId = await requireAuth();
 
   if (!userId) {
@@ -1308,14 +1482,12 @@ export async function createOrUpdateBalancingTransaction(
   }
 
   try {
-    const { accountId, targetBalance, adjustmentDate, balancingCategoryId } = input;
+    const { accountId, targetBalance, adjustmentDate, balancingCategoryId } =
+      input;
 
     // Verify the account belongs to the user
     const account = await db.query.accounts.findFirst({
-      where: and(
-        eq(accounts.id, accountId),
-        eq(accounts.userId, userId)
-      ),
+      where: and(eq(accounts.id, accountId), eq(accounts.userId, userId)),
     });
 
     if (!account) {
@@ -1326,7 +1498,7 @@ export async function createOrUpdateBalancingTransaction(
     const category = await db.query.categories.findFirst({
       where: and(
         eq(categories.id, balancingCategoryId),
-        eq(categories.userId, userId)
+        eq(categories.userId, userId),
       ),
     });
 
@@ -1346,7 +1518,7 @@ export async function createOrUpdateBalancingTransaction(
         eq(transactions.accountId, accountId),
         eq(transactions.categoryId, balancingCategoryId),
         gte(transactions.bookedAt, startOfDay),
-        lte(transactions.bookedAt, endOfDay)
+        lte(transactions.bookedAt, endOfDay),
       ),
     });
 
@@ -1356,7 +1528,7 @@ export async function createOrUpdateBalancingTransaction(
     // We need to exclude the existing balancing transfer (if any) from the calculation
     const balanceConditions = [
       eq(transactions.accountId, accountId),
-      lte(transactions.bookedAt, endOfDay)
+      lte(transactions.bookedAt, endOfDay),
     ];
 
     if (existingBalancingTransfer) {
@@ -1370,8 +1542,11 @@ export async function createOrUpdateBalancingTransaction(
       .from(transactions)
       .where(and(...balanceConditions));
 
-    const transactionSumWithoutAdjustment = parseFloat(balanceWithoutAdjustment[0]?.total || "0");
-    const currentBalanceWithoutAdjustment = startingBalance + transactionSumWithoutAdjustment;
+    const transactionSumWithoutAdjustment = parseFloat(
+      balanceWithoutAdjustment[0]?.total || "0",
+    );
+    const currentBalanceWithoutAdjustment =
+      startingBalance + transactionSumWithoutAdjustment;
 
     // Calculate the required adjustment amount
     const difference = targetBalance - currentBalanceWithoutAdjustment;
@@ -1379,14 +1554,16 @@ export async function createOrUpdateBalancingTransaction(
     if (Math.abs(difference) < 0.01) {
       // No adjustment needed - if there's an existing balancing transfer, delete it
       if (existingBalancingTransfer) {
-        await db.delete(transactions).where(eq(transactions.id, existingBalancingTransfer.id));
+        await db
+          .delete(transactions)
+          .where(eq(transactions.id, existingBalancingTransfer.id));
 
         // Recalculate balances
         await recalculateAccountBalancesFromDate(
           accountId,
           adjustmentDate,
           startingBalance,
-          existingBalancingTransfer.id
+          existingBalancingTransfer.id,
         );
 
         // Update functional balance
@@ -1397,7 +1574,8 @@ export async function createOrUpdateBalancingTransaction(
           .from(transactions)
           .where(eq(transactions.accountId, accountId));
 
-        const newFunctionalBalance = startingBalance + parseFloat(newBalanceResult[0]?.total || "0");
+        const newFunctionalBalance =
+          startingBalance + parseFloat(newBalanceResult[0]?.total || "0");
 
         await db
           .update(accounts)
@@ -1440,16 +1618,19 @@ export async function createOrUpdateBalancingTransaction(
       isUpdate = true;
     } else {
       // Create new transaction
-      const [result] = await db.insert(transactions).values({
-        userId,
-        accountId,
-        amount: amount.toString(),
-        description: "Balance adjustment",
-        categoryId: balancingCategoryId,
-        bookedAt: adjustmentDate,
-        transactionType,
-        currency: account.currency || "EUR",
-      }).returning({ id: transactions.id });
+      const [result] = await db
+        .insert(transactions)
+        .values({
+          userId,
+          accountId,
+          amount: amount.toString(),
+          description: "Balance adjustment",
+          categoryId: balancingCategoryId,
+          bookedAt: adjustmentDate,
+          transactionType,
+          currency: account.currency || "EUR",
+        })
+        .returning({ id: transactions.id });
 
       transactionId = result.id;
     }
@@ -1458,7 +1639,7 @@ export async function createOrUpdateBalancingTransaction(
     await recalculateAccountBalancesFromDate(
       accountId,
       adjustmentDate,
-      startingBalance
+      startingBalance,
     );
 
     // Update the account's functional_balance
@@ -1498,7 +1679,7 @@ export async function createOrUpdateBalancingTransaction(
 
 async function includeLinkedTransferTransactions(
   userId: string,
-  transactionIds: string[]
+  transactionIds: string[],
 ): Promise<string[]> {
   const normalizedIds = Array.from(new Set(transactionIds));
   if (!normalizedIds.length) return normalizedIds;
@@ -1508,8 +1689,8 @@ async function includeLinkedTransferTransactions(
       eq(internalTransfers.userId, userId),
       or(
         inArray(internalTransfers.sourceTxnId, normalizedIds),
-        inArray(internalTransfers.mirrorTxnId, normalizedIds)
-      )
+        inArray(internalTransfers.mirrorTxnId, normalizedIds),
+      ),
     ),
   });
 
@@ -1541,28 +1722,39 @@ export interface DeleteImpact {
  * Used to populate the delete confirmation dialog before the user confirms.
  */
 export async function getDeleteImpact(
-  transactionIds: string[]
-): Promise<{ success: true; data: DeleteImpact } | { success: false; error: string }> {
+  transactionIds: string[],
+): Promise<
+  { success: true; data: DeleteImpact } | { success: false; error: string }
+> {
   const userId = await requireAuth();
   if (!userId) return { success: false, error: "Not authenticated" };
-  if (!transactionIds.length) return { success: false, error: "No transactions selected" };
+  if (!transactionIds.length)
+    return { success: false, error: "No transactions selected" };
 
   try {
-    const idsToDelete = await includeLinkedTransferTransactions(userId, transactionIds);
+    const idsToDelete = await includeLinkedTransferTransactions(
+      userId,
+      transactionIds,
+    );
     const txRows = await db.query.transactions.findMany({
       where: and(
         inArray(transactions.id, idsToDelete),
-        eq(transactions.userId, userId)
+        eq(transactions.userId, userId),
       ),
       with: { account: true },
     });
 
-    if (!txRows.length) return { success: false, error: "Transactions not found" };
+    if (!txRows.length)
+      return { success: false, error: "Transactions not found" };
 
     // Group by account
     const byAccount = new Map<
       string,
-      { account: NonNullable<(typeof txRows)[0]["account"]>; amountSum: number; earliestDate: Date }
+      {
+        account: NonNullable<(typeof txRows)[0]["account"]>;
+        amountSum: number;
+        earliestDate: Date;
+      }
     >();
 
     for (const tx of txRows) {
@@ -1571,9 +1763,14 @@ export async function getDeleteImpact(
       const existing = byAccount.get(tx.accountId);
       if (existing) {
         existing.amountSum += amount;
-        if (tx.bookedAt < existing.earliestDate) existing.earliestDate = tx.bookedAt;
+        if (tx.bookedAt < existing.earliestDate)
+          existing.earliestDate = tx.bookedAt;
       } else {
-        byAccount.set(tx.accountId, { account: tx.account, amountSum: amount, earliestDate: tx.bookedAt });
+        byAccount.set(tx.accountId, {
+          account: tx.account,
+          amountSum: amount,
+          earliestDate: tx.bookedAt,
+        });
       }
     }
 
@@ -1592,16 +1789,19 @@ export async function getDeleteImpact(
         and(
           inArray(transactions.accountId, accountIds),
           eq(transactions.userId, userId),
-          notInArray(transactions.id, idsToDelete)
-        )
+          notInArray(transactions.id, idsToDelete),
+        ),
       )
       .groupBy(transactions.accountId);
-    const remainingSumMap = new Map(remainingSums.map((r) => [r.accountId, r.sum]));
+    const remainingSumMap = new Map(
+      remainingSums.map((r) => [r.accountId, r.sum]),
+    );
 
     for (const [accountId, { account, amountSum, earliestDate }] of byAccount) {
       const currentBalance = parseFloat(account.functionalBalance || "0");
       const startingBalance = parseFloat(account.startingBalance || "0");
-      const projectedBalance = startingBalance + parseFloat(remainingSumMap.get(accountId) ?? "0");
+      const projectedBalance =
+        startingBalance + parseFloat(remainingSumMap.get(accountId) ?? "0");
 
       accountImpacts.push({
         accountId,
@@ -1615,7 +1815,8 @@ export async function getDeleteImpact(
         balanceIsAnchored: account.balanceIsAnchored ?? false,
       });
 
-      if (earliestDate < overallEarliestDate) overallEarliestDate = earliestDate;
+      if (earliestDate < overallEarliestDate)
+        overallEarliestDate = earliestDate;
     }
 
     return {
@@ -1637,39 +1838,51 @@ export async function getDeleteImpact(
  * All transactions must belong to the authenticated user.
  * Balance recalculation runs after deletion.
  */
-export async function deleteTransactions(
-  transactionIds: string[]
-): Promise<{ success: boolean; error?: string; affectedAccountIds?: string[]; deletedCount?: number }> {
+export async function deleteTransactions(transactionIds: string[]): Promise<{
+  success: boolean;
+  error?: string;
+  affectedAccountIds?: string[];
+  deletedCount?: number;
+}> {
   const session = await getAuthenticatedSession();
   const userId = session?.user?.id ?? null;
   if (!userId) return { success: false, error: "Not authenticated" };
   if (isDemoRestrictedUserEmail(session?.user?.email)) {
     return { success: false, error: DEMO_RESTRICTED_ACTION_ERROR };
   }
-  if (!transactionIds.length) return { success: false, error: "No transactions selected" };
+  if (!transactionIds.length)
+    return { success: false, error: "No transactions selected" };
 
   try {
-    const idsToDelete = await includeLinkedTransferTransactions(userId, transactionIds);
+    const idsToDelete = await includeLinkedTransferTransactions(
+      userId,
+      transactionIds,
+    );
     // Fetch target transactions to get per-account data before deleting
     const txRows = await db.query.transactions.findMany({
       where: and(
         inArray(transactions.id, idsToDelete),
-        eq(transactions.userId, userId)
+        eq(transactions.userId, userId),
       ),
       with: { account: true },
     });
 
-    if (!txRows.length) return { success: false, error: "Transactions not found" };
+    if (!txRows.length)
+      return { success: false, error: "Transactions not found" };
     // No strict length equality check: the DELETE is already user-scoped (userId in WHERE),
     // so foreign or concurrently-deleted IDs are safely ignored rather than aborting the batch.
 
     // Build per-account: earliest bookedAt for recalculation range
-    const accountData = new Map<string, { startingBalance: number; earliestDate: Date }>();
+    const accountData = new Map<
+      string,
+      { startingBalance: number; earliestDate: Date }
+    >();
     for (const tx of txRows) {
       if (!tx.account) continue;
       const existing = accountData.get(tx.accountId);
       if (existing) {
-        if (tx.bookedAt < existing.earliestDate) existing.earliestDate = tx.bookedAt;
+        if (tx.bookedAt < existing.earliestDate)
+          existing.earliestDate = tx.bookedAt;
       } else {
         accountData.set(tx.accountId, {
           startingBalance: parseFloat(tx.account.startingBalance || "0"),
@@ -1681,7 +1894,12 @@ export async function deleteTransactions(
     // Delete all transactions (userId filter ensures security)
     await db
       .delete(transactions)
-      .where(and(inArray(transactions.id, idsToDelete), eq(transactions.userId, userId)));
+      .where(
+        and(
+          inArray(transactions.id, idsToDelete),
+          eq(transactions.userId, userId),
+        ),
+      );
 
     // Update functionalBalance and recalculate daily snapshots per affected account
     const affectedAccountIds: string[] = [];
@@ -1690,20 +1908,34 @@ export async function deleteTransactions(
 
       // Recompute functionalBalance from remaining transactions
       const balanceResult = await db
-        .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+        .select({
+          total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+        })
         .from(transactions)
-        .where(and(eq(transactions.accountId, accountId), eq(transactions.userId, userId)));
+        .where(
+          and(
+            eq(transactions.accountId, accountId),
+            eq(transactions.userId, userId),
+          ),
+        );
 
       const transactionSum = parseFloat(balanceResult[0]?.total || "0");
       const newFunctionalBalance = startingBalance + transactionSum;
 
       await db
         .update(accounts)
-        .set({ functionalBalance: newFunctionalBalance.toFixed(2), updatedAt: new Date() })
+        .set({
+          functionalBalance: newFunctionalBalance.toFixed(2),
+          updatedAt: new Date(),
+        })
         .where(and(eq(accounts.id, accountId), eq(accounts.userId, userId)));
 
       // Rebuild daily balance snapshots from the earliest deleted transaction date
-      await recalculateAccountBalancesFromDate(accountId, earliestDate, startingBalance);
+      await recalculateAccountBalancesFromDate(
+        accountId,
+        earliestDate,
+        startingBalance,
+      );
     }
 
     revalidatePath("/transactions");

@@ -26,9 +26,9 @@ export function buildTransactionsDrilldownQuery({
   }
 
   if (accountIds?.length) {
-    Array.from(new Set(accountIds.map((value) => value.trim()).filter(Boolean))).forEach(
-      (accountId) => params.append("account", accountId)
-    );
+    Array.from(
+      new Set(accountIds.map((value) => value.trim()).filter(Boolean)),
+    ).forEach((accountId) => params.append("account", accountId));
   }
 
   const normalizedFrom = parseIsoDateParam(dateFrom);
@@ -41,8 +41,9 @@ export function buildTransactionsDrilldownQuery({
     }
   } else {
     const normalizedHorizon =
-      parseHorizonParam(typeof horizon === "number" ? String(horizon) : undefined) ??
-      (30 as SupportedHorizon);
+      parseHorizonParam(
+        typeof horizon === "number" ? String(horizon) : undefined,
+      ) ?? (30 as SupportedHorizon);
     params.set("horizon", String(normalizedHorizon));
   }
 

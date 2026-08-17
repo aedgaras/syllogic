@@ -1,6 +1,7 @@
 """
 Unit tests for application-layer data encryption helpers.
 """
+
 import base64
 import os
 import sys

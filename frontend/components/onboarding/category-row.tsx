@@ -1,7 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
-
 import { RiDeleteBinLine, RiEditLine } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import { type CategoryInput } from "@/lib/actions/categories";
@@ -48,7 +47,11 @@ export function CategoryRow({ category, onEdit, onDelete }: CategoryRowProps) {
           size="icon"
           className="h-8 w-8"
           onClick={onEdit}
-          title={isSystem ? translate("editDescriptionAndCategorizationInstructions") : translate("editCategoryc6071d")}
+          title={
+            isSystem
+              ? translate("editDescriptionAndCategorizationInstructions")
+              : translate("editCategoryc6071d")
+          }
         >
           <RiEditLine className="h-4 w-4" />
         </Button>

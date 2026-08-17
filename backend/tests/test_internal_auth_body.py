@@ -26,7 +26,10 @@ def test_internal_signature_is_bound_to_exact_body(monkeypatch):
     signed_body = b'{"amount":1}'
     headers = _headers(secret, signed_body)
 
-    assert authenticate_internal_request_with_body("POST", "/api/example", headers, signed_body) == "user-1"
+    assert (
+        authenticate_internal_request_with_body("POST", "/api/example", headers, signed_body)
+        == "user-1"
+    )
     with pytest.raises(HTTPException) as exc:
         authenticate_internal_request_with_body("POST", "/api/example", headers, b'{"amount":999}')
     assert exc.value.status_code == 401

@@ -27,7 +27,8 @@ export function PinnedSlotCard({
       }}
     >
       <Text style={{ fontWeight: 600, margin: 0 }}>
-        {p.symbol} — {p.verdict.toUpperCase()} ({p.allocatedAmount.toLocaleString()})
+        {p.symbol} — {p.verdict.toUpperCase()} (
+        {p.allocatedAmount.toLocaleString()})
       </Text>
       <Text style={{ fontSize: "14px", margin: "4px 0" }}>{p.rationale}</Text>
       {p.riskFlags.length > 0 && (
@@ -45,7 +46,12 @@ export function DiscretionarySlotCard({
   d: {
     theme: string;
     allocatedAmount: number;
-    topPicks: { rank: number; symbol: string; name: string; rationale: string }[];
+    topPicks: {
+      rank: number;
+      symbol: string;
+      name: string;
+      rationale: string;
+    }[];
   };
 }) {
   const visible = d.topPicks.slice(0, 3);

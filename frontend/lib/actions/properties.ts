@@ -15,7 +15,7 @@ export interface CreatePropertyInput {
 }
 
 export async function createProperty(
-  input: CreatePropertyInput
+  input: CreatePropertyInput,
 ): Promise<{ success: boolean; error?: string; propertyId?: string }> {
   const userId = await requireAuth();
 
@@ -34,7 +34,10 @@ export async function createProperty(
       isActive: true,
     };
 
-    const [result] = await db.insert(properties).values(newProperty).returning({ id: properties.id });
+    const [result] = await db
+      .insert(properties)
+      .values(newProperty)
+      .returning({ id: properties.id });
 
     revalidatePath("/");
     revalidatePath("/settings");
@@ -47,7 +50,7 @@ export async function createProperty(
 
 export async function updateProperty(
   propertyId: string,
-  input: Partial<CreatePropertyInput>
+  input: Partial<CreatePropertyInput>,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -86,7 +89,7 @@ export async function updateProperty(
 }
 
 export async function deleteProperty(
-  propertyId: string
+  propertyId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const userId = await requireAuth();
 
@@ -145,7 +148,7 @@ export async function getProperty(propertyId: string) {
     where: and(
       eq(properties.id, propertyId),
       eq(properties.userId, userId),
-      eq(properties.isActive, true)
+      eq(properties.isActive, true),
     ),
   });
 }

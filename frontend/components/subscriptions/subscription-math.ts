@@ -15,7 +15,7 @@ export const frequencyMultipliers: Record<string, number> = {
  * Calculate the monthly equivalent for a subscription-like item.
  */
 export function calculateMonthlyEquivalent(
-  item: SubscriptionOrSuggestion
+  item: SubscriptionOrSuggestion,
 ): number {
   const amount = Math.abs(parseFloat(item.amount || "0"));
   const multiplier = frequencyMultipliers[item.frequency] || 1;
@@ -24,7 +24,7 @@ export function calculateMonthlyEquivalent(
 
 export function getCurrencyFallback(
   items: SubscriptionOrSuggestion[],
-  fallback = "EUR"
+  fallback = "EUR",
 ): string {
   return items.find((item) => item.currency)?.currency || fallback;
 }

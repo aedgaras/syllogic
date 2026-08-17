@@ -6,8 +6,7 @@ import os
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 # Import celery_app FIRST so its broker/backend config (REDIS_URL) is registered
@@ -74,11 +73,7 @@ UNPROTECTED_API_PATHS = {"/api/health"}
 @app.middleware("http")
 async def internal_auth_middleware(request: Request, call_next):
     path = request.url.path
-    if (
-        request.method == "OPTIONS"
-        or not path.startswith("/api/")
-        or path in UNPROTECTED_API_PATHS
-    ):
+    if request.method == "OPTIONS" or not path.startswith("/api/") or path in UNPROTECTED_API_PATHS:
         return await call_next(request)
 
     path_with_query = path

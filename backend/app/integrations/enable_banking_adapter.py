@@ -38,14 +38,14 @@ def _extract_iban(account_obj: Optional[dict]) -> Optional[str]:
 
 # Mapping from Enable Banking cash account types to our canonical types
 _ACCOUNT_TYPE_MAP = {
-    "CACC": "checking",   # Current Account
-    "SVGS": "savings",    # Savings Account
-    "TRAN": "checking",   # Transaction Account
-    "CASH": "checking",   # Cash Payment
-    "CARD": "credit",     # Card Account
-    "LOAN": "credit",     # Loan Account
-    "MGLD": "savings",    # Managed Account
-    "MOMA": "savings",    # Money Market Account
+    "CACC": "checking",  # Current Account
+    "SVGS": "savings",  # Savings Account
+    "TRAN": "checking",  # Transaction Account
+    "CASH": "checking",  # Cash Payment
+    "CARD": "credit",  # Card Account
+    "LOAN": "credit",  # Loan Account
+    "MGLD": "savings",  # Managed Account
+    "MOMA": "savings",  # Money Market Account
 }
 
 
@@ -75,15 +75,17 @@ class EnableBankingAdapter(BankAdapter):
         aspsp_name = session_data.get("aspsp", {}).get("name", "")
         accounts = []
         for acc in session_data.get("accounts", []):
-            accounts.append(AccountData(
-                external_id=acc["uid"],
-                name=acc.get("account_name") or acc.get("iban") or "Unknown Account",
-                account_type=self._map_account_type(acc.get("cash_account_type")),
-                institution=aspsp_name,
-                currency=acc.get("currency", "EUR"),
-                iban=_extract_iban(acc),
-                balance_available=None,  # Fetched separately via fetch_balances
-            ))
+            accounts.append(
+                AccountData(
+                    external_id=acc["uid"],
+                    name=acc.get("account_name") or acc.get("iban") or "Unknown Account",
+                    account_type=self._map_account_type(acc.get("cash_account_type")),
+                    institution=aspsp_name,
+                    currency=acc.get("currency", "EUR"),
+                    iban=_extract_iban(acc),
+                    balance_available=None,  # Fetched separately via fetch_balances
+                )
+            )
         return accounts
 
     def fetch_transactions(
@@ -139,28 +141,25 @@ class EnableBankingAdapter(BankAdapter):
         if not external_id:
             _ri = raw.get("remittance_information")
             _ri_str = "|".join(_ri) if isinstance(_ri, list) and _ri else (_ri or "")
-            _parts = "|".join([
-                raw.get("booking_date") or raw.get("value_date") or "",
-                str(raw["transaction_amount"]["amount"]),
-                raw["transaction_amount"].get("currency", ""),
-                _ri_str,
-            ])
+            _parts = "|".join(
+                [
+                    raw.get("booking_date") or raw.get("value_date") or "",
+                    str(raw["transaction_amount"]["amount"]),
+                    raw["transaction_amount"].get("currency", ""),
+                    _ri_str,
+                ]
+            )
             external_id = "synth-" + hashlib.sha256(_parts.encode()).hexdigest()[:16]
 
         # Resolve nested creditor/debtor names (EB may use objects or flat fields)
-        creditor_name = (
-            raw.get("creditor_name")
-            or (raw.get("creditor") or {}).get("name")
-        )
-        debtor_name = (
-            raw.get("debtor_name")
-            or (raw.get("debtor") or {}).get("name")
-        )
+        creditor_name = raw.get("creditor_name") or (raw.get("creditor") or {}).get("name")
+        debtor_name = raw.get("debtor_name") or (raw.get("debtor") or {}).get("name")
 
         # Resolve structured remittance_information array (list of strings)
         remittance_info = raw.get("remittance_information")
         remittance_info_text = (
-            " ".join(remittance_info) if isinstance(remittance_info, list) and remittance_info
+            " ".join(remittance_info)
+            if isinstance(remittance_info, list) and remittance_info
             else (remittance_info if isinstance(remittance_info, str) else None)
         )
 
@@ -173,7 +172,7 @@ class EnableBankingAdapter(BankAdapter):
         if riu:
             desc_parts.append(riu)
 
-        for item in (raw.get("remittance_information_unstructured_array") or []):
+        for item in raw.get("remittance_information_unstructured_array") or []:
             if item and item not in desc_parts:
                 desc_parts.append(item)
 
@@ -203,14 +202,10 @@ class EnableBankingAdapter(BankAdapter):
 
         # Resolve counterparty IBAN: for debits the counterparty is the creditor;
         # for credits the counterparty is the debtor.
-        creditor_iban = (
-            _extract_iban(raw.get("creditor_account"))
-            or _extract_iban(raw.get("creditor"))
+        creditor_iban = _extract_iban(raw.get("creditor_account")) or _extract_iban(
+            raw.get("creditor")
         )
-        debtor_iban = (
-            _extract_iban(raw.get("debtor_account"))
-            or _extract_iban(raw.get("debtor"))
-        )
+        debtor_iban = _extract_iban(raw.get("debtor_account")) or _extract_iban(raw.get("debtor"))
         counterparty_iban = creditor_iban if credit_debit == "DBIT" else debtor_iban
 
         if credit_debit == "DBIT" and amount > 0:
@@ -226,11 +221,13 @@ class EnableBankingAdapter(BankAdapter):
             creditor=creditor_name,
             debtor=debtor_name,
             counterparty_iban=counterparty_iban,
-            booked_at=datetime.fromisoformat(_date_str) if (_date_str := (
-                raw.get("booking_date")
-                or raw.get("value_date")
-                or raw.get("transaction_date")
-            )) else datetime.now(timezone.utc),
+            booked_at=datetime.fromisoformat(_date_str)
+            if (
+                _date_str := (
+                    raw.get("booking_date") or raw.get("value_date") or raw.get("transaction_date")
+                )
+            )
+            else datetime.now(timezone.utc),
             transaction_type="debit" if amount < 0 else "credit",
             pending=raw.get("status") == "PDNG",
             metadata={"raw": raw},

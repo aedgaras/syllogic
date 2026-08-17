@@ -31,11 +31,13 @@ export type ActionResult<T = void> =
  */
 export async function withAuth<T>(
   handler: (userId: string) => Promise<T>,
-  onUnauthorized?: T
+  onUnauthorized?: T,
 ): Promise<T> {
   const userId = await requireAuth();
   if (!userId) {
-    return onUnauthorized ?? ({ success: false, error: "Not authenticated" } as T);
+    return (
+      onUnauthorized ?? ({ success: false, error: "Not authenticated" } as T)
+    );
   }
   return handler(userId);
 }

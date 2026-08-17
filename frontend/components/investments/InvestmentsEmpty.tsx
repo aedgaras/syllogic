@@ -30,9 +30,13 @@ export function InvestmentsEmpty({
                 <RiLineChartLine size={20} className="text-muted-foreground" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <div className="text-base font-semibold">{translate("noHoldingsYet")}</div>
+                <div className="text-base font-semibold">
+                  {translate("noHoldingsYet")}
+                </div>
                 <div className="text-xs text-muted-foreground leading-relaxed max-w-[340px]">
-                  {translate("connectingBrokersAndAddingHoldingsIsDisabledForThe")}
+                  {translate(
+                    "connectingBrokersAndAddingHoldingsIsDisabledForThe",
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -51,7 +55,9 @@ export function InvestmentsEmpty({
               <RiLineChartLine size={20} className="text-muted-foreground" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <div className="text-base font-semibold">{translate("noHoldingsYet")}</div>
+              <div className="text-base font-semibold">
+                {translate("noHoldingsYet")}
+              </div>
               <div className="text-xs text-muted-foreground leading-relaxed max-w-[340px]">
                 {translate("trackYourPortfolioByConnectingABrokerForAutomatic")}
               </div>
@@ -62,13 +68,17 @@ export function InvestmentsEmpty({
           <div className="p-6 flex flex-col gap-3 border-r border-border">
             <div className="flex items-center gap-2">
               <RiLinksLine size={16} />
-              <span className="font-semibold text-sm">{translate("connectBroker")}</span>
+              <span className="font-semibold text-sm">
+                {translate("connectBroker")}
+              </span>
               <Badge className="ml-auto text-[9px] tracking-wider rounded-none">
                 {translate("recommended")}
               </Badge>
             </div>
             <div className="text-xs text-muted-foreground leading-relaxed">
-              {translate("connectInteractiveBrokersViaFlexQueryPositionsAndTrades")}
+              {translate(
+                "connectInteractiveBrokersViaFlexQueryPositionsAndTrades",
+              )}
             </div>
             <ul className="mt-1 pl-4 list-disc space-y-1">
               {[
@@ -88,7 +98,9 @@ export function InvestmentsEmpty({
           <div className="p-6 flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <RiPencilLine size={16} />
-              <span className="font-semibold text-sm">{translate("addManually")}</span>
+              <span className="font-semibold text-sm">
+                {translate("addManually")}
+              </span>
             </div>
             <div className="text-xs text-muted-foreground leading-relaxed">
               {translate("createAnAccountSearchBySymbolAndEnterQuantities")}
