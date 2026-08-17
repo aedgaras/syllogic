@@ -1,72 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SubscriptionsGroupedList } from "./subscriptions-grouped-list";
 import { SubscriptionFormDialog } from "./subscription-form-dialog";
 import { SubscriptionDetailSheet } from "./subscription-detail-sheet";
-import { toast } from "sonner";
-import {
-  deleteSubscription,
-  toggleSubscriptionActive,
-  type SubscriptionKpis,
-} from "@/lib/actions/subscriptions";
-import {
-  dismissSuggestion,
-  type SubscriptionSuggestionWithMeta,
-} from "@/lib/actions/subscription-suggestions";
-import type { RecurringTransaction } from "@/lib/db/schema";
 import { withAssetVersion } from "@/lib/utils/asset-url";
-
-interface SubscriptionWithCategory extends RecurringTransaction {
-  account?: {
-    id: string;
-    name: string;
-  } | null;
-  category?: {
-    id: string;
-    name: string;
-    color: string | null;
-  } | null;
-  logo?: {
-    id: string;
-    logoUrl: string | null;
-    updatedAt?: Date | null;
-  } | null;
-}
+import type {
+  SubscriptionKpis,
+  SubscriptionListRow,
+  SubscriptionSuggestionViewModel,
+  SubscriptionViewModel,
+} from "@/features/subscriptions/public";
+import { useSubscriptionListController } from "@/features/subscriptions/hooks/use-subscription-list-controller";
 
 // Extended type for table rows that can be either a subscription or a suggestion
-export interface SubscriptionOrSuggestion {
-  id: string;
-  name: string;
-  amount: string;
-  currency: string | null;
-  frequency: string;
-  isActive?: boolean | null;
-  isSuggestion?: boolean;
-  confidence?: number;
-  matchCount?: number;
-  merchant?: string | null;
-  importance?: number;
-  accountId?: string | null;
-  accountName?: string | null;
-  account?: {
-    id: string;
-    name: string;
-  } | null;
-  category?: {
-    id: string;
-    name: string;
-    color: string | null;
-  } | null;
-  logoUrl?: string | null;
-}
+export type SubscriptionOrSuggestion = SubscriptionListRow;
 
 interface SubscriptionsClientProps {
-  initialSubscriptions: SubscriptionWithCategory[];
+  initialSubscriptions: SubscriptionViewModel[];
   accounts: Array<{ id: string; name: string }>;
   categories: Array<{ id: string; name: string; color: string | null }>;
-  suggestions?: SubscriptionSuggestionWithMeta[];
+  suggestions?: SubscriptionSuggestionViewModel[];
   kpis: SubscriptionKpis;
 }
 
@@ -78,26 +33,16 @@ export function SubscriptionsClient({
   kpis,
 }: SubscriptionsClientProps) {
   const router = useRouter();
-  const [subscriptions, setSubscriptions] = useState(initialSubscriptions);
-  const [suggestions, setSuggestions] = useState(initialSuggestions);
+  const { subscriptions, suggestions, dismiss, remove, toggle, upsert } =
+    useSubscriptionListController(initialSubscriptions, initialSuggestions);
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [editingSubscription, setEditingSubscription] =
-    useState<SubscriptionWithCategory | null>(null);
+    useState<SubscriptionViewModel | null>(null);
   const [verifyingSuggestion, setVerifyingSuggestion] =
-    useState<SubscriptionSuggestionWithMeta | null>(null);
+    useState<SubscriptionSuggestionViewModel | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [selectedSubscription, setSelectedSubscription] =
-    useState<SubscriptionWithCategory | null>(null);
-
-  // Keep local state in sync with server-refreshes.
-  // This prevents "stale" rows (e.g. missing logo relation) after router.refresh().
-  useEffect(() => {
-    setSubscriptions(initialSubscriptions);
-  }, [initialSubscriptions]);
-
-  useEffect(() => {
-    setSuggestions(initialSuggestions);
-  }, [initialSuggestions]);
+    useState<SubscriptionViewModel | null>(null);
 
   // Combine subscriptions and suggestions for table display
   // Order: Active subscriptions first, then suggestions, then inactive subscriptions
@@ -146,7 +91,7 @@ export function SubscriptionsClient({
     setFormDialogOpen(true);
   };
 
-  const handleEdit = (subscription: SubscriptionWithCategory) => {
+  const handleEdit = (subscription: SubscriptionViewModel) => {
     setEditingSubscription(subscription);
     setVerifyingSuggestion(null);
     setFormDialogOpen(true);
@@ -163,72 +108,20 @@ export function SubscriptionsClient({
   };
 
   const handleDismiss = async (row: SubscriptionOrSuggestion) => {
-    const result = await dismissSuggestion(row.id);
-
-    if (result.success) {
-      toast.success("Suggestion dismissed");
-      setSuggestions((prev) => prev.filter((s) => s.id !== row.id));
-    } else {
-      toast.error(result.error || "Failed to dismiss suggestion");
-    }
+    await dismiss(row.id);
   };
 
-  const handleDelete = async (subscription: SubscriptionWithCategory) => {
-    const result = await deleteSubscription(subscription.id);
-
-    if (result.success) {
-      toast.success("Subscription deleted");
-      setSubscriptions((prev) => prev.filter((t) => t.id !== subscription.id));
-      router.refresh();
-    } else {
-      toast.error(result.error || "Failed to delete");
-    }
+  const handleDelete = async (subscription: SubscriptionViewModel) => {
+    await remove(subscription);
   };
 
-  const handleToggleActive = async (
-    subscription: SubscriptionWithCategory
-  ) => {
-    const newStatus = !subscription.isActive;
-    const result = await toggleSubscriptionActive(
-      subscription.id,
-      newStatus
-    );
-
-    if (result.success) {
-      toast.success(
-        newStatus
-          ? "Subscription activated"
-          : "Subscription deactivated"
-      );
-      setSubscriptions((prev) =>
-        prev.map((t) =>
-          t.id === subscription.id ? { ...t, isActive: newStatus } : t
-        )
-      );
-      router.refresh();
-    } else {
-      toast.error(result.error || "Failed to update status");
-    }
+  const handleToggleActive = async (subscription: SubscriptionViewModel) => {
+    await toggle(subscription);
   };
 
-  const handleFormSuccess = (suggestionId?: string, subscriptionData?: SubscriptionWithCategory) => {
-    // If we were verifying a suggestion, remove it from the list
-    if (suggestionId) {
-      setSuggestions((prev) => prev.filter((s) => s.id !== suggestionId));
-    }
-
+  const handleFormSuccess = (suggestionId?: string, subscriptionData?: SubscriptionViewModel) => {
     if (subscriptionData) {
-      // Check if this is an update (subscription exists) or a new subscription
-      const existingIndex = subscriptions.findIndex((s) => s.id === subscriptionData.id);
-      if (existingIndex >= 0) {
-        // Update existing subscription in the list
-        setSubscriptions((prev) =>
-          prev.map((s) => (s.id === subscriptionData.id ? subscriptionData : s))
-        );
-      } else {
-        // Add new subscription to the list
-        setSubscriptions((prev) => [...prev, subscriptionData]);
-      }
+      upsert(subscriptionData, suggestionId);
     }
 
     setVerifyingSuggestion(null);
@@ -248,7 +141,7 @@ export function SubscriptionsClient({
     }
   };
 
-  const handleEditFromDetail = (subscription: SubscriptionWithCategory) => {
+  const handleEditFromDetail = (subscription: SubscriptionViewModel) => {
     setDetailSheetOpen(false);
     handleEdit(subscription);
   };

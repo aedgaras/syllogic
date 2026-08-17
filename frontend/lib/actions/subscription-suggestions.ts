@@ -7,19 +7,15 @@ import {
   subscriptionSuggestions,
   recurringTransactions,
   transactions,
-  type SubscriptionSuggestion,
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth-helpers";
+import type { SubscriptionSuggestionViewModel } from "@/features/subscriptions/public";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export interface SubscriptionSuggestionWithMeta extends SubscriptionSuggestion {
-  matchCount: number;
-  accountName?: string | null;
-  suggestedCategoryName?: string | null;
-}
+export type { SubscriptionSuggestionViewModel as SubscriptionSuggestionWithMeta } from "@/features/subscriptions/public";
 
 // ============================================================================
 // Read Operations
@@ -28,7 +24,7 @@ export interface SubscriptionSuggestionWithMeta extends SubscriptionSuggestion {
 /**
  * Get all pending suggestions for the current user
  */
-export async function getPendingSuggestions(): Promise<SubscriptionSuggestionWithMeta[]> {
+export async function getPendingSuggestions(): Promise<SubscriptionSuggestionViewModel[]> {
   const userId = await requireAuth();
 
   if (!userId) {
@@ -67,10 +63,11 @@ export async function getPendingSuggestions(): Promise<SubscriptionSuggestionWit
       }
       return {
         ...suggestion,
+        detectedFrequency: suggestion.detectedFrequency as SubscriptionSuggestionViewModel["detectedFrequency"],
         matchCount,
         accountName: suggestion.account?.name ?? null,
         suggestedCategoryName: suggestion.suggestedCategory?.name ?? null,
-      };
+      } satisfies SubscriptionSuggestionViewModel;
     });
   } catch (error) {
     console.error("Failed to get pending suggestions:", error);

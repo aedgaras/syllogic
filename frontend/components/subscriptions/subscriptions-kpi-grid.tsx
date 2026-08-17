@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
-import type { SubscriptionKpis } from "@/lib/actions/subscriptions";
+import type { SubscriptionKpis } from "@/features/subscriptions/public";
 
 interface SubscriptionsKpiGridProps {
   kpis: SubscriptionKpis;

@@ -1,6 +1,6 @@
 "use client";
 
-import type { SubscriptionOrSuggestion } from "./subscriptions-client";
+import type { SubscriptionListRow as SubscriptionOrSuggestion } from "@/features/subscriptions/public";
 import { calculateMonthlyEquivalent, getCurrencyFallback } from "./subscription-math";
 
 interface SubscriptionsSummaryRowProps {

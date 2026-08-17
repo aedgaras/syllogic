@@ -1,4 +1,4 @@
-import type { SubscriptionOrSuggestion } from "./subscriptions-client";
+import type { SubscriptionListRow as SubscriptionOrSuggestion } from "@/features/subscriptions/public";
 
 /**
  * Monthly equivalent multipliers for different frequencies.

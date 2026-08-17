@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -19,42 +18,14 @@ import {
   RiRepeatLine,
 } from "@remixicon/react";
 import { format } from "date-fns";
-import { toast } from "sonner";
-import type { RecurringTransaction } from "@/lib/db/schema";
-import {
-  getSubscriptionCostAggregations,
-  getLinkedTransactions,
-  matchTransactionsToSubscription,
-} from "@/lib/actions/subscriptions";
-
-interface SubscriptionWithCategory extends RecurringTransaction {
-  account?: {
-    id: string;
-    name: string;
-  } | null;
-  category?: {
-    id: string;
-    name: string;
-    color: string | null;
-  } | null;
-}
-
-interface LinkedTransaction {
-  id: string;
-  merchant: string | null;
-  description: string | null;
-  amount: string;
-  bookedAt: Date;
-  account: {
-    name: string;
-  };
-}
+import type { SubscriptionViewModel } from "@/features/subscriptions/public";
+import { useSubscriptionDetailController } from "@/features/subscriptions/hooks/use-subscription-detail-controller";
 
 interface SubscriptionDetailSheetProps {
-  subscription: SubscriptionWithCategory | null;
+  subscription: SubscriptionViewModel | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onEdit: (subscription: SubscriptionWithCategory) => void;
+  onEdit: (subscription: SubscriptionViewModel) => void;
   onRefresh: () => void;
 }
 
@@ -81,78 +52,8 @@ export function SubscriptionDetailSheet({
   onEdit,
   onRefresh,
 }: SubscriptionDetailSheetProps) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isMatching, setIsMatching] = useState(false);
-  const [costAggregations, setCostAggregations] = useState<{
-    thisYear: number;
-    allTime: number;
-  }>({ thisYear: 0, allTime: 0 });
-  const [linkedTransactions, setLinkedTransactions] = useState<
-    LinkedTransaction[]
-  >([]);
-
-  // Load data when subscription changes
-  useEffect(() => {
-    if (open && subscription) {
-      loadData();
-    }
-  }, [open, subscription?.id]);
-
-  const loadData = async () => {
-    if (!subscription) return;
-
-    setIsLoading(true);
-    try {
-      const [aggregations, transactions] = await Promise.all([
-        getSubscriptionCostAggregations(subscription.id),
-        getLinkedTransactions(subscription.id),
-      ]);
-      setCostAggregations(aggregations);
-      setLinkedTransactions(transactions);
-    } catch (error) {
-      console.error("Failed to load subscription data:", error);
-      toast.error("Failed to load subscription details");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleMatchTransactions = async () => {
-    if (!subscription) return;
-
-    setIsMatching(true);
-    try {
-      const result = await matchTransactionsToSubscription(subscription.id);
-
-      if (result.success) {
-        const matchedCount = result.matchedCount || 0;
-
-        if (matchedCount === 0) {
-          // Provide context based on whether there are already linked transactions
-          if (linkedTransactions.length > 0) {
-            toast.info(
-              `All ${linkedTransactions.length} transaction(s) are already linked to "${subscription.name}"`
-            );
-          } else {
-            toast.info("No matching transactions found");
-          }
-        } else {
-          toast.success(
-            `Matched ${matchedCount} new transaction(s) to "${subscription.name}"`
-          );
-        }
-        // Reload data to show new matches
-        await loadData();
-        onRefresh();
-      } else {
-        toast.error(result.error || "Failed to match transactions");
-      }
-    } catch (error) {
-      toast.error("Failed to match transactions");
-    } finally {
-      setIsMatching(false);
-    }
-  };
+  const { costAggregations, isLoading, isMatching, linkedTransactions, matchTransactions } =
+    useSubscriptionDetailController(subscription, open, onRefresh);
 
   const handleEdit = () => {
     if (subscription) {
@@ -247,7 +148,7 @@ export function SubscriptionDetailSheet({
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={handleMatchTransactions}
+                onClick={matchTransactions}
                 disabled={isMatching}
               >
                 <RiLink className="mr-2 h-4 w-4" />

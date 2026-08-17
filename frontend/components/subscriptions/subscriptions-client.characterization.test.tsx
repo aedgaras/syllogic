@@ -13,11 +13,9 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }
 vi.mock("sonner", () => ({
   toast: { success: mocks.toastSuccess, error: vi.fn() },
 }));
-vi.mock("@/lib/actions/subscriptions", () => ({
+vi.mock("@/features/subscriptions/client/actions", () => ({
   toggleSubscriptionActive: mocks.toggleSubscriptionActive,
   deleteSubscription: vi.fn(),
-}));
-vi.mock("@/lib/actions/subscription-suggestions", () => ({
   dismissSuggestion: mocks.dismissSuggestion,
 }));
 vi.mock("./subscription-form-dialog", () => ({ SubscriptionFormDialog: () => null }));
@@ -62,7 +60,7 @@ describe("SubscriptionsClient characterization", () => {
     mocks.dismissSuggestion.mockResolvedValue({ success: true });
   });
 
-  it("persists a toggle, updates the local row, notifies, and refreshes", async () => {
+  it("persists a toggle and updates the client-owned list without a route refresh", async () => {
     render(
       <SubscriptionsClient
         initialSubscriptions={[subscription] as never}
@@ -78,7 +76,7 @@ describe("SubscriptionsClient characterization", () => {
     await waitFor(() => expect(mocks.toggleSubscriptionActive).toHaveBeenCalledWith("subscription-1", false));
     expect(screen.getByTestId("subscription-rows")).toHaveTextContent("Streaming:false");
     expect(mocks.toastSuccess).toHaveBeenCalledWith("Subscription deactivated");
-    expect(mocks.refresh).toHaveBeenCalledOnce();
+    expect(mocks.refresh).not.toHaveBeenCalled();
   });
 
   it("removes a successfully dismissed suggestion without refreshing", async () => {
@@ -100,4 +98,3 @@ describe("SubscriptionsClient characterization", () => {
     expect(mocks.refresh).not.toHaveBeenCalled();
   });
 });
-

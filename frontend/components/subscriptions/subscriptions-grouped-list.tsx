@@ -31,13 +31,13 @@ import {
   RiEditLine,
   RiMoreLine,
 } from "@remixicon/react";
-import type { SubscriptionOrSuggestion } from "./subscriptions-client";
+import type { SubscriptionListRow as SubscriptionOrSuggestion } from "@/features/subscriptions/public";
 import {
   calculateMonthlyEquivalent,
   getCurrencyFallback,
 } from "./subscription-math";
 import { WeightBarVisualizer } from "@/components/assets/weight-bar-visualizer";
-import type { SubscriptionKpis } from "@/lib/actions/subscriptions";
+import type { SubscriptionKpis } from "@/features/subscriptions/public";
 import { SubscriptionsKpiGrid } from "./subscriptions-kpi-grid";
 
 interface SubscriptionsGroupedListProps {

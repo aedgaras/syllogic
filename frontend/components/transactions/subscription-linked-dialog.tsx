@@ -30,7 +30,7 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import type { TransactionWithRelations } from "@/features/transactions/public";
-import { unlinkTransactionFromSubscription } from "@/lib/actions/subscriptions";
+import { unlinkTransactionFromSubscription } from "@/features/subscriptions/client/transaction-linking";
 
 interface SubscriptionLinkedDialogProps {
   transaction: TransactionWithRelations;

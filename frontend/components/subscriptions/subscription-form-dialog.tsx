@@ -25,36 +25,28 @@ import { RiSearchLine, RiCloseLine, RiLoader4Line } from "@remixicon/react";
 import { toast } from "sonner";
 import {
   createSubscription,
+  hasLogoApiKey,
+  searchLogo,
   updateSubscription,
-  type SubscriptionCreateInput,
-  type SubscriptionUpdateInput,
-} from "@/lib/actions/subscriptions";
-import {
   verifySuggestion,
-  type SubscriptionSuggestionWithMeta,
-} from "@/lib/actions/subscription-suggestions";
-import { searchLogo, hasLogoApiKey } from "@/lib/actions/logos";
-import type { RecurringTransaction } from "@/lib/db/schema";
+} from "@/features/subscriptions/client/actions";
+import type {
+  SubscriptionCreateInput,
+  SubscriptionFrequency,
+  SubscriptionSuggestionViewModel,
+  SubscriptionUpdateInput,
+  SubscriptionViewModel,
+} from "@/features/subscriptions/public";
 import { withAssetVersion } from "@/lib/utils/asset-url";
-
-type SubscriptionFrequency = "monthly" | "weekly" | "yearly" | "quarterly" | "biweekly";
-
-interface SubscriptionWithLogo extends RecurringTransaction {
-  logo?: {
-    id: string;
-    logoUrl: string | null;
-    updatedAt?: Date | null;
-  } | null;
-}
 
 interface SubscriptionFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  subscription?: SubscriptionWithLogo | null;
-  suggestion?: SubscriptionSuggestionWithMeta | null;
+  subscription?: SubscriptionViewModel | null;
+  suggestion?: SubscriptionSuggestionViewModel | null;
   accounts: Array<{ id: string; name: string }>;
   categories: Array<{ id: string; name: string; color: string | null }>;
-  onSuccess?: (suggestionId?: string, newSubscription?: RecurringTransaction) => void;
+  onSuccess?: (suggestionId?: string, newSubscription?: SubscriptionViewModel) => void;
 }
 
 const frequencyOptions = [
@@ -295,7 +287,7 @@ export function SubscriptionFormDialog({
               : `Subscription created and ${result.linkedCount || 0} transaction(s) linked`;
           toast.success(message);
           onOpenChange(false);
-          onSuccess?.(suggestion.id, result.subscription as RecurringTransaction);
+          onSuccess?.(suggestion.id, result.subscription as SubscriptionViewModel);
         } else {
           toast.error(result.error || "Failed to verify");
         }
@@ -319,7 +311,7 @@ export function SubscriptionFormDialog({
           toast.success("Subscription created");
           onOpenChange(false);
           if (result.subscription) {
-            onSuccess?.(undefined, result.subscription as RecurringTransaction);
+            onSuccess?.(undefined, result.subscription);
           } else {
             onSuccess?.();
           }

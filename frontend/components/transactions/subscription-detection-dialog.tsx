@@ -29,9 +29,11 @@ import type { CategoryDisplay } from "@/types";
 import {
   detectSubscriptionFromTransaction,
   createSubscriptionFromTransaction,
-  type SubscriptionDetectionResult,
-  type SubscriptionFrequency,
-} from "@/lib/actions/subscriptions";
+} from "@/features/subscriptions/client/transaction-linking";
+import type {
+  SubscriptionDetectionResult,
+  SubscriptionFrequency,
+} from "@/features/subscriptions/public";
 
 interface SubscriptionDetectionDialogProps {
   transaction: TransactionWithRelations;

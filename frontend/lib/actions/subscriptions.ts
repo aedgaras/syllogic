@@ -8,60 +8,66 @@ import {
   transactions,
   categories,
   accounts,
-  companyLogos,
-  type RecurringTransaction,
   type NewRecurringTransaction,
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth-helpers";
+import type {
+  MatchedTransaction,
+  LinkedSubscriptionTransaction,
+  PotentialMatch,
+  SubscriptionCreateInput,
+  SubscriptionDetectionResult,
+  SubscriptionFrequency,
+  SubscriptionKpis,
+  SubscriptionUpdateInput,
+  SubscriptionViewModel,
+} from "@/features/subscriptions/public";
+import { monthlyEquivalent, validateSubscriptionInput } from "@/features/subscriptions/public";
+import { calculateStringSimilarity, detectFrequencyFromGaps, scoreSubscriptionMatch } from "@/features/subscriptions/domain/matching";
 
-// ============================================================================
-// Type Aliases (keeping DB names, using "Subscription" in UI)
-// ============================================================================
+export type {
+  MatchedTransaction,
+  LinkedSubscriptionTransaction,
+  PotentialMatch,
+  SubscriptionCreateInput,
+  SubscriptionDetectionResult,
+  SubscriptionFrequency,
+  SubscriptionKpis,
+  SubscriptionUpdateInput,
+  SubscriptionViewModel as Subscription,
+} from "@/features/subscriptions/public";
 
-export type Subscription = RecurringTransaction;
-export type NewSubscription = NewRecurringTransaction;
+type SubscriptionRow = typeof recurringTransactions.$inferSelect & {
+  account?: { id: string; name: string } | null;
+  category?: { id: string; name: string; color: string | null } | null;
+  logo?: { id: string; logoUrl: string | null; updatedAt?: Date | null } | null;
+};
 
-export interface SubscriptionKpis {
-  activeCount: number;
-  monthlyTotal: number;
-  allTimeTotal: number;
-  currency: string;
+function toSubscriptionViewModel(row: SubscriptionRow): SubscriptionViewModel {
+  return {
+    id: row.id,
+    accountId: row.accountId,
+    name: row.name,
+    merchant: row.merchant,
+    amount: row.amount,
+    currency: row.currency,
+    categoryId: row.categoryId,
+    logoId: row.logoId,
+    importance: row.importance,
+    frequency: row.frequency as SubscriptionFrequency,
+    isActive: row.isActive,
+    description: row.description,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    account: row.account ? { id: row.account.id, name: row.account.name } : null,
+    category: row.category
+      ? { id: row.category.id, name: row.category.name, color: row.category.color }
+      : null,
+    logo: row.logo
+      ? { id: row.logo.id, logoUrl: row.logo.logoUrl, updatedAt: row.logo.updatedAt }
+      : null,
+  };
 }
-
-// ============================================================================
-// Input Interfaces
-// ============================================================================
-
-export interface SubscriptionCreateInput {
-  accountId: string;
-  name: string;
-  merchant?: string;
-  amount: number;
-  currency?: string;
-  categoryId?: string;
-  logoId?: string;
-  importance: number; // 1-3
-  frequency: "monthly" | "weekly" | "yearly" | "quarterly" | "biweekly";
-  description?: string;
-}
-
-export interface SubscriptionUpdateInput {
-  accountId?: string;
-  name?: string;
-  merchant?: string;
-  amount?: number;
-  currency?: string;
-  categoryId?: string;
-  logoId?: string | null;
-  importance?: number;
-  frequency?: "monthly" | "weekly" | "yearly" | "quarterly" | "biweekly";
-  description?: string;
-  isActive?: boolean;
-}
-
-// Legacy aliases for backward compatibility
-export type RecurringTransactionCreateInput = SubscriptionCreateInput;
-export type RecurringTransactionUpdateInput = SubscriptionUpdateInput;
 
 // ============================================================================
 // CRUD Operations
@@ -76,7 +82,7 @@ export async function createSubscription(
   success: boolean;
   error?: string;
   subscriptionId?: string;
-  subscription?: Subscription;
+  subscription?: SubscriptionViewModel;
 }> {
   const userId = await requireAuth();
 
@@ -85,22 +91,8 @@ export async function createSubscription(
   }
 
   try {
-    // Validate input
-    if (!input.name?.trim()) {
-      return { success: false, error: "Name is required" };
-    }
-
-    if (input.amount <= 0) {
-      return { success: false, error: "Amount must be greater than 0" };
-    }
-
-    if (input.importance < 1 || input.importance > 3) {
-      return { success: false, error: "Importance must be between 1 and 3" };
-    }
-
-    if (!input.accountId) {
-      return { success: false, error: "Account is required" };
-    }
+    const validationError = validateSubscriptionInput(input);
+    if (validationError) return { success: false, error: validationError };
 
     const account = await db.query.accounts.findFirst({
       where: and(
@@ -174,15 +166,16 @@ export async function createSubscription(
     });
 
     revalidatePath("/subscriptions");
-    return { success: true, subscriptionId: created.id, subscription: subscription ?? undefined };
+    return {
+      success: true,
+      subscriptionId: created.id,
+      subscription: subscription ? toSubscriptionViewModel(subscription) : undefined,
+    };
   } catch (error) {
     console.error("Failed to create subscription:", error);
     return { success: false, error: "Failed to create subscription" };
   }
 }
-
-// Legacy alias
-export const createRecurringTransaction = createSubscription;
 
 /**
  * Update an existing subscription
@@ -301,9 +294,6 @@ export async function updateSubscription(
   }
 }
 
-// Legacy alias
-export const updateRecurringTransaction = updateSubscription;
-
 /**
  * Delete a subscription
  */
@@ -342,9 +332,6 @@ export async function deleteSubscription(
     return { success: false, error: "Failed to delete subscription" };
   }
 }
-
-// Legacy alias
-export const deleteRecurringTransaction = deleteSubscription;
 
 /**
  * Toggle active status of a subscription
@@ -389,15 +376,12 @@ export async function toggleSubscriptionActive(
   }
 }
 
-// Legacy alias
-export const toggleRecurringTransactionActive = toggleSubscriptionActive;
-
 /**
  * Get all subscriptions for the current user
  */
 export async function getSubscriptions(
   includeInactive = false
-): Promise<Subscription[]> {
+): Promise<SubscriptionViewModel[]> {
   const userId = await requireAuth();
 
   if (!userId) {
@@ -425,15 +409,12 @@ export async function getSubscriptions(
       ],
     });
 
-    return results;
+    return results.map(toSubscriptionViewModel);
   } catch (error) {
     console.error("Failed to get subscriptions:", error);
     return [];
   }
 }
-
-// Legacy alias
-export const getRecurringTransactions = getSubscriptions;
 
 /**
  * Get subscription KPI metrics for the current user
@@ -458,18 +439,8 @@ export async function getSubscriptionKpis(): Promise<SubscriptionKpis> {
       },
     });
 
-    const frequencyMultipliers: Record<string, number> = {
-      weekly: 4,
-      biweekly: 2,
-      monthly: 1,
-      quarterly: 1 / 3,
-      yearly: 1 / 12,
-    };
-
     const monthlyTotal = activeSubscriptions.reduce((sumValue, subscription) => {
-      const amount = Math.abs(parseFloat(subscription.amount || "0"));
-      const multiplier = frequencyMultipliers[subscription.frequency] || 1;
-      return sumValue + amount * multiplier;
+      return sumValue + monthlyEquivalent(subscription.amount, subscription.frequency);
     }, 0);
 
     const currency = activeSubscriptions.find((sub) => sub.currency)?.currency || "EUR";
@@ -505,7 +476,7 @@ export async function getSubscriptionKpis(): Promise<SubscriptionKpis> {
  */
 export async function getSubscription(
   id: string
-): Promise<Subscription | null> {
+): Promise<SubscriptionViewModel | null> {
   const userId = await requireAuth();
 
   if (!userId) {
@@ -525,93 +496,16 @@ export async function getSubscription(
       },
     });
 
-    return result || null;
+    return result ? toSubscriptionViewModel(result) : null;
   } catch (error) {
     console.error("Failed to get subscription:", error);
     return null;
   }
 }
 
-// Legacy alias
-export const getRecurringTransaction = getSubscription;
-
 // ============================================================================
 // Matching & Linking Operations
 // ============================================================================
-
-export interface PotentialMatch {
-  transactionId: string;
-  subscriptionId: string;
-  transaction: {
-    id: string;
-    merchant: string | null;
-    amount: string;
-    description: string | null;
-    bookedAt: Date;
-    accountName: string;
-  };
-  subscription: {
-    id: string;
-    name: string;
-    merchant: string | null;
-    amount: string;
-  };
-  matchScore: number; // 0-100
-  matchReason: string;
-}
-
-/**
- * Simple string similarity using Levenshtein distance
- */
-function levenshteinDistance(str1: string, str2: string): number {
-  const s1 = str1.toLowerCase();
-  const s2 = str2.toLowerCase();
-
-  const matrix: number[][] = [];
-
-  for (let i = 0; i <= s2.length; i++) {
-    matrix[i] = [i];
-  }
-
-  for (let j = 0; j <= s1.length; j++) {
-    matrix[0][j] = j;
-  }
-
-  for (let i = 1; i <= s2.length; i++) {
-    for (let j = 1; j <= s1.length; j++) {
-      if (s2.charAt(i - 1) === s1.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-
-  return matrix[s2.length][s1.length];
-}
-
-/**
- * Calculate similarity score between two strings (0-100)
- */
-function calculateStringSimilarity(str1: string, str2: string): number {
-  if (!str1 || !str2) return 0;
-
-  const s1 = str1.toLowerCase().trim();
-  const s2 = str2.toLowerCase().trim();
-
-  if (s1 === s2) return 100;
-  if (s1.includes(s2) || s2.includes(s1)) return 80;
-
-  const distance = levenshteinDistance(s1, s2);
-  const maxLength = Math.max(s1.length, s2.length);
-  const similarity = ((maxLength - distance) / maxLength) * 100;
-
-  return Math.max(0, similarity);
-}
 
 /**
  * Find potential matches between unlinked transactions and active subscriptions
@@ -666,60 +560,10 @@ export async function findPotentialMatches(): Promise<PotentialMatch[]> {
           continue;
         }
 
-        let matchScore = 0;
-        const reasons: string[] = [];
-
-        // Merchant matching
-        if (subscription.merchant && transaction.merchant) {
-          const merchantSimilarity = calculateStringSimilarity(
-            subscription.merchant,
-            transaction.merchant
-          );
-
-          if (merchantSimilarity === 100) {
-            matchScore += 50;
-            reasons.push("Exact merchant match");
-          } else if (merchantSimilarity >= 80) {
-            matchScore += 30;
-            reasons.push("Similar merchant");
-          }
-        }
-
-        // Amount matching (+-5% tolerance)
-        const subscriptionAmount = parseFloat(subscription.amount);
-        const transactionAmount = Math.abs(parseFloat(transaction.amount));
-        const amountDiff = Math.abs(subscriptionAmount - transactionAmount);
-        const amountTolerance = subscriptionAmount * 0.05;
-
-        if (amountDiff === 0) {
-          matchScore += 30;
-          reasons.push("Exact amount match");
-        } else if (amountDiff <= amountTolerance) {
-          matchScore += 20;
-          reasons.push("Amount within 5%");
-        }
-
-        // Category matching (bonus points)
-        if (
-          subscription.categoryId &&
-          (transaction.categoryId === subscription.categoryId ||
-            transaction.categorySystemId === subscription.categoryId)
-        ) {
-          matchScore += 10;
-          reasons.push("Same category");
-        }
-
-        // Description fallback matching if no merchant
-        if (!subscription.merchant && !transaction.merchant) {
-          const descSimilarity = calculateStringSimilarity(
-            subscription.name,
-            transaction.description || ""
-          );
-          if (descSimilarity >= 70) {
-            matchScore += 20;
-            reasons.push("Description match");
-          }
-        }
+        const { score: matchScore, reason: matchReason } = scoreSubscriptionMatch(
+          subscription,
+          transaction
+        );
 
         // Only include matches with score >= 50
         if (matchScore >= 50) {
@@ -741,7 +585,7 @@ export async function findPotentialMatches(): Promise<PotentialMatch[]> {
               amount: subscription.amount,
             },
             matchScore,
-            matchReason: reasons.join(", "),
+            matchReason,
           });
         }
       }
@@ -821,9 +665,6 @@ export async function linkTransactionToSubscription(
   }
 }
 
-// Legacy alias
-export const linkTransactionToRecurring = linkTransactionToSubscription;
-
 /**
  * Unlink a transaction from its subscription
  */
@@ -866,9 +707,6 @@ export async function unlinkTransactionFromSubscription(
     return { success: false, error: "Failed to unlink transaction" };
   }
 }
-
-// Legacy alias
-export const unlinkTransactionFromRecurring = unlinkTransactionFromSubscription;
 
 /**
  * Bulk link multiple transactions to subscriptions
@@ -1086,9 +924,6 @@ export async function matchTransactionsToSubscription(
   }
 }
 
-// Legacy alias
-export const matchTransactionsToRecurring = matchTransactionsToSubscription;
-
 /**
  * Get cost aggregations for a subscription
  * Returns the sum of linked transactions for this year and all time
@@ -1151,7 +986,7 @@ export async function getSubscriptionCostAggregations(
  */
 export async function getLinkedTransactions(
   subscriptionId: string
-): Promise<any[]> {
+): Promise<LinkedSubscriptionTransaction[]> {
   const userId = await requireAuth();
 
   if (!userId) {
@@ -1184,7 +1019,17 @@ export async function getLinkedTransactions(
       orderBy: [desc(transactions.bookedAt)],
     });
 
-    return linkedTransactions;
+    return linkedTransactions.map((transaction) => ({
+      id: transaction.id,
+      merchant: transaction.merchant,
+      description: transaction.description,
+      amount: transaction.amount,
+      bookedAt: transaction.bookedAt,
+      account: transaction.account ? { name: transaction.account.name } : null,
+      category: transaction.category
+        ? { id: transaction.category.id, name: transaction.category.name, color: transaction.category.color }
+        : null,
+    }));
   } catch (error) {
     console.error("Failed to get linked transactions:", error);
     return [];
@@ -1194,112 +1039,6 @@ export async function getLinkedTransactions(
 // ============================================================================
 // Subscription Detection & Creation from Transaction
 // ============================================================================
-
-export type SubscriptionFrequency = "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
-
-export interface MatchedTransaction {
-  id: string;
-  amount: number;
-  bookedAt: Date;
-  merchant: string | null;
-  description: string | null;
-}
-
-export interface SubscriptionDetectionResult {
-  success: boolean;
-  error?: string;
-  detectedFrequency?: SubscriptionFrequency;
-  confidence: number; // 0-100
-  matchedTransactions: MatchedTransaction[];
-  suggestedName: string;
-  suggestedAmount: number;
-  suggestedMerchant: string | null;
-}
-
-/**
- * Frequency detection configuration
- */
-const FREQUENCY_RANGES: Record<SubscriptionFrequency, { min: number; max: number; target: number }> = {
-  weekly: { min: 5, max: 9, target: 7 },
-  biweekly: { min: 12, max: 16, target: 14 },
-  monthly: { min: 26, max: 34, target: 30 },
-  quarterly: { min: 80, max: 100, target: 90 },
-  yearly: { min: 350, max: 380, target: 365 },
-};
-
-/**
- * Calculate standard deviation of an array of numbers
- */
-function calculateStdDev(values: number[]): number {
-  if (values.length === 0) return 0;
-  const mean = values.reduce((a, b) => a + b, 0) / values.length;
-  const squaredDiffs = values.map((v) => Math.pow(v - mean, 2));
-  const variance = squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
-  return Math.sqrt(variance);
-}
-
-/**
- * Filter outliers from an array using standard deviation
- */
-function filterOutliers(values: number[], stdDevMultiplier: number = 2): number[] {
-  if (values.length < 3) return values;
-
-  const mean = values.reduce((a, b) => a + b, 0) / values.length;
-  const stdDev = calculateStdDev(values);
-
-  if (stdDev === 0) return values;
-
-  return values.filter((v) => Math.abs(v - mean) <= stdDevMultiplier * stdDev);
-}
-
-/**
- * Detect frequency from date gaps
- */
-function detectFrequencyFromGaps(gaps: number[]): { frequency: SubscriptionFrequency | null; confidence: number } {
-  if (gaps.length === 0) {
-    return { frequency: null, confidence: 0 };
-  }
-
-  // Filter outliers
-  const filteredGaps = filterOutliers(gaps);
-  if (filteredGaps.length === 0) {
-    return { frequency: null, confidence: 0 };
-  }
-
-  // Calculate average gap
-  const avgGap = filteredGaps.reduce((a, b) => a + b, 0) / filteredGaps.length;
-
-  // Find matching frequency
-  let bestMatch: { frequency: SubscriptionFrequency | null; score: number } = { frequency: null, score: 0 };
-
-  for (const [freq, range] of Object.entries(FREQUENCY_RANGES) as [SubscriptionFrequency, { min: number; max: number; target: number }][]) {
-    if (avgGap >= range.min && avgGap <= range.max) {
-      // Calculate how close to target
-      const deviation = Math.abs(avgGap - range.target);
-      const maxDeviation = (range.max - range.min) / 2;
-      const score = 1 - (deviation / maxDeviation);
-
-      if (score > bestMatch.score) {
-        bestMatch = { frequency: freq, score };
-      }
-    }
-  }
-
-  if (!bestMatch.frequency) {
-    return { frequency: null, confidence: 0 };
-  }
-
-  // Calculate confidence based on:
-  // 1. Gap consistency (low std dev = high confidence)
-  // 2. Match score
-  const stdDev = calculateStdDev(filteredGaps);
-  const consistencyScore = Math.max(0, 1 - (stdDev / avgGap));
-
-  // Combine scores
-  const confidence = Math.round((bestMatch.score * 0.5 + consistencyScore * 0.5) * 100);
-
-  return { frequency: bestMatch.frequency, confidence };
-}
 
 /**
  * Detect subscription pattern from a transaction
