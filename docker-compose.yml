@@ -202,7 +202,6 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - LOGO_DEV_API_KEY=${LOGO_DEV_API_KEY:-}
       - DISABLE_SIGN_UPS=false
-      - NEXT_PUBLIC_DISABLE_SIGN_UPS=false
     depends_on:
       backend:
         condition: service_healthy

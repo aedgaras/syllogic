@@ -1,4 +1,5 @@
 import { createAuthClient } from "better-auth/react";
+import { genericOAuthClient } from "better-auth/client/plugins";
 
 const toValidOrigin = (value?: string | null): string | undefined => {
   const trimmed = value?.trim();
@@ -32,6 +33,7 @@ const defaultBaseUrl =
 
 export const authClient = createAuthClient({
   baseURL: defaultBaseUrl,
+  plugins: [genericOAuthClient()],
 });
 
 export const {

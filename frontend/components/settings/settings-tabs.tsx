@@ -9,6 +9,7 @@ import {
   RiBankLine,
   RiGroupLine,
   RiSettings4Line,
+  RiLockLine,
 } from "@remixicon/react";
 import { ProfileEditor } from "./profile-editor";
 import { CategoryManager } from "./category-manager";
@@ -20,6 +21,9 @@ import { PreferencesTab } from "./preferences-tab";
 import type { SettingsCategory, SettingsUser } from "@/features/settings/public";
 import type { CsvImportWithStats } from "@/features/csv-import/public";
 import type { OpenAiSettings } from "@/lib/actions/settings";
+import type { OidcAdminSettings } from "@/lib/oidc-settings";
+import type { RegistrationStatus } from "@/lib/registration-settings";
+import { AuthenticationTab } from "./authentication-tab";
 
 type Person = {
   id: string;
@@ -58,6 +62,10 @@ interface SettingsTabsProps {
   }>;
   people: Person[];
   openAiSettings: OpenAiSettings & { error?: string };
+  isAdmin?: boolean;
+  oidcSettings?: OidcAdminSettings & { error?: string };
+  signupSettings?: RegistrationStatus & { error?: string };
+  oidcCallbackUrl?: string;
 }
 
 export function SettingsTabs({
@@ -73,6 +81,10 @@ export function SettingsTabs({
   bankConnections,
   people,
   openAiSettings,
+  isAdmin = false,
+  oidcSettings,
+  signupSettings,
+  oidcCallbackUrl = "/api/auth/oauth2/callback/oidc",
 }: SettingsTabsProps) {
   return (
     <Tabs defaultValue={defaultTab} className="flex-1">
@@ -107,6 +119,12 @@ export function SettingsTabs({
           <RiSettings4Line className="mr-1.5 h-4 w-4" />
           Preferences
         </TabsTrigger>
+        {isAdmin && (
+          <TabsTrigger value="authentication">
+            <RiLockLine className="mr-1.5 h-4 w-4" />
+            Authentication
+          </TabsTrigger>
+        )}
       </TabsList>
 
       <TabsContent value="profile">
@@ -142,6 +160,16 @@ export function SettingsTabs({
       <TabsContent value="preferences">
         <PreferencesTab initialOpenAiSettings={openAiSettings} />
       </TabsContent>
+
+      {isAdmin && oidcSettings && signupSettings && (
+        <TabsContent value="authentication">
+          <AuthenticationTab
+            initialSettings={oidcSettings}
+            initialSignupSettings={signupSettings}
+            callbackUrl={oidcCallbackUrl}
+          />
+        </TabsContent>
+      )}
     </Tabs>
   );
 }

@@ -1,9 +1,10 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, jwt } from "better-auth/plugins";
+import { admin, genericOAuth, jwt } from "better-auth/plugins";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
+import type { OidcRuntimeConfig } from "@/lib/oidc-config";
 
 const toValidOrigin = (value?: string | null): string | undefined => {
   const trimmed = value?.trim();
@@ -32,7 +33,11 @@ const resolvedBaseURL = [
   .map((value) => toValidOrigin(value))
   .find((value): value is string => Boolean(value));
 
-export const auth = betterAuth({
+export function createAuth(
+  oidcConfig?: OidcRuntimeConfig | null,
+  allowNewUsers = true
+) {
+  return betterAuth({
   baseURL: resolvedBaseURL,
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -55,6 +60,24 @@ export const auth = betterAuth({
         keyPairConfig: { alg: "RS256", modulusLength: 2048 },
       },
     }),
+    ...(oidcConfig?.enabled
+      ? [
+          genericOAuth({
+            config: [
+              {
+                providerId: "oidc",
+                discoveryUrl: oidcConfig.discoveryUrl,
+                clientId: oidcConfig.clientId,
+                clientSecret: oidcConfig.clientSecret,
+                scopes: ["openid", "profile", "email"],
+                pkce: true,
+                disableImplicitSignUp: !oidcConfig.allowSignUp || !allowNewUsers,
+                disableSignUp: !allowNewUsers,
+              },
+            ],
+          }),
+        ]
+      : []),
     oauthProvider({
       scopes: ["mcp:access"],
       accessTokenExpiresIn: 60 * 60 * 24 * 30, // 30 days
@@ -131,6 +154,37 @@ export const auth = betterAuth({
       ])
     );
   })(),
-});
+  });
+}
+
+// Most server-side consumers only need session validation. The auth route uses
+// getRequestAuth() below so an administrator can change OIDC without a restart.
+export const auth = createAuth();
+
+let requestAuthCache = auth;
+let requestAuthCacheKey = "disabled";
+
+export async function getRequestAuth() {
+  try {
+    const [{ getOidcRuntimeConfig }, { getRegistrationStatus }] = await Promise.all([
+      import("@/lib/oidc-settings"),
+      import("@/lib/registration-settings"),
+    ]);
+    const [config, registration] = await Promise.all([
+      getOidcRuntimeConfig(),
+      getRegistrationStatus(),
+    ]);
+    const cacheKey = JSON.stringify({ config, allowNewUsers: registration.enabled });
+    if (cacheKey !== requestAuthCacheKey) {
+      requestAuthCache = createAuth(config, registration.enabled);
+      requestAuthCacheKey = cacheKey;
+    }
+    return requestAuthCache;
+  } catch (error) {
+    // Optional OIDC must never make password/session authentication unavailable.
+    console.error("Failed to load OIDC configuration; continuing without OIDC:", error);
+    return auth;
+  }
+}
 
 export type Session = typeof auth.$Infer.Session;

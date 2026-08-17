@@ -168,7 +168,19 @@ Optional auth throttling (recommended for public demos):
 
 Generate secrets with `openssl rand -hex 32`. For encryption keys: `openssl rand -base64 32`.
 
+On a fresh database, opening the app redirects to registration. The first user
+is promoted to administrator automatically. Administrators can subsequently
+enable or disable new account registration under **Settings → Authentication**.
+`DISABLE_SIGN_UPS=true` remains available as a deployment-level hard override
+after the bootstrap administrator has been created.
+
 ### Optional Features Behavior
+
+**OIDC single sign-on** — Administrators can enable an OpenID Connect provider
+from **Settings → Authentication** without restarting the app. This supports
+providers such as Authentik, Keycloak, and Okta. Provider credentials are stored
+encrypted with `DATA_ENCRYPTION_KEY_CURRENT`. Configure the provider's redirect
+URI as `https://your-app-domain/api/auth/oauth2/callback/oidc`.
 
 **`OPENAI_API_KEY`** — AI-powered categorization via OpenAI (GPT-4o-mini by default).
 - **When set**: Transactions are categorized using the LLM for high accuracy.

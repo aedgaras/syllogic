@@ -86,6 +86,9 @@ const getClientIdentifier = (req: NextRequest): string => {
 const isEmailSignInRequest = (req: NextRequest): boolean =>
   req.nextUrl.pathname.endsWith("/sign-in/email");
 
+const isEmailSignUpRequest = (req: NextRequest): boolean =>
+  req.nextUrl.pathname.endsWith("/sign-up/email");
+
 const extractEmailFromRequest = async (req: NextRequest): Promise<string | null> => {
   const contentType = req.headers.get("content-type") || "";
   try {
@@ -122,20 +125,16 @@ const tooManyRequests = (retryAfterSeconds: number, message: string) =>
   );
 
 async function resolveHandlers() {
-  const [{ auth }, { toNextJsHandler }] = await Promise.all([
+  const [{ getRequestAuth }, { toNextJsHandler }] = await Promise.all([
     import("@/lib/auth"),
     import("better-auth/next-js"),
   ]);
-  return toNextJsHandler(auth);
+  return toNextJsHandler(await getRequestAuth());
 }
 
-let handlersPromise: ReturnType<typeof resolveHandlers> | null = null;
-
 async function getHandlers() {
-  if (!handlersPromise) {
-    handlersPromise = resolveHandlers();
-  }
-  return handlersPromise;
+  // OIDC configuration is database-backed and can change at runtime.
+  return resolveHandlers();
 }
 
 export async function GET(req: NextRequest) {
@@ -144,6 +143,17 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  if (isEmailSignUpRequest(req)) {
+    const { getRegistrationStatus } = await import("@/lib/registration-settings");
+    const registration = await getRegistrationStatus();
+    if (!registration.enabled) {
+      return NextResponse.json(
+        { error: "Registrations are currently disabled." },
+        { status: 403 }
+      );
+    }
+  }
+
   if (AUTH_RATE_LIMIT_ENABLED && isEmailSignInRequest(req)) {
     const nowMs = Date.now();
     cleanupExpiredBuckets(nowMs);

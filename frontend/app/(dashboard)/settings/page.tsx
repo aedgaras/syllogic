@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
-import { getCurrentUserProfile, getOpenAiSettings } from "@/lib/actions/settings";
+import { getCurrentUserProfile, getOidcSettings, getOpenAiSettings, getSignupSettings } from "@/lib/actions/settings";
 import { getCategories } from "@/lib/actions/categories";
 import { listApiKeys } from "@/lib/actions/api-keys";
 import { getCsvImportHistory } from "@/lib/actions/csv-import";
@@ -30,6 +30,8 @@ export default async function SettingsPage({
     peopleRows,
     openAiSettings,
     resolvedSearchParams,
+    oidcSettings,
+    signupSettings,
   ] =
     await Promise.all([
       getCategories(),
@@ -39,6 +41,8 @@ export default async function SettingsPage({
       getPeople(user.id),
       getOpenAiSettings(),
       searchParams,
+      user.role === "admin" ? getOidcSettings() : Promise.resolve(undefined),
+      user.role === "admin" ? getSignupSettings() : Promise.resolve(undefined),
     ]);
 
   const people = peopleRows.map((p) => ({
@@ -58,6 +62,12 @@ export default async function SettingsPage({
     betterAuthUrl: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
     appUrl: process.env.APP_URL,
   });
+  const appBaseUrl = (
+    process.env.APP_URL ||
+    process.env.BETTER_AUTH_URL ||
+    process.env.NEXT_PUBLIC_BETTER_AUTH_URL ||
+    "http://localhost:3000"
+  ).replace(/\/+$/, "");
 
   return (
     <>
@@ -76,6 +86,10 @@ export default async function SettingsPage({
           bankConnections={bankConnections}
           people={people}
           openAiSettings={openAiSettings}
+          isAdmin={user.role === "admin"}
+          oidcSettings={oidcSettings}
+          signupSettings={signupSettings}
+          oidcCallbackUrl={`${appBaseUrl}/api/auth/oauth2/callback/oidc`}
         />
       </div>
     </>

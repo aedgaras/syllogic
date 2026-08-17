@@ -31,16 +31,20 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-const truthyParamValues = new Set(["1", "true", "yes", "on"]);
+type PublicOidcConfig = {
+  enabled: boolean;
+  displayName: string;
+};
 
-const signUpsDisabledVal = process.env.NEXT_PUBLIC_DISABLE_SIGN_UPS?.trim().toLowerCase();
-const signUpsDisabled = ["1", "true", "yes", "on"].includes(signUpsDisabledVal ?? "");
+const truthyParamValues = new Set(["1", "true", "yes", "on"]);
 
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [oidcConfig, setOidcConfig] = useState<PublicOidcConfig | null>(null);
+  const [signUpsEnabled, setSignUpsEnabled] = useState(false);
 
   const demoModeRequested = useMemo(() => {
     const raw = searchParams.get("demo");
@@ -78,6 +82,36 @@ function LoginPageContent() {
       setValue("password", prefillPassword, { shouldDirty: false });
     }
   }, [prefillEmail, prefillPassword, setValue]);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/oidc-config", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((config: PublicOidcConfig) => {
+        if (active && config.enabled) setOidcConfig(config);
+      })
+      .catch(() => {
+        // Email/password login remains available if OIDC configuration cannot load.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/registration-config", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((config: { enabled: boolean }) => {
+        if (active) setSignUpsEnabled(config.enabled);
+      })
+      .catch(() => {
+        // Keep registration hidden when its policy cannot be loaded.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // If the user landed here because an OAuth authorize request requires
   // authentication, better-auth's oauth-provider passes the original
@@ -125,6 +159,25 @@ function LoginPageContent() {
     }
   };
 
+  const onOidcSignIn = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await signIn.oauth2({
+        providerId: "oidc",
+        callbackURL: oauthResumeURL ?? "/",
+        errorCallbackURL: "/login?oidc_error=1",
+      });
+      if (result.error) {
+        setError(result.error.message || "Single sign-on failed");
+        setIsLoading(false);
+      }
+    } catch {
+      setError("Single sign-on failed");
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -134,11 +187,34 @@ function LoginPageContent() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {oidcConfig && (
+          <div className="mb-5 space-y-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={isLoading}
+              onClick={onOidcSignIn}
+            >
+              Continue with {oidcConfig.displayName}
+            </Button>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="h-px flex-1 bg-border" />
+              <span>or use email</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+          </div>
+        )}
         <form onSubmit={handleSubmit(onSubmit)}>
           <FieldGroup>
             {error && (
               <div className="bg-destructive/10 text-destructive p-3 text-sm">
                 {error}
+              </div>
+            )}
+            {searchParams.get("registration") === "disabled" && (
+              <div className="bg-muted p-3 text-sm text-muted-foreground">
+                New account registration is currently disabled.
               </div>
             )}
             {demoModeRequested && demoEmail && demoPassword && (
@@ -189,7 +265,7 @@ function LoginPageContent() {
               <Button type="submit" disabled={isLoading} className="w-full">
                 {isLoading ? "Signing in..." : "Login"}
               </Button>
-              {!signUpsDisabled && (
+              {signUpsEnabled && (
                 <FieldDescription className="text-center">
                   Don&apos;t have an account?{" "}
                   <Link href="/register" className="underline underline-offset-4">

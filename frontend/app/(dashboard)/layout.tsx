@@ -7,6 +7,7 @@ import { getOnboardingRedirectPath } from "@/lib/actions/onboarding";
 import { getCachedSession, getCachedOnboardingStatus } from "@/lib/data/cached";
 import { ImportStatusNotifier } from "@/components/import-status-notifier";
 import { WalkthroughProvider } from "@/components/walkthrough/walkthrough-provider";
+import { getRegistrationStatus } from "@/lib/registration-settings";
 
 const jbMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jb-mono", weight: ["400","500","600","700"] });
 
@@ -22,7 +23,8 @@ export default async function DashboardLayout({
   const session = await getCachedSession();
 
   if (!session) {
-    redirect("/login");
+    const registration = await getRegistrationStatus();
+    redirect(registration.firstUserWillBeAdmin ? "/register?first=1" : "/login");
   }
 
   // Check onboarding status and redirect if not completed.

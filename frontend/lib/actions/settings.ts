@@ -8,6 +8,132 @@ import { getAuthenticatedSession, requireAuth } from "@/lib/auth-helpers";
 import { storage } from "@/lib/storage";
 import { getBackendBaseUrl } from "@/lib/backend-url";
 import { createInternalAuthHeaders } from "@/lib/internal-auth";
+import {
+  getOidcAdminSettings,
+  saveOidcSettings,
+  type OidcAdminSettings,
+} from "@/lib/oidc-settings";
+import {
+  getRegistrationStatus,
+  saveRegistrationSettings,
+  type RegistrationStatus,
+} from "@/lib/registration-settings";
+
+async function requireAdminUserId(): Promise<string | null> {
+  const userId = await requireAuth();
+  if (!userId) return null;
+  const user = await db.query.users.findFirst({
+    columns: { role: true },
+    where: eq(users.id, userId),
+  });
+  return user?.role === "admin" ? userId : null;
+}
+
+export async function getOidcSettings(): Promise<OidcAdminSettings & { error?: string }> {
+  const adminUserId = await requireAdminUserId();
+  if (!adminUserId) {
+    return {
+      enabled: false,
+      displayName: "Single Sign-On",
+      discoveryUrl: "",
+      clientId: "",
+      clientSecretConfigured: false,
+      allowSignUp: true,
+      encryptionConfigured: false,
+      updatedAt: null,
+      error: "Administrator access is required.",
+    };
+  }
+
+  try {
+    return await getOidcAdminSettings();
+  } catch (error) {
+    return {
+      enabled: false,
+      displayName: "Single Sign-On",
+      discoveryUrl: "",
+      clientId: "",
+      clientSecretConfigured: false,
+      allowSignUp: true,
+      encryptionConfigured: false,
+      updatedAt: null,
+      error: error instanceof Error ? error.message : "Failed to load OIDC settings.",
+    };
+  }
+}
+
+export async function updateOidcSettings(input: {
+  enabled: boolean;
+  displayName: string;
+  discoveryUrl: string;
+  clientId: string;
+  clientSecret?: string;
+  allowSignUp: boolean;
+}): Promise<{ success: boolean; settings?: OidcAdminSettings; error?: string }> {
+  const adminUserId = await requireAdminUserId();
+  if (!adminUserId) return { success: false, error: "Administrator access is required." };
+
+  try {
+    const settings = await saveOidcSettings(input, adminUserId);
+    revalidatePath("/settings");
+    revalidatePath("/login");
+    return { success: true, settings };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to save OIDC settings.",
+    };
+  }
+}
+
+export async function getSignupSettings(): Promise<RegistrationStatus & { error?: string }> {
+  const adminUserId = await requireAdminUserId();
+  if (!adminUserId) {
+    return {
+      enabled: false,
+      hasUsers: true,
+      firstUserWillBeAdmin: false,
+      environmentDisabled: false,
+      databaseEnabled: false,
+      databaseConfigured: false,
+      error: "Administrator access is required.",
+    };
+  }
+
+  try {
+    return await getRegistrationStatus();
+  } catch (error) {
+    return {
+      enabled: false,
+      hasUsers: true,
+      firstUserWillBeAdmin: false,
+      environmentDisabled: false,
+      databaseEnabled: false,
+      databaseConfigured: false,
+      error: error instanceof Error ? error.message : "Failed to load signup settings.",
+    };
+  }
+}
+
+export async function updateSignupSettings(
+  enabled: boolean
+): Promise<{ success: boolean; settings?: RegistrationStatus; error?: string }> {
+  const adminUserId = await requireAdminUserId();
+  if (!adminUserId) return { success: false, error: "Administrator access is required." };
+
+  try {
+    const settings = await saveRegistrationSettings(enabled, adminUserId);
+    revalidatePath("/settings");
+    revalidatePath("/login");
+    revalidatePath("/register");
+    return { success: true, settings };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to save signup settings.",
+    };
+  }
+}
 
 export type OpenAiSettings = {
   configured: boolean;
