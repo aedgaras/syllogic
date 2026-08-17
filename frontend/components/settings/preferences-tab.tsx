@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ThemeSelector } from "@/components/theme-selector";
 import { useWalkthroughStore } from "@/components/walkthrough/walkthrough-store";
 import {
   clearOpenAiApiKey,
@@ -77,6 +78,16 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
 
   return (
     <div className="max-w-2xl space-y-4">
+      <div className="space-y-3 border border-border p-4">
+        <div className="space-y-1">
+          <Label>{translate("appearance")}</Label>
+          <p className="text-xs text-muted-foreground">
+            {translate("chooseHowSyllogicLooksOnThisDevice")}
+          </p>
+        </div>
+        <ThemeSelector />
+      </div>
+
       <div className="border border-border p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">

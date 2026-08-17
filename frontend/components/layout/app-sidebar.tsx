@@ -6,6 +6,7 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
+import { useTheme } from "next-themes";
 import {
   RiHomeLine,
   RiExchangeLine,
@@ -20,6 +21,9 @@ import {
   RiArrowLeftSLine,
   RiCloseLine,
   RiGlobalLine,
+  RiComputerLine,
+  RiMoonLine,
+  RiSunLine,
 } from "@remixicon/react";
 import { HelpButton } from "@/components/walkthrough/help-button";
 import { signOut, useSession } from "@/lib/auth-client";
@@ -133,6 +137,7 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
+  const { theme, setTheme } = useTheme();
   const { isMobile, state, setOpen, setOpenMobile } = useSidebar();
   const [hasMarkError, setHasMarkError] = useState(false);
   const [avatarLoadError, setAvatarLoadError] = useState(false);
@@ -361,6 +366,37 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
                           {translate(localeNameKeys[locale])}
                         </DropdownMenuRadioItem>
                       ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    {theme === "light" ? (
+                      <RiSunLine className="mr-2" />
+                    ) : theme === "dark" ? (
+                      <RiMoonLine className="mr-2" />
+                    ) : (
+                      <RiComputerLine className="mr-2" />
+                    )}
+                    {translate("theme")}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuRadioGroup
+                      value={theme ?? "system"}
+                      onValueChange={setTheme}
+                    >
+                      <DropdownMenuRadioItem value="light">
+                        <RiSunLine />
+                        {translate("light")}
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="dark">
+                        <RiMoonLine />
+                        {translate("dark")}
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="system">
+                        <RiComputerLine />
+                        {translate("system")}
+                      </DropdownMenuRadioItem>
                     </DropdownMenuRadioGroup>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>

@@ -13,6 +13,7 @@ import {
   RiAddLine,
   RiMoonLine,
   RiSunLine,
+  RiComputerLine,
   RiWallet3Line,
   RiDownloadLine,
   RiUploadLine,
@@ -59,7 +60,7 @@ export function CommandPalette() {
   const transactionSearchRequestIdRef = React.useRef(0);
   const router = useRouter();
   const pathname = usePathname();
-  const { setTheme, theme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
 
   const getSharedFilterQueryString = React.useCallback(() => {
     if (typeof window === "undefined") {
@@ -165,14 +166,14 @@ export function CommandPalette() {
           break;
         case "m":
           e.preventDefault();
-          setTheme(theme === "dark" ? "light" : "dark");
+          setTheme(resolvedTheme === "dark" ? "light" : "dark");
           break;
       }
     };
 
     document.addEventListener("keydown", handleDirectKeys);
     return () => document.removeEventListener("keydown", handleDirectKeys);
-  }, [open, router, theme, setTheme, onAddTransaction, getHomePathWithFilters, getTransactionsPathWithFilters]);
+  }, [open, router, resolvedTheme, setTheme, onAddTransaction, getHomePathWithFilters, getTransactionsPathWithFilters]);
 
   const runCommand = React.useCallback((command: () => void) => {
     setOpen(false);
@@ -327,7 +328,8 @@ export function CommandPalette() {
   const themeItems = [
     { label: translate("lightMode"), action: () => setTheme("light"), icon: RiSunLine },
     { label: translate("darkMode"), action: () => setTheme("dark"), icon: RiMoonLine },
-    { label: translate("toggleTheme"), action: () => setTheme(theme === "dark" ? "light" : "dark"), icon: theme === "dark" ? RiSunLine : RiMoonLine, shortcut: "M" },
+    { label: translate("systemMode"), action: () => setTheme("system"), icon: RiComputerLine },
+    { label: translate("toggleTheme"), action: () => setTheme(resolvedTheme === "dark" ? "light" : "dark"), icon: resolvedTheme === "dark" ? RiSunLine : RiMoonLine, shortcut: "M" },
   ];
 
   // Filter navigation items based on search
