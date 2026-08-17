@@ -21,9 +21,13 @@ from app.database import get_db
 from app.db_helpers import get_user_id
 from app.models import BankConnection, Account
 from app.integrations.enable_banking_auth import EnableBankingClient
-from app.integrations.enable_banking_adapter import EnableBankingAdapter, _ACCOUNT_TYPE_MAP
+from app.integrations.enable_banking_adapter import (
+    EnableBankingAdapter,
+    _ACCOUNT_TYPE_MAP,
+    _extract_iban,
+)
 from app.services.sync_service import SyncService
-from app.security.data_encryption import encrypt_value, blind_index
+from app.security.data_encryption import encrypt_value, blind_index, blind_index_candidates
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +42,7 @@ ASPSP_CACHE_TTL = 86400  # 24 hours
 class AuthRequest(BaseModel):
     aspsp_name: str
     aspsp_country: str
+    connection_id: Optional[str] = None
 
 class AuthResponse(BaseModel):
     url: str
@@ -49,6 +54,7 @@ class SessionRequest(BaseModel):
 class SessionResponse(BaseModel):
     connection_id: str
     accounts_count: int
+    relinked: bool = False
 
 class SyncProgress(BaseModel):
     stage: str  # "syncing" | "done"
@@ -105,6 +111,104 @@ def _get_redis() -> redis.Redis:
     return redis.from_url(REDIS_URL, decode_responses=True)
 
 
+def _decode_auth_state(value: str) -> tuple[str, Optional[str]]:
+    """Decode OAuth state metadata while accepting legacy user-id-only values."""
+    try:
+        data = json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return value, None
+
+    if isinstance(data, str):
+        return data, None
+    if not isinstance(data, dict) or not data.get("user_id"):
+        return value, None
+    return str(data["user_id"]), data.get("connection_id")
+
+
+def _relink_accounts(
+    db: Session,
+    connection: BankConnection,
+    session_accounts: list,
+) -> int:
+    """Attach the renewed bank account UIDs to the user's existing accounts.
+
+    Enable Banking may mint new account UIDs on every consent. Match by the old
+    UID first, then stable IBAN, then a unique name/currency pair. Accounts no
+    longer included in the renewed consent are detached but their history stays.
+    """
+    linked_accounts = db.query(Account).filter(
+        Account.bank_connection_id == connection.id,
+    ).all()
+    unmatched = list(linked_accounts)
+    connected_count = 0
+
+    for raw_account in session_accounts:
+        uid = raw_account.get("uid") or raw_account.get("id")
+        if not uid:
+            continue
+
+        match = None
+        uid_candidates = set(blind_index_candidates(uid))
+        if uid_candidates:
+            match = next(
+                (account for account in unmatched if account.external_id_hash in uid_candidates),
+                None,
+            )
+        if match is None:
+            match = next((account for account in unmatched if account.external_id == uid), None)
+
+        iban = _extract_iban(raw_account) or _extract_iban(raw_account.get("account_id"))
+        if match is None and iban:
+            iban_candidates = set(blind_index_candidates(iban))
+            match = next(
+                (account for account in unmatched if account.iban_hash in iban_candidates),
+                None,
+            )
+
+        if match is None:
+            raw_name = raw_account.get("account_name") or raw_account.get("name")
+            raw_currency = (raw_account.get("currency") or "EUR").upper()
+            name_matches = [
+                account
+                for account in unmatched
+                if raw_name
+                and account.name == raw_name
+                and (account.currency or "EUR").upper() == raw_currency
+            ]
+            if len(name_matches) == 1:
+                match = name_matches[0]
+
+        if match is None and len(session_accounts) == 1 and len(unmatched) == 1:
+            match = unmatched[0]
+
+        if match is None:
+            match = Account(
+                user_id=connection.user_id,
+                name=raw_account.get("account_name") or iban or "Bank Account",
+                account_type=_ACCOUNT_TYPE_MAP.get(
+                    (raw_account.get("cash_account_type") or "").upper(), "checking"
+                ),
+                currency=(raw_account.get("currency") or "EUR").upper(),
+                institution=connection.aspsp_name,
+            )
+            db.add(match)
+        else:
+            unmatched.remove(match)
+
+        match.provider = "enable_banking"
+        match.bank_connection_id = connection.id
+        match.institution = connection.aspsp_name
+        SyncService._set_account_external_id_fields(match, uid)
+        SyncService._set_account_iban_fields(match, iban)
+        connected_count += 1
+
+    for account in unmatched:
+        account.bank_connection_id = None
+        account.provider = None
+
+    return connected_count
+
+
 # --- Routes ---
 
 @router.get("/aspsps")
@@ -153,11 +257,25 @@ def initiate_auth(
     """Generate bank authorization URL for PSU redirect."""
     client = _get_eb_client()
 
+    relink_connection = None
+    if body.connection_id:
+        relink_connection = db.query(BankConnection).filter(
+            BankConnection.id == body.connection_id,
+            BankConnection.user_id == user_id,
+            BankConnection.status.in_(("active", "expired", "error")),
+        ).first()
+        if not relink_connection:
+            raise HTTPException(status_code=404, detail="Bank connection not found")
+
     # Generate a random state nonce (don't leak user_id in the redirect URL)
     state_nonce = str(uuid_mod.uuid4())
     try:
         r = _get_redis()
-        r.setex(f"eb:state:{state_nonce}", 600, user_id)  # 10 min TTL
+        state_data = json.dumps({
+            "user_id": user_id,
+            "connection_id": str(relink_connection.id) if relink_connection else None,
+        })
+        r.setex(f"eb:state:{state_nonce}", 600, state_data)  # 10 min TTL
     except Exception as exc:
         logger.exception("Failed to store OAuth state in Redis")
         raise HTTPException(status_code=503, detail="OAuth state storage is unavailable") from exc
@@ -167,8 +285,10 @@ def initiate_auth(
             "valid_until": (datetime.now(timezone.utc) + timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
         },
         "aspsp": {
-            "name": body.aspsp_name,
-            "country": body.aspsp_country.upper(),
+            "name": relink_connection.aspsp_name if relink_connection else body.aspsp_name,
+            "country": (
+                relink_connection.aspsp_country if relink_connection else body.aspsp_country
+            ).upper(),
         },
         "state": state_nonce,
         "redirect_url": client.redirect_uri,
@@ -205,6 +325,7 @@ def create_session(
 
     if not stored_user_id:
         raise HTTPException(status_code=403, detail="OAuth state is invalid or expired")
+    stored_user_id, relink_connection_id = _decode_auth_state(stored_user_id)
     if stored_user_id != user_id:
         raise HTTPException(status_code=403, detail="OAuth state mismatch")
 
@@ -236,6 +357,45 @@ def create_session(
     else:
         consent_expires_at = datetime.now(timezone.utc) + timedelta(days=90)
 
+    if relink_connection_id:
+        connection = db.query(BankConnection).filter(
+            BankConnection.id == relink_connection_id,
+            BankConnection.user_id == user_id,
+        ).first()
+        if not connection:
+            raise HTTPException(status_code=404, detail="Bank connection to relink was not found")
+        if (
+            connection.aspsp_name != aspsp_name
+            or connection.aspsp_country.upper() != aspsp_country.upper()
+        ):
+            raise HTTPException(status_code=400, detail="Authorized bank does not match the connection")
+
+        connection.session_id = session_id
+        connection.consent_expires_at = consent_expires_at
+        connection.consent_notified_at = None
+        connection.status = "active"
+        connection.last_sync_error = None
+        connection.sync_started_at = None
+        connection.raw_session_data = None
+        accounts_count = _relink_accounts(
+            db,
+            connection,
+            session_data.get("accounts", []),
+        )
+        db.commit()
+
+        try:
+            from tasks.enable_banking_tasks import sync_bank_connection
+            sync_bank_connection.delay(str(connection.id))
+        except Exception:
+            logger.warning("Failed to dispatch sync task after bank relink", exc_info=True)
+
+        return SessionResponse(
+            connection_id=str(connection.id),
+            accounts_count=accounts_count,
+            relinked=True,
+        )
+
     # Create bank_connections row (status=pending_setup; accounts mapped in a separate step)
     connection = BankConnection(
         user_id=user_id,
@@ -256,6 +416,7 @@ def create_session(
     return SessionResponse(
         connection_id=str(connection.id),
         accounts_count=accounts_count,
+        relinked=False,
     )
 
 

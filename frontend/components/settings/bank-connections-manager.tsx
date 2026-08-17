@@ -26,7 +26,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { triggerSync, disconnectBank, triggerRecategorize } from "@/lib/actions/bank-connections";
+import {
+  triggerSync,
+  disconnectBank,
+  triggerRecategorize,
+  initiateAuth,
+} from "@/lib/actions/bank-connections";
 import { fetchBankConnectionStatus } from "@/lib/bank-connections/client";
 type BankConnectionItem = {
   id: string;
@@ -58,6 +63,9 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
   const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
   const [recategorizingIds, setRecategorizingIds] = useState<Set<string>>(new Set());
   const [disconnectingIds, setDisconnectingIds] = useState<Set<string>>(new Set());
+  const [relinkingIds, setRelinkingIds] = useState<Set<string>>(new Set());
+  const [relinkError, setRelinkError] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [pollingIds, setPollingIds] = useState<Set<string>>(new Set());
   const [syncProgress, setSyncProgress] = useState<Map<string, SyncProgress>>(new Map());
   const [elapsedSeconds, setElapsedSeconds] = useState<Map<string, number>>(new Map());
@@ -67,7 +75,9 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
 
   // Cleanup all timers on unmount
   useEffect(() => {
+    const clock = setInterval(() => setNow(Date.now()), 60_000);
     return () => {
+      clearInterval(clock);
       pollingTimers.current.forEach((timer) => clearTimeout(timer));
       elapsedTimers.current.forEach((timer) => clearInterval(timer));
     };
@@ -240,12 +250,41 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
     }
   };
 
+  const handleRelink = async (connection: BankConnectionItem) => {
+    setRelinkError(null);
+    setRelinkingIds((prev) => new Set(prev).add(connection.id));
+    try {
+      const result = await initiateAuth(
+        connection.aspspName,
+        connection.aspspCountry,
+        connection.id
+      );
+      if (result.success && result.url) {
+        window.location.assign(result.url);
+        return;
+      }
+      setRelinkError(result.error || "Failed to renew bank consent");
+    } catch {
+      setRelinkError("Failed to renew bank consent. Please try again.");
+    }
+    setRelinkingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(connection.id);
+      return next;
+    });
+  };
+
+  const isConsentExpired = (connection: BankConnectionItem) =>
+    connection.status === "expired" ||
+    (!!connection.consentExpiresAt && connection.consentExpiresAt.getTime() <= now);
+
   const getStatusBadge = (connection: BankConnectionItem) => {
+    if (isConsentExpired(connection)) {
+      return <Badge variant="destructive">Consent expired</Badge>;
+    }
     switch (connection.status) {
       case "active":
         return <Badge variant="default">Active</Badge>;
-      case "expired":
-        return <Badge variant="destructive">Expired</Badge>;
       case "error":
         return <Badge variant="destructive">Error</Badge>;
       case "disconnected":
@@ -258,16 +297,21 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
   const isConsentExpiringSoon = (connection: BankConnectionItem) => {
     if (!connection.consentExpiresAt) return false;
     const daysUntilExpiry = Math.ceil(
-      (new Date(connection.consentExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      (connection.consentExpiresAt.getTime() - now) / (1000 * 60 * 60 * 24)
     );
     return daysUntilExpiry <= 14 && daysUntilExpiry > 0;
   };
 
-  const daysUntilExpiry = (connection: BankConnectionItem) => {
+  const consentTimeRemaining = (connection: BankConnectionItem) => {
     if (!connection.consentExpiresAt) return null;
-    return Math.ceil(
-      (new Date(connection.consentExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-    );
+    const milliseconds = connection.consentExpiresAt.getTime() - now;
+    if (milliseconds <= 0) return "expired";
+    const minutes = Math.max(1, Math.ceil(milliseconds / 60_000));
+    if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+    const hours = Math.ceil(minutes / 60);
+    if (hours < 48) return `${hours} hour${hours === 1 ? "" : "s"}`;
+    const days = Math.ceil(hours / 24);
+    return `${days} day${days === 1 ? "" : "s"}`;
   };
 
   const activeConnections = connections.filter((c) => c.status !== "disconnected");
@@ -289,6 +333,13 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
           Connect Bank
         </Link>
       </div>
+
+      {relinkError && (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+          <RiAlertLine className="h-4 w-4 shrink-0" />
+          <span>{relinkError}</span>
+        </div>
+      )}
 
       {activeConnections.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
@@ -326,32 +377,25 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
                       </>
                     )}
                   </div>
-                  {isConsentExpiringSoon(connection) && (
-                    <div className="mt-1 flex items-center gap-1 text-xs text-amber-600">
+                  {connection.consentExpiresAt && !isConsentExpired(connection) && (
+                    <div
+                      className={`mt-1 flex items-center gap-1 text-xs ${
+                        isConsentExpiringSoon(connection)
+                          ? "text-amber-600"
+                          : "text-muted-foreground"
+                      }`}
+                      title={`Consent expires ${connection.consentExpiresAt.toLocaleString()}`}
+                    >
                       <RiAlertLine className="h-3 w-3" />
                       <span>
-                        Connection expires in {daysUntilExpiry(connection)} days.{" "}
-                        <Link
-                          href="/settings/connect-bank"
-                          className="underline"
-                        >
-                          Reconnect
-                        </Link>
+                        Bank consent expires in {consentTimeRemaining(connection)}.
                       </span>
                     </div>
                   )}
-                  {connection.status === "expired" && (
+                  {isConsentExpired(connection) && (
                     <div className="mt-1 flex items-center gap-1 text-xs text-destructive">
                       <RiAlertLine className="h-3 w-3" />
-                      <span>
-                        Connection expired.{" "}
-                        <Link
-                          href="/settings/connect-bank"
-                          className="underline"
-                        >
-                          Reconnect
-                        </Link>
-                      </span>
+                      <span>Bank consent expired. Renew it to resume syncing.</span>
                     </div>
                   )}
                   {connection.lastSyncError && connection.status === "error" && (
@@ -362,7 +406,22 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {connection.status === "active" && (
+                {(isConsentExpired(connection) || isConsentExpiringSoon(connection)) && (
+                  <Button
+                    variant={isConsentExpired(connection) ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleRelink(connection)}
+                    disabled={relinkingIds.has(connection.id)}
+                  >
+                    <RiRefreshLine
+                      className={`mr-1.5 h-4 w-4 ${
+                        relinkingIds.has(connection.id) ? "animate-spin" : ""
+                      }`}
+                    />
+                    {relinkingIds.has(connection.id) ? "Opening bank..." : "Renew Consent"}
+                  </Button>
+                )}
+                {connection.status === "active" && !isConsentExpired(connection) && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -377,7 +436,7 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
                     {syncingIds.has(connection.id) ? "Syncing..." : "Sync Now"}
                   </Button>
                 )}
-                {connection.status === "active" && (
+                {connection.status === "active" && !isConsentExpired(connection) && (
                   <Button
                     variant="outline"
                     size="sm"

@@ -97,6 +97,11 @@ export async function GET(req: NextRequest) {
 
     const data = await resp.json();
     const connectionId = data.connection_id;
+    if (data.relinked) {
+      return NextResponse.redirect(
+        `${baseUrl}/settings?tab=bank-connections&relinked=success`
+      );
+    }
     return NextResponse.redirect(
       `${baseUrl}/settings/connect-bank/map-accounts?connectionId=${connectionId}`
     );

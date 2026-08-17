@@ -135,7 +135,8 @@ export async function disconnectBank(
 
 export async function initiateAuth(
   aspspName: string,
-  aspspCountry: string
+  aspspCountry: string,
+  connectionId?: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   const session = await getAuthenticatedSession();
   const userId = session?.user?.id;
@@ -150,6 +151,7 @@ export async function initiateAuth(
     const body = JSON.stringify({
       aspsp_name: aspspName,
       aspsp_country: aspspCountry,
+      connection_id: connectionId,
     });
 
     const signatureHeaders = createInternalAuthHeaders({
