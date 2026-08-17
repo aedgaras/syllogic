@@ -13,6 +13,7 @@ import { TransactionPagination } from "@/components/transactions/transaction-pag
 import { BulkActionsDock } from "@/components/transactions/bulk-actions-dock";
 import { AccountTransactionFilters } from "./account-transaction-filters";
 import { accountTransactionColumns } from "./account-transaction-columns";
+import { useBulkTransactionActions } from "@/features/transactions/hooks/use-bulk-transaction-actions";
 
 const FILTER_STORAGE_PREFIX = "filters:/accounts";
 
@@ -36,6 +37,7 @@ export function AccountTransactions({
   onBulkDelete,
 }: AccountTransactionsProps) {
   const router = useRouter();
+  const bulkActions = useBulkTransactionActions();
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithRelations | null>(null);
   const [tableKey, setTableKey] = useState("default");
   const hasInitializedRef = useRef(false);
@@ -163,6 +165,7 @@ export function AccountTransactions({
               onLinkSuccess={() => {
                 router.refresh();
               }}
+              actions={bulkActions}
             />
           );
         }}

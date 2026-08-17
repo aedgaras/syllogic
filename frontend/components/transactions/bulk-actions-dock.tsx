@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { toast } from "sonner";
 import {
   RiPriceTag3Line,
   RiDownloadLine,
@@ -25,13 +24,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { bulkUpdateTransactionCategory, bulkUpdateTransactionIncludeInAnalytics } from "@/lib/actions/transactions";
-import { createLinkGroupFromSelection } from "@/lib/actions/transaction-links";
-import { exportTransactionsToCSV } from "@/lib/utils/csv-export";
 import type { CategoryDisplay } from "@/types";
 import type { TransactionWithRelations } from "@/features/transactions/public";
 import { filterSelectableCategories } from "@/lib/utils/category-utils";
 import { DeleteConfirmationDialog } from "./delete-confirmation-dialog";
+import type { BulkTransactionActions } from "@/features/transactions/hooks/use-bulk-transaction-actions";
 
 interface BulkActionsDockProps {
   selectedCount: number;
@@ -44,6 +41,7 @@ interface BulkActionsDockProps {
   onLinkSuccess?: () => void;
   onBulkDelete?: (deletedIds: string[]) => void;
   canDelete?: boolean;
+  actions: BulkTransactionActions;
 }
 
 export function BulkActionsDock({
@@ -57,6 +55,7 @@ export function BulkActionsDock({
   onLinkSuccess,
   onBulkDelete,
   canDelete = true,
+  actions,
 }: BulkActionsDockProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
@@ -86,85 +85,40 @@ export function BulkActionsDock({
   const handleCategorize = async (categoryId: string | null) => {
     setIsLoading(true);
     try {
-      const result = await bulkUpdateTransactionCategory(selectedIds, categoryId);
-
-      if (result.success) {
-        toast.success(`Updated ${result.updatedCount} transactions`);
+      if (await actions.categorize(selectedIds, categoryId)) {
         onBulkUpdate(categoryId);
         onClearSelection();
         setCategoryPopoverOpen(false);
-      } else {
-        toast.error(result.error || "Failed to update transactions");
       }
-    } catch {
-      toast.error("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleExport = () => {
-    if (selectedTransactions.length === 0) {
-      toast.error("No transactions to export");
-      return;
-    }
-
-    try {
-      exportTransactionsToCSV(selectedTransactions);
-      toast.success(`Exported ${selectedTransactions.length} transactions`);
-    } catch {
-      toast.error("Failed to export transactions");
-    }
+    actions.exportCsv(selectedTransactions);
   };
 
   const handleAnalyticsUpdate = async (includeInAnalytics: boolean) => {
     setIsAnalyticsLoading(true);
     try {
-      const result = await bulkUpdateTransactionIncludeInAnalytics(selectedIds, includeInAnalytics);
-
-      if (result.success) {
-        toast.success(
-          includeInAnalytics
-            ? `${result.updatedCount} transactions included in analytics`
-            : `${result.updatedCount} transactions excluded from analytics`
-        );
+      if (await actions.setAnalytics(selectedIds, includeInAnalytics)) {
         onBulkAnalyticsUpdate?.(includeInAnalytics);
         onClearSelection();
         setAnalyticsPopoverOpen(false);
-      } else {
-        toast.error(result.error || "Failed to update transactions");
       }
-    } catch {
-      toast.error("An error occurred. Please try again.");
     } finally {
       setIsAnalyticsLoading(false);
     }
   };
 
   const handleLinkTransactions = async () => {
-    if (selectedIds.length < 2) {
-      toast.error("Select at least 2 transactions to link");
-      return;
-    }
-
-    if (hasLinkedTransactions) {
-      toast.error("One or more transactions are already linked");
-      return;
-    }
-
     setIsLinking(true);
     try {
-      const result = await createLinkGroupFromSelection(selectedIds);
-
-      if (result.success) {
-        toast.success(`Linked ${selectedIds.length} transactions`);
+      if (await actions.link(selectedIds)) {
         onLinkSuccess?.();
         onClearSelection();
-      } else {
-        toast.error(result.error || "Failed to link transactions");
       }
-    } catch {
-      toast.error("An error occurred. Please try again.");
     } finally {
       setIsLinking(false);
     }

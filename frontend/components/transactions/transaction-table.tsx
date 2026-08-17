@@ -1,12 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useSearchParams, useRouter } from "next/navigation";
 import {
   type ColumnDef,
-  type OnChangeFn,
-  type PaginationState,
-  type SortingState,
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import type {
@@ -21,12 +17,11 @@ import { TransactionPagination } from "./transaction-pagination";
 import { BulkActionsDock } from "./bulk-actions-dock";
 import { useFilterPersistence } from "@/lib/hooks/use-filter-persistence";
 import {
-  parseTransactionsSearchParamsFromUrlSearchParams,
-  toTransactionsSearchParams,
   hasActiveTransactionFilters,
-  type TransactionSortField,
   type TransactionsQueryState,
 } from "@/features/transactions/public";
+import { useTransactionQueryState } from "@/features/transactions/hooks/use-transaction-query-state";
+import type { BulkTransactionActions } from "@/features/transactions/hooks/use-bulk-transaction-actions";
 
 interface TransactionTableProps {
   transactions: TransactionWithRelations[];
@@ -38,50 +33,15 @@ interface TransactionTableProps {
   onUpdateTransaction?: (id: string, updates: Partial<TransactionWithRelations>) => void;
   onDeleteTransaction?: (id: string) => void;
   onBulkUpdate?: (transactionIds: string[], categoryId: string | null) => void;
+  onBulkAnalyticsUpdate?: (transactionIds: string[], includeInAnalytics: boolean) => void;
   onBulkDelete?: (deletedIds: string[]) => void;
+  onLinkSuccess?: () => void;
   canDelete?: boolean;
   action?: React.ReactNode;
   basePath?: string;
   showToolbar?: boolean;
   columns?: ColumnDef<TransactionWithRelations>[];
-}
-
-const MANAGED_QUERY_KEYS = [
-  "page",
-  "pageSize",
-  "search",
-  "category",
-  "account",
-  "status",
-  "subscription",
-  "analytics",
-  "minAmount",
-  "maxAmount",
-  "from",
-  "to",
-  "horizon",
-  "sort",
-  "order",
-];
-
-function mergeManagedQueryParams(
-  currentSearchParams: URLSearchParams,
-  nextState: TransactionsQueryState
-): URLSearchParams {
-  const nextParams = new URLSearchParams(currentSearchParams.toString());
-  MANAGED_QUERY_KEYS.forEach((key) => nextParams.delete(key));
-  const managed = toTransactionsSearchParams(nextState);
-  managed.forEach((value, key) => {
-    nextParams.append(key, value);
-  });
-  return nextParams;
-}
-
-function mapSortColumnIdToSortField(id: string): TransactionSortField {
-  if (id === "amount" || id === "description" || id === "merchant") {
-    return id;
-  }
-  return "bookedAt";
+  bulkActions: BulkTransactionActions;
 }
 
 function formatSummaryAmount(amount: number): string {
@@ -101,99 +61,33 @@ export function TransactionTable({
   onUpdateTransaction,
   onDeleteTransaction,
   onBulkUpdate,
+  onBulkAnalyticsUpdate,
   onBulkDelete,
+  onLinkSuccess,
   canDelete = true,
   action,
   basePath = "/transactions",
   showToolbar = true,
   columns,
+  bulkActions,
 }: TransactionTableProps) {
   const [selectedTransaction, setSelectedTransaction] = React.useState<TransactionWithRelations | null>(null);
-  const searchParams = useSearchParams();
-  const router = useRouter();
+  const {
+    searchParams,
+    updateQueryState,
+    sortingState,
+    paginationState,
+    onSortingStateChange,
+    onPaginationStateChange,
+    consumeTransactionDeepLink,
+  } = useTransactionQueryState(queryState, basePath);
 
   useFilterPersistence();
-
-  const updateQueryState = React.useCallback(
-    (patch: Partial<TransactionsQueryState>, options?: { resetPage?: boolean }) => {
-      const currentParams = new URLSearchParams(searchParams.toString());
-      const currentState = parseTransactionsSearchParamsFromUrlSearchParams(currentParams);
-      const nextState: TransactionsQueryState = {
-        ...currentState,
-        ...patch,
-      };
-
-      if (options?.resetPage ?? true) {
-        nextState.page = 1;
-      }
-
-      const merged = mergeManagedQueryParams(currentParams, nextState);
-      const queryString = merged.toString();
-      router.replace(queryString ? `${basePath}?${queryString}` : basePath, {
-        scroll: false,
-      });
-    },
-    [basePath, router, searchParams]
-  );
-
-  const sortingState = React.useMemo<SortingState>(
-    () => [
-      {
-        id: queryState.sort,
-        desc: queryState.order === "desc",
-      },
-    ],
-    [queryState.order, queryState.sort]
-  );
-
-  const paginationState = React.useMemo<PaginationState>(
-    () => ({
-      pageIndex: Math.max(0, queryState.page - 1),
-      pageSize: queryState.pageSize,
-    }),
-    [queryState.page, queryState.pageSize]
-  );
 
   const pageCount = Math.max(1, Math.ceil(totalCount / queryState.pageSize));
   const resolvedFilteredTotals = hasActiveTransactionFilters(queryState)
     ? filteredTotals
     : null;
-
-  const handleSortingStateChange = React.useCallback<OnChangeFn<SortingState>>(
-    (updater) => {
-      const current = sortingState;
-      const next = typeof updater === "function" ? updater(current) : updater;
-      const nextSort = next[0];
-      if (!nextSort) {
-        updateQueryState({ sort: "bookedAt", order: "desc" }, { resetPage: false });
-        return;
-      }
-
-      updateQueryState(
-        {
-          sort: mapSortColumnIdToSortField(nextSort.id),
-          order: nextSort.desc ? "desc" : "asc",
-        },
-        { resetPage: false }
-      );
-    },
-    [sortingState, updateQueryState]
-  );
-
-  const handlePaginationStateChange = React.useCallback<OnChangeFn<PaginationState>>(
-    (updater) => {
-      const current = paginationState;
-      const next = typeof updater === "function" ? updater(current) : updater;
-      updateQueryState(
-        {
-          page: next.pageIndex + 1,
-          pageSize: next.pageSize,
-        },
-        { resetPage: false }
-      );
-    },
-    [paginationState, updateQueryState]
-  );
 
   const recurringOptions = React.useMemo(() => {
     const byId = new Map<string, { id: string; name: string; merchant?: string; frequency: string }>();
@@ -219,13 +113,8 @@ export function TransactionTable({
     if (!tx) return;
 
     setSelectedTransaction(tx);
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("tx");
-    const queryString = params.toString();
-    router.replace(queryString ? `${basePath}?${queryString}` : basePath, {
-      scroll: false,
-    });
-  }, [basePath, router, searchParams, transactions]);
+    consumeTransactionDeepLink(tx.id);
+  }, [consumeTransactionDeepLink, searchParams, transactions]);
 
   const handleRowClick = (transaction: TransactionWithRelations) => {
     setSelectedTransaction(transaction);
@@ -252,9 +141,9 @@ export function TransactionTable({
         rowCount={totalCount}
         pageCount={pageCount}
         paginationState={paginationState}
-        onPaginationStateChange={handlePaginationStateChange}
+        onPaginationStateChange={onPaginationStateChange}
         sortingState={sortingState}
-        onSortingStateChange={handleSortingStateChange}
+        onSortingStateChange={onSortingStateChange}
         toolbar={
           showToolbar
             ? () => (
@@ -318,14 +207,16 @@ export function TransactionTable({
               onBulkUpdate={(categoryId) => {
                 onBulkUpdate?.(selectedIds, categoryId);
               }}
+              onBulkAnalyticsUpdate={(includeInAnalytics) => {
+                onBulkAnalyticsUpdate?.(selectedIds, includeInAnalytics);
+              }}
               onBulkDelete={(deletedIds) => {
                 onBulkDelete?.(deletedIds);
                 table.resetRowSelection();
               }}
-              onLinkSuccess={() => {
-                router.refresh();
-              }}
+              onLinkSuccess={onLinkSuccess}
               canDelete={canDelete}
+              actions={bulkActions}
             />
           );
         }}

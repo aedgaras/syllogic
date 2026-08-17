@@ -19,9 +19,9 @@ import {
   RiAlertLine,
   RiErrorWarningLine,
 } from "@remixicon/react";
-import { toast } from "sonner";
 import { cn, formatAmount } from "@/lib/utils";
-import { getDeleteImpact, deleteTransactions, type DeleteImpact } from "@/lib/actions/transactions";
+import type { DeleteImpact } from "@/features/transactions/public";
+import { useDeleteTransactionsController } from "@/features/transactions/hooks/use-delete-transactions-controller";
 
 const CONFIRMATION_PHRASE = "delete transactions";
 
@@ -38,6 +38,7 @@ export function DeleteConfirmationDialog({
   transactionIds,
   onSuccess,
 }: DeleteConfirmationDialogProps) {
+  const controller = useDeleteTransactionsController();
   const [impact, setImpact] = useState<DeleteImpact | null>(null);
   const [loadingImpact, setLoadingImpact] = useState(false);
   const [confirmInput, setConfirmInput] = useState("");
@@ -59,32 +60,21 @@ export function DeleteConfirmationDialog({
     }
 
     setLoadingImpact(true);
-    getDeleteImpact(transactionIds)
+    controller.loadImpact(transactionIds)
       .then((result) => {
-        if (result.success) {
-          setImpact(result.data);
-        } else {
-          toast.error(result.error ?? "Failed to compute impact");
-          onOpenChangeRef.current(false);
-        }
+        if (result) setImpact(result);
+        else onOpenChangeRef.current(false);
       })
       .finally(() => setLoadingImpact(false));
-  }, [open, transactionIds.join(",")]);
+  }, [controller, open, transactionIds.join(",")]);
 
   async function handleDelete() {
     if (!isConfirmed || deleting) return;
     setDeleting(true);
     try {
-      const result = await deleteTransactions(transactionIds);
-      if (result.success) {
-        const count = result.deletedCount ?? transactionIds.length;
-        toast.success(
-          `${count === 1 ? "Transaction" : `${count} transactions`} deleted`
-        );
+      if (await controller.remove(transactionIds)) {
         onSuccess(transactionIds);
         onOpenChange(false);
-      } else {
-        toast.error(result.error ?? "Failed to delete transactions");
       }
     } finally {
       setDeleting(false);

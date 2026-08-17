@@ -44,6 +44,7 @@ import {
 } from "@remixicon/react";
 import type { CategoryForFilter, AccountForFilter } from "@/types";
 import type { TransactionsQueryState } from "@/features/transactions/public";
+import { useTransactionFilterDraft } from "@/features/transactions/hooks/use-transaction-filter-draft";
 import { cn } from "@/lib/utils";
 
 interface RecurringFilterOption {
@@ -382,22 +383,15 @@ export function TransactionFilters({
   onFiltersChange,
   onClearFilters,
 }: TransactionFiltersProps) {
-  const [searchInput, setSearchInput] = React.useState(filters.search ?? "");
-
-  React.useEffect(() => {
-    setSearchInput(filters.search ?? "");
-  }, [filters.search]);
-
-  React.useEffect(() => {
-    const normalizedSearch = searchInput.trim();
-    const currentSearch = filters.search ?? "";
-    if (normalizedSearch === currentSearch) return;
-    const timeout = window.setTimeout(() => {
-      onFiltersChange({ search: normalizedSearch || undefined }, { resetPage: true });
-    }, 250);
-
-    return () => window.clearTimeout(timeout);
-  }, [searchInput, filters.search, onFiltersChange]);
+  const commitDraft = React.useCallback(
+    (patch: { search?: string; minAmount?: string; maxAmount?: string }) =>
+      onFiltersChange(patch, { resetPage: true }),
+    [onFiltersChange]
+  );
+  const { draft, setField } = useTransactionFilterDraft(
+    filters,
+    commitDraft
+  );
 
   const dateRange = React.useMemo<DateRange | undefined>(() => {
     if (!filters.from) return undefined;
@@ -581,8 +575,8 @@ export function TransactionFilters({
             <RiSearchLine className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search transactions..."
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
+              value={draft.search}
+              onChange={(event) => setField("search", event.target.value)}
               className="pl-8"
             />
           </div>
@@ -687,20 +681,10 @@ export function TransactionFilters({
                 />
 
                 <AmountRangeFilter
-                  minAmount={filters.minAmount ?? ""}
-                  maxAmount={filters.maxAmount ?? ""}
-                  onMinChange={(value) =>
-                    onFiltersChange(
-                      { minAmount: value.trim() || undefined },
-                      { resetPage: true }
-                    )
-                  }
-                  onMaxChange={(value) =>
-                    onFiltersChange(
-                      { maxAmount: value.trim() || undefined },
-                      { resetPage: true }
-                    )
-                  }
+                  minAmount={draft.minAmount}
+                  maxAmount={draft.maxAmount}
+                  onMinChange={(value) => setField("minAmount", value)}
+                  onMaxChange={(value) => setField("maxAmount", value)}
                 />
 
                 <MultiSelectFilter

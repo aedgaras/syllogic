@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import {
   Sheet,
   SheetContent,
@@ -33,13 +32,11 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn, formatDate, formatAmount } from "@/lib/utils";
 import type { TransactionWithRelations } from "@/features/transactions/public";
-import { updateTransactionCategory, updateTransactionIncludeInAnalytics, deleteBalancingTransaction } from "@/lib/actions/transactions";
-import { unlinkInternalTransfer } from "@/lib/actions/accounts";
 import { Switch } from "@/components/ui/switch";
 import type { CategoryDisplay } from "@/types";
 import { filterSelectableCategories } from "@/lib/utils/category-utils";
 import { RiDeleteBinLine, RiEditLine, RiExchangeLine, RiLoopRightLine } from "@remixicon/react";
-import { toast } from "sonner";
+import { useTransactionSheetController } from "@/features/transactions/hooks/use-transaction-sheet-controller";
 import { SubscriptionDetectionDialog } from "./subscription-detection-dialog";
 import { SubscriptionLinkedDialog } from "./subscription-linked-dialog";
 import { LinkReimbursementsDialog } from "./link-reimbursements-dialog";
@@ -68,7 +65,7 @@ export function TransactionSheet({
   canDelete = true,
   canEdit = true,
 }: TransactionSheetProps) {
-  const router = useRouter();
+  const controller = useTransactionSheetController();
   // Filter out categories hidden from manual selection (e.g., Balancing Transfer)
   const selectableCategories = filterSelectableCategories(categories);
 
@@ -100,15 +97,7 @@ export function TransactionSheet({
 
     setIsUnlinkingTransfer(true);
     try {
-      const result = await unlinkInternalTransfer(internalTransferId);
-      if (result.success) {
-        toast.success("Transfer unlinked");
-        router.refresh();
-      } else {
-        toast.error(result.error || "Failed to unlink");
-      }
-    } catch {
-      toast.error("Failed to unlink");
+      await controller.unlinkTransfer(internalTransferId);
     } finally {
       setIsUnlinkingTransfer(false);
     }
@@ -119,17 +108,10 @@ export function TransactionSheet({
 
     setIsReverting(true);
     try {
-      const result = await deleteBalancingTransaction(transaction.id);
-
-      if (result.success) {
-        toast.success("Balancing transfer reverted successfully");
+      if (await controller.revertBalancingTransfer(transaction.id)) {
         onDeleteTransaction?.(transaction.id);
         onOpenChange(false);
-      } else {
-        toast.error(result.error || "Failed to revert balancing transfer");
       }
-    } catch {
-      toast.error("Failed to revert balancing transfer");
     } finally {
       setIsReverting(false);
     }
@@ -169,19 +151,12 @@ export function TransactionSheet({
 
     setIsTogglingAnalytics(true);
     try {
-      const result = await updateTransactionIncludeInAnalytics(transaction.id, checked);
-
-      if (result.success) {
+      if (await controller.setAnalytics(transaction.id, checked)) {
         setIncludeInAnalytics(checked);
         onUpdateTransaction?.(transaction.id, {
           includeInAnalytics: checked,
         });
-        toast.success(checked ? "Transaction included in analytics" : "Transaction excluded from analytics");
-      } else {
-        toast.error(result.error || "Failed to update transaction");
       }
-    } catch {
-      toast.error("Failed to update transaction");
     } finally {
       setIsTogglingAnalytics(false);
     }
@@ -192,9 +167,7 @@ export function TransactionSheet({
 
     setIsSaving(true);
     try {
-      const result = await updateTransactionCategory(transaction.id, selectedCategoryId);
-
-      if (result.success) {
+      if (await controller.setCategory(transaction.id, selectedCategoryId)) {
         const newCategory = selectedCategoryId
           ? categories.find((cat) => cat.id === selectedCategoryId) || null
           : null;
@@ -214,7 +187,7 @@ export function TransactionSheet({
   const handleSubscriptionSuccess = () => {
     // Refresh the transaction to show updated subscription link
     onOpenChange(false);
-    router.refresh();
+    controller.refresh();
   };
 
   const handleSubscriptionButtonClick = () => {

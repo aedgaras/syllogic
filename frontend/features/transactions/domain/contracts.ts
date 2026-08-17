@@ -78,6 +78,68 @@ export interface FilteredTransactionTotals {
   totalOut: number;
 }
 
+export interface AccountDeleteImpact {
+  accountId: string;
+  accountName: string;
+  currency: string;
+  amountChange: number;
+  currentBalance: number;
+  projectedBalance: number;
+  balanceIsAnchored: boolean;
+}
+
+export interface DeleteImpact {
+  accountImpacts: AccountDeleteImpact[];
+  totalTransactions: number;
+  earliestDate: Date;
+}
+
+export interface SuggestedTransactionLink {
+  id: string;
+  amount: number;
+  description: string | null;
+  merchant: string | null;
+  bookedAt: Date;
+  transactionType: string | null;
+  accountId: string;
+  accountName: string | null;
+  score: number;
+}
+
+export interface TransactionLinkSearchFilters {
+  searchQuery?: string;
+  accountId?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
+  minAmount?: number;
+  maxAmount?: number;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface TransactionLinkAccountOption {
+  id: string;
+  name: string;
+}
+
+export interface LinkedTransactionItem {
+  id: string;
+  amount: number;
+  description: string | null;
+  merchant: string | null;
+  bookedAt: Date;
+  transactionType: string | null;
+  linkRole: "primary" | "reimbursement" | "expense";
+}
+
+export interface TransactionLinkGroup {
+  groupId: string;
+  primary: LinkedTransactionItem | null;
+  linked: LinkedTransactionItem[];
+  netAmount: number;
+  currency: string | null;
+}
+
 export interface TransactionPage {
   rows: TransactionListItem[];
   totalCount: number;

@@ -1,10 +1,10 @@
-import { TransactionsClient } from "./transactions-client";
-import { getUserAccounts } from "@/lib/actions/transactions";
-import { getTransactionPage } from "@/features/transactions/server";
 import { getUserCategories } from "@/lib/actions/categories";
+import { getUserAccounts } from "@/lib/actions/transactions";
 import { getAuthenticatedSession } from "@/lib/auth-helpers";
 import { isDemoRestrictedUserEmail } from "@/lib/demo-access";
-import type { TransactionsQueryState } from "@/features/transactions/public";
+import type { TransactionsQueryState } from "../public";
+import { getTransactionPage } from "../server";
+import { TransactionsScreen } from "./transactions-screen";
 
 export async function TransactionsSection({
   queryState,
@@ -17,20 +17,18 @@ export async function TransactionsSection({
     getUserCategories(),
     getUserAccounts(),
   ]);
-
-  const canImportCsv = !isDemoRestrictedUserEmail(session?.user.email);
-  const canDelete = !isDemoRestrictedUserEmail(session?.user.email);
+  const allowed = !isDemoRestrictedUserEmail(session?.user.email);
 
   return (
-    <TransactionsClient
+    <TransactionsScreen
       initialTransactions={pageData.rows}
       totalCount={pageData.totalCount}
       filteredTotals={pageData.filteredTotals}
       initialQueryState={queryState}
       categories={categories}
       accounts={accounts}
-      canImportCsv={canImportCsv}
-      canDelete={canDelete}
+      canImportCsv={allowed}
+      canDelete={allowed}
     />
   );
 }

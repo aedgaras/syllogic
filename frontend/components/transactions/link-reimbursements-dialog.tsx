@@ -32,20 +32,14 @@ import {
   RiMoneyDollarCircleLine,
 } from "@remixicon/react";
 import { format, subDays } from "date-fns";
-import { toast } from "sonner";
 import { cn, formatAmount } from "@/lib/utils";
-import type { TransactionWithRelations } from "@/features/transactions/public";
-import {
-  findPotentialReimbursements,
-  findPotentialExpenses,
-  createTransactionLinkGroup,
-  addTransactionToLinkGroup,
-  getTransactionLinkInfo,
-  getUserAccountsForLinking,
-  type SuggestedLink,
-  type AccountOption,
-  type LinkSearchFilters,
-} from "@/lib/actions/transaction-links";
+import type {
+  SuggestedTransactionLink,
+  TransactionLinkAccountOption,
+  TransactionLinkSearchFilters,
+  TransactionWithRelations,
+} from "@/features/transactions/public";
+import { useLinkTransactionsController } from "@/features/transactions/hooks/use-link-transactions-controller";
 import type { DateRange } from "react-day-picker";
 
 interface LinkReimbursementsDialogProps {
@@ -63,12 +57,13 @@ export function LinkReimbursementsDialog({
   onOpenChange,
   onSuccess,
 }: LinkReimbursementsDialogProps) {
+  const controller = useLinkTransactionsController();
   const [isLoading, setIsLoading] = useState(true);
   const [isLinking, setIsLinking] = useState(false);
-  const [transactions, setTransactions] = useState<SuggestedLink[]>([]);
+  const [transactions, setTransactions] = useState<SuggestedTransactionLink[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  const [accounts, setAccounts] = useState<TransactionLinkAccountOption[]>([]);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -117,7 +112,7 @@ export function LinkReimbursementsDialog({
   const fetchTransactions = useCallback(async () => {
     setIsLoading(true);
     try {
-      const filters: LinkSearchFilters = {
+      const filters: TransactionLinkSearchFilters = {
         searchQuery: debouncedSearch || undefined,
         accountId: selectedAccountId || undefined,
         dateFrom: dateRange?.from,
@@ -128,15 +123,11 @@ export function LinkReimbursementsDialog({
         pageSize: PAGE_SIZE,
       };
 
-      const result = isExpense
-        ? await findPotentialReimbursements(transaction.id, filters)
-        : await findPotentialExpenses(transaction.id, filters);
-
-      setTransactions(result.transactions);
-      setTotalCount(result.totalCount);
-    } catch (error) {
-      console.error("Failed to fetch transactions:", error);
-      toast.error("Failed to load transactions");
+      const result = await controller.search(transaction.id, isExpense, filters);
+      if (result) {
+        setTransactions(result.transactions);
+        setTotalCount(result.totalCount);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -149,6 +140,7 @@ export function LinkReimbursementsDialog({
     minAmount,
     maxAmount,
     currentPage,
+    controller,
   ]);
 
   // Fetch accounts and initial transactions when dialog opens
@@ -165,9 +157,9 @@ export function LinkReimbursementsDialog({
       setSelectedIds(new Set());
 
       // Load accounts
-      getUserAccountsForLinking().then(setAccounts);
+      controller.loadAccounts().then(setAccounts);
     }
-  }, [open, transaction?.id]);
+  }, [controller, open, transaction?.id]);
 
   // Fetch transactions when filters change
   useEffect(() => {
@@ -182,50 +174,12 @@ export function LinkReimbursementsDialog({
   }, [debouncedSearch, selectedAccountId, dateRange, minAmount, maxAmount]);
 
   const handleLink = async () => {
-    if (selectedIds.size === 0) {
-      toast.error("Please select at least one transaction to link");
-      return;
-    }
-
     setIsLinking(true);
     try {
-      const existingLink = await getTransactionLinkInfo(transaction.id);
-
-      if (existingLink) {
-        let successCount = 0;
-        for (const txnId of selectedIds) {
-          const result = await addTransactionToLinkGroup(
-            existingLink.groupId,
-            txnId,
-            linkType
-          );
-          if (result.success) successCount++;
-        }
-
-        if (successCount > 0) {
-          toast.success(`Added ${successCount} transaction(s) to link group`);
-          onSuccess();
-          onOpenChange(false);
-        } else {
-          toast.error("Failed to add transactions to group");
-        }
-      } else {
-        const result = await createTransactionLinkGroup(
-          transaction.id,
-          Array.from(selectedIds),
-          linkType
-        );
-
-        if (result.success) {
-          toast.success(`Linked ${selectedIds.size} transaction(s)`);
-          onSuccess();
-          onOpenChange(false);
-        } else {
-          toast.error(result.error || "Failed to link transactions");
-        }
+      if (await controller.link(transaction.id, Array.from(selectedIds), linkType)) {
+        onSuccess();
+        onOpenChange(false);
       }
-    } catch (error) {
-      toast.error("Failed to link transactions");
     } finally {
       setIsLinking(false);
     }
@@ -253,7 +207,7 @@ export function LinkReimbursementsDialog({
     setMaxAmount("");
   };
 
-  const TransactionRow = ({ item }: { item: SuggestedLink }) => (
+  const TransactionRow = ({ item }: { item: SuggestedTransactionLink }) => (
     <label className="flex items-center gap-3 p-2.5 hover:bg-muted/50 cursor-pointer">
       <input
         type="checkbox"

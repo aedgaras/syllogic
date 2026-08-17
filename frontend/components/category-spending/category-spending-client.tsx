@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardFilters } from "@/components/dashboard/dashboard-filters";
 import { CategorySpendingDonutChart } from "@/components/category-spending/category-spending-donut-chart";
 import { TransactionTable } from "@/components/transactions/transaction-table";
+import { useBulkTransactionActions } from "@/features/transactions/hooks/use-bulk-transaction-actions";
 import { categorySpendingTransactionColumns } from "@/components/transactions/columns";
 import type { CategorySpendingData } from "@/lib/actions/category-spending";
 import type { TransactionWithRelations } from "@/features/transactions/public";
@@ -74,6 +75,7 @@ export function CategorySpendingClient({
   categories,
 }: CategorySpendingClientProps) {
   const router = useRouter();
+  const bulkActions = useBulkTransactionActions();
 
   const [selectedCategoryIds, setSelectedCategoryIds] = React.useState<string[]>(
     initialSelectedCategoryIds
@@ -384,6 +386,7 @@ export function CategorySpendingClient({
               basePath="/category-spending"
               showToolbar={false}
               columns={categorySpendingTransactionColumns}
+              bulkActions={bulkActions}
             />
           </CardContent>
         </Card>

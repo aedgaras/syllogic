@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,14 +16,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RiLink, RiAddLine, RiCloseLine, RiLoader4Line, RiArrowDownSLine, RiArrowUpSLine } from "@remixicon/react";
 import { format } from "date-fns";
-import { toast } from "sonner";
 import { cn, formatAmount } from "@/lib/utils";
-import {
-  getTransactionLinkGroup,
-  deleteLinkGroup,
-  removeTransactionFromLinkGroup,
-  type TransactionLinkGroup,
-} from "@/lib/actions/transaction-links";
+import type { TransactionLinkGroup } from "@/features/transactions/public";
+import { useLinkTransactionsController } from "@/features/transactions/hooks/use-link-transactions-controller";
 
 interface LinkedTransactionsSectionProps {
   transactionId: string;
@@ -39,42 +33,37 @@ export function LinkedTransactionsSection({
   onLinkClick,
   onUpdate,
 }: LinkedTransactionsSectionProps) {
+  const controller = useLinkTransactionsController();
   const [isLoading, setIsLoading] = useState(true);
   const [linkGroup, setLinkGroup] = useState<TransactionLinkGroup | null>(null);
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  useEffect(() => {
-    loadLinkGroup();
-  }, [transactionId]);
-
-  const loadLinkGroup = async () => {
+  const loadLinkGroup = useCallback(async () => {
     setIsLoading(true);
     try {
-      const group = await getTransactionLinkGroup(transactionId);
+      const group = await controller.loadGroup(transactionId);
       setLinkGroup(group);
     } catch (error) {
       console.error("Failed to load link group:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [controller, transactionId]);
+
+  useEffect(() => {
+    void loadLinkGroup();
+  }, [loadLinkGroup]);
 
   const handleUnlinkAll = async () => {
     if (!linkGroup) return;
 
     setIsUnlinking(true);
     try {
-      const result = await deleteLinkGroup(linkGroup.groupId);
-      if (result.success) {
-        toast.success("Transactions unlinked");
+      if (await controller.unlinkGroup(linkGroup.groupId)) {
         setLinkGroup(null);
         onUpdate();
-      } else {
-        toast.error(result.error || "Failed to unlink transactions");
       }
-    } catch (error) {
-      toast.error("Failed to unlink transactions");
     } finally {
       setIsUnlinking(false);
     }
@@ -83,20 +72,15 @@ export function LinkedTransactionsSection({
   const handleRemoveLinked = async (linkedTxnId: string) => {
     setIsUnlinking(true);
     try {
-      const result = await removeTransactionFromLinkGroup(linkedTxnId);
+      const result = await controller.removeFromGroup(linkedTxnId);
       if (result.success) {
-        toast.success("Transaction removed from group");
         if (result.groupDeleted) {
           setLinkGroup(null);
         } else {
           await loadLinkGroup();
         }
         onUpdate();
-      } else {
-        toast.error(result.error || "Failed to remove transaction");
       }
-    } catch (error) {
-      toast.error("Failed to remove transaction");
     } finally {
       setIsUnlinking(false);
     }
