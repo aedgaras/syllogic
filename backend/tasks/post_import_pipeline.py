@@ -123,8 +123,10 @@ def _update_functional_amounts(db, user_id: str, transaction_ids: List[str]) -> 
 
 
 def _detect_internal_transfers(db, user_id: str, transaction_ids: List[str]) -> dict:
-    """Detect counterparty-IBAN matches against the user's manual pocket accounts
-    and create mirror transactions on the pocket side.
+    """Detect real cross-account transaction pairs and counterparty-IBAN matches.
+
+    Real CSV/synced pairs are linked directly; unmatched transfers into manual
+    pockets receive a synthetic mirror on the pocket side.
 
     Returns ``{"detected": int, "pocket_account_ids": list[UUID]}``. Callers
     should extend their balance/timeseries account scope with

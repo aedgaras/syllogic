@@ -761,6 +761,160 @@ def test_detect_synced_to_manual_still_creates_mirror() -> None:
 
 
 # ---------------------------------------------------------------------------
+# CSV amount/date pair detection
+# ---------------------------------------------------------------------------
+
+def test_detect_csv_pair_marks_and_categorizes_both_sides() -> None:
+    """Opposite rows imported for two accounts become one transfer pair."""
+    _ensure_schema()
+    db = SessionLocal()
+    user_id: Optional[str] = None
+    try:
+        from app.services.internal_transfer_service import InternalTransferService
+
+        user = _make_user(db)
+        user_id = user.id
+        transfer_cat = _make_transfer_category(db, user_id)
+        checking = _make_synced_account(db, user_id, name="CSV Checking")
+        savings = _make_synced_account(db, user_id, name="CSV Savings")
+        debit = _make_source_transaction(
+            db, user_id, checking.id, counterparty_iban=None,
+            amount=Decimal("-425.50"),
+        )
+        credit = _make_source_transaction(
+            db, user_id, savings.id, counterparty_iban=None,
+            amount=Decimal("425.50"),
+        )
+
+        result = InternalTransferService(db, user_id).detect_for_transactions(
+            [debit.id, credit.id]
+        )
+
+        assert result["detected"] == 1
+        db.refresh(debit)
+        db.refresh(credit)
+        assert debit.internal_transfer_id == credit.internal_transfer_id
+        assert debit.internal_transfer_id is not None
+        assert debit.include_in_analytics is False
+        assert credit.include_in_analytics is False
+        assert debit.category_system_id == transfer_cat.id
+        assert credit.category_system_id == transfer_cat.id
+
+        link = db.query(InternalTransfer).filter_by(id=debit.internal_transfer_id).one()
+        assert link.source_txn_id == debit.id
+        assert link.mirror_txn_id == credit.id
+        assert link.source_account_id == checking.id
+        assert link.pocket_account_id == savings.id
+    finally:
+        if user_id:
+            _cleanup_user(db, user_id)
+        db.close()
+
+
+def test_detect_csv_pair_matches_a_previous_account_import_and_unlinks_safely() -> None:
+    """A later CSV completes an IBAN-only link, and unlink keeps both rows."""
+    _ensure_schema()
+    db = SessionLocal()
+    user_id: Optional[str] = None
+    try:
+        from app.services.internal_transfer_service import InternalTransferService
+
+        user = _make_user(db)
+        user_id = user.id
+        _make_transfer_category(db, user_id)
+        checking = _make_synced_account(db, user_id, name="First CSV")
+        savings = _make_synced_account(db, user_id, name="Second CSV")
+        savings_iban = "LT121000011101001000"
+        savings.iban_hash = blind_index(savings_iban)
+        db.commit()
+        debit = _make_source_transaction(
+            db, user_id, checking.id, counterparty_iban=savings_iban,
+            amount=Decimal("-99.00"),
+        )
+
+        service = InternalTransferService(db, user_id)
+        first_result = service.detect_for_transactions([debit.id])
+        assert first_result["detected"] == 1
+        db.refresh(debit)
+        original_transfer_id = debit.internal_transfer_id
+        original_link = db.query(InternalTransfer).filter_by(
+            id=original_transfer_id
+        ).one()
+        assert original_link.mirror_txn_id is None
+
+        # The second account is imported later. Its row should complete the
+        # existing link rather than creating a duplicate transfer record.
+        credit = _make_source_transaction(
+            db, user_id, savings.id, counterparty_iban=None,
+            amount=Decimal("99.00"),
+        )
+
+        result = service.detect_for_transactions([credit.id])
+        assert result["detected"] == 1
+        db.refresh(credit)
+        transfer_id = credit.internal_transfer_id
+        assert transfer_id == original_transfer_id
+        assert db.query(InternalTransfer).filter_by(user_id=user_id).count() == 1
+
+        service.unlink(transfer_id)
+        assert db.query(Transaction).filter(Transaction.id.in_([debit.id, credit.id])).count() == 2
+        db.refresh(debit)
+        db.refresh(credit)
+        assert debit.internal_transfer_id is None
+        assert credit.internal_transfer_id is None
+        assert debit.include_in_analytics is True
+        assert credit.include_in_analytics is True
+    finally:
+        if user_id:
+            _cleanup_user(db, user_id)
+        db.close()
+
+
+def test_detect_csv_pair_skips_ambiguous_equal_amounts() -> None:
+    """Two plausible opposite rows are not guessed into a transfer."""
+    _ensure_schema()
+    db = SessionLocal()
+    user_id: Optional[str] = None
+    try:
+        from app.services.internal_transfer_service import InternalTransferService
+
+        user = _make_user(db)
+        user_id = user.id
+        _make_transfer_category(db, user_id)
+        source = _make_synced_account(db, user_id, name="Source")
+        destination_a = _make_synced_account(db, user_id, name="Destination A")
+        destination_b = _make_synced_account(db, user_id, name="Destination B")
+        debit = _make_source_transaction(
+            db, user_id, source.id, counterparty_iban=None,
+            amount=Decimal("-50.00"),
+        )
+        credit_a = _make_source_transaction(
+            db, user_id, destination_a.id, counterparty_iban=None,
+            amount=Decimal("50.00"),
+        )
+        credit_b = _make_source_transaction(
+            db, user_id, destination_b.id, counterparty_iban=None,
+            amount=Decimal("50.00"),
+        )
+
+        result = InternalTransferService(db, user_id).detect_for_transactions(
+            [debit.id]
+        )
+
+        assert result["detected"] == 0
+        db.refresh(debit)
+        assert debit.internal_transfer_id is None
+        assert debit.include_in_analytics is True
+        assert db.query(InternalTransfer).filter_by(user_id=user_id).count() == 0
+        assert credit_a.include_in_analytics is True
+        assert credit_b.include_in_analytics is True
+    finally:
+        if user_id:
+            _cleanup_user(db, user_id)
+        db.close()
+
+
+# ---------------------------------------------------------------------------
 # Test 11: unlink for synced -> synced link (mirror_txn_id=NULL) works
 # ---------------------------------------------------------------------------
 
@@ -826,6 +980,9 @@ if __name__ == "__main__":
         test_detect_does_not_match_cross_user_pocket,
         test_detect_synced_to_synced_no_mirror_link_only,
         test_detect_synced_to_manual_still_creates_mirror,
+        test_detect_csv_pair_marks_and_categorizes_both_sides,
+        test_detect_csv_pair_matches_a_previous_account_import_and_unlinks_safely,
+        test_detect_csv_pair_skips_ambiguous_equal_amounts,
         test_unlink_synced_to_synced_link_no_mirror_to_delete,
     ]
     results = []
