@@ -49,8 +49,8 @@ export function AccountForm({
   const [iban, setIban] = useState("");
 
   // Ownership state
-  const { data: people = [], isFetched, isError } = usePeopleQuery();
-  const peopleLoaded = isFetched || isError;
+  const { data: people = [], isPending: isPeoplePending } = usePeopleQuery();
+  const peopleLoaded = !isPeoplePending;
   const [owners, setOwners] = useState<OwnerValue[]>([]);
   const [ownersError, setOwnersError] = useState<string | null>(null);
   const saveAccountOwnersMutation = useMutation({
