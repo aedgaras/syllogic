@@ -19,7 +19,9 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("id=import-1"),
 }));
 vi.mock("@/lib/auth-client", () => ({ useSession: () => ({ data: { user: { id: "user-1" } } }) }));
-vi.mock("@/lib/hooks/use-import-status", () => ({ setPendingImport: mocks.setPendingImport }));
+vi.mock("@/features/csv-import/client/pending-import-storage", () => ({
+  setPendingImport: mocks.setPendingImport,
+}));
 vi.mock("@/lib/actions/csv-import", () => ({
   getCsvImportSession: mocks.getCsvImportSession,
   parseCsvHeaders: mocks.parseCsvHeaders,
@@ -105,4 +107,3 @@ describe("dashboard CSV import characterization", () => {
     expect(mocks.push).toHaveBeenCalledWith("/transactions?importing=job-1");
   });
 });
-

@@ -1,5 +1,5 @@
 import type { Transaction } from "@/lib/db/schema";
-import type { PreviewTransaction } from "@/lib/actions/csv-import";
+import type { PreviewTransaction } from "@/features/csv-import/public";
 
 /**
  * Calculate similarity between two strings using Levenshtein distance

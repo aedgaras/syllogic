@@ -24,7 +24,7 @@ import {
 } from "@remixicon/react";
 import { formatDate } from "@/lib/utils";
 import { RevertImportDialog } from "./revert-import-dialog";
-import type { CsvImportWithStats } from "@/lib/actions/csv-import";
+import type { CsvImportWithStats } from "@/features/csv-import/public";
 
 function statusBadgeVariant(status: string | null): "default" | "outline" | "secondary" {
   switch (status) {

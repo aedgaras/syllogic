@@ -5,7 +5,7 @@ import { RiArrowDownLine, RiArrowUpLine } from "@remixicon/react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import type { PreviewTransaction } from "@/lib/actions/csv-import";
+import type { PreviewTransaction } from "@/features/csv-import/public";
 
 interface CsvPreviewTableProps {
   transactions: PreviewTransaction[];

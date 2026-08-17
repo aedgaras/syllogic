@@ -18,7 +18,7 @@ import { BankConnectionsManager } from "./bank-connections-manager";
 import { HouseholdTab } from "./household-tab";
 import { PreferencesTab } from "./preferences-tab";
 import type { User, Category } from "@/lib/db/schema";
-import type { CsvImportWithStats } from "@/lib/actions/csv-import";
+import type { CsvImportWithStats } from "@/features/csv-import/public";
 import type { OpenAiSettings } from "@/lib/actions/settings";
 
 type Person = {

@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { RiDeleteBinLine, RiLoader4Line, RiAlertLine, RiErrorWarningLine } from "@remixicon/react";
 import { toast } from "sonner";
-import { revertCsvImport, type CsvImportWithStats } from "@/lib/actions/csv-import";
+import { revertCsvImport } from "@/lib/actions/csv-import";
+import type { CsvImportWithStats } from "@/features/csv-import/public";
 
 const CONFIRMATION_PHRASE = "delete transactions";
 

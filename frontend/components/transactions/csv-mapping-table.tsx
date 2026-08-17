@@ -10,7 +10,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import type { ColumnMapping } from "@/lib/actions/csv-import";
+import type { ColumnMapping } from "@/features/csv-import/public";
 import { DATE_FORMAT_OPTIONS, type ImportDateFormat } from "@/lib/import/dates";
 
 interface CsvMappingTableProps {

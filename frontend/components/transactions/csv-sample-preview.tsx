@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { RiArrowRightLine } from "@remixicon/react";
-import type { ColumnMapping } from "@/lib/actions/csv-import";
+import type { ColumnMapping } from "@/features/csv-import/public";
 
 interface CsvSamplePreviewProps {
   headers: string[];
