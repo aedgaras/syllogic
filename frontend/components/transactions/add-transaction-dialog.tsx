@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -148,27 +150,27 @@ export function AddTransactionDialog({
     e.preventDefault();
 
     if (!accountId) {
-      toast.error("Please select an account");
+      toast.error(translate("pleaseSelectAnAccount"));
       return;
     }
 
     if (transactionType === "transfer" && !destinationAccountId) {
-      toast.error("Please select a destination account");
+      toast.error(translate("pleaseSelectADestinationAccount"));
       return;
     }
     if (transactionType === "transfer" && accountId === destinationAccountId) {
-      toast.error("Source and destination accounts must be different");
+      toast.error(translate("sourceAndDestinationAccountsMustBeDifferent"));
       return;
     }
 
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      toast.error("Please enter a valid amount");
+      toast.error(translate("pleaseEnterAValidAmount"));
       return;
     }
 
     if (!description.trim()) {
-      toast.error("Please enter a description");
+      toast.error(translate("pleaseEnterADescription"));
       return;
     }
 
@@ -184,10 +186,10 @@ export function AddTransactionDialog({
           bookedAt,
         });
         if (!result.success) {
-          toast.error(result.error || "Failed to create transfer");
+          toast.error(result.error || translate("failedToCreateTransfer"));
           return;
         }
-        toast.success("Transfer created");
+        toast.success(translate("transferCreated"));
         resetForm();
         onOpenChange(false);
         router.refresh();
@@ -204,10 +206,10 @@ export function AddTransactionDialog({
           bookedAt,
         });
         if (!result.success) {
-          toast.error(result.error || "Failed to convert transaction to transfer");
+          toast.error(result.error || translate("failedToConvertTransactionToTransfer"));
           return;
         }
-        toast.success("Transaction converted to transfer");
+        toast.success(translate("transactionConvertedToTransfer"));
         onOpenChange(false);
         router.refresh();
         return;
@@ -261,18 +263,18 @@ export function AddTransactionDialog({
             bookedAt,
             transactionType: standardTransactionType,
           });
-          toast.success("Transaction updated");
+          toast.success(translate("transactionUpdated"));
         } else {
-          toast.success("Transaction added");
+          toast.success(translate("transactionAdded"));
           resetForm();
         }
         onOpenChange(false);
         router.refresh();
       } else {
-        toast.error(result.error || `Failed to ${isEditing ? "update" : "add"} transaction`);
+        toast.error(result.error || translate("failedToTransaction", { value1: isEditing ? "update" : "add" }));
       }
     } catch {
-      toast.error("An error occurred. Please try again.");
+      toast.error(translate("anErrorOccurredPleaseTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -300,14 +302,14 @@ export function AddTransactionDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {isLinkedTransfer ? "Transfer Details" : isEditing ? "Edit Transaction" : "Add Transaction"}
+            {isLinkedTransfer ? translate("transferDetails") : isEditing ? translate("editTransaction") : translate("addTransaction")}
           </DialogTitle>
           <DialogDescription>
             {isLinkedTransfer
-              ? "View the linked entries for this account transfer."
+              ? translate("viewTheLinkedEntriesForThisAccountTransfer")
               : isEditing
-              ? "Update the details for your transaction."
-              : "Enter the details for your transaction."}
+              ? translate("updateTheDetailsForYourTransaction")
+              : translate("enterTheDetailsForYourTransaction")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -322,7 +324,7 @@ export function AddTransactionDialog({
                 onClick={() => handleTransactionTypeChange("debit")}
               >
                 <RiArrowDownLine className="mr-2 h-4 w-4" />
-                Expense
+                {translate("expense")}
               </Button>
               <Button
                 type="button"
@@ -332,7 +334,7 @@ export function AddTransactionDialog({
                 onClick={() => handleTransactionTypeChange("credit")}
               >
                 <RiArrowUpLine className="mr-2 h-4 w-4" />
-                Income
+                {translate("income1c89b1")}
               </Button>
               <Button
                 type="button"
@@ -342,18 +344,18 @@ export function AddTransactionDialog({
                 onClick={() => handleTransactionTypeChange("transfer")}
               >
                 <RiExchangeLine className="mr-2 h-4 w-4" />
-                Transfer
+                {translate("transfer")}
               </Button>
             </div>
 
             {/* Account Select */}
             <div className="space-y-2">
               <Label htmlFor="account">
-                {transactionType === "transfer" ? "From account" : "Account"}
+                {transactionType === "transfer" ? translate("fromAccount") : translate("account85dfa3")}
               </Label>
               {accounts.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No accounts found. Please create an account first.
+                  {translate("noAccountsFoundPleaseCreateAnAccountFirst")}
                 </p>
               ) : (
                 <Select
@@ -376,16 +378,16 @@ export function AddTransactionDialog({
                   }}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select an account">
+                    <SelectValue placeholder={translate("selectAnAccount")}>
                       {selectedAccount
-                        ? `${selectedAccount.name}${selectedAccount.currency ? ` (${selectedAccount.currency})` : ""}`
-                        : "Select an account"}
+                        ? translate("message50844f", { value1: selectedAccount.name, value2: selectedAccount.currency ? ` (${selectedAccount.currency})` : "" })
+                        : translate("selectAnAccount")}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
                     {accounts.map((account) => (
                       <SelectItem key={account.id} value={account.id} className="pr-10">
-                        {account.name}{account.currency ? ` (${account.currency})` : ""}
+                        {account.name}{account.currency ? translate("messagecd176d", { value1: account.currency }) : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -395,30 +397,30 @@ export function AddTransactionDialog({
 
             {transactionType === "transfer" && (
               <div className="space-y-2">
-                <Label htmlFor="destination-account">To account</Label>
+                <Label htmlFor="destination-account">{translate("toAccount")}</Label>
                 <Select
                   value={destinationAccountId}
                   disabled={isLinkedTransfer}
                   onValueChange={(value) => value && setDestinationAccountId(value)}
                 >
                   <SelectTrigger id="destination-account" className="w-full">
-                    <SelectValue placeholder="Select a destination account">
+                    <SelectValue placeholder={translate("selectADestinationAccount")}>
                       {selectedDestinationAccount
-                        ? `${selectedDestinationAccount.name}${selectedDestinationAccount.currency ? ` (${selectedDestinationAccount.currency})` : ""}`
-                        : "Select a destination account"}
+                        ? translate("message50844f", { value1: selectedDestinationAccount.name, value2: selectedDestinationAccount.currency ? ` (${selectedDestinationAccount.currency})` : "" })
+                        : translate("selectADestinationAccount")}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
                     {eligibleDestinationAccounts.map((account) => (
                       <SelectItem key={account.id} value={account.id} className="pr-10">
-                        {account.name}{account.currency ? ` (${account.currency})` : ""}
+                        {account.name}{account.currency ? translate("messagecd176d", { value1: account.currency }) : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {selectedAccount && eligibleDestinationAccounts.length === 0 && (
                   <p className="text-sm text-muted-foreground">
-                    Add another {selectedAccount.currency || "same-currency"} account to make a transfer.
+                    {translate("addAnother")} {selectedAccount.currency || translate("sameCurrency")} {translate("accountToMakeATransfer")}
                   </p>
                 )}
               </div>
@@ -426,7 +428,7 @@ export function AddTransactionDialog({
 
             {/* Amount */}
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount</Label>
+              <Label htmlFor="amount">{translate("amount")}</Label>
               <Input
                 id="amount"
                 type="number"
@@ -441,7 +443,7 @@ export function AddTransactionDialog({
 
             {/* Date */}
             <div className="space-y-2">
-              <Label>Date</Label>
+              <Label>{translate("date")}</Label>
               <Popover>
                 <PopoverTrigger
                   render={
@@ -453,7 +455,7 @@ export function AddTransactionDialog({
                         !bookedAt && "text-muted-foreground"
                       )}
                     >
-                      {bookedAt ? format(bookedAt, "PPP") : "Pick a date"}
+                      {bookedAt ? format(bookedAt, "PPP") : translate("pickADate")}
                     </Button>
                   }
                 />
@@ -470,13 +472,13 @@ export function AddTransactionDialog({
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{translate("description55f8eb")}</Label>
               <Textarea
                 id="description"
                 placeholder={
                   transactionType === "transfer"
-                    ? "e.g., Move money to savings"
-                    : "Enter a description"
+                    ? translate("eGMoveMoneyToSavings")
+                    : translate("enterADescription")
                 }
                 value={description}
                 disabled={isLinkedTransfer}
@@ -487,10 +489,10 @@ export function AddTransactionDialog({
 
             {/* Merchant (optional) */}
             {transactionType !== "transfer" && <div className="space-y-2">
-              <Label htmlFor="merchant">Merchant (optional)</Label>
+              <Label htmlFor="merchant">{translate("merchantOptional")}</Label>
               <Input
                 id="merchant"
-                placeholder="e.g., Amazon, Starbucks"
+                placeholder={translate("eGAmazonStarbucks")}
                 value={merchant}
                 onChange={(e) => setMerchant(e.target.value)}
               />
@@ -498,13 +500,13 @@ export function AddTransactionDialog({
 
             {/* Category */}
             {transactionType !== "transfer" && <div className="space-y-2">
-              <Label htmlFor="category">Category (optional)</Label>
+              <Label htmlFor="category">{translate("categoryOptional")}</Label>
               <Select value={categoryId} onValueChange={(v) => setCategoryId(v ?? "")}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
+                  <SelectValue placeholder={translate("selectACategory")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No category</SelectItem>
+                  <SelectItem value="">{translate("noCategory")}</SelectItem>
                   {filteredCategories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       <div className="flex items-center gap-2">
@@ -523,7 +525,7 @@ export function AddTransactionDialog({
           <DialogFooter>
             {isLinkedTransfer && (
               <p className="mr-auto text-sm text-muted-foreground">
-                Linked transfers cannot be edited independently.
+                {translate("linkedTransfersCannotBeEditedIndependently")}
               </p>
             )}
             <Button
@@ -532,7 +534,7 @@ export function AddTransactionDialog({
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
-              {isLinkedTransfer ? "Close" : "Cancel"}
+              {isLinkedTransfer ? translate("close") : translate("cancel")}
             </Button>
             {!isLinkedTransfer && <Button
               type="submit"
@@ -543,10 +545,10 @@ export function AddTransactionDialog({
               }
             >
               {isLoading
-                ? isEditing ? "Saving..." : "Adding..."
+                ? isEditing ? translate("saving") : translate("adding")
                 : transactionType === "transfer"
-                  ? isEditing ? "Convert to Transfer" : "Create Transfer"
-                  : isEditing ? "Save Changes" : "Add Transaction"}
+                  ? isEditing ? translate("convertToTransfer") : translate("createTransfer")
+                  : isEditing ? translate("saveChangesfa2984") : translate("addTransaction")}
             </Button>}
           </DialogFooter>
         </form>

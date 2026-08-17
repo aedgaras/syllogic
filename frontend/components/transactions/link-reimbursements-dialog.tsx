@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -81,10 +83,10 @@ export function LinkReimbursementsDialog({
 
   const isExpense = transaction.amount < 0;
   const linkType = isExpense ? "reimbursement" : "expense";
-  const dialogTitle = isExpense ? "Link Reimbursements" : "Link Expenses";
+  const dialogTitle = isExpense ? translate("linkReimbursements") : translate("linkExpenses");
   const dialogDescription = isExpense
-    ? "Find and link reimbursement payments to offset this expense."
-    : "Find and link expenses against this income or allowance.";
+    ? translate("findAndLinkReimbursementPaymentsToOffsetThisExpense")
+    : translate("findAndLinkExpensesAgainstThisIncomeOrAllowance");
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -218,7 +220,7 @@ export function LinkReimbursementsDialog({
       <div className="flex-1 min-w-0 grid grid-cols-[1fr_auto] gap-2 items-center">
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">
-            {item.merchant || item.description || "Transaction"}
+            {item.merchant || item.description || translate("transaction")}
           </p>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>{format(new Date(item.bookedAt), "MMM d, yyyy")}</span>
@@ -266,7 +268,7 @@ export function LinkReimbursementsDialog({
                   {format(new Date(transaction.bookedAt), "MMM d, yyyy")}
                 </p>
               </div>
-              <Badge variant="secondary">Primary</Badge>
+              <Badge variant="secondary">{translate("primary")}</Badge>
               <div
                 className={cn(
                   "text-sm font-mono font-medium text-right min-w-[80px]",
@@ -283,7 +285,7 @@ export function LinkReimbursementsDialog({
             <div className="relative flex-1">
               <RiSearchLine className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search transactions..."
+                placeholder={translate("searchTransactions")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 h-9"
@@ -297,7 +299,7 @@ export function LinkReimbursementsDialog({
                 render={
                   <Button variant="outline" className="h-9 px-3">
                     <RiFilter3Line className="h-4 w-4 mr-2" />
-                    <span className="text-xs">Filters</span>
+                    <span className="text-xs">{translate("filters")}</span>
                     {activeFilterCount > 0 && (
                       <span className="ml-1.5 flex h-5 min-w-5 items-center justify-center bg-muted px-1 text-[10px] font-medium">
                         {activeFilterCount}
@@ -312,7 +314,7 @@ export function LinkReimbursementsDialog({
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-xs text-muted-foreground">
                       <RiCalendarLine className="h-4 w-4" />
-                      Date Range
+                      {translate("dateRange")}
                     </Label>
                     <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
                       <PopoverTrigger
@@ -334,7 +336,7 @@ export function LinkReimbursementsDialog({
                                 <span>{format(dateRange.from, "MMM d, yyyy")}</span>
                               )
                             ) : (
-                              <span className="text-muted-foreground">Select dates...</span>
+                              <span className="text-muted-foreground">{translate("selectDates")}</span>
                             )}
                           </Button>
                         }
@@ -356,7 +358,7 @@ export function LinkReimbursementsDialog({
                               setDatePopoverOpen(false);
                             }}
                           >
-                            Clear
+                            {translate("clear")}
                           </Button>
                         </div>
                       </PopoverContent>
@@ -368,7 +370,7 @@ export function LinkReimbursementsDialog({
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2 text-xs text-muted-foreground">
                         <RiBankLine className="h-4 w-4" />
-                        Account
+                        {translate("account85dfa3")}
                       </Label>
                       <Popover open={accountPopoverOpen} onOpenChange={setAccountPopoverOpen}>
                         <PopoverTrigger
@@ -383,7 +385,7 @@ export function LinkReimbursementsDialog({
                             >
                               {selectedAccountId
                                 ? accounts.find((a) => a.id === selectedAccountId)?.name
-                                : <span className="text-muted-foreground">All accounts</span>}
+                                : <span className="text-muted-foreground">{translate("allAccounts6a19f2")}</span>}
                             </Button>
                           }
                         />
@@ -399,7 +401,7 @@ export function LinkReimbursementsDialog({
                               !selectedAccountId && "bg-accent"
                             )}
                           >
-                            All accounts
+                            {translate("allAccounts6a19f2")}
                           </button>
                           {accounts.map((account) => (
                             <button
@@ -426,20 +428,20 @@ export function LinkReimbursementsDialog({
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-xs text-muted-foreground">
                       <RiMoneyDollarCircleLine className="h-4 w-4" />
-                      Amount Range
+                      {translate("amountRange")}
                     </Label>
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
-                        placeholder="Min"
+                        placeholder={translate("min")}
                         value={minAmount}
                         onChange={(e) => setMinAmount(e.target.value)}
                         className="h-8 text-xs"
                       />
-                      <span className="text-muted-foreground text-xs">to</span>
+                      <span className="text-muted-foreground text-xs">{translate("to")}</span>
                       <Input
                         type="number"
-                        placeholder="Max"
+                        placeholder={translate("max")}
                         value={maxAmount}
                         onChange={(e) => setMaxAmount(e.target.value)}
                         className="h-8 text-xs"
@@ -455,7 +457,7 @@ export function LinkReimbursementsDialog({
                       onClick={clearFilters}
                       className="w-full text-xs"
                     >
-                      Clear all filters
+                      {translate("clearAllFilters")}
                     </Button>
                   )}
                 </div>
@@ -467,11 +469,11 @@ export function LinkReimbursementsDialog({
           <div className="flex-1 overflow-y-auto min-h-0 space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">
-                {isExpense ? "Credits" : "Debits"} ({totalCount})
+                {isExpense ? translate("credits") : translate("debits")} ({totalCount})
               </Label>
               {selectedIds.size > 0 && (
                 <Button variant="ghost" size="sm" onClick={clearSelection}>
-                  Clear Selection
+                  {translate("clearSelectionfae58c")}
                 </Button>
               )}
             </div>
@@ -479,7 +481,7 @@ export function LinkReimbursementsDialog({
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-8 gap-2">
                 <RiLoader4Line className="h-6 w-6 animate-spin text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Loading...</p>
+                <p className="text-sm text-muted-foreground">{translate("loadingb04ba4")}</p>
               </div>
             ) : transactions.length > 0 ? (
               <>
@@ -492,7 +494,7 @@ export function LinkReimbursementsDialog({
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between pt-2">
                     <span className="text-xs text-muted-foreground">
-                      Page {currentPage} of {totalPages}
+                      {translate("page")} {currentPage} {translate("of")} {totalPages}
                     </span>
                     <div className="flex gap-1">
                       <Button
@@ -519,7 +521,7 @@ export function LinkReimbursementsDialog({
               </>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">
-                No transactions found matching your filters.
+                {translate("noTransactionsFoundMatchingYourFilters")}
               </p>
             )}
           </div>
@@ -530,9 +532,9 @@ export function LinkReimbursementsDialog({
               <Separator className="shrink-0" />
               <div className="flex items-center justify-between p-3 bg-muted/30 border shrink-0">
                 <div>
-                  <p className="text-sm font-medium">Net Amount</p>
+                  <p className="text-sm font-medium">{translate("netAmount")}</p>
                   <p className="text-xs text-muted-foreground">
-                    {selectedIds.size} transaction(s) selected
+                    {selectedIds.size} {translate("transactionSSelected")}
                   </p>
                 </div>
                 <div
@@ -550,13 +552,13 @@ export function LinkReimbursementsDialog({
 
         <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLinking}>
-            Cancel
+            {translate("cancel")}
           </Button>
           <Button
             onClick={handleLink}
             disabled={isLoading || isLinking || selectedIds.size === 0}
           >
-            {isLinking ? "Linking..." : `Link ${selectedIds.size} Transaction(s)`}
+            {isLinking ? translate("linking") : translate("linkTransactionS", { value1: selectedIds.size })}
           </Button>
         </DialogFooter>
       </DialogContent>

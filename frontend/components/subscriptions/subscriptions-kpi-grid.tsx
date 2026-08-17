@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
@@ -15,7 +17,7 @@ export function SubscriptionsKpiGrid({ kpis }: SubscriptionsKpiGridProps) {
         <CardContent className="flex items-center justify-between gap-3 p-4 sm:p-6">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              Active Subscriptions
+              {translate("activeSubscriptions")}
             </p>
             <p className="break-words font-mono text-xl font-semibold tracking-tight sm:text-2xl">
               {kpis.activeCount}
@@ -28,7 +30,7 @@ export function SubscriptionsKpiGrid({ kpis }: SubscriptionsKpiGridProps) {
         <CardContent className="flex items-center justify-between gap-3 p-4 sm:p-6">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              Total Monthly
+              {translate("totalMonthly")}
             </p>
             <p className="break-words font-mono text-xl font-semibold tracking-tight sm:text-2xl">
               {formatCurrency(kpis.monthlyTotal, kpis.currency, {
@@ -44,7 +46,7 @@ export function SubscriptionsKpiGrid({ kpis }: SubscriptionsKpiGridProps) {
         <CardContent className="flex items-center justify-between gap-3 p-4 sm:p-6">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              All Time Total
+              {translate("allTimeTotal")}
             </p>
             <p className="break-words font-mono text-xl font-semibold tracking-tight sm:text-2xl">
               {formatCurrency(kpis.allTimeTotal, kpis.currency, {

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import { RiLockLine, RiSave3Line } from "@remixicon/react";
@@ -42,13 +44,13 @@ export function AuthenticationTab({
     try {
       const result = await updateSignupSettings(signupsEnabled);
       if (!result.success || !result.settings) {
-        toast.error(result.error || "Failed to save signup settings");
+        toast.error(result.error || translate("failedToSaveSignupSettings"));
         return;
       }
       setSignupSettings(result.settings);
-      toast.success(signupsEnabled ? "New user signups enabled" : "New user signups disabled");
+      toast.success(signupsEnabled ? translate("newUserSignupsEnabled") : translate("newUserSignupsDisabled"));
     } catch {
-      toast.error("Failed to save signup settings");
+      toast.error(translate("failedToSaveSignupSettings"));
     } finally {
       setSavingSignups(false);
     }
@@ -66,14 +68,14 @@ export function AuthenticationTab({
         allowSignUp,
       });
       if (!result.success || !result.settings) {
-        toast.error(result.error || "Failed to save OIDC settings");
+        toast.error(result.error || translate("failedToSaveOidcSettings"));
         return;
       }
       setSettings(result.settings);
       setClientSecret("");
-      toast.success(enabled ? "OIDC login enabled" : "OIDC settings saved");
+      toast.success(enabled ? translate("oidcLoginEnabled") : translate("oidcSettingsSaved"));
     } catch {
-      toast.error("Failed to save OIDC settings");
+      toast.error(translate("failedToSaveOidcSettings"));
     } finally {
       setSaving(false);
     }
@@ -84,9 +86,9 @@ export function AuthenticationTab({
       <div className="space-y-4 border border-border p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <Label htmlFor="new-user-signups">New user registration</Label>
+            <Label htmlFor="new-user-signups">{translate("newUserRegistration")}</Label>
             <p className="text-xs text-muted-foreground">
-              Allow people to create new local accounts. Existing users can always sign in.
+              {translate("allowPeopleToCreateNewLocalAccountsExistingUsers")}
             </p>
           </div>
           <Switch
@@ -104,7 +106,7 @@ export function AuthenticationTab({
         )}
         {signupSettings.environmentDisabled && (
           <p className="border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            Signups are disabled by the deployment-level DISABLE_SIGN_UPS setting.
+            {translate("signupsAreDisabledByTheDeploymentLevelDisableSign")}
           </p>
         )}
         <Button
@@ -115,7 +117,7 @@ export function AuthenticationTab({
           }
         >
           <RiSave3Line />
-          {savingSignups ? "Saving..." : "Save signup policy"}
+          {savingSignups ? translate("saving") : translate("saveSignupPolicy")}
         </Button>
       </div>
 
@@ -124,10 +126,10 @@ export function AuthenticationTab({
           <div className="space-y-1">
             <Label htmlFor="oidc-enabled" className="flex items-center gap-2">
               <RiLockLine className="h-4 w-4" />
-              OpenID Connect
+              {translate("openidConnect")}
             </Label>
             <p className="text-xs text-muted-foreground">
-              Add an optional identity provider such as Authentik, Keycloak, or Okta.
+              {translate("addAnOptionalIdentityProviderSuchAsAuthentikKeycloak")}
             </p>
           </div>
           <Switch
@@ -135,7 +137,7 @@ export function AuthenticationTab({
             checked={enabled}
             onCheckedChange={setEnabled}
             disabled={saving}
-            aria-label="Enable OpenID Connect login"
+            aria-label={translate("enableOpenidConnectLogin")}
           />
         </div>
 
@@ -147,25 +149,25 @@ export function AuthenticationTab({
 
         {!settings.encryptionConfigured && (
           <p className="border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            Set DATA_ENCRYPTION_KEY_CURRENT on the frontend deployment before saving OIDC credentials.
+            {translate("setDataEncryptionKeyCurrentOnTheFrontendDeployment")}
           </p>
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="oidc-display-name">Provider name</Label>
+          <Label htmlFor="oidc-display-name">{translate("providerName")}</Label>
           <Input
             id="oidc-display-name"
             value={displayName}
             maxLength={80}
             onChange={(event) => setDisplayName(event.target.value)}
-            placeholder="Company SSO"
+            placeholder={translate("companySso")}
             disabled={saving}
           />
-          <p className="text-xs text-muted-foreground">Shown on the login button.</p>
+          <p className="text-xs text-muted-foreground">{translate("shownOnTheLoginButton")}</p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="oidc-discovery-url">Discovery URL</Label>
+          <Label htmlFor="oidc-discovery-url">{translate("discoveryUrl")}</Label>
           <Input
             id="oidc-discovery-url"
             type="url"
@@ -177,7 +179,7 @@ export function AuthenticationTab({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="oidc-client-id">Client ID</Label>
+          <Label htmlFor="oidc-client-id">{translate("clientId")}</Label>
           <Input
             id="oidc-client-id"
             value={clientId}
@@ -188,36 +190,36 @@ export function AuthenticationTab({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="oidc-client-secret">Client secret</Label>
+          <Label htmlFor="oidc-client-secret">{translate("clientSecret")}</Label>
           <Input
             id="oidc-client-secret"
             type="password"
             value={clientSecret}
             onChange={(event) => setClientSecret(event.target.value)}
             autoComplete="new-password"
-            placeholder={settings.clientSecretConfigured ? "Leave blank to keep the saved secret" : "Enter client secret"}
+            placeholder={settings.clientSecretConfigured ? translate("leaveBlankToKeepTheSavedSecret") : translate("enterClientSecret")}
             disabled={saving}
           />
           <p className="text-xs text-muted-foreground">
-            The secret is encrypted and is never returned to the browser after saving.
+            {translate("theSecretIsEncryptedAndIsNeverReturnedTo")}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label>Redirect URI</Label>
+          <Label>{translate("redirectUri")}</Label>
           <code className="block overflow-x-auto border border-border bg-muted/40 px-3 py-2 text-xs">
             {callbackUrl}
           </code>
           <p className="text-xs text-muted-foreground">
-            Add this exact URI to the provider&apos;s allowed redirect URIs.
+            {translate("addThisExactUriToTheProviderSAllowed")}
           </p>
         </div>
 
         <div className="flex items-start justify-between gap-4 border border-border p-3">
           <div className="space-y-1">
-            <Label htmlFor="oidc-sign-ups">Allow new users</Label>
+            <Label htmlFor="oidc-sign-ups">{translate("allowNewUsers")}</Label>
             <p className="text-xs text-muted-foreground">
-              When disabled, only users with an existing linked OIDC account can sign in.
+              {translate("whenDisabledOnlyUsersWithAnExistingLinkedOidc")}
             </p>
           </div>
           <Switch
@@ -230,7 +232,7 @@ export function AuthenticationTab({
 
         <Button onClick={handleSave} disabled={saving || !settings.encryptionConfigured}>
           <RiSave3Line />
-          {saving ? "Saving..." : "Save authentication settings"}
+          {saving ? translate("saving") : translate("saveAuthenticationSettings")}
         </Button>
       </div>
     </div>

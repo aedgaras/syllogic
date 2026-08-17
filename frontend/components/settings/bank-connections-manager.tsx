@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -263,9 +265,9 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
         window.location.assign(result.url);
         return;
       }
-      setRelinkError(result.error || "Failed to renew bank consent");
+      setRelinkError(result.error || translate("failedToRenewBankConsent"));
     } catch {
-      setRelinkError("Failed to renew bank consent. Please try again.");
+      setRelinkError(translate("failedToRenewBankConsentPleaseTryAgain"));
     }
     setRelinkingIds((prev) => {
       const next = new Set(prev);
@@ -280,15 +282,15 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
 
   const getStatusBadge = (connection: BankConnectionItem) => {
     if (isConsentExpired(connection)) {
-      return <Badge variant="destructive">Consent expired</Badge>;
+      return <Badge variant="destructive">{translate("consentExpired")}</Badge>;
     }
     switch (connection.status) {
       case "active":
-        return <Badge variant="default">Active</Badge>;
+        return <Badge variant="default">{translate("active")}</Badge>;
       case "error":
-        return <Badge variant="destructive">Error</Badge>;
+        return <Badge variant="destructive">{translate("error")}</Badge>;
       case "disconnected":
-        return <Badge variant="secondary">Disconnected</Badge>;
+        return <Badge variant="secondary">{translate("disconnected")}</Badge>;
       default:
         return <Badge variant="secondary">{connection.status}</Badge>;
     }
@@ -320,9 +322,9 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Bank Connections</h2>
+          <h2 className="text-lg font-semibold">{translate("bankConnections")}</h2>
           <p className="text-sm text-muted-foreground">
-            Connect your bank accounts via Open Banking to automatically sync transactions.
+            {translate("connectYourBankAccountsViaOpenBankingToAutomatically")}
           </p>
         </div>
         <Link
@@ -330,7 +332,7 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
           className={buttonVariants({ variant: "default", size: "default" })}
         >
           <RiAddLine className="mr-1.5 h-4 w-4" />
-          Connect Bank
+          {translate("connectBank")}
         </Link>
       </div>
 
@@ -345,7 +347,7 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
         <div className="rounded-lg border border-dashed p-8 text-center">
           <RiBankLine className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            No bank connections yet. Connect a bank to start syncing transactions automatically.
+            {translate("noBankConnectionsYetConnectABankToStart")}
           </p>
         </div>
       ) : (
@@ -371,7 +373,7 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
                       <>
                         <span>·</span>
                         <span>
-                          Last synced:{" "}
+                          {translate("lastSynced")}{" "}
                           {new Date(connection.lastSyncedAt).toLocaleDateString()}
                         </span>
                       </>
@@ -384,18 +386,18 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
                           ? "text-amber-600"
                           : "text-muted-foreground"
                       }`}
-                      title={`Consent expires ${connection.consentExpiresAt.toLocaleString()}`}
+                      title={translate("consentExpires", { value1: connection.consentExpiresAt.toLocaleString() })}
                     >
                       <RiAlertLine className="h-3 w-3" />
                       <span>
-                        Bank consent expires in {consentTimeRemaining(connection)}.
+                        {translate("bankConsentExpiresIn")} {consentTimeRemaining(connection)}.
                       </span>
                     </div>
                   )}
                   {isConsentExpired(connection) && (
                     <div className="mt-1 flex items-center gap-1 text-xs text-destructive">
                       <RiAlertLine className="h-3 w-3" />
-                      <span>Bank consent expired. Renew it to resume syncing.</span>
+                      <span>{translate("bankConsentExpiredRenewItToResumeSyncing")}</span>
                     </div>
                   )}
                   {connection.lastSyncError && connection.status === "error" && (
@@ -418,7 +420,7 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
                         relinkingIds.has(connection.id) ? "animate-spin" : ""
                       }`}
                     />
-                    {relinkingIds.has(connection.id) ? "Opening bank..." : "Renew Consent"}
+                    {relinkingIds.has(connection.id) ? translate("openingBank") : translate("renewConsent")}
                   </Button>
                 )}
                 {connection.status === "active" && !isConsentExpired(connection) && (
@@ -433,7 +435,7 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
                         syncingIds.has(connection.id) ? "animate-spin" : ""
                       }`}
                     />
-                    {syncingIds.has(connection.id) ? "Syncing..." : "Sync Now"}
+                    {syncingIds.has(connection.id) ? translate("syncinge5c772") : translate("syncNow")}
                   </Button>
                 )}
                 {connection.status === "active" && !isConsentExpired(connection) && (
@@ -448,7 +450,7 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
                         recategorizingIds.has(connection.id) ? "animate-spin" : ""
                       }`}
                     />
-                    {recategorizingIds.has(connection.id) ? "Re-categorizing..." : "Fix Categories"}
+                    {recategorizingIds.has(connection.id) ? translate("reCategorizing") : translate("fixCategories")}
                   </Button>
                 )}
                 <AlertDialog>
@@ -461,24 +463,23 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
                         disabled={disconnectingIds.has(connection.id)}
                       >
                         <RiLinkUnlinkM className="mr-1.5 h-4 w-4" />
-                        Disconnect
+                        {translate("disconnect")}
                       </Button>
                     }
                   />
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Disconnect {connection.aspspName}?</AlertDialogTitle>
+                      <AlertDialogTitle>{translate("disconnect")} {connection.aspspName}?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will revoke access to your bank data. Your existing
-                        transactions will be kept, but no new data will be synced.
+                        {translate("thisWillRevokeAccessToYourBankDataYour")}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogCancel>{translate("cancel")}</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={() => handleDisconnect(connection.id)}
                       >
-                        Disconnect
+                        {translate("disconnect")}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -497,7 +498,7 @@ export function BankConnectionsManager({ connections }: BankConnectionsManagerPr
                         return "Preparing sync...";
                       })()}
                     </span>
-                    <span>{elapsedSeconds.get(connection.id) ?? 0}s elapsed</span>
+                    <span>{elapsedSeconds.get(connection.id) ?? 0}{translate("sElapsed")}</span>
                   </div>
                   <Progress
                     value={(() => {

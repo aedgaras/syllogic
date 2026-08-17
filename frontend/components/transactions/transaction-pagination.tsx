@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { type Table } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
@@ -72,11 +74,11 @@ export function TransactionPagination({
         <p className="text-xs text-muted-foreground">
           {selectedRows > 0 ? (
             <>
-              {selectedRows} of {currentPageRows} row(s) selected
+              {selectedRows} {translate("of")} {currentPageRows} {translate("rowSSelected")}
             </>
           ) : (
             <>
-              {startRow}-{endRow} of {resolvedTotalCount} transaction{resolvedTotalCount !== 1 ? "s" : ""}
+              {startRow}-{endRow} {translate("of")} {resolvedTotalCount} {translate("transaction41c48b")}{resolvedTotalCount !== 1 ? "s" : ""}
             </>
           )}
         </p>
@@ -84,7 +86,7 @@ export function TransactionPagination({
 
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <p className="text-xs text-muted-foreground">Rows per page</p>
+          <p className="text-xs text-muted-foreground">{translate("rowsPerPage")}</p>
           <Select
             value={resolvedPageSize.toString()}
             onValueChange={(value) => setRowsPerPage(Number(value))}
@@ -104,7 +106,7 @@ export function TransactionPagination({
 
         <div className="flex items-center gap-1">
           <p className="text-xs text-muted-foreground">
-            Page {resolvedPage} of {pageCount}
+            {translate("page")} {resolvedPage} {translate("of")} {pageCount}
           </p>
         </div>
 

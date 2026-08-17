@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import * as React from "react";
 import {
@@ -230,13 +232,13 @@ export function TransactionTable({
           resolvedFilteredTotals ? (
             <div className="-mt-px flex items-center justify-end gap-8 border-x border-b bg-muted/25 px-4 py-2">
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground">Total In</span>
+                <span className="text-muted-foreground">{translate("totalIn")}</span>
                 <span className="font-mono font-medium text-emerald-700">
                   +{formatSummaryAmount(resolvedFilteredTotals.totalIn)}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground">Total Out</span>
+                <span className="text-muted-foreground">{translate("totalOut")}</span>
                 <span className="font-mono font-medium text-rose-700">
                   -{formatSummaryAmount(resolvedFilteredTotals.totalOut)}
                 </span>

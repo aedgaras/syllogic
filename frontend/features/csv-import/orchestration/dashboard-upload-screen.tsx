@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { RiArrowLeftLine, RiArrowRightLine } from "@remixicon/react";
 import {
@@ -27,28 +29,27 @@ export default function CsvImportPage() {
 
   return (
     <>
-      <Header title="Import Transactions" />
+      <Header title={translate("importTransactions28eaf7")} />
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4 pt-0">
         <Card className="w-full max-w-2xl">
           <CardHeader>
-            <CardTitle>Import Transactions</CardTitle>
+            <CardTitle>{translate("importTransactions28eaf7")}</CardTitle>
             <CardDescription>
-              Upload a CSV or Excel file with your transactions. We&apos;ll help you map
-              the columns to the correct fields.
+              {translate("uploadACsvOrExcelFileWithYourTransactions")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label>Select Account</Label>
+              <Label>{translate("selectAccount")}</Label>
               {accounts.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No accounts found. Please create an account first.
+                  {translate("noAccountsFoundPleaseCreateAnAccountFirst")}
                 </p>
               ) : (
                 <Select value={selectedAccountId} onValueChange={(v) => v && setSelectedAccountId(v)}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select an account">
-                      {accounts.find((a) => a.id === selectedAccountId)?.name ?? "Select an account"}
+                    <SelectValue placeholder={translate("selectAnAccount")}>
+                      {accounts.find((a) => a.id === selectedAccountId)?.name ?? translate("selectAnAccount")}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
@@ -63,7 +64,7 @@ export default function CsvImportPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Upload File</Label>
+              <Label>{translate("uploadFile")}</Label>
               <CsvUploadDropzone
                 onFileSelect={selectFile}
                 isUploading={isLoading}
@@ -77,13 +78,13 @@ export default function CsvImportPage() {
               onClick={goBack}
             >
               <RiArrowLeftLine className="mr-2 h-4 w-4" />
-              Cancel
+              {translate("cancel")}
             </Button>
             <Button
               onClick={continueToMapping}
               disabled={isLoading || !selectedFile || accounts.length === 0}
             >
-              {isLoading ? "Processing..." : "Continue"}
+              {isLoading ? translate("processing") : translate("continue")}
               <RiArrowRightLine className="ml-2 h-4 w-4" />
             </Button>
           </CardFooter>

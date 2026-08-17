@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -53,19 +55,19 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
 
   const validateOwners = (): boolean => {
     if (owners.length === 0) {
-      setOwnersError("Select at least one owner.");
+      setOwnersError(translate("selectAtLeastOneOwner"));
       return false;
     }
     const allNull = owners.every((o) => o.share === null);
     const allSet = owners.every((o) => o.share !== null);
     if (!allNull && !allSet) {
-      setOwnersError("All owners must either split equally or specify shares.");
+      setOwnersError(translate("allOwnersMustEitherSplitEquallyOrSpecifyShares"));
       return false;
     }
     if (allSet) {
       const sum = owners.reduce((acc, o) => acc + (o.share as number), 0);
       if (Math.abs(sum - 1) > 0.0001) {
-        setOwnersError(`Shares must sum to 100% (currently ${Math.round(sum * 100)}%).`);
+        setOwnersError(translate("sharesMustSumTo100Currentlyc8e2ea", { value1: Math.round(sum * 100) }));
         return false;
       }
     }
@@ -77,7 +79,7 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
     try {
       await savePropertyOwnersMutation.mutateAsync({ entityId, owners });
     } catch (err) {
-      toast.error((err as Error).message || "Property created, but failed to save ownership. You can update it later.");
+      toast.error((err as Error).message || translate("propertyCreatedButFailedToSaveOwnershipYouCan"));
     }
   };
 
@@ -85,22 +87,22 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
     e.preventDefault();
 
     if (!name.trim()) {
-      toast.error("Please enter a property name");
+      toast.error(translate("pleaseEnterAPropertyName"));
       return;
     }
 
     if (!propertyType) {
-      toast.error("Please select a property type");
+      toast.error(translate("pleaseSelectAPropertyType"));
       return;
     }
 
     if (!currency) {
-      toast.error("Please select a currency");
+      toast.error(translate("pleaseSelectACurrency"));
       return;
     }
 
     if (!peopleLoaded) {
-      setOwnersError("Loading household data, please wait…");
+      setOwnersError(translate("loadingHouseholdDataPleaseWait"));
       return;
     }
     if (people.length > 0 && !validateOwners()) return;
@@ -110,7 +112,7 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
     try {
       const value = currentValue ? parseFloat(currentValue) : 0;
       if (currentValue && isNaN(value)) {
-        toast.error("Please enter a valid value");
+        toast.error(translate("pleaseEnterAValidValue"));
         setIsLoading(false);
         return;
       }
@@ -127,13 +129,13 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
         if (result.propertyId) {
           await putOwners(result.propertyId);
         }
-        toast.success("Property added successfully");
+        toast.success(translate("propertyAddedSuccessfully"));
         onSuccess?.();
       } else {
-        toast.error(result.error || "Failed to add property");
+        toast.error(result.error || translate("failedToAddProperty"));
       }
     } catch {
-      toast.error("An error occurred. Please try again.");
+      toast.error(translate("anErrorOccurredPleaseTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -144,10 +146,10 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
       <div className="grid gap-4 py-4">
         {/* Property Name */}
         <div className="space-y-2">
-          <Label htmlFor="property-name">Property Name</Label>
+          <Label htmlFor="property-name">{translate("propertyName")}</Label>
           <Input
             id="property-name"
-            placeholder="e.g., Main Residence"
+            placeholder={translate("eGMainResidence")}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -155,10 +157,10 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
 
         {/* Property Type */}
         <div className="space-y-2">
-          <Label htmlFor="property-type">Property Type</Label>
+          <Label htmlFor="property-type">{translate("propertyType")}</Label>
           <Select value={propertyType} onValueChange={(v) => v && setPropertyType(v)}>
             <SelectTrigger>
-              <SelectValue placeholder="Select property type" />
+              <SelectValue placeholder={translate("selectPropertyType")} />
             </SelectTrigger>
             <SelectContent>
               {PROPERTY_TYPES.map((type) => (
@@ -172,10 +174,10 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
 
         {/* Address */}
         <div className="space-y-2">
-          <Label htmlFor="property-address">Address (optional)</Label>
+          <Label htmlFor="property-address">{translate("addressOptional")}</Label>
           <Input
             id="property-address"
-            placeholder="e.g., 123 Main St, City, State"
+            placeholder={translate("eG123MainStCityState")}
             value={address}
             onChange={(e) => setAddress(e.target.value)}
           />
@@ -183,7 +185,7 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
 
         {/* Current Value */}
         <div className="space-y-2">
-          <Label htmlFor="property-value">Current Value</Label>
+          <Label htmlFor="property-value">{translate("currentValue")}</Label>
           <Input
             id="property-value"
             type="number"
@@ -196,10 +198,10 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
 
         {/* Currency */}
         <div className="space-y-2">
-          <Label htmlFor="property-currency">Currency</Label>
+          <Label htmlFor="property-currency">{translate("currency")}</Label>
           <Select value={currency} onValueChange={(v) => v && setCurrency(v)}>
             <SelectTrigger>
-              <SelectValue placeholder="Select currency" />
+              <SelectValue placeholder={translate("selectCurrency")} />
             </SelectTrigger>
             <SelectContent>
               {CURRENCIES.map((curr) => (
@@ -236,10 +238,10 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
           onClick={onCancel}
           disabled={isLoading}
         >
-          Cancel
+          {translate("cancel")}
         </Button>
         <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Adding..." : "Add Property"}
+          {isLoading ? translate("adding") : translate("addProperty")}
         </Button>
       </div>
     </form>

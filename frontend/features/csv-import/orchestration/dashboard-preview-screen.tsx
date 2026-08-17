@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { Suspense } from "react";
 import { RiArrowLeftLine, RiCheckLine, RiAlertLine } from "@remixicon/react";
@@ -15,12 +17,12 @@ function PreviewPageContent() {
   if (isLoading) {
     return (
       <>
-        <Header title="Preview Import" />
+        <Header title={translate("previewImport")} />
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
           <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
             <div className="text-center">
               <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-              <p className="text-muted-foreground">Loading preview...</p>
+              <p className="text-muted-foreground">{translate("loadingPreview")}</p>
             </div>
           </div>
         </div>
@@ -30,7 +32,7 @@ function PreviewPageContent() {
 
   return (
     <>
-      <Header title="Preview Import" />
+      <Header title={translate("previewImport")} />
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 pt-0 lg:h-[calc(100vh-4rem)] lg:overflow-hidden">
         {/* Balance Verification Card */}
         {balanceVerification?.hasBalanceData && (
@@ -54,16 +56,16 @@ function PreviewPageContent() {
               )}
               <span className="font-medium">
                 {!balanceVerification.canVerify
-                  ? "Balance Info (partial)"
+                  ? translate("balanceInfoPartial")
                   : balanceVerification.isVerified
-                    ? "Balance Verified"
-                    : "Balance Discrepancy Detected"}
+                    ? translate("balanceVerified")
+                    : translate("balanceDiscrepancyDetected")}
               </span>
             </div>
             <div className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
               {balanceVerification.fileStartingBalance !== null && (
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Starting Balance:</span>
+                  <span className="text-muted-foreground">{translate("startingBalancebc3b92")}</span>
                   <span className="font-mono">
                     {balanceVerification.fileStartingBalance.toFixed(2)}
                   </span>
@@ -71,7 +73,7 @@ function PreviewPageContent() {
               )}
               {balanceVerification.fileEndingBalance !== null && (
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Ending Balance (file):</span>
+                  <span className="text-muted-foreground">{translate("endingBalanceFile")}</span>
                   <span className="font-mono">
                     {balanceVerification.fileEndingBalance.toFixed(2)}
                   </span>
@@ -79,7 +81,7 @@ function PreviewPageContent() {
               )}
               {balanceVerification.calculatedEndingBalance !== null && (
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Calculated Ending:</span>
+                  <span className="text-muted-foreground">{translate("calculatedEnding")}</span>
                   <span className="font-mono">
                     {balanceVerification.calculatedEndingBalance.toFixed(2)}
                   </span>
@@ -89,7 +91,7 @@ function PreviewPageContent() {
                 !balanceVerification.isVerified &&
                 balanceVerification.discrepancy !== null && (
                   <div className="flex justify-between gap-3 text-amber-600 dark:text-amber-400">
-                    <span>Discrepancy:</span>
+                    <span>{translate("discrepancy")}</span>
                     <span className="font-mono font-medium">
                       {balanceVerification.discrepancy.toFixed(2)}
                     </span>
@@ -98,12 +100,12 @@ function PreviewPageContent() {
             </div>
             {!balanceVerification.canVerify && (
               <p className="mt-2 text-xs text-muted-foreground">
-                Map both starting and ending balance columns for full verification.
+                {translate("mapBothStartingAndEndingBalanceColumnsForFull")}
               </p>
             )}
             {balanceVerification.hasBalanceData && (
               <p className="mt-2 text-xs text-muted-foreground">
-                Daily balances from the CSV will be used to update the account balance history.
+                {translate("dailyBalancesFromTheCsvWillBeUsedTo")}
               </p>
             )}
           </div>
@@ -113,13 +115,13 @@ function PreviewPageContent() {
           {/* Tabs outside container */}
           <TabsList className="mb-2 w-full sm:w-fit">
             <TabsTrigger value="to-import" className="gap-2">
-              To Import
+              {translate("toImport")}
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium">
                 {toImport.length}
               </span>
             </TabsTrigger>
             <TabsTrigger value="skipped" className="gap-2" disabled={skipped.length === 0}>
-              Skipped
+              {translate("skipped")}
               <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
                 {skipped.length}
               </span>
@@ -160,13 +162,13 @@ function PreviewPageContent() {
             onClick={goBack}
           >
             <RiArrowLeftLine className="mr-2 h-4 w-4" />
-            Back to Mapping
+            {translate("backToMapping")}
           </Button>
           <Button
             onClick={enqueue}
             disabled={isImporting || selectedIndices.length === 0}
           >
-            {isImporting ? "Importing..." : `Import ${selectedIndices.length} Transactions`}
+            {isImporting ? translate("importing") : translate("importTransactions", { value1: selectedIndices.length })}
             <RiCheckLine className="ml-2 h-4 w-4" />
           </Button>
         </div>
@@ -180,12 +182,12 @@ export default function PreviewPage() {
     <Suspense
       fallback={
         <>
-          <Header title="Preview Import" />
+          <Header title={translate("previewImport")} />
           <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
             <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
               <div className="text-center">
                 <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-                <p className="text-muted-foreground">Loading...</p>
+                <p className="text-muted-foreground">{translate("loadingb04ba4")}</p>
               </div>
             </div>
           </div>

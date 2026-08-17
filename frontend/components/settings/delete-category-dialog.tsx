@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useEffect } from "react";
 import { RiAlertLine } from "@remixicon/react";
@@ -75,22 +77,22 @@ export function DeleteCategoryDialog({
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
               <RiAlertLine className="h-5 w-5 text-destructive" />
             </div>
-            <AlertDialogTitle>Delete "{category.name}"?</AlertDialogTitle>
+            <AlertDialogTitle>{translate("delete63346e")}{category.name}"?</AlertDialogTitle>
           </div>
           <AlertDialogDescription>
             {hasTransactions ? (
               <>
-                This category has <span className="font-semibold text-foreground">{transactionCount} transaction{transactionCount !== 1 ? "s" : ""}</span> assigned to it.
+                {translate("thisCategoryHas")} <span className="font-semibold text-foreground">{transactionCount} {translate("transaction41c48b")}{transactionCount !== 1 ? "s" : ""}</span> {translate("assignedToIt")}
               </>
             ) : (
-              <>This category has no transactions. It will be permanently deleted.</>
+              <>{translate("thisCategoryHasNoTransactionsItWillBePermanently")}</>
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         {hasTransactions && (
           <div className="space-y-3 py-2">
-            <Label>What should happen to these transactions?</Label>
+            <Label>{translate("whatShouldHappenToTheseTransactions")}</Label>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -99,7 +101,7 @@ export function DeleteCategoryDialog({
                 className="flex-1"
                 onClick={() => setReassignOption("uncategorized")}
               >
-                Leave uncategorized
+                {translate("leaveUncategorized")}
               </Button>
               <Button
                 type="button"
@@ -109,7 +111,7 @@ export function DeleteCategoryDialog({
                 onClick={() => setReassignOption("reassign")}
                 disabled={availableCategories.length === 0}
               >
-                Reassign
+                {translate("reassign")}
               </Button>
             </div>
 
@@ -119,7 +121,7 @@ export function DeleteCategoryDialog({
                 onValueChange={(value) => value && setReassignCategoryId(value)}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a category">
+                  <SelectValue placeholder={translate("selectACategory")}>
                     {reassignCategoryId ? (
                       <div className="flex items-center gap-2">
                         <div
@@ -134,7 +136,7 @@ export function DeleteCategoryDialog({
                         </span>
                       </div>
                     ) : (
-                      "Select a category"
+                      translate("selectACategory")
                     )}
                   </SelectValue>
                 </SelectTrigger>
@@ -158,7 +160,7 @@ export function DeleteCategoryDialog({
 
         <div className="space-y-2">
           <Label htmlFor="confirm-name">
-            Type <span className="font-semibold text-foreground">{category.name}</span> to confirm
+            {translate("type")} <span className="font-semibold text-foreground">{category.name}</span> {translate("toConfirm")}
           </Label>
           <Input
             id="confirm-name"
@@ -170,7 +172,7 @@ export function DeleteCategoryDialog({
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isLoading}>{translate("cancel")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={
@@ -180,7 +182,7 @@ export function DeleteCategoryDialog({
             }
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isLoading ? "Deleting..." : "Delete Category"}
+            {isLoading ? translate("deleting") : translate("deleteCategoryea9ac9")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

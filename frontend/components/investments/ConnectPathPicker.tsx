@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 import { useState } from "react";
 import { RiArrowLeftLine, RiLinksLine, RiPencilLine } from "@remixicon/react";
 import type { InvestmentAccount } from "@/lib/api/investments";
@@ -28,7 +30,7 @@ export function ConnectPathPicker({
     {
       id: "broker",
       icon: <RiLinksLine size={17} />,
-      title: "Connect broker",
+      title: translate("connectBroker"),
       sub: "Positions and trades sync automatically. Best for IBKR users.",
       badge: "RECOMMENDED",
       detail:
@@ -37,7 +39,7 @@ export function ConnectPathPicker({
     {
       id: "manual",
       icon: <RiPencilLine size={17} />,
-      title: "Add manually",
+      title: translate("addManually"),
       sub: "Search by symbol, enter quantity and optional cost basis.",
       badge: null,
       detail:
@@ -50,9 +52,7 @@ export function ConnectPathPicker({
       <div className="flex-1 overflow-auto">
         <div className="p-8 max-w-3xl space-y-5">
           <p className="text-sm text-muted-foreground leading-relaxed max-w-xl">
-            Choose how to track your investments. You can use both methods
-            across different accounts — a brokerage account synced from IBKR
-            alongside a manually-managed account for assets held elsewhere.
+            {translate("chooseHowToTrackYourInvestmentsYouCanUse")}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {paths.map((p) => (
@@ -102,7 +102,7 @@ export function ConnectPathPicker({
           className="-ml-2"
         >
           <RiArrowLeftLine className="size-4" />
-          Choose a different path
+          {translate("chooseADifferentPath")}
         </Button>
         <div className="text-xs uppercase tracking-wider text-muted-foreground">
           {pickedTitle}

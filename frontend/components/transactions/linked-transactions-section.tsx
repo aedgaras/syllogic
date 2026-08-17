@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
@@ -91,7 +93,7 @@ export function LinkedTransactionsSection({
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <RiLink className="h-4 w-4" />
-          <span className="text-sm font-medium">Linked Transactions</span>
+          <span className="text-sm font-medium">{translate("linkedTransactionsc39891")}</span>
         </div>
         <div className="flex items-center justify-center py-4">
           <RiLoader4Line className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -106,11 +108,11 @@ export function LinkedTransactionsSection({
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <RiLink className="h-4 w-4" />
-          <span className="text-sm font-medium">Linked Transactions</span>
+          <span className="text-sm font-medium">{translate("linkedTransactionsc39891")}</span>
         </div>
         <Button variant="outline" className="w-full" onClick={onLinkClick}>
           <RiLink className="h-4 w-4 mr-2" />
-          Link Reimbursements
+          {translate("linkReimbursements")}
         </Button>
       </div>
     );
@@ -129,7 +131,7 @@ export function LinkedTransactionsSection({
       >
         <div className="flex items-center gap-2">
           <RiLink className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Linked ({allLinked.length})</span>
+          <span className="text-sm font-medium">{translate("linked")}{allLinked.length})</span>
         </div>
         <div className="flex items-center gap-2">
           <span
@@ -163,7 +165,7 @@ export function LinkedTransactionsSection({
               >
                 {txn.linkRole === "primary" && (
                   <Badge variant="outline" className="text-xs shrink-0">
-                    Primary
+                    {translate("primary")}
                   </Badge>
                 )}
                 <span
@@ -209,7 +211,7 @@ export function LinkedTransactionsSection({
               disabled={isUnlinking}
             >
               <RiAddLine className="h-4 w-4 mr-1" />
-              Add More
+              {translate("addMore")}
             </Button>
             <AlertDialog>
               <AlertDialogTrigger
@@ -222,21 +224,20 @@ export function LinkedTransactionsSection({
                     disabled={isUnlinking}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    Unlink All
+                    {translate("unlinkAll")}
                   </Button>
                 }
               />
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Unlink all transactions?</AlertDialogTitle>
+                  <AlertDialogTitle>{translate("unlinkAllTransactions")}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will remove all links between these transactions. They will be treated
-                    as separate transactions in analytics.
+                    {translate("thisWillRemoveAllLinksBetweenTheseTransactionsThey")}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleUnlinkAll}>Unlink All</AlertDialogAction>
+                  <AlertDialogCancel>{translate("cancel")}</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleUnlinkAll}>{translate("unlinkAll")}</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

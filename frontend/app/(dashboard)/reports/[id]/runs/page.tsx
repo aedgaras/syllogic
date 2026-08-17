@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -21,22 +23,22 @@ export default function ReportRunsPage() {
 
   return (
     <>
-      <Header title={report ? `${report.name} - Runs` : "Runs"} />
+      <Header title={report ? translate("runs", { value1: report.name }) : translate("runsfcde5c")} />
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0 text-foreground">
-        <p className="text-sm text-muted-foreground">Scheduled and executed sends for this report.</p>
+        <p className="text-sm text-muted-foreground">{translate("scheduledAndExecutedSendsForThisReport")}</p>
 
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">{translate("loading")}</p>
         ) : isError && !(runs && runs.length > 0) ? (
           // Only show the error state when there's no cached data to fall
           // back on — with refetchInterval polling, a single transient
           // background refetch failure would otherwise hide a previously
           // loaded, still-valid run history behind an error message.
-          <p className="text-sm text-destructive">Failed to load runs. Please try again.</p>
+          <p className="text-sm text-destructive">{translate("failedToLoadRunsPleaseTryAgain")}</p>
         ) : runs && runs.length > 0 ? (
           <ReportRunsTable runs={runs} />
         ) : (
-          <p className="text-sm text-muted-foreground">No runs yet.</p>
+          <p className="text-sm text-muted-foreground">{translate("noRunsYet")}</p>
         )}
       </div>
     </>

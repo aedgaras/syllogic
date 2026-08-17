@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from "recharts";
 import {
@@ -30,11 +32,11 @@ interface TransactionSummaryChartProps {
 
 const chartConfig = {
   income: {
-    label: "Income",
+    label: translate("income1c89b1"),
     color: "var(--chart-2)",
   },
   expenses: {
-    label: "Expenses",
+    label: translate("expenses"),
     color: "var(--chart-1)",
   },
 } satisfies ChartConfig;
@@ -60,8 +62,8 @@ export function TransactionSummaryChart({ data }: TransactionSummaryChartProps) 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Transaction Summary</CardTitle>
-        <CardDescription>Daily income vs expenses (last 30 days)</CardDescription>
+        <CardTitle>{translate("transactionSummary")}</CardTitle>
+        <CardDescription>{translate("dailyIncomeVsExpensesLast30Days")}</CardDescription>
       </CardHeader>
       <CardContent>
         {hasData ? (
@@ -118,7 +120,7 @@ export function TransactionSummaryChart({ data }: TransactionSummaryChartProps) 
           </ChartContainer>
         ) : (
           <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-            <p>No transaction data available</p>
+            <p>{translate("noTransactionDataAvailable")}</p>
           </div>
         )}
       </CardContent>

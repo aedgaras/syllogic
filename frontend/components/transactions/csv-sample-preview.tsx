@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useMemo } from "react";
 import { RiArrowRightLine } from "@remixicon/react";
@@ -11,9 +13,9 @@ interface CsvSamplePreviewProps {
 }
 
 const MAPPED_FIELDS = [
-  { key: "date", label: "Date" },
-  { key: "amount", label: "Amount" },
-  { key: "description", label: "Description" },
+  { key: "date", label: translate("date") },
+  { key: "amount", label: translate("amount") },
+  { key: "description", label: translate("description55f8eb") },
 ] as const;
 
 export function CsvSamplePreview({
@@ -55,7 +57,7 @@ export function CsvSamplePreview({
       <div className="flex h-full items-center justify-center rounded-lg border border-dashed bg-muted/30 p-8">
         <div className="text-center">
           <p className="text-sm text-muted-foreground">
-            Map columns on the left to see a preview of your data
+            {translate("mapColumnsOnTheLeftToSeeAPreview")}
           </p>
         </div>
       </div>
@@ -115,7 +117,7 @@ export function CsvSamplePreview({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Showing {mappedData.length} of {sampleRows.length} sample rows
+        {translate("showing")} {mappedData.length} {translate("of")} {sampleRows.length} {translate("sampleRows")}
       </p>
     </div>
   );

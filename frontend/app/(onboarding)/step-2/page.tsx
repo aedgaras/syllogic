@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -37,18 +39,18 @@ export default function OnboardingStep2Page() {
   }> = [
     {
       type: "expense",
-      title: "Expenses",
-      description: "Set up how you track spending.",
+      title: translate("expenses"),
+      description: translate("setUpHowYouTrackSpending"),
     },
     {
       type: "income",
-      title: "Income",
-      description: "Add sources of income you want to track.",
+      title: translate("income1c89b1"),
+      description: translate("addSourcesOfIncomeYouWantToTrack"),
     },
     {
       type: "transfer",
-      title: "Transfers",
-      description: "Configure internal and external transfers.",
+      title: translate("transfers"),
+      description: translate("configureInternalAndExternalTransfers"),
     },
   ];
 
@@ -104,12 +106,12 @@ export default function OnboardingStep2Page() {
         hideFromSelection: cat.hideFromSelection,
       }))
     );
-    toast.success("Categories reset to defaults");
+    toast.success(translate("categoriesResetToDefaults"));
   };
 
   const handleSubmit = async () => {
     if (categories.length === 0) {
-      toast.error("Please add at least one category");
+      toast.error(translate("pleaseAddAtLeastOneCategory"));
       return;
     }
 
@@ -124,7 +126,7 @@ export default function OnboardingStep2Page() {
       if (result.success) {
         router.push("/step-3");
       } else {
-        toast.error(result.error || "Failed to save categories");
+        toast.error(result.error || translate("failedToSaveCategories"));
       }
     });
   };
@@ -158,7 +160,7 @@ export default function OnboardingStep2Page() {
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle>Set up your categories</CardTitle>
+              <CardTitle>{translate("setUpYourCategories")}</CardTitle>
               <CardDescription>
                 {activeStep ? (
                   <>
@@ -166,16 +168,16 @@ export default function OnboardingStep2Page() {
                     {activeStep.description}
                   </>
                 ) : (
-                  "Customize how you want to organize your transactions."
+                  translate("customizeHowYouWantToOrganizeYourTransactions")
                 )}
               </CardDescription>
               <p className="mt-2 text-xs text-muted-foreground">
-                Tip: Add categorization instructions by clicking the edit icon.
+                {translate("tipAddCategorizationInstructionsByClickingTheEditIcon")}
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={handleResetToDefaults}>
               <RiRefreshLine className="mr-2 h-4 w-4" />
-              Reset to Defaults
+              {translate("resetToDefaults")}
             </Button>
           </div>
         </CardHeader>
@@ -189,17 +191,17 @@ export default function OnboardingStep2Page() {
         <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <Button variant="outline" onClick={handleBack}>
             <RiArrowLeftLine className="mr-2 h-4 w-4" />
-            Back
+            {translate("back")}
           </Button>
           <Button onClick={handleSubmit} disabled={isPending || categories.length === 0}>
             {isPending ? (
               <>
                 <RiLoader4Line className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                {translate("saving")}
               </>
             ) : (
               <>
-                {activeIndex < substeps.length - 1 ? "Continue" : "Save & Continue"}
+                {activeIndex < substeps.length - 1 ? translate("continue") : translate("saveContinue")}
                 <RiArrowRightLine className="ml-2 h-4 w-4" />
               </>
             )}

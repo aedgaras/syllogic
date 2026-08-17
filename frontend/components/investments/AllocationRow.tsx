@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   AllocationDonut,
@@ -23,8 +24,8 @@ export function AllocationRow({
   byCurrency: Record<string, string>;
 }) {
   const groups = [
-    { title: "By instrument", segs: toSegments(byInstrument) },
-    { title: "By currency", segs: toSegments(byCurrency) },
+    { title: translate("byInstrument"), segs: toSegments(byInstrument) },
+    { title: translate("byCurrency"), segs: toSegments(byCurrency) },
   ];
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

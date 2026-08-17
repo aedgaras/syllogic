@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -58,21 +60,20 @@ export function BrokerForm({ onCancel }: { onCancel: () => void }) {
         <form onSubmit={submit} className="space-y-5">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 border border-border flex items-center justify-center font-bold text-[11px] text-muted-foreground">
-              IBKR
+              {translate("ibkr")}
             </div>
             <div>
               <div className="font-semibold text-sm">
-                Interactive Brokers · Flex Query
+                {translate("interactiveBrokersFlexQuery")}
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">
-                Positions and trade history sync automatically via the Flex Web
-                Service
+                {translate("positionsAndTradeHistorySyncAutomaticallyViaTheFlex")}
               </div>
             </div>
           </div>
           <div className="bg-muted/40 border border-border px-4 py-3 space-y-2">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              What you need
+              {translate("whatYouNeed")}
             </div>
             {[
               "A Flex Web Service token — from IBKR Account Management → Reports → Flex Queries",
@@ -93,18 +94,18 @@ export function BrokerForm({ onCancel }: { onCancel: () => void }) {
               rel="noreferrer"
               className="text-xs text-foreground mt-1 inline-flex items-center gap-1 hover:underline"
             >
-              <RiExternalLinkLine size={11} /> How to set up Flex Queries →
+              <RiExternalLinkLine size={11} /> {translate("howToSetUpFlexQueries")}
             </a>
           </div>
           <div className="space-y-3.5">
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Field label="Account name" className="flex-[2_1_0%]">
+              <Field label={translate("accountNameabe4d6")} className="flex-[2_1_0%]">
                 <Input
                   value={accountName}
                   onChange={(e) => setAccountName(e.target.value)}
                 />
               </Field>
-              <Field label="Base currency" className="flex-1">
+              <Field label={translate("baseCurrency")} className="flex-1">
                 <Select
                   value={baseCurrency}
                   onValueChange={(v) => v && setBaseCurrency(v)}
@@ -113,17 +114,17 @@ export function BrokerForm({ onCancel }: { onCancel: () => void }) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">{translate("eur")}</SelectItem>
+                    <SelectItem value="USD">{translate("usd")}</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
             </div>
-            <Field label="Flex token">
+            <Field label={translate("flexToken")}>
               <div className="relative">
                 <Input
                   type={tokenVisible ? "text" : "password"}
-                  placeholder="Paste your Flex Web Service token"
+                  placeholder={translate("pasteYourFlexWebServiceToken")}
                   value={token}
                   onChange={(e) => setToken(e.target.value)}
                   className="pr-9"
@@ -142,16 +143,16 @@ export function BrokerForm({ onCancel }: { onCancel: () => void }) {
               </div>
             </Field>
             <div className="flex gap-3">
-              <Field label="Positions query ID" className="flex-1">
+              <Field label={translate("positionsQueryId")} className="flex-1">
                 <Input
-                  placeholder="e.g. 123456"
+                  placeholder={translate("eG123456")}
                   value={qPos}
                   onChange={(e) => setQPos(e.target.value)}
                 />
               </Field>
-              <Field label="Trades query ID" className="flex-1">
+              <Field label={translate("tradesQueryId")} className="flex-1">
                 <Input
-                  placeholder="e.g. 789012"
+                  placeholder={translate("eG789012")}
                   value={qTrades}
                   onChange={(e) => setQTrades(e.target.value)}
                 />
@@ -160,16 +161,16 @@ export function BrokerForm({ onCancel }: { onCancel: () => void }) {
             {err && <div className="text-destructive text-xs">{err}</div>}
             <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
               <Button type="button" variant="outline" onClick={onCancel}>
-                Cancel
+                {translate("cancel")}
               </Button>
               <Button type="submit" disabled={busy}>
-                <RiRefreshLine size={13} /> {busy ? "Syncing…" : "Connect & sync"}
+                <RiRefreshLine size={13} /> {busy ? translate("syncing") : translate("connectSync")}
               </Button>
             </div>
           </div>
           <div className="mt-6 pt-5 border-t border-border">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2.5">
-              More brokers — coming soon
+              {translate("moreBrokersComingSoon")}
             </div>
             <div className="grid gap-2.5 sm:grid-cols-3">
               {["Trading 212", "Degiro", "Schwab"].map((b) => (

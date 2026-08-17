@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import Link from "next/link";
@@ -19,23 +21,23 @@ export default function ReportsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Delete this report? This cannot be undone.")) return;
+    if (!window.confirm(translate("deleteThisReportThisCannotBeUndone"))) return;
     setDeleteError(null);
     try {
       await deleteReport(id);
       queryClient.invalidateQueries({ queryKey: ["reports"] });
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : "Failed to delete report. Please try again.");
+      setDeleteError(err instanceof Error ? err.message : translate("failedToDeleteReportPleaseTryAgain"));
     }
   }
 
   return (
     <>
       <Header
-        title="Reports"
+        title={translate("reports")}
         action={
         <Link href="/reports/new" className={buttonVariants({ size: "sm" })}>
-          New report
+          {translate("newReport")}
         </Link>
         }
       />
@@ -45,18 +47,18 @@ export default function ReportsPage() {
       {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">{translate("loading")}</p>
       ) : isError ? (
         <div className="text-sm text-muted-foreground">
-          Failed to load reports.{" "}
+          {translate("failedToLoadReports")}{" "}
           <button onClick={() => refetch()} className="text-foreground font-medium underline underline-offset-4">
-            Retry
+            {translate("retry")}
           </button>
         </div>
       ) : reports && reports.length > 0 ? (
         <ReportList reports={reports} onDelete={handleDelete} />
       ) : (
-        <p className="text-sm text-muted-foreground">No reports yet. Create one to get started.</p>
+        <p className="text-sm text-muted-foreground">{translate("noReportsYetCreateOneToGetStarted")}</p>
       )}
       </div>
     </>

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { RiHome4Line, RiCarLine, RiBankLine } from "@remixicon/react";
 import { cn } from "@/lib/utils";
@@ -14,20 +16,20 @@ interface AssetTypeOption {
 const ASSET_TYPE_OPTIONS: AssetTypeOption[] = [
   {
     type: "property",
-    label: "Property",
-    description: "Add a house, apartment, or land",
+    label: translate("property9ae33a"),
+    description: translate("addAHouseApartmentOrLand"),
     icon: RiHome4Line,
   },
   {
     type: "vehicle",
-    label: "Vehicle",
-    description: "Add a car, motorcycle, or boat",
+    label: translate("vehicle9bb28c"),
+    description: translate("addACarMotorcycleOrBoat"),
     icon: RiCarLine,
   },
   {
     type: "account",
-    label: "Account",
-    description: "Add a bank account or cash",
+    label: translate("account85dfa3"),
+    description: translate("addABankAccountOrCash"),
     icon: RiBankLine,
   },
 ];

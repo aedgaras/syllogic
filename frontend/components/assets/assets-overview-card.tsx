@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +26,7 @@ export function AssetsOverviewCard({ data }: AssetsOverviewCardProps) {
       <CardHeader>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <CardTitle>Assets Overview</CardTitle>
+            <CardTitle>{translate("assetsOverview")}</CardTitle>
             <AddAssetDialog onAssetAdded={handleAssetAdded} />
           </div>
           <span className="break-words text-xl font-bold sm:text-2xl">

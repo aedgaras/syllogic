@@ -1,4 +1,6 @@
 "use client"
+import { t as translate } from "@/i18n/translate";
+
 
 import * as React from "react"
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog"
@@ -66,7 +68,7 @@ function SheetContent({
           >
             <RiCloseLine
             />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{translate("close")}</span>
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Popup>

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import {
@@ -51,12 +53,12 @@ export function RevertImportDialog({
       const result = await revertCsvImport(csvImport.id);
       if (result.success) {
         toast.success(
-          `Reverted "${csvImport.fileName}" — ${result.deletedCount} transaction${result.deletedCount !== 1 ? "s" : ""} deleted`
+          translate("revertedTransactionDeleted", { value1: csvImport.fileName, value2: result.deletedCount, value3: result.deletedCount !== 1 ? "s" : "" })
         );
         onSuccess();
         onOpenChange(false);
       } else {
-        toast.error(result.error ?? "Failed to revert import");
+        toast.error(result.error ?? translate("failedToRevertImport"));
       }
     } finally {
       setReverting(false);
@@ -69,27 +71,27 @@ export function RevertImportDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <RiDeleteBinLine className="size-4 shrink-0" />
-            Revert Import
+            {translate("revertImport")}
           </DialogTitle>
           <DialogDescription>
-            This will permanently delete all transactions from this import. This action cannot be undone.
+            {translate("thisWillPermanentlyDeleteAllTransactionsFromThisImport")}
           </DialogDescription>
         </DialogHeader>
 
         {/* Import summary */}
         <div className="space-y-1 rounded-none border px-3 py-2.5 text-xs">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">File</span>
+            <span className="text-muted-foreground">{translate("file")}</span>
             <span className="font-mono font-medium truncate max-w-[200px]">{csvImport.fileName}</span>
           </div>
           {csvImport.account && (
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Account</span>
+              <span className="text-muted-foreground">{translate("account85dfa3")}</span>
               <span className="font-medium">{csvImport.account.name}</span>
             </div>
           )}
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Transactions to delete</span>
+            <span className="text-muted-foreground">{translate("transactionsToDelete")}</span>
             <span className="font-mono font-medium">{csvImport.transactionCount}</span>
           </div>
         </div>
@@ -99,7 +101,7 @@ export function RevertImportDialog({
           <div className="flex items-start gap-2 rounded-none border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
             <RiAlertLine className="size-4 shrink-0 mt-0.5" />
             <span>
-              Some transactions from this import have been manually re-categorized. Those changes will also be permanently deleted.
+              {translate("someTransactionsFromThisImportHaveBeenManuallyRe")}
             </span>
           </div>
         )}
@@ -108,7 +110,7 @@ export function RevertImportDialog({
         <div className="flex items-start gap-2 rounded-none border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
           <RiErrorWarningLine className="size-4 shrink-0 mt-0.5" />
           <span>
-            All balance figures will be recalculated after deletion. This action is permanent — there is no undo.
+            {translate("allBalanceFiguresWillBeRecalculatedAfterDeletionThis")}
           </span>
         </div>
 
@@ -117,14 +119,14 @@ export function RevertImportDialog({
         {/* Typed confirmation */}
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            Type{" "}
-            <span className="font-mono text-foreground">delete transactions</span>{" "}
-            to confirm:
+            {translate("type")}{" "}
+            <span className="font-mono text-foreground">{translate("deleteTransactions")}</span>{" "}
+            {translate("toConfirm12ef9b")}
           </p>
           <Input
             value={confirmInput}
             onChange={(e) => setConfirmInput(e.target.value)}
-            placeholder="delete transactions"
+            placeholder={translate("deleteTransactions")}
             className="font-mono text-xs"
             onKeyDown={(e) => {
               if (e.key === "Enter" && isConfirmed && !reverting) handleRevert();
@@ -134,7 +136,7 @@ export function RevertImportDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={reverting}>
-            Cancel
+            {translate("cancel")}
           </Button>
           <Button
             variant="destructive"
@@ -144,12 +146,12 @@ export function RevertImportDialog({
             {reverting ? (
               <>
                 <RiLoader4Line className="size-4 animate-spin" />
-                Reverting…
+                {translate("reverting")}
               </>
             ) : (
               <>
                 <RiDeleteBinLine className="size-4" />
-                Revert Import
+                {translate("revertImport")}
               </>
             )}
           </Button>

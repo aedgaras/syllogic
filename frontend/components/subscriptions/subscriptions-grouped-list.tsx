@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -208,7 +210,7 @@ export function SubscriptionsGroupedList({
             </span>
           </div>
           <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
-            {group.monthlyTotal.toFixed(2)} {currency} / mo
+            {group.monthlyTotal.toFixed(2)} {currency} {translate("mo5fc050")}
           </span>
         </div>
       </div>
@@ -275,9 +277,9 @@ export function SubscriptionsGroupedList({
             )}
             {item.isSuggestion && (
               <div className="truncate text-xs text-muted-foreground">
-                {item.confidence}% confidence
+                {item.confidence}{translate("confidence")}
                 {item.matchCount &&
-                  ` | ${item.matchCount} txn${item.matchCount !== 1 ? "s" : ""}`}
+                  translate("txn", { value1: item.matchCount, value2: item.matchCount !== 1 ? "s" : "" })}
               </div>
             )}
           </div>
@@ -298,12 +300,12 @@ export function SubscriptionsGroupedList({
             item.isActive ? (
               <Badge variant="default" className="bg-green-500/10 text-green-700">
                 <RiCheckLine className="mr-1 h-3 w-3" />
-                Active
+                {translate("active")}
               </Badge>
             ) : (
               <Badge variant="secondary" className="opacity-50">
                 <RiCloseLine className="mr-1 h-3 w-3" />
-                Inactive
+                {translate("inactive09af57")}
               </Badge>
             )
           )}
@@ -312,7 +314,7 @@ export function SubscriptionsGroupedList({
               <div className="flex flex-wrap items-center gap-1">
                 <Button size="sm" variant="default" onClick={() => onVerify(item)}>
                   <RiCheckLine className="mr-1 h-3 w-3" />
-                  Verify
+                  {translate("verify")}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => onDismiss(item)}>
                   <RiCloseLine className="h-4 w-4" />
@@ -328,18 +330,18 @@ export function SubscriptionsGroupedList({
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => onEdit(item)}>
                     <RiEditLine className="mr-2 h-4 w-4" />
-                    Edit
+                    {translate("edit")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onToggleActive(item)}>
                     {item.isActive ? (
                       <>
                         <RiCloseLine className="mr-2 h-4 w-4" />
-                        Deactivate
+                        {translate("deactivate")}
                       </>
                     ) : (
                       <>
                         <RiCheckLine className="mr-2 h-4 w-4" />
-                        Activate
+                        {translate("activate")}
                       </>
                     )}
                   </DropdownMenuItem>
@@ -349,7 +351,7 @@ export function SubscriptionsGroupedList({
                     className="text-destructive"
                   >
                     <RiDeleteBinLine className="mr-2 h-4 w-4" />
-                    Delete
+                    {translate("delete")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -364,19 +366,19 @@ export function SubscriptionsGroupedList({
     <>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-lg font-semibold">Subscriptions</h2>
+          <h2 className="text-lg font-semibold">{translate("subscriptions")}</h2>
           <span className="text-sm text-muted-foreground">
             ({subscriptionCount})
           </span>
           {suggestionCount > 0 && (
             <span className="text-sm text-yellow-600">
-              +{suggestionCount} suggestion{suggestionCount !== 1 ? "s" : ""}
+              +{suggestionCount} {translate("suggestion")}{suggestionCount !== 1 ? "s" : ""}
             </span>
           )}
         </div>
         <Button onClick={onAdd} data-walkthrough="walkthrough-add">
           <RiAddLine className="mr-2 h-4 w-4" />
-          Add Subscription
+          {translate("addSubscription")}
         </Button>
       </div>
 
@@ -398,14 +400,14 @@ export function SubscriptionsGroupedList({
         </div>
       ) : (
         <div className="flex h-24 items-center justify-center text-sm text-muted-foreground border border-dashed rounded-sm">
-          No active subscriptions.
+          {translate("noActiveSubscriptions")}
         </div>
       )}
 
       {suggestionRows.length > 0 && (
         <div className="border border-border rounded-sm overflow-hidden" data-walkthrough="walkthrough-suggestions">
           <div className="bg-muted/40 px-4 py-2 text-xs font-semibold uppercase text-muted-foreground">
-            Suggestions
+            {translate("suggestions")}
           </div>
           <div className="divide-y">
             {suggestionRows.map((item) => renderSubscriptionRow(item))}
@@ -434,20 +436,18 @@ export function SubscriptionsGroupedList({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Subscription?</AlertDialogTitle>
+            <AlertDialogTitle>{translate("deleteSubscription")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{rowToDelete?.name}"? This action
-              cannot be undone. Linked transactions will be unlinked but not
-              deleted.
+              {translate("areYouSureYouWantToDelete")}{rowToDelete?.name}{translate("thisActionCannotBeUndoneLinkedTransactionsWillBe")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{translate("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {translate("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

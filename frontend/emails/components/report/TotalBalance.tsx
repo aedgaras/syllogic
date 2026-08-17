@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { Section, Text } from "@react-email/components";
 import { fmtMoney, light } from "./tokens";
 
@@ -11,7 +12,7 @@ export function TotalBalance({ amount, currency }: { amount: string | null; curr
     <Section style={{ padding: "22px 28px 0" }}>
       <Section className="sy-chip" style={{ backgroundColor: light.muted, padding: "18px 20px", width: "100%" }}>
         <Text className="sy-muted" style={{ fontSize: "10px", letterSpacing: "0.14em", textTransform: "uppercase", color: light.mutedForeground, margin: 0 }}>
-          Total balance
+          {translate("totalBalance891433")}
         </Text>
         <Text className="sy-fg" style={{ fontSize: "28px", fontWeight: 700, color: light.foreground, margin: "6px 0 0", letterSpacing: "-0.02em" }}>
           {fmtMoney(amount, currency)}

@@ -1,8 +1,11 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useLocale } from "next-intl";
 import {
   RiHomeLine,
   RiExchangeLine,
@@ -16,6 +19,7 @@ import {
   RiArrowRightSLine,
   RiArrowLeftSLine,
   RiCloseLine,
+  RiGlobalLine,
 } from "@remixicon/react";
 import { HelpButton } from "@/components/walkthrough/help-button";
 import { signOut, useSession } from "@/lib/auth-client";
@@ -36,6 +40,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -43,6 +52,12 @@ import {
   GLOBAL_FILTER_STORAGE_KEY,
   normalizeGlobalFilterQueryString,
 } from "@/lib/filters/global-filters";
+import {
+  localeCookieName,
+  localeNameKeys,
+  locales,
+  type Locale,
+} from "@/i18n/config";
 
 type SidebarUser = {
   name?: string | null;
@@ -57,37 +72,37 @@ interface AppSidebarProps {
 
 const navItems = [
   {
-    title: "Home",
+    title: translate("home"),
     href: "/",
     icon: RiHomeLine,
   },
   {
-    title: "Transactions",
+    title: translate("transactions"),
     href: "/transactions",
     icon: RiExchangeLine,
   },
   {
-    title: "Subscriptions",
+    title: translate("subscriptions"),
     href: "/subscriptions",
     icon: RiLoopRightLine,
   },
   {
-    title: "Investments",
+    title: translate("investments"),
     href: "/investments",
     icon: RiLineChartLine,
   },
   {
-    title: "Assets",
+    title: translate("assets"),
     href: "/assets",
     icon: RiWallet3Line,
   },
   {
-    title: "Reports",
+    title: translate("reports"),
     href: "/reports",
     icon: RiFileTextLine,
   },
   {
-    title: "Settings",
+    title: translate("settings"),
     href: "/settings",
     icon: RiSettings3Line,
   },
@@ -113,6 +128,7 @@ function getServerGlobalFilterQueryString() {
 }
 
 export function AppSidebar({ initialUser }: AppSidebarProps) {
+  const activeLocale = useLocale() as Locale;
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -155,6 +171,13 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
     window.location.href = "/login";
   };
 
+  const handleLocaleChange = (locale: string) => {
+    if (!locales.includes(locale as Locale) || locale === activeLocale) return;
+
+    document.cookie = `${localeCookieName}=${encodeURIComponent(locale)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    router.refresh();
+  };
+
   const getInitials = (name?: string | null) => {
     if (!name) return "U";
     return name
@@ -179,7 +202,7 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
                 <div className="bg-sidebar-accent border-sidebar-border flex aspect-square size-8 items-center justify-center overflow-hidden border shrink-0">
                   <img
                     src={brandImageSrc}
-                    alt="Syllogic"
+                    alt={translate("syllogic")}
                     className="h-full w-full object-contain"
                     onError={() => {
                       if (isCollapsed) {
@@ -190,7 +213,7 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
                 </div>
                 {!isCollapsed && (
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">Syllogic</span>
+                    <span className="truncate font-medium">{translate("syllogic")}</span>
                   </div>
                 )}
               </SidebarMenuButton>
@@ -199,7 +222,7 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  aria-label="Close sidebar"
+                  aria-label={translate("closeSidebar")}
                   className="shrink-0"
                   onClick={() => setOpenMobile(false)}
                 >
@@ -255,14 +278,14 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => setOpen((prev) => !prev)}
-                  aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  aria-label={isCollapsed ? translate("expandSidebar") : translate("collapseSidebar")}
                 >
                   {isCollapsed ? (
                     <RiArrowRightSLine className="shrink-0" />
                   ) : (
                     <RiArrowLeftSLine className="shrink-0" />
                   )}
-                  {!isCollapsed && <span>Collapse</span>}
+                  {!isCollapsed && <span>{translate("collapse")}</span>}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -285,7 +308,7 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
                     {avatarSrc && !avatarLoadError && (
                       <img
                         src={avatarSrc}
-                        alt={resolvedUser?.name || "User"}
+                        alt={resolvedUser?.name || translate("user")}
                         loading="eager"
                         decoding="async"
                         className="size-full object-cover"
@@ -302,7 +325,7 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
                     <>
                       <div className="grid flex-1 text-left text-sm leading-tight">
                         <span className="truncate font-medium">
-                          {resolvedUser?.name || "User"}
+                          {resolvedUser?.name || translate("user")}
                         </span>
                         <span className="truncate text-xs">
                           {resolvedUser?.email}
@@ -321,12 +344,30 @@ export function AppSidebar({ initialUser }: AppSidebarProps) {
               >
                 <DropdownMenuItem onClick={() => router.push("/settings")}>
                   <RiSettings3Line className="mr-2" />
-                  Settings
+                  {translate("settings")}
                 </DropdownMenuItem>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <RiGlobalLine className="mr-2" />
+                    {translate("language")}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuRadioGroup
+                      value={activeLocale}
+                      onValueChange={handleLocaleChange}
+                    >
+                      {locales.map((locale) => (
+                        <DropdownMenuRadioItem key={locale} value={locale}>
+                          {translate(localeNameKeys[locale])}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
                   <RiLogoutBoxLine className="mr-2" />
-                  Log out
+                  {translate("logOut")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

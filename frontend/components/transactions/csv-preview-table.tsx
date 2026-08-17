@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import { RiArrowDownLine, RiArrowUpLine } from "@remixicon/react";
@@ -64,7 +66,7 @@ export function CsvPreviewTable({
   if (transactions.length === 0) {
     return (
       <div className="flex h-32 items-center justify-center text-muted-foreground">
-        No transactions in this view.
+        {translate("noTransactionsInThisView")}
       </div>
     );
   }
@@ -82,7 +84,7 @@ export function CsvPreviewTable({
               }
             }}
             onCheckedChange={handleSelectAll}
-            aria-label="Select all transactions"
+            aria-label={translate("selectAllTransactions")}
           />
         )}
         <button
@@ -90,7 +92,7 @@ export function CsvPreviewTable({
           className="inline-flex items-center gap-1 rounded border bg-background px-2 py-1 text-xs"
           onClick={() => toggleSort("date")}
         >
-          Date
+          {translate("date")}
           {sortBy === "date" &&
             (sortOrder === "asc" ? (
               <RiArrowUpLine className="h-3.5 w-3.5" />
@@ -103,7 +105,7 @@ export function CsvPreviewTable({
           className="inline-flex items-center gap-1 rounded border bg-background px-2 py-1 text-xs"
           onClick={() => toggleSort("amount")}
         >
-          Amount
+          {translate("amount")}
           {sortBy === "amount" &&
             (sortOrder === "asc" ? (
               <RiArrowUpLine className="h-3.5 w-3.5" />
@@ -125,7 +127,7 @@ export function CsvPreviewTable({
                 onCheckedChange={(checked) =>
                   handleSelectOne(tx.rowIndex, !!checked)
                 }
-                aria-label={`Select transaction ${tx.description}`}
+                aria-label={translate("selectTransaction", { value1: tx.description })}
               />
             )}
             <div className="min-w-0 flex-1 space-y-1">
@@ -141,7 +143,7 @@ export function CsvPreviewTable({
               <p className="break-words text-sm">{tx.description}</p>
               {tx.isDuplicate && (
                 <span className="inline-flex rounded bg-muted px-2 py-0.5 text-[10px] uppercase text-muted-foreground">
-                  Duplicate
+                  {translate("duplicate")}
                 </span>
               )}
             </div>
@@ -170,7 +172,7 @@ export function CsvPreviewTable({
             onClick={() => toggleSort("date")}
           >
             <div className="flex items-center gap-1">
-              Date
+              {translate("date")}
               {sortBy === "date" &&
                 (sortOrder === "asc" ? (
                   <RiArrowUpLine className="h-4 w-4" />
@@ -179,13 +181,13 @@ export function CsvPreviewTable({
                 ))}
             </div>
           </th>
-          <th className="px-4 py-3 text-left font-medium">Description</th>
+          <th className="px-4 py-3 text-left font-medium">{translate("description55f8eb")}</th>
           <th
             className="cursor-pointer px-4 py-3 text-right font-medium"
             onClick={() => toggleSort("amount")}
           >
             <div className="flex items-center justify-end gap-1">
-              Amount
+              {translate("amount")}
               {sortBy === "amount" &&
                 (sortOrder === "asc" ? (
                   <RiArrowUpLine className="h-4 w-4" />

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -81,19 +83,19 @@ export function AccountForm({
 
   const validateOwners = (): boolean => {
     if (owners.length === 0) {
-      setOwnersError("Select at least one owner.");
+      setOwnersError(translate("selectAtLeastOneOwner"));
       return false;
     }
     const allNull = owners.every((o) => o.share === null);
     const allSet = owners.every((o) => o.share !== null);
     if (!allNull && !allSet) {
-      setOwnersError("All owners must either split equally or specify shares.");
+      setOwnersError(translate("allOwnersMustEitherSplitEquallyOrSpecifyShares"));
       return false;
     }
     if (allSet) {
       const sum = owners.reduce((acc, o) => acc + (o.share as number), 0);
       if (Math.abs(sum - 1) > 0.0001) {
-        setOwnersError(`Shares must sum to 100% (currently ${Math.round(sum * 100)}%).`);
+        setOwnersError(translate("sharesMustSumTo100Currentlyc8e2ea", { value1: Math.round(sum * 100) }));
         return false;
       }
     }
@@ -105,7 +107,7 @@ export function AccountForm({
     try {
       await saveAccountOwnersMutation.mutateAsync({ entityId, owners });
     } catch (err) {
-      toast.error((err as Error).message || "Account created, but failed to save ownership. You can update it later.");
+      toast.error((err as Error).message || translate("accountCreatedButFailedToSaveOwnershipYouCan"));
     }
   };
 
@@ -113,20 +115,20 @@ export function AccountForm({
     e.preventDefault();
 
     if (!name.trim()) {
-      toast.error("Please enter an account name");
+      toast.error(translate("pleaseEnterAnAccountName"));
       return;
     }
     if (!accountType) {
-      toast.error("Please select an account type");
+      toast.error(translate("pleaseSelectAnAccountType"));
       return;
     }
     if (!currency) {
-      toast.error("Please select a currency");
+      toast.error(translate("pleaseSelectACurrency"));
       return;
     }
 
     if (!peopleLoaded) {
-      setOwnersError("Loading household data, please wait…");
+      setOwnersError(translate("loadingHouseholdDataPleaseWait"));
       return;
     }
     if (people.length > 0 && !validateOwners()) return;
@@ -134,7 +136,7 @@ export function AccountForm({
     const normalizedIban = iban.replace(/\s+/g, "").toUpperCase();
     if (isPocket) {
       if (!normalizedIban) {
-        toast.error("Please enter an IBAN for the pocket account");
+        toast.error(translate("pleaseEnterAnIbanForThePocketAccount"));
         return;
       }
       if (
@@ -142,7 +144,7 @@ export function AccountForm({
         || normalizedIban.length < 15
         || normalizedIban.length > 34
       ) {
-        toast.error("Please enter a valid IBAN");
+        toast.error(translate("pleaseEnterAValidIban"));
         return;
       }
     }
@@ -152,7 +154,7 @@ export function AccountForm({
     try {
       const balance = initialBalance ? parseFloat(initialBalance) : 0;
       if (initialBalance && isNaN(balance)) {
-        toast.error("Please enter a valid initial balance");
+        toast.error(translate("pleaseEnterAValidInitialBalance"));
         setIsLoading(false);
         return;
       }
@@ -184,16 +186,16 @@ export function AccountForm({
             ? result.backfilledCount
             : 0;
         const message = backfilled > 0
-          ? `${successMessage} — ${backfilled} existing transfer${backfilled === 1 ? "" : "s"} linked`
+          ? translate("existingTransferLinked", { successMessage: successMessage, backfilled: backfilled, value3: backfilled === 1 ? "" : "s" })
           : successMessage;
         toast.success(message);
         resetForm();
         onSuccess?.();
       } else {
-        toast.error(result.error || "Failed to create account");
+        toast.error(result.error || translate("failedToCreateAccount"));
       }
     } catch {
-      toast.error("An error occurred. Please try again.");
+      toast.error(translate("anErrorOccurredPleaseTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -208,20 +210,20 @@ export function AccountForm({
     <form onSubmit={handleSubmit}>
       <div className="grid gap-4 py-4">
         <div className="space-y-2">
-          <Label htmlFor="account-name">Account Name</Label>
+          <Label htmlFor="account-name">{translate("accountName")}</Label>
           <Input
             id="account-name"
-            placeholder="e.g., Main Checking"
+            placeholder={translate("eGMainChecking")}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="account-type">Account Type</Label>
+          <Label htmlFor="account-type">{translate("accountType")}</Label>
           <Select value={accountType} onValueChange={(v) => v && setAccountType(v)}>
             <SelectTrigger>
-              <SelectValue placeholder="Select account type" />
+              <SelectValue placeholder={translate("selectAccountType")} />
             </SelectTrigger>
             <SelectContent>
               {ACCOUNT_TYPES.map((type) => (
@@ -235,10 +237,10 @@ export function AccountForm({
 
         {!isPocket && (
           <div className="space-y-2">
-            <Label htmlFor="account-institution">Institution (optional)</Label>
+            <Label htmlFor="account-institution">{translate("institutionOptional")}</Label>
             <Input
               id="account-institution"
-              placeholder="e.g., Bank of America"
+              placeholder={translate("eGBankOfAmerica")}
               value={institution}
               onChange={(e) => setInstitution(e.target.value)}
             />
@@ -246,10 +248,10 @@ export function AccountForm({
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="account-currency">Currency</Label>
+          <Label htmlFor="account-currency">{translate("currency")}</Label>
           <Select value={currency} onValueChange={(v) => v && setCurrency(v)}>
             <SelectTrigger>
-              <SelectValue placeholder="Select currency" />
+              <SelectValue placeholder={translate("selectCurrency")} />
             </SelectTrigger>
             <SelectContent>
               {CURRENCIES.map((curr) => (
@@ -262,7 +264,7 @@ export function AccountForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="account-balance">Initial Balance (optional)</Label>
+          <Label htmlFor="account-balance">{translate("initialBalanceOptional")}</Label>
           <Input
             id="account-balance"
             type="number"
@@ -276,11 +278,10 @@ export function AccountForm({
         <div className="flex items-center justify-between rounded border p-3">
           <div className="space-y-0.5">
             <Label htmlFor="is-pocket" className="cursor-pointer">
-              Register as pocket account
+              {translate("registerAsPocketAccount")}
             </Label>
             <p className="text-xs text-muted-foreground">
-              Track a savings pocket by IBAN. Transfers from your synced accounts
-              will be auto-detected and linked.
+              {translate("trackASavingsPocketByIbanTransfersFromYour")}
             </p>
           </div>
           <Switch
@@ -292,18 +293,17 @@ export function AccountForm({
 
         {isPocket && (
           <div className="space-y-2">
-            <Label htmlFor="account-iban">IBAN</Label>
+            <Label htmlFor="account-iban">{translate("iban")}</Label>
             <Input
               id="account-iban"
-              placeholder="NL91 ABNA 0417 1643 00"
+              placeholder={translate("nl91Abna0417164300")}
               value={iban}
               onChange={(e) => setIban(e.target.value)}
               autoComplete="off"
               autoCapitalize="characters"
             />
             <p className="text-xs text-muted-foreground">
-              Spaces are ignored. The IBAN is encrypted at rest and only used to
-              match transfers from your synced accounts.
+              {translate("spacesAreIgnoredTheIbanIsEncryptedAtRest")}
             </p>
           </div>
         )}
@@ -332,7 +332,7 @@ export function AccountForm({
           </Button>
         )}
         <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Creating..." : submitLabel}
+          {isLoading ? translate("creating") : submitLabel}
         </Button>
       </div>
     </form>

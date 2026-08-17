@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 import { useEffect, useRef, useState } from "react";
 import { searchSymbolsAction } from "@/lib/actions/investments";
 import type { SymbolSearchResult } from "@/lib/api/investments";
@@ -18,7 +20,7 @@ export function SymbolSearchInput({
   value,
   onChange,
   onSelect,
-  placeholder = "e.g. AAPL, VUAA.LON",
+  placeholder = translate("symbolExample"),
   id,
   className,
 }: SymbolSearchInputProps) {
@@ -110,7 +112,7 @@ export function SymbolSearchInput({
       />
       {loading && (
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-          Searching…
+          {translate("searching")}
         </span>
       )}
       {open && results.length > 0 && (

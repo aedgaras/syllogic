@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { RiDownloadLine } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
@@ -14,15 +16,15 @@ interface ExportButtonProps {
 export function ExportButton({ transactions, disabled }: ExportButtonProps) {
   const handleExport = () => {
     if (transactions.length === 0) {
-      toast.error("No transactions to export");
+      toast.error(translate("noTransactionsToExport"));
       return;
     }
 
     try {
       exportTransactionsToCSV(transactions);
-      toast.success(`Exported ${transactions.length} transactions`);
+      toast.success(translate("exportedTransactions", { value1: transactions.length }));
     } catch {
-      toast.error("Failed to export transactions");
+      toast.error(translate("failedToExportTransactions"));
     }
   };
 
@@ -34,7 +36,7 @@ export function ExportButton({ transactions, disabled }: ExportButtonProps) {
       disabled={disabled || transactions.length === 0}
     >
       <RiDownloadLine className="mr-2 h-4 w-4" />
-      Export CSV
+      {translate("exportCsv")}
     </Button>
   );
 }

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateHolding, type Holding } from "@/lib/api/investments";
@@ -59,14 +61,14 @@ export function EditHoldingDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit holding · {holding.symbol}</DialogTitle>
+          <DialogTitle>{translate("editHolding")} {holding.symbol}</DialogTitle>
           <DialogDescription>
-            Manual holdings only. Connected-broker positions sync automatically.
+            {translate("manualHoldingsOnlyConnectedBrokerPositionsSyncAutomatically")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="symbol">Symbol</Label>
+            <Label htmlFor="symbol">{translate("symbol")}</Label>
             <SymbolSearchInput
               id="symbol"
               value={symbol}
@@ -74,11 +76,11 @@ export function EditHoldingDialog({
               onSelect={(r: SymbolSearchResult) => setSymbol(r.symbol)}
             />
             <p className="text-xs text-muted-foreground">
-              Changing the symbol triggers an automatic re-pricing on save.
+              {translate("changingTheSymbolTriggersAnAutomaticRePricingOn")}
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="qty">Quantity</Label>
+            <Label htmlFor="qty">{translate("quantity")}</Label>
             <Input
               id="qty"
               type="number"
@@ -89,7 +91,7 @@ export function EditHoldingDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="avg-cost">
-              Avg cost <span className="text-muted-foreground">(optional)</span>
+              {translate("avgCost")} <span className="text-muted-foreground">{translate("optional")}</span>
             </Label>
             <Input
               id="avg-cost"
@@ -101,7 +103,7 @@ export function EditHoldingDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="as-of">
-              As of date <span className="text-muted-foreground">(optional)</span>
+              {translate("asOfDate")} <span className="text-muted-foreground">{translate("optional")}</span>
             </Label>
             <Input
               id="as-of"
@@ -112,19 +114,18 @@ export function EditHoldingDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="provider-symbol">
-              Price lookup symbol{" "}
-              <span className="text-muted-foreground">(optional)</span>
+              {translate("priceLookupSymbol")}{" "}
+              <span className="text-muted-foreground">{translate("optional")}</span>
             </Label>
             <SymbolSearchInput
               id="provider-symbol"
               value={providerSymbol}
               onChange={setProviderSymbol}
               onSelect={(r: SymbolSearchResult) => setProviderSymbol(r.symbol)}
-              placeholder={`e.g. ${holding.symbol}.LON or ${holding.symbol}.AS`}
+              placeholder={translate("eGLonOrAs", { value1: holding.symbol, value2: holding.symbol })}
             />
             <p className="text-xs text-muted-foreground">
-              Override the ticker used for price lookups. Useful for European ETFs
-              that need an exchange suffix (e.g. VUAA → VUAA.LON).
+              {translate("overrideTheTickerUsedForPriceLookupsUsefulFor")}
             </p>
           </div>
           {err && <p className="text-sm text-destructive">{err}</p>}
@@ -135,10 +136,10 @@ export function EditHoldingDialog({
               onClick={() => onOpenChange(false)}
               disabled={busy}
             >
-              Cancel
+              {translate("cancel")}
             </Button>
             <Button type="submit" disabled={busy}>
-              {busy ? "Saving…" : "Save changes"}
+              {busy ? translate("saving56a228") : translate("saveChanges")}
             </Button>
           </DialogFooter>
         </form>

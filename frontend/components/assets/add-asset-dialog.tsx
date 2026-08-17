@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import { RiAddLine, RiArrowLeftLine } from "@remixicon/react";
@@ -91,7 +93,7 @@ export function AddAssetDialog({
       {showTrigger && (
         <DialogTrigger render={<Button size="sm" variant="outline" data-walkthrough="walkthrough-add" />}>
           <RiAddLine className="mr-2 h-4 w-4" />
-          Add Asset
+          {translate("addAsset")}
         </DialogTrigger>
       )}
       <DialogContent className="sm:max-w-[425px]">
@@ -104,7 +106,7 @@ export function AddAssetDialog({
               onClick={() => setStep("select")}
             >
               <RiArrowLeftLine className="h-4 w-4" />
-              <span className="sr-only">Back</span>
+              <span className="sr-only">{translate("back")}</span>
             </Button>
           )}
           <DialogTitle>{getDialogTitle()}</DialogTitle>

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { RiDeleteBinLine, RiEditLine } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
@@ -27,7 +29,7 @@ export function CategoryRow({ category, onEdit, onDelete }: CategoryRowProps) {
           <span className="font-medium truncate">{category.name}</span>
           {isSystem && (
             <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-              System
+              {translate("system")}
             </span>
           )}
         </div>
@@ -46,7 +48,7 @@ export function CategoryRow({ category, onEdit, onDelete }: CategoryRowProps) {
           size="icon"
           className="h-8 w-8"
           onClick={onEdit}
-          title={isSystem ? "Edit description and categorization instructions" : "Edit category"}
+          title={isSystem ? translate("editDescriptionAndCategorizationInstructions") : translate("editCategoryc6071d")}
         >
           <RiEditLine className="h-4 w-4" />
         </Button>
@@ -57,7 +59,7 @@ export function CategoryRow({ category, onEdit, onDelete }: CategoryRowProps) {
             size="icon"
             className="h-8 w-8 text-destructive hover:text-destructive"
             onClick={onDelete}
-            title="Delete category"
+            title={translate("deleteCategory")}
           >
             <RiDeleteBinLine className="h-4 w-4" />
           </Button>

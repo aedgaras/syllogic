@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useEffect } from "react";
 import {
@@ -93,26 +95,26 @@ export function CategoryFormDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Edit Category" : `Add ${getCategoryTypeLabel()} Category`}
+            {isEditing ? translate("editCategory") : translate("addCategory", { value1: getCategoryTypeLabel() })}
           </DialogTitle>
           <DialogDescription>
             {isSystem
-              ? "System category — only description and categorization instructions can be edited."
+              ? translate("systemCategoryOnlyDescriptionAndCategorizationInstructionsCanBe")
               : isEditing
-              ? "Update the category details below."
-              : "Create a new category to organize your transactions."}
+              ? translate("updateTheCategoryDetailsBelow")
+              : translate("createANewCategoryToOrganizeYourTransactions")}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name{isSystem ? "" : " *"}</Label>
+            <Label htmlFor="name">{translate("name")}{isSystem ? "" : " *"}</Label>
             <div className="flex items-center gap-3">
               <CategoryColorPicker value={color} onChange={setColor} disabled={isSystem} />
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Enter category name"
+                placeholder={translate("enterCategoryName")}
                 className="flex-1"
                 disabled={isSystem}
               />
@@ -120,35 +122,35 @@ export function CategoryFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description *</Label>
+            <Label htmlFor="description">{translate("descriptionb5bba3")}</Label>
             <Input
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of this category"
+              placeholder={translate("briefDescriptionOfThisCategory")}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="categorizationInstructions">Categorization Instructions</Label>
+            <Label htmlFor="categorizationInstructions">{translate("categorizationInstructions")}</Label>
             <Textarea
               id="categorizationInstructions"
               value={categorizationInstructions}
               onChange={(e) => setCategorizationInstructions(e.target.value)}
-              placeholder="Instructions for AI to categorize transactions into this category (optional)"
+              placeholder={translate("instructionsForAiToCategorizeTransactionsIntoThisCategory")}
               rows={3}
             />
             <p className="text-xs text-muted-foreground">
-              Help the AI understand when to use this category. E.g., "Include all coffee shop purchases and cafe visits"
+              {translate("helpTheAiUnderstandWhenToUseThisCategory")}
             </p>
           </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {translate("cancel")}
           </Button>
           <Button onClick={handleSave} disabled={!name.trim() || !description.trim()}>
-            {isEditing ? "Save Changes" : "Add Category"}
+            {isEditing ? translate("saveChangesfa2984") : translate("addCategory9c4eb0")}
           </Button>
         </DialogFooter>
       </DialogContent>

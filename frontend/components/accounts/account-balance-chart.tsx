@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useRef, useState, useEffect, useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
@@ -31,14 +33,14 @@ import type { BalanceHistoryPoint } from "@/features/accounts/public";
 type Horizon = "7D" | "LM" | "30D" | "90D" | "6M" | "1Y" | "5Y" | "ALL";
 
 const horizonOptions: { value: Horizon; label: string; description: string }[] = [
-  { value: "7D", label: "7D", description: "Last 7 days" },
-  { value: "LM", label: "LM", description: "Last month" },
-  { value: "30D", label: "30D", description: "Last 30 days" },
-  { value: "90D", label: "90D", description: "Last 90 days" },
-  { value: "6M", label: "6M", description: "Last 6 months" },
-  { value: "1Y", label: "1Y", description: "Last 1 year" },
-  { value: "5Y", label: "5Y", description: "5 years" },
-  { value: "ALL", label: "ALL", description: "All time" },
+  { value: "7D", label: translate("message7d"), description: translate("last7Days") },
+  { value: "LM", label: translate("lm"), description: translate("lastMonth") },
+  { value: "30D", label: translate("message30d"), description: translate("last30Days") },
+  { value: "90D", label: translate("message90d"), description: translate("last90Days") },
+  { value: "6M", label: translate("message6m"), description: translate("last6Months") },
+  { value: "1Y", label: translate("message1y"), description: translate("last1Year") },
+  { value: "5Y", label: translate("message5y"), description: translate("message5Years") },
+  { value: "ALL", label: translate("all"), description: translate("allTime") },
 ];
 
 const horizonValueSet = new Set<Horizon>(horizonOptions.map((option) => option.value));
@@ -70,7 +72,7 @@ interface AccountBalanceChartProps {
 
 const chartConfig = {
   balance: {
-    label: "Balance",
+    label: translate("balance"),
     color: "#10B981",
   },
 } satisfies ChartConfig;
@@ -264,13 +266,13 @@ export function AccountBalanceChart({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold">Balance</h3>
-            <p className="text-sm text-muted-foreground">No data available</p>
+            <h3 className="text-lg font-semibold">{translate("balance")}</h3>
+            <p className="text-sm text-muted-foreground">{translate("noDataAvailable")}</p>
           </div>
         </CardHeader>
         <CardContent>
           <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-            Balance history will appear once transactions are recorded
+            {translate("balanceHistoryWillAppearOnceTransactionsAreRecorded")}
           </div>
         </CardContent>
       </Card>
@@ -281,7 +283,7 @@ export function AccountBalanceChart({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Balance</h3>
+          <h3 className="text-lg font-semibold">{translate("balance")}</h3>
           <p className="text-sm text-muted-foreground">
             {currentHorizonOption?.description}
           </p>
@@ -302,7 +304,7 @@ export function AccountBalanceChart({
       <CardContent>
         {chartData.length === 0 ? (
           <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
-            No data available for this period
+            {translate("noDataAvailableForThisPeriod")}
           </div>
         ) : (
         <div className="relative">

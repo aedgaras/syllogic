@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { type ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
@@ -20,7 +22,7 @@ function CategoryCell({
   const displayCategory = transaction.category ?? transaction.categorySystem;
 
   if (!displayCategory) {
-    return <span className="text-muted-foreground">Uncategorized</span>;
+    return <span className="text-muted-foreground">{translate("uncategorized")}</span>;
   }
 
   return (
@@ -72,7 +74,7 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
           checked={isChecked}
           indeterminate={isIndeterminate}
           onCheckedChange={handleClick}
-          aria-label="Select all"
+          aria-label={translate("selectAll")}
         />
       );
     },
@@ -81,7 +83,7 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
+          aria-label={translate("selectRow")}
         />
       </div>
     ),
@@ -103,7 +105,7 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
           className="flex items-center gap-1 cursor-pointer"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Date
+          {translate("date")}
           {sorted === "asc" ? (
             <RiArrowUpLine className="h-4 w-4" />
           ) : sorted === "desc" ? (
@@ -211,7 +213,7 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
       const isCredit = type === "credit" || amount > 0;
       return (
         <Badge variant={isCredit ? "default" : "secondary"}>
-          {isCredit ? "Income" : "Expense"}
+          {isCredit ? translate("income1c89b1") : translate("expense")}
         </Badge>
       );
     },
@@ -230,7 +232,7 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
           className="flex items-center justify-end gap-1 cursor-pointer"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Amount
+          {translate("amount")}
           {sorted === "asc" ? (
             <RiArrowUpLine className="h-4 w-4" />
           ) : sorted === "desc" ? (
@@ -272,7 +274,7 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
         return <span className="text-muted-foreground">-</span>;
       }
       return (
-        <span title={`${recurring.name} (${recurring.frequency})`}>
+        <span title={translate("message", { value1: recurring.name, value2: recurring.frequency })}>
           <RiCheckLine className="h-4 w-4 text-emerald-600" />
         </span>
       );
@@ -296,7 +298,7 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] = 
     cell: ({ row }) => {
       const pending = row.getValue("pending") as boolean;
       return pending ? (
-        <Badge variant="outline">Pending</Badge>
+        <Badge variant="outline">{translate("pending")}</Badge>
       ) : null;
     },
     size: 80,

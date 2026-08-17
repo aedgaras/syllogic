@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { Section, Text } from "@react-email/components";
 
 type Item = {
@@ -17,7 +18,7 @@ export function RecommendationItems({ items }: { items: Item[] }) {
   if (items.length === 0) return null;
   return (
     <Section style={{ marginBottom: "16px" }}>
-      <Text style={{ fontSize: "16px", fontWeight: 600 }}>Recommendations</Text>
+      <Text style={{ fontSize: "16px", fontWeight: 600 }}>{translate("recommendations")}</Text>
       {items.map((r, i) => (
         <div
           key={i}
@@ -27,7 +28,7 @@ export function RecommendationItems({ items }: { items: Item[] }) {
           <div style={{ fontSize: "14px", marginTop: "4px" }}>{r.rationale}</div>
           {r.proposedChange !== null && (
             <div style={{ fontSize: "14px", marginTop: "4px", color: "#333" }}>
-              <strong>Proposed change:</strong> {r.proposedChange}
+              <strong>{translate("proposedChange")}</strong> {r.proposedChange}
             </div>
           )}
         </div>

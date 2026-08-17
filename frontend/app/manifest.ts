@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
@@ -5,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/",
     name: "Syllogic",
     short_name: "Syllogic",
-    description: "Personal finance tracking, imports, and analytics",
+    description: translate("personalFinanceTrackingImportsAndAnalytics"),
     start_url: "/",
     scope: "/",
     display: "standalone",

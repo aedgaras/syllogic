@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import * as React from "react";
 import { Label, Pie, PieChart, Sector } from "recharts";
@@ -24,7 +26,7 @@ interface CategorySpendingDonutChartProps {
 
 const chartConfig = {
   amount: {
-    label: "Spending",
+    label: translate("spending456145"),
   },
 } satisfies ChartConfig;
 
@@ -59,12 +61,12 @@ export function CategorySpendingDonutChart({
   return (
     <Card className="flex flex-col">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Spending Share</CardTitle>
+        <CardTitle className="text-sm font-medium">{translate("spendingShare")}</CardTitle>
       </CardHeader>
       <CardContent className="pb-0">
         {data.length === 0 ? (
           <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
-            No category spending for this period
+            {translate("noCategorySpendingForThisPeriod")}
           </div>
         ) : (
           <ChartContainer
@@ -87,13 +89,13 @@ export function CategorySpendingDonutChart({
                         <div className="w-full space-y-1">
                           <div className="font-medium text-foreground">{String(name)}</div>
                           <div className="flex items-center justify-between gap-3">
-                            <span className="text-muted-foreground">Amount</span>
+                            <span className="text-muted-foreground">{translate("amount")}</span>
                             <span className="font-mono font-medium text-foreground">
                               {formatCurrency(Number(value), currency)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between gap-3">
-                            <span className="text-muted-foreground">Share</span>
+                            <span className="text-muted-foreground">{translate("share")}</span>
                             <span className="font-mono font-medium text-foreground">
                               {sharePct.toFixed(1)}%
                             </span>
@@ -156,7 +158,7 @@ export function CategorySpendingDonutChart({
                           y={centerY + 14}
                           className="fill-muted-foreground text-[11px]"
                         >
-                          Total spend
+                          {translate("totalSpend")}
                         </tspan>
                       </text>
                     );
@@ -178,14 +180,14 @@ export function CategorySpendingDonutChart({
         ) : selectedCategories.length > 1 ? (
           <div className="flex w-full items-center justify-between gap-3 text-sm">
             <span className="truncate font-medium">
-              {selectedCategories.length} selected categories
+              {selectedCategories.length} {translate("selectedCategoriesc107fd")}
             </span>
             <span className="shrink-0 font-mono text-muted-foreground">
               {formatCurrency(selectedTotal, currency)} ({selectedSharePct.toFixed(1)}%)
             </span>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Select one or more slices for details</p>
+          <p className="text-sm text-muted-foreground">{translate("selectOneOrMoreSlicesForDetails")}</p>
         )}
       </CardFooter>
     </Card>

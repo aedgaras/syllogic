@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useRouter } from "next/navigation";
 import { RiAddLine, RiEditLine, RiUploadCloud2Line } from "@remixicon/react";
@@ -30,7 +32,7 @@ export function AddTransactionButton({
     return (
       <Button onClick={onAddManual}>
         <RiAddLine className="mr-2 h-4 w-4" />
-        Add Transaction
+        {translate("addTransaction")}
       </Button>
     );
   }
@@ -40,17 +42,17 @@ export function AddTransactionButton({
       <DropdownMenuTrigger asChild>
         <Button>
           <RiAddLine className="mr-2 h-4 w-4" />
-          Add Transaction
+          {translate("addTransaction")}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={onAddManual}>
           <RiEditLine className="mr-2 h-4 w-4" />
-          Add Manually
+          {translate("addManually83d9c9")}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleCsvImport}>
           <RiUploadCloud2Line className="mr-2 h-4 w-4" />
-          Import from CSV
+          {translate("importFromCsv")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

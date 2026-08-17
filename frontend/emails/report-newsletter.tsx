@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { Body, Container, Head, Html, Preview, Section } from "@react-email/components";
 import { BalancesSection, type BalanceItem } from "./components/report/BalancesSection";
 import { ReportFooter } from "./components/report/ReportFooter";
@@ -58,7 +59,7 @@ export default function ReportNewsletter({
       <Head>
         <style dangerouslySetInnerHTML={{ __html: darkModeCss }} />
       </Head>
-      <Preview>{`${reportName} — ${periodLabel}`}</Preview>
+      <Preview>{translate("message5cba94", { reportName: reportName, periodLabel: periodLabel })}</Preview>
       <Body
         className="sy-body"
         style={{ backgroundColor: light.secondary, margin: 0, padding: 0, fontFamily: fontStack }}

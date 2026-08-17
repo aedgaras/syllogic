@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -32,7 +34,7 @@ export function ProfileEditor({ user }: ProfileEditorProps) {
     e.preventDefault();
 
     if (!name.trim()) {
-      toast.error("Please enter your name");
+      toast.error(translate("pleaseEnterYourName"));
       return;
     }
 
@@ -48,14 +50,14 @@ export function ProfileEditor({ user }: ProfileEditorProps) {
       const result = await updateUserProfile(formData);
 
       if (result.success) {
-        toast.success("Profile updated successfully");
+        toast.success(translate("profileUpdatedSuccessfully"));
         setProfilePhoto(null);
         router.refresh();
       } else {
-        toast.error(result.error || "Failed to update profile");
+        toast.error(result.error || translate("failedToUpdateProfile"));
       }
     } catch {
-      toast.error("An error occurred. Please try again.");
+      toast.error(translate("anErrorOccurredPleaseTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -64,9 +66,9 @@ export function ProfileEditor({ user }: ProfileEditorProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Profile</CardTitle>
+        <CardTitle>{translate("profile")}</CardTitle>
         <CardDescription>
-          Update your personal information and preferences.
+          {translate("updateYourPersonalInformationAndPreferences")}
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
@@ -79,18 +81,18 @@ export function ProfileEditor({ user }: ProfileEditorProps) {
           />
 
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{translate("name")}</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
+              placeholder={translate("yourNameab4229")}
               className="w-full sm:max-w-xs"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{translate("email84add5")}</Label>
             <Input
               id="email"
               value={user.email}
@@ -98,12 +100,12 @@ export function ProfileEditor({ user }: ProfileEditorProps) {
               className="w-full bg-muted sm:max-w-xs"
             />
             <p className="text-xs text-muted-foreground">
-              Email cannot be changed.
+              {translate("emailCannotBeChanged")}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="currency">Functional Currency</Label>
+            <Label htmlFor="currency">{translate("functionalCurrency")}</Label>
             <Input
               id="currency"
               value={user.functionalCurrency || "EUR"}
@@ -111,13 +113,13 @@ export function ProfileEditor({ user }: ProfileEditorProps) {
               className="w-full bg-muted sm:max-w-24"
             />
             <p className="text-xs text-muted-foreground">
-              Functional currency is set during onboarding and cannot be changed.
+              {translate("functionalCurrencyIsSetDuringOnboardingAndCannotBe")}
             </p>
           </div>
         </CardContent>
         <CardFooter>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Saving..." : "Save Changes"}
+            {isLoading ? translate("saving") : translate("saveChangesfa2984")}
           </Button>
         </CardFooter>
       </form>

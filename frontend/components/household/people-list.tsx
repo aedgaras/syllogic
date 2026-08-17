@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -77,7 +79,7 @@ export function PeopleList(props: { initialPeople: ClientPerson[] }) {
       const blockers = (err as { blockers?: unknown[] }).blockers;
       if (!blockers) throw err;
       alert(
-        `Cannot delete: this person is the sole owner of ${blockers.length} item(s). Reassign first.`
+        translate("cannotDeleteThisPersonIsTheSoleOwnerOf", { value1: blockers.length })
       );
     }
   }
@@ -90,14 +92,14 @@ export function PeopleList(props: { initialPeople: ClientPerson[] }) {
             <PersonAvatar person={p} size={36} />
             <span className="flex-1 font-medium">{p.name}</span>
             {p.kind === "self" && (
-              <span className="text-xs text-muted-foreground">you</span>
+              <span className="text-xs text-muted-foreground">{translate("you")}</span>
             )}
             <Button variant="ghost" size="sm" onClick={() => setEditingId(p.id)}>
-              Edit
+              {translate("edit")}
             </Button>
             {p.kind !== "self" && (
               <Button variant="ghost" size="sm" onClick={() => remove(p.id)}>
-                Delete
+                {translate("delete")}
               </Button>
             )}
           </li>
@@ -107,7 +109,7 @@ export function PeopleList(props: { initialPeople: ClientPerson[] }) {
       {editingId && (
         <div className="rounded-md border p-4">
           <h2 className="mb-3 font-medium">
-            Edit {people.find((p) => p.id === editingId)?.name}
+            {translate("edit")} {people.find((p) => p.id === editingId)?.name}
           </h2>
           <PersonForm
             initial={{
@@ -124,7 +126,7 @@ export function PeopleList(props: { initialPeople: ClientPerson[] }) {
 
       {adding ? (
         <div className="rounded-md border p-4">
-          <h2 className="mb-3 font-medium">Add person</h2>
+          <h2 className="mb-3 font-medium">{translate("addPerson")}</h2>
           <PersonForm
             submitLabel="Add person"
             onSubmit={create}
@@ -133,7 +135,7 @@ export function PeopleList(props: { initialPeople: ClientPerson[] }) {
         </div>
       ) : (
         <Button variant="outline" onClick={() => setAdding(true)}>
-          Add person
+          {translate("addPerson")}
         </Button>
       )}
     </div>

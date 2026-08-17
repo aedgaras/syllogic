@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { Suspense } from "react";
 import { Header } from "@/components/layout/header";
 import { KpiSparkCard } from "@/components/charts/kpi-spark-card";
@@ -28,7 +29,7 @@ export default async function HomePage({ searchParams }: PageProps) {
 
   return (
     <>
-      <Header title="Dashboard" />
+      <Header title={translate("dashboard")} />
       {/* The heavy data fetch lives inside this boundary, so the shell paints
           immediately and the charts stream in once their queries resolve,
           rather than blocking the whole navigation. */}
@@ -74,10 +75,10 @@ async function DashboardContent({
   ]);
 
   const accountSubtitle = !accountIds?.length
-    ? "Across all accounts"
+    ? translate("acrossAllAccounts")
     : accountIds.length === 1
-      ? "Selected account"
-      : "Selected accounts";
+      ? translate("selectedAccount")
+      : translate("selectedAccounts");
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -96,7 +97,7 @@ async function DashboardContent({
       <div className="grid gap-4 md:grid-cols-4">
         <div data-walkthrough="walkthrough-balance">
           <KpiSparkCard
-            title="Total Balance"
+            title={translate("totalBalance")}
             value={data.balance.total}
             currency={data.balance.currency}
             subtitle={accountSubtitle}
@@ -105,7 +106,7 @@ async function DashboardContent({
         </div>
         <div data-walkthrough="walkthrough-spending">
           <KpiSparkCard
-            title={`${data.periodLabel.title} Spending`}
+            title={translate("spending", { value1: data.periodLabel.title })}
             value={data.periodSpending.total}
             currency={data.periodSpending.currency}
             subtitle={data.periodLabel.subtitle}
@@ -114,7 +115,7 @@ async function DashboardContent({
         </div>
         <div data-walkthrough="walkthrough-income">
           <KpiSparkCard
-            title={`${data.periodLabel.title} Income`}
+            title={translate("income", { value1: data.periodLabel.title })}
             value={data.periodIncome.total}
             currency={data.periodIncome.currency}
             subtitle={data.periodLabel.subtitle}
@@ -123,7 +124,7 @@ async function DashboardContent({
         </div>
         <div data-walkthrough="walkthrough-savings">
           <KpiSparkCard
-            title="Savings Rate"
+            title={translate("savingsRate")}
             value={data.savingsRate.amount}
             currency={data.savingsRate.currency}
             subtitle={data.periodLabel.subtitle}

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -142,7 +144,7 @@ export function ApiKeysManager({
     }
 
     if (!keyName.trim()) {
-      toast.error("Please enter a name for the API key");
+      toast.error(translate("pleaseEnterANameForTheApiKey"));
       return;
     }
 
@@ -172,10 +174,10 @@ export function ApiKeysManager({
         setExpiration("never");
         router.refresh();
       } else {
-        toast.error(result.error || "Failed to create API key");
+        toast.error(result.error || translate("failedToCreateApiKey"));
       }
     } catch {
-      toast.error("An error occurred. Please try again.");
+      toast.error(translate("anErrorOccurredPleaseTryAgain"));
     } finally {
       setIsCreating(false);
     }
@@ -189,13 +191,13 @@ export function ApiKeysManager({
       const result = await deleteApiKey(deletingKey.id);
       if (result.success) {
         setKeys(keys.filter((k) => k.id !== deletingKey.id));
-        toast.success("API key deleted");
+        toast.success(translate("apiKeyDeleted"));
         router.refresh();
       } else {
-        toast.error(result.error || "Failed to delete API key");
+        toast.error(result.error || translate("failedToDeleteApiKey"));
       }
     } catch {
-      toast.error("An error occurred. Please try again.");
+      toast.error(translate("anErrorOccurredPleaseTryAgain"));
     } finally {
       setIsDeleting(false);
       setDeleteDialogOpen(false);
@@ -208,13 +210,13 @@ export function ApiKeysManager({
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setCopiedTarget(target ?? null);
-      toast.success("Copied to clipboard");
+      toast.success(translate("copiedToClipboard"));
       setTimeout(() => {
         setCopied(false);
         setCopiedTarget(null);
       }, 2000);
     } catch {
-      toast.error("Failed to copy to clipboard");
+      toast.error(translate("failedToCopyToClipboard"));
     }
   };
 
@@ -226,23 +228,19 @@ export function ApiKeysManager({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>API Keys</CardTitle>
+          <CardTitle>{translate("apiKeys")}</CardTitle>
           <CardDescription>
-            Connect Claude to your financial data. Use the custom connector URL
-            for Claude on web, iOS, or Android (OAuth login). Use an API key
-            below for Claude Desktop, Claude Code, or other local MCP clients.
+            {translate("connectClaudeToYourFinancialDataUseTheCustom")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {/* Custom connector (OAuth) — web and mobile */}
             <div className="space-y-2 rounded border bg-muted/40 p-3">
-              <Label>Claude on the web, iOS, or Android</Label>
+              <Label>{translate("claudeOnTheWebIosOrAndroid")}</Label>
               <p className="text-xs text-muted-foreground">
-                In Claude settings, open{" "}
-                <strong>Connectors → Add custom connector</strong> and paste this
-                URL. You&apos;ll be redirected here to log in and approve access
-                — no API key needed.
+                {translate("inClaudeSettingsOpen")}{" "}
+                <strong>{translate("connectorsAddCustomConnector")}</strong> {translate("andPasteThisUrlYouLlBeRedirectedHere")}
               </p>
               <div className="relative min-w-0">
                 <pre className="overflow-x-auto rounded bg-background p-3 pr-10 text-xs">
@@ -267,7 +265,7 @@ export function ApiKeysManager({
             {keys.length === 0 ? (
               <div className="flex h-24 items-center justify-center rounded border border-dashed">
                 <p className="text-sm text-muted-foreground">
-                  No API keys yet. Create one to get started.
+                  {translate("noApiKeysYetCreateOneToGetStarted")}
                 </p>
               </div>
             ) : (
@@ -286,7 +284,7 @@ export function ApiKeysManager({
                           <p className="break-words text-sm font-medium">{key.name}</p>
                           {isExpired(key.expiresAt) && (
                             <span className="text-xs text-destructive">
-                              Expired
+                              {translate("expired")}
                             </span>
                           )}
                         </div>
@@ -297,14 +295,14 @@ export function ApiKeysManager({
                           <span>·</span>
                           <span>
                             {key.lastUsedAt
-                              ? `Last used ${formatRelativeTime(key.lastUsedAt)}`
-                              : "Never used"}
+                              ? translate("lastUsed", { value1: formatRelativeTime(key.lastUsedAt) })
+                              : translate("neverUsed")}
                           </span>
                           <span>·</span>
                           <span>
                             {key.expiresAt
-                              ? `Expires ${formatDate(key.expiresAt)}`
-                              : "No expiration"}
+                              ? translate("expires", { value1: formatDate(key.expiresAt) })
+                              : translate("noExpiration")}
                           </span>
                         </div>
                       </div>
@@ -328,7 +326,7 @@ export function ApiKeysManager({
             {/* Create button */}
             {!canCreateApiKeys && (
               <p className="text-sm text-muted-foreground">
-                API key creation is disabled for the shared demo account.
+                {translate("apiKeyCreationIsDisabledForTheSharedDemo")}
               </p>
             )}
             <Button
@@ -344,7 +342,7 @@ export function ApiKeysManager({
               disabled={!canCreateApiKeys}
             >
               <RiAddLine className="mr-2 h-4 w-4" />
-              Create API Key
+              {translate("createApiKey")}
             </Button>
           </div>
         </CardContent>
@@ -354,27 +352,26 @@ export function ApiKeysManager({
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create API Key</DialogTitle>
+            <DialogTitle>{translate("createApiKey")}</DialogTitle>
             <DialogDescription>
-              Create a new API key to access your financial data through the MCP
-              server.
+              {translate("createANewApiKeyToAccessYourFinancial")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="key-name">Name</Label>
+              <Label htmlFor="key-name">{translate("name")}</Label>
               <Input
                 id="key-name"
-                placeholder="My API Key"
+                placeholder={translate("myApiKey")}
                 value={keyName}
                 onChange={(e) => setKeyName(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                A descriptive name to identify this key.
+                {translate("aDescriptiveNameToIdentifyThisKey")}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="expiration">Expiration</Label>
+              <Label htmlFor="expiration">{translate("expiration")}</Label>
               <Select
                 value={expiration}
                 onValueChange={(value) =>
@@ -382,13 +379,13 @@ export function ApiKeysManager({
                 }
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select expiration" />
+                  <SelectValue placeholder={translate("selectExpiration")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="never">Never</SelectItem>
-                  <SelectItem value="30days">30 days</SelectItem>
-                  <SelectItem value="90days">90 days</SelectItem>
-                  <SelectItem value="1year">1 year</SelectItem>
+                  <SelectItem value="never">{translate("never")}</SelectItem>
+                  <SelectItem value="30days">{translate("message30Days")}</SelectItem>
+                  <SelectItem value="90days">{translate("message90Days")}</SelectItem>
+                  <SelectItem value="1year">{translate("message1Year")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -398,10 +395,10 @@ export function ApiKeysManager({
               variant="outline"
               onClick={() => setCreateDialogOpen(false)}
             >
-              Cancel
+              {translate("cancel")}
             </Button>
             <Button onClick={handleCreateKey} disabled={isCreating}>
-              {isCreating ? "Creating..." : "Create Key"}
+              {isCreating ? translate("creating") : translate("createKey")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -420,9 +417,9 @@ export function ApiKeysManager({
       >
         <DialogContent showCloseButton={false} className="max-w-[calc(100%-2rem)] sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>API Key Created</DialogTitle>
+            <DialogTitle>{translate("apiKeyCreated")}</DialogTitle>
             <DialogDescription>
-              Copy your API key now. You won&apos;t be able to see it again.
+              {translate("copyYourApiKeyNowYouWonTBe")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4 overflow-hidden">
@@ -444,24 +441,22 @@ export function ApiKeysManager({
             <div className="flex items-start gap-2 rounded border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
               <RiAlertLine className="mt-0.5 h-4 w-4 shrink-0" />
               <p className="text-xs">
-                Make sure to copy your API key now. For security reasons, it
-                cannot be displayed again.
+                {translate("makeSureToCopyYourApiKeyNowFor")}
               </p>
             </div>
             <div className="space-y-2 min-w-0">
-              <Label>Claude Desktop Configuration</Label>
+              <Label>{translate("claudeDesktopConfiguration")}</Label>
               <p className="text-xs text-muted-foreground">
-                Add this to your Claude Desktop config file:
+                {translate("addThisToYourClaudeDesktopConfigFile")}
               </p>
               <p className="text-xs text-muted-foreground">
-                This uses a local{" "}
-                <code className="rounded bg-muted px-1 font-mono">npx</code>{" "}
-                bridge{" ("}
+                {translate("thisUsesALocal")}{" "}
+                <code className="rounded bg-muted px-1 font-mono">{translate("npx")}</code>{" "}
+                {translate("bridge")}{" ("}
                 <code className="rounded bg-muted px-1 font-mono">
-                  mcp-remote
+                  {translate("mcpRemote")}
                 </code>
-                {") "}to connect Claude Desktop to the remote Syllogic MCP
-                server.
+                {") "}{translate("toConnectClaudeDesktopToTheRemoteSyllogicMcp")}
               </p>
               <div className="relative min-w-0">
                 <pre className="max-h-48 overflow-x-auto overflow-y-auto rounded bg-muted p-3 pr-10 text-xs whitespace-pre">
@@ -479,7 +474,7 @@ export function ApiKeysManager({
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setShowKeyDialogOpen(false)}>Done</Button>
+            <Button onClick={() => setShowKeyDialogOpen(false)}>{translate("done")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -488,20 +483,18 @@ export function ApiKeysManager({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete API Key</AlertDialogTitle>
+            <AlertDialogTitle>{translate("deleteApiKey")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deletingKey?.name}&quot;?
-              Any applications using this key will no longer be able to access
-              your data.
+              {translate("areYouSureYouWantToDelete")}{deletingKey?.name}{translate("anyApplicationsUsingThisKeyWillNoLongerBe")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{translate("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteKey}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? translate("deleting") : translate("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

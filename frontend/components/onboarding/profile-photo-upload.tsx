@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useRef, useCallback } from "react";
 import { RiCameraLine, RiCloseLine } from "@remixicon/react";
@@ -100,7 +102,7 @@ export function ProfilePhotoUpload({
       >
         <Avatar className="h-24 w-24">
           {displayImage ? (
-            <AvatarImage src={displayImage} alt="Profile photo" />
+            <AvatarImage src={displayImage} alt={translate("profilePhoto33f385")} />
           ) : (
             <AvatarFallback className="text-2xl">{getInitials(name)}</AvatarFallback>
           )}

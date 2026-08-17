@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import * as React from "react";
 import {
@@ -244,7 +246,7 @@ export function DataTable<TData, TValue>({
             })
           ) : (
             <div className="border border-border p-6 text-center text-xs text-muted-foreground">
-              No results.
+              {translate("noResults")}
             </div>
           )}
         </div>
@@ -336,7 +338,7 @@ export function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  {translate("noResults")}
                 </TableCell>
               </TableRow>
             )}

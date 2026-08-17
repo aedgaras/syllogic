@@ -1,4 +1,7 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+import { defaultLocale } from "@/i18n/config";
+
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -106,7 +109,7 @@ export function InvestmentsOverview({
     bestDayRaw && history[bestDayRaw.index]
       ? {
           delta: bestDayRaw.delta,
-          label: new Date(history[bestDayRaw.index].date).toLocaleDateString("en", {
+          label: new Date(history[bestDayRaw.index].date).toLocaleDateString(defaultLocale, {
             month: "short",
             day: "numeric",
           }),
@@ -125,10 +128,10 @@ export function InvestmentsOverview({
   const onDelete = async (id: string) => {
     try {
       await deleteHolding(id);
-      toast.success("Holding deleted");
+      toast.success(translate("holdingDeleted"));
       router.refresh();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Delete failed");
+      toast.error(e instanceof Error ? e.message : translate("deleteFailed"));
     }
   };
 
@@ -136,12 +139,12 @@ export function InvestmentsOverview({
     setSyncing(true);
     try {
       await syncAllInvestmentsAction();
-      toast.success("Prices refreshing — updates in a moment");
+      toast.success(translate("pricesRefreshingUpdatesInAMoment"));
       // Give the in-process background sync ~10 s to complete before
       // refreshing. The sync runs in the FastAPI worker after responding.
       setTimeout(() => router.refresh(), 10_000);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Sync failed");
+      toast.error(e instanceof Error ? e.message : translate("syncFailed"));
     } finally {
       setSyncing(false);
     }
@@ -155,10 +158,10 @@ export function InvestmentsOverview({
       size="sm"
       onClick={onSync}
       disabled={syncing}
-      title="Refresh prices"
+      title={translate("refreshPrices")}
     >
       <RiRefreshLine className={syncing ? "size-3 animate-spin" : "size-3"} />
-      {syncing ? "Syncing…" : "Refresh prices"}
+      {syncing ? translate("syncing") : translate("refreshPrices")}
     </Button>
   );
 

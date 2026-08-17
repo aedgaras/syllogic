@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -85,14 +87,14 @@ export function WalkthroughPopover({ step }: WalkthroughPopoverProps) {
           <h3 className="font-medium text-sm">{step.title}</h3>
           <p className="text-muted-foreground text-xs mt-1">{step.content}</p>
           <p className="text-muted-foreground text-[10px] mt-2 opacity-80">
-            Tip: Restart anytime from the Help (ⓘ) button in the sidebar.
+            {translate("tipRestartAnytimeFromTheHelpButtonInThe")}
           </p>
         </div>
         <Button
           variant="ghost"
           size="icon-xs"
           onClick={skipWalkthrough}
-          aria-label="Close walkthrough"
+          aria-label={translate("closeWalkthrough")}
           className="shrink-0"
         >
           <RiCloseLine className="size-4" />
@@ -100,7 +102,7 @@ export function WalkthroughPopover({ step }: WalkthroughPopoverProps) {
       </div>
       <div className="flex items-center justify-between mt-4 gap-2">
         <span className="text-xs text-muted-foreground">
-          {currentStepIndex + 1} of {steps.length}
+          {currentStepIndex + 1} {translate("of")} {steps.length}
         </span>
         <div className="flex gap-1">
           <Button
@@ -110,10 +112,10 @@ export function WalkthroughPopover({ step }: WalkthroughPopoverProps) {
             disabled={isFirst}
           >
             <RiArrowLeftLine className="size-4" />
-            Back
+            {translate("back")}
           </Button>
           <Button size="sm" onClick={nextStep}>
-            {isLast ? "Finish" : "Next"}
+            {isLast ? translate("finish") : translate("next")}
             <RiArrowRightLine className="size-4" />
           </Button>
         </div>

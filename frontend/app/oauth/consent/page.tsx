@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
@@ -60,19 +61,18 @@ export default async function ConsentPage({
 
   return (
     <main className="mx-auto max-w-md p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Authorize {clientName}</h1>
+      <h1 className="text-2xl font-semibold">{translate("authorize")} {clientName}</h1>
       <p className="text-sm text-muted-foreground">
-        <strong>{clientName}</strong> is requesting access to your Syllogic
-        account. If you approve, it will be able to:
+        <strong>{clientName}</strong> {translate("isRequestingAccessToYourSyllogicAccountIfYou")}
       </p>
       <ul className="list-disc pl-6 text-sm">
-        {scopes.length === 0 && <li>Access your Syllogic data</li>}
+        {scopes.length === 0 && <li>{translate("accessYourSyllogicData")}</li>}
         {scopes.map((scope) => (
           <li key={scope}>
             {SCOPE_DESCRIPTIONS[scope] ?? (
               <>
                 <code className="rounded bg-muted px-1 font-mono">{scope}</code>{" "}
-                (additional access)
+                {translate("additionalAccess")}
               </>
             )}
           </li>

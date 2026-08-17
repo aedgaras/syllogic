@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -155,7 +157,7 @@ export const PAGE_CONFIGS: Record<string, PageConfig> = {
     steps: [
       {
         id: "dashboard",
-        title: "Views and Filters",
+        title: translate("viewsAndFilters"),
         content:
           "Use the controls above to customize your dashboard—select accounts, date ranges, and time periods. Your KPIs and charts below update automatically.",
         target: "walkthrough-filters",
@@ -167,11 +169,11 @@ export const PAGE_CONFIGS: Record<string, PageConfig> = {
     overview:
       "View, search, and manage all your transactions. Filter by account, category, or date. Edit categories inline.",
     steps: [
-      { id: "search", title: "Search Bar", content: "Find transactions by description or amount.", target: "walkthrough-search" },
-      { id: "filters", title: "Filters", content: "Filter by category, account, date range, or amount.", target: "walkthrough-filters" },
-      { id: "table", title: "Transaction Table", content: "Sortable list of all transactions. Click a row for details.", target: "walkthrough-table" },
-      { id: "category-badge", title: "Category Badge", content: "Click to reassign a transaction to a different category.", target: "walkthrough-category-badge" },
-      { id: "import", title: "Import Button", content: "Upload CSV files from your bank to import transactions.", target: "walkthrough-import" },
+      { id: "search", title: translate("searchBar"), content: "Find transactions by description or amount.", target: "walkthrough-search" },
+      { id: "filters", title: translate("filters"), content: "Filter by category, account, date range, or amount.", target: "walkthrough-filters" },
+      { id: "table", title: translate("transactionTable"), content: "Sortable list of all transactions. Click a row for details.", target: "walkthrough-table" },
+      { id: "category-badge", title: translate("categoryBadge"), content: "Click to reassign a transaction to a different category.", target: "walkthrough-category-badge" },
+      { id: "import", title: translate("importButton"), content: "Upload CSV files from your bank to import transactions.", target: "walkthrough-import" },
     ],
   },
   subscriptions: {
@@ -179,10 +181,10 @@ export const PAGE_CONFIGS: Record<string, PageConfig> = {
     overview:
       "Track recurring expenses like streaming services and bills. Syllogic auto-detects subscriptions from your transactions.",
     steps: [
-      { id: "kpis", title: "Subscription KPIs", content: "Monthly and annual recurring costs at a glance.", target: "walkthrough-kpis" },
-      { id: "list", title: "Subscription List", content: "All your active recurring expenses.", target: "walkthrough-list" },
-      { id: "suggestions", title: "Smart Suggestions", content: "AI-detected potential subscriptions from your transactions.", target: "walkthrough-suggestions" },
-      { id: "add", title: "Add Subscription", content: "Manually add subscriptions not detected automatically.", target: "walkthrough-add" },
+      { id: "kpis", title: translate("subscriptionKpis"), content: "Monthly and annual recurring costs at a glance.", target: "walkthrough-kpis" },
+      { id: "list", title: translate("subscriptionList"), content: "All your active recurring expenses.", target: "walkthrough-list" },
+      { id: "suggestions", title: translate("smartSuggestions"), content: "AI-detected potential subscriptions from your transactions.", target: "walkthrough-suggestions" },
+      { id: "add", title: translate("addSubscription"), content: "Manually add subscriptions not detected automatically.", target: "walkthrough-add" },
     ],
   },
   assets: {
@@ -190,10 +192,10 @@ export const PAGE_CONFIGS: Record<string, PageConfig> = {
     overview:
       "Manage all financial assets including bank accounts, properties, and vehicles to track your net worth.",
     steps: [
-      { id: "add", title: "Add Asset", content: "Add bank accounts, properties, or vehicles.", target: "walkthrough-add" },
-      { id: "accounts", title: "Accounts Section", content: "Bank and investment accounts.", target: "walkthrough-accounts" },
-      { id: "properties", title: "Properties Section", content: "Real estate holdings.", target: "walkthrough-properties" },
-      { id: "vehicles", title: "Vehicles Section", content: "Vehicle values.", target: "walkthrough-vehicles" },
+      { id: "add", title: translate("addAsset"), content: "Add bank accounts, properties, or vehicles.", target: "walkthrough-add" },
+      { id: "accounts", title: translate("accountsSection"), content: "Bank and investment accounts.", target: "walkthrough-accounts" },
+      { id: "properties", title: translate("propertiesSection"), content: "Real estate holdings.", target: "walkthrough-properties" },
+      { id: "vehicles", title: translate("vehiclesSection"), content: "Vehicle values.", target: "walkthrough-vehicles" },
     ],
   },
   settings: {
@@ -201,9 +203,9 @@ export const PAGE_CONFIGS: Record<string, PageConfig> = {
     overview:
       "Customize your profile, manage spending categories, and configure integrations.",
     steps: [
-      { id: "profile", title: "Profile Tab", content: "Update your name, email, and photo.", target: "walkthrough-profile" },
-      { id: "categories", title: "Categories Tab", content: "Create and manage custom spending categories.", target: "walkthrough-categories" },
-      { id: "api-keys", title: "API Keys Tab", content: "Generate API keys for integrations.", target: "walkthrough-api-keys" },
+      { id: "profile", title: translate("profileTab"), content: "Update your name, email, and photo.", target: "walkthrough-profile" },
+      { id: "categories", title: translate("categoriesTab"), content: "Create and manage custom spending categories.", target: "walkthrough-categories" },
+      { id: "api-keys", title: translate("apiKeysTab"), content: "Generate API keys for integrations.", target: "walkthrough-api-keys" },
     ],
   },
 };

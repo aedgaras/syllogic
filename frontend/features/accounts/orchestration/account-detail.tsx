@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useEffect, useState } from "react";
 import { AccountHeader } from "@/components/accounts/account-header";
@@ -36,7 +38,7 @@ export function AccountDetail({
       <div className="min-h-[400px]">
         {transactions.length === 0 ? (
           <div className="flex h-48 items-center justify-center rounded border border-dashed">
-            <p className="text-sm text-muted-foreground">No transactions yet</p>
+            <p className="text-sm text-muted-foreground">{translate("noTransactionsYet")}</p>
           </div>
         ) : (
           <AccountTransactions

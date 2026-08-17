@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 export function PortfolioChart({
   data,
@@ -10,7 +12,7 @@ export function PortfolioChart({
   if (data.length < 2) {
     return (
       <div className="h-[180px] flex items-center justify-center text-xs text-muted-foreground">
-        Not enough history
+        {translate("notEnoughHistory")}
       </div>
     );
   }
@@ -65,8 +67,8 @@ export function PortfolioChart({
           fill="var(--muted-foreground)"
         >
           {v >= 1000
-            ? `${currencySymbol}${(v / 1000).toFixed(0)}k`
-            : `${currencySymbol}${v.toFixed(0)}`}
+            ? translate("k", { currencySymbol: currencySymbol, value2: (v / 1000).toFixed(0) })
+            : translate("messagead684e", { currencySymbol: currencySymbol, value2: v.toFixed(0) })}
         </text>
       ))}
       <path d={areaPath} fill="url(#invAreaGrad)" />

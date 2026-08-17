@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
@@ -71,7 +72,7 @@ export default async function SettingsPage({
 
   return (
     <>
-      <Header title="Settings" />
+      <Header title={translate("settings")} />
       <div className="flex flex-1 flex-col p-4 pt-0">
         <SettingsTabs
           user={user}

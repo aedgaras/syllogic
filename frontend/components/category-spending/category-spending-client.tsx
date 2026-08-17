@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -221,7 +223,7 @@ export function CategorySpendingClient({
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Spending</CardTitle>
+            <CardTitle className="text-sm font-medium">{translate("totalSpending")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="font-mono text-2xl font-semibold tracking-tight">
@@ -233,20 +235,20 @@ export function CategorySpendingClient({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
-              {selectedCategories.length > 0 ? "Selected Categories" : "Top Category"}
+              {selectedCategories.length > 0 ? translate("selectedCategories") : translate("topCategory")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {selectedCategories.length > 0 ? (
               <>
                 <p className="truncate text-sm font-medium">
-                  {selectedCategories.length} categor{selectedCategories.length === 1 ? "y" : "ies"}
+                  {selectedCategories.length} {translate("categor")}{selectedCategories.length === 1 ? "y" : translate("ies")}
                 </p>
                 <p className="font-mono text-xl text-muted-foreground">
                   {formatCurrency(selectedTotal, data.currency)}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {formatCurrency(selectedAverageMonthly, data.currency)}/mo
+                  {formatCurrency(selectedAverageMonthly, data.currency)}{translate("mo")}
                 </p>
               </>
             ) : data.summary.topCategory ? (
@@ -257,21 +259,21 @@ export function CategorySpendingClient({
                 </p>
               </>
             ) : (
-              <p className="text-sm text-muted-foreground">No spending data</p>
+              <p className="text-sm text-muted-foreground">{translate("noSpendingData")}</p>
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Average Monthly</CardTitle>
+            <CardTitle className="text-sm font-medium">{translate("averageMonthly")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="font-mono text-2xl font-semibold tracking-tight">
               {formatCurrency(data.summary.averageMonthlySpend, data.currency)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Based on {data.range.monthCount} month{data.range.monthCount === 1 ? "" : "s"}
+              {translate("basedOn")} {data.range.monthCount} {translate("month")}{data.range.monthCount === 1 ? "" : "s"}
             </p>
           </CardContent>
         </Card>
@@ -290,11 +292,11 @@ export function CategorySpendingClient({
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Category Breakdown</CardTitle>
+              <CardTitle className="text-sm font-medium">{translate("categoryBreakdown")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {data.categories.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No category spending for this period</p>
+                <p className="text-sm text-muted-foreground">{translate("noCategorySpendingForThisPeriod")}</p>
               ) : (
                 data.categories.map((category) => {
                   const isSelected = selectedCategoryIds.includes(category.id);
@@ -338,7 +340,7 @@ export function CategorySpendingClient({
 
                       <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-xs text-muted-foreground">
                         <span className="justify-self-start text-left">
-                          {category.sharePct.toFixed(1)}% of total
+                          {category.sharePct.toFixed(1)}{translate("ofTotal")}
                         </span>
                         <span
                           className={cn(
@@ -357,7 +359,7 @@ export function CategorySpendingClient({
                           {formatSignedCurrency(category.deltaAmount, data.currency)} ({formatSignedPercent(category.deltaPct)})
                         </span>
                         <span className="justify-self-end text-right font-mono">
-                          {formatCurrency(category.averageMonthlyAmount, data.currency)}/mo
+                          {formatCurrency(category.averageMonthlyAmount, data.currency)}{translate("mo")}
                         </span>
                       </div>
                     </button>
@@ -370,7 +372,7 @@ export function CategorySpendingClient({
 
         <Card className="flex min-h-0 flex-col lg:col-span-8">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Transactions</CardTitle>
+            <CardTitle className="text-sm font-medium">{translate("transactions")}</CardTitle>
           </CardHeader>
           <CardContent className="min-h-0 flex-1 pb-0">
             <TransactionTable

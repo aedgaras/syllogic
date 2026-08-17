@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 import { useRouter } from "next/navigation";
 import {
   RiAddLine,
@@ -28,10 +30,9 @@ export function InvestmentsEmpty({
                 <RiLineChartLine size={20} className="text-muted-foreground" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <div className="text-base font-semibold">No holdings yet</div>
+                <div className="text-base font-semibold">{translate("noHoldingsYet")}</div>
                 <div className="text-xs text-muted-foreground leading-relaxed max-w-[340px]">
-                  Connecting brokers and adding holdings is disabled for the demo
-                  account.
+                  {translate("connectingBrokersAndAddingHoldingsIsDisabledForThe")}
                 </div>
               </div>
             </CardContent>
@@ -50,10 +51,9 @@ export function InvestmentsEmpty({
               <RiLineChartLine size={20} className="text-muted-foreground" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <div className="text-base font-semibold">No holdings yet</div>
+              <div className="text-base font-semibold">{translate("noHoldingsYet")}</div>
               <div className="text-xs text-muted-foreground leading-relaxed max-w-[340px]">
-                Track your portfolio by connecting a broker for automatic sync,
-                or add holdings manually.
+                {translate("trackYourPortfolioByConnectingABrokerForAutomatic")}
               </div>
             </div>
           </CardContent>
@@ -62,20 +62,19 @@ export function InvestmentsEmpty({
           <div className="p-6 flex flex-col gap-3 border-r border-border">
             <div className="flex items-center gap-2">
               <RiLinksLine size={16} />
-              <span className="font-semibold text-sm">Connect broker</span>
+              <span className="font-semibold text-sm">{translate("connectBroker")}</span>
               <Badge className="ml-auto text-[9px] tracking-wider rounded-none">
-                RECOMMENDED
+                {translate("recommended")}
               </Badge>
             </div>
             <div className="text-xs text-muted-foreground leading-relaxed">
-              Connect Interactive Brokers via Flex Query. Positions and trades
-              sync automatically.
+              {translate("connectInteractiveBrokersViaFlexQueryPositionsAndTrades")}
             </div>
             <ul className="mt-1 pl-4 list-disc space-y-1">
               {[
-                "Automatic position sync",
-                "Trade history imported",
-                "No manual entry needed",
+                translate("automaticPositionSync"),
+                translate("tradeHistoryImported"),
+                translate("noManualEntryNeeded"),
               ].map((t) => (
                 <li key={t} className="text-xs text-muted-foreground">
                   {t}
@@ -83,23 +82,22 @@ export function InvestmentsEmpty({
               ))}
             </ul>
             <Button onClick={go} className="mt-1 w-full">
-              <RiLinksLine size={13} /> Connect IBKR
+              <RiLinksLine size={13} /> {translate("connectIbkr")}
             </Button>
           </div>
           <div className="p-6 flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <RiPencilLine size={16} />
-              <span className="font-semibold text-sm">Add manually</span>
+              <span className="font-semibold text-sm">{translate("addManually")}</span>
             </div>
             <div className="text-xs text-muted-foreground leading-relaxed">
-              Create an account, search by symbol, and enter quantities. Prices
-              are fetched automatically.
+              {translate("createAnAccountSearchBySymbolAndEnterQuantities")}
             </div>
             <ul className="mt-1 pl-4 list-disc space-y-1">
               {[
-                "No broker needed",
-                "Prices updated daily",
-                "You manage quantities",
+                translate("noBrokerNeeded"),
+                translate("pricesUpdatedDaily"),
+                translate("youManageQuantities"),
               ].map((t) => (
                 <li key={t} className="text-xs text-muted-foreground">
                   {t}
@@ -107,7 +105,7 @@ export function InvestmentsEmpty({
               ))}
             </ul>
             <Button onClick={go} variant="outline" className="mt-1 w-full">
-              <RiAddLine size={13} /> Add holding
+              <RiAddLine size={13} /> {translate("addHolding")}
             </Button>
           </div>
         </div>

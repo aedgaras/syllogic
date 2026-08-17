@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -40,10 +42,10 @@ export function AccountPicker({
     retry: false,
   });
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading accounts…</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">{translate("loadingAccounts")}</p>;
   if (error) {
     return (
-      <p className="text-sm text-destructive">Failed to load accounts. Please refresh and try again.</p>
+      <p className="text-sm text-destructive">{translate("failedToLoadAccountsPleaseRefreshAndTryAgain")}</p>
     );
   }
 
@@ -76,7 +78,7 @@ export function AccountPicker({
                 <span>
                   {a.name}
                   {!a.is_active && (
-                    <span className="text-xs text-muted-foreground"> (inactive)</span>
+                    <span className="text-xs text-muted-foreground"> {translate("inactive")}</span>
                   )}
                   {ownerNames[a.id] && (
                     <span className="block text-xs text-muted-foreground">

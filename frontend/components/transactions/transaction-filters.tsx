@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import * as React from "react";
 import { type DateRange } from "react-day-picker";
@@ -75,40 +77,40 @@ interface FilterOption {
 
 const datePresets = [
   {
-    label: "This Week",
+    label: translate("thisWeek"),
     getValue: () => ({
       from: startOfWeek(new Date(), { weekStartsOn: 1 }),
       to: endOfWeek(new Date(), { weekStartsOn: 1 }),
     }),
   },
   {
-    label: "This Month",
+    label: translate("thisMonth"),
     getValue: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }),
   },
   {
-    label: "Last Month",
+    label: translate("lastMonth20fe4f"),
     getValue: () => {
       const date = subMonths(new Date(), 1);
       return { from: startOfMonth(date), to: endOfMonth(date) };
     },
   },
   {
-    label: "This Quarter",
+    label: translate("thisQuarter"),
     getValue: () => ({ from: startOfQuarter(new Date()), to: endOfQuarter(new Date()) }),
   },
   {
-    label: "Last Quarter",
+    label: translate("lastQuarter"),
     getValue: () => {
       const date = subQuarters(new Date(), 1);
       return { from: startOfQuarter(date), to: endOfQuarter(date) };
     },
   },
   {
-    label: "This Year",
+    label: translate("thisYear"),
     getValue: () => ({ from: startOfYear(new Date()), to: endOfYear(new Date()) }),
   },
   {
-    label: "Last Year",
+    label: translate("lastYear"),
     getValue: () => {
       const date = subYears(new Date(), 1);
       return { from: startOfYear(date), to: endOfYear(date) };
@@ -182,7 +184,7 @@ function MultiSelectFilter({
           {searchable && (
             <div className="border-b p-2">
               <Input
-                placeholder={`Search ${label.toLowerCase()}...`}
+                placeholder={translate("search", { value1: label.toLowerCase() })}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="h-7 text-xs"
@@ -201,7 +203,7 @@ function MultiSelectFilter({
                   className="pointer-events-none"
                 />
                 <span className="inline-flex items-center bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                  Uncategorized
+                  {translate("uncategorized")}
                 </span>
               </button>
             )}
@@ -230,7 +232,7 @@ function MultiSelectFilter({
             ))}
             {filteredOptions.length === 0 && (
               <div className="px-2 py-4 text-center text-xs text-muted-foreground">
-                No results found
+                {translate("noResultsFound")}
               </div>
             )}
           </div>
@@ -264,7 +266,7 @@ function DateRangeFilter({ dateRange, onDateRangeChange }: DateRangeFilterProps)
     <div className="space-y-2">
       <Label className="flex items-center gap-2 text-xs text-muted-foreground">
         <RiCalendarLine className="h-4 w-4" />
-        Date Range
+        {translate("dateRange")}
         {dateRange?.from && <span className="text-foreground">(1)</span>}
       </Label>
       <Popover open={open} onOpenChange={setOpen}>
@@ -286,7 +288,7 @@ function DateRangeFilter({ dateRange, onDateRangeChange }: DateRangeFilterProps)
                   !dateRange?.from && "bg-accent"
                 )}
               >
-                Clear
+                {translate("clear")}
               </button>
               {datePresets.map((preset) => (
                 <button
@@ -337,21 +339,21 @@ function AmountRangeFilter({
     <div className="space-y-2">
       <Label className="flex items-center gap-2 text-xs text-muted-foreground">
         <RiMoneyDollarCircleLine className="h-4 w-4" />
-        Amount Range
+        {translate("amountRange")}
         {hasFilter && <span className="text-foreground">(1)</span>}
       </Label>
       <div className="flex items-center gap-2">
         <Input
           type="number"
-          placeholder="Min"
+          placeholder={translate("min")}
           value={minAmount}
           onChange={(event) => onMinChange(event.target.value)}
           className="h-8 text-xs"
         />
-        <span className="text-xs text-muted-foreground">to</span>
+        <span className="text-xs text-muted-foreground">{translate("to")}</span>
         <Input
           type="number"
-          placeholder="Max"
+          placeholder={translate("max")}
           value={maxAmount}
           onChange={(event) => onMaxChange(event.target.value)}
           className="h-8 text-xs"
@@ -424,20 +426,20 @@ export function TransactionFilters({
   }));
 
   const statusOptions: FilterOption[] = [
-    { id: "completed", label: "Completed" },
-    { id: "pending", label: "Pending" },
+    { id: "completed", label: translate("completed") },
+    { id: "pending", label: translate("pending") },
   ];
 
   const analyticsOptions: FilterOption[] = [
-    { id: "included", label: "Included in Analytics" },
-    { id: "excluded", label: "Excluded from Analytics" },
+    { id: "included", label: translate("includedInAnalytics") },
+    { id: "excluded", label: translate("excludedFromAnalyticsa63fd0") },
   ];
 
   const subscriptionOptions: FilterOption[] = [
-    { id: "no_subscription", label: "No Subscription" },
+    { id: "no_subscription", label: translate("noSubscription") },
     ...recurringOptions.map((recurring) => ({
       id: recurring.id,
-      label: recurring.merchant ? `${recurring.name} (${recurring.merchant})` : recurring.name,
+      label: recurring.merchant ? translate("message", { value1: recurring.name, value2: recurring.merchant }) : recurring.name,
     })),
   ];
 
@@ -446,7 +448,7 @@ export function TransactionFilters({
   filters.category.forEach((id) => {
     if (id === "uncategorized") {
       filterTags.push({
-        label: "Uncategorized",
+        label: translate("uncategorized"),
         onRemove: () =>
           onFiltersChange(
             { category: filters.category.filter((value) => value !== id) },
@@ -482,7 +484,7 @@ export function TransactionFilters({
 
   filters.status.forEach((id) => {
     filterTags.push({
-      label: id === "pending" ? "Pending" : "Completed",
+      label: id === "pending" ? translate("pending") : translate("completed"),
       onRemove: () =>
         onFiltersChange(
           { status: filters.status.filter((value) => value !== id) },
@@ -494,7 +496,7 @@ export function TransactionFilters({
   filters.subscription.forEach((id) => {
     if (id === "no_subscription") {
       filterTags.push({
-        label: "No Subscription",
+        label: translate("noSubscription"),
         onRemove: () =>
           onFiltersChange(
             { subscription: filters.subscription.filter((value) => value !== id) },
@@ -506,7 +508,7 @@ export function TransactionFilters({
     const recurring = recurringOptions.find((item) => item.id === id);
     if (!recurring) return;
     filterTags.push({
-      label: recurring.merchant ? `${recurring.name} (${recurring.merchant})` : recurring.name,
+      label: recurring.merchant ? translate("message", { value1: recurring.name, value2: recurring.merchant }) : recurring.name,
       onRemove: () =>
         onFiltersChange(
           { subscription: filters.subscription.filter((value) => value !== id) },
@@ -517,7 +519,7 @@ export function TransactionFilters({
 
   filters.analytics.forEach((id) => {
     filterTags.push({
-      label: id === "included" ? "In Analytics" : "Excluded from Analytics",
+      label: id === "included" ? translate("inAnalytics") : translate("excludedFromAnalyticsa63fd0"),
       onRemove: () =>
         onFiltersChange(
           { analytics: filters.analytics.filter((value) => value !== id) },
@@ -536,7 +538,7 @@ export function TransactionFilters({
         ),
     });
   } else if (filters.horizon) {
-    const horizonLabel = filters.horizon === 365 ? "12M" : `${filters.horizon}D`;
+    const horizonLabel = filters.horizon === 365 ? translate("message12m") : translate("d", { value1: filters.horizon });
     filterTags.push({
       label: horizonLabel,
       onRemove: () =>
@@ -574,7 +576,7 @@ export function TransactionFilters({
           <div className="relative w-full sm:w-64" data-walkthrough="walkthrough-search">
             <RiSearchLine className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search transactions..."
+              placeholder={translate("searchTransactions")}
               value={draft.search}
               onChange={(event) => setField("search", event.target.value)}
               className="pl-8"
@@ -587,7 +589,7 @@ export function TransactionFilters({
               className="inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap border border-input bg-transparent px-3 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
             >
               <RiFilter3Line className="h-4 w-4" />
-              Filters
+              {translate("filters")}
               {activeFilterCount > 0 && (
                 <span className="flex h-5 min-w-5 items-center justify-center bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
                   {activeFilterCount}
@@ -596,7 +598,7 @@ export function TransactionFilters({
             </PopoverTrigger>
             <PopoverContent align="start" className="w-[calc(100vw-2rem)] sm:w-80">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Filters</span>
+                <span className="text-sm font-medium">{translate("filters")}</span>
                 {activeFilterCount > 0 && (
                   <Button
                     variant="ghost"
@@ -604,7 +606,7 @@ export function TransactionFilters({
                     onClick={onClearFilters}
                     className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
                   >
-                    Clear all
+                    {translate("clearAll")}
                   </Button>
                 )}
               </div>
@@ -638,7 +640,7 @@ export function TransactionFilters({
                 />
 
                 <MultiSelectFilter
-                  label="Category"
+                  label={translate("category")}
                   icon={<RiPriceTag3Line className="h-4 w-4" />}
                   options={categoryOptions}
                   selectedIds={filters.category}
@@ -650,7 +652,7 @@ export function TransactionFilters({
                 />
 
                 <MultiSelectFilter
-                  label="Account"
+                  label={translate("account85dfa3")}
                   icon={<RiBankLine className="h-4 w-4" />}
                   options={accountOptions}
                   selectedIds={filters.accountIds}
@@ -660,7 +662,7 @@ export function TransactionFilters({
                 />
 
                 <MultiSelectFilter
-                  label="Status"
+                  label={translate("status")}
                   icon={<RiTimeLine className="h-4 w-4" />}
                   options={statusOptions}
                   selectedIds={filters.status}
@@ -670,7 +672,7 @@ export function TransactionFilters({
                 />
 
                 <MultiSelectFilter
-                  label="Subscription"
+                  label={translate("subscription")}
                   icon={<RiRepeatLine className="h-4 w-4" />}
                   options={subscriptionOptions}
                   selectedIds={filters.subscription}
@@ -688,7 +690,7 @@ export function TransactionFilters({
                 />
 
                 <MultiSelectFilter
-                  label="Analytics"
+                  label={translate("analytics")}
                   icon={<RiLineChartLine className="h-4 w-4" />}
                   options={analyticsOptions}
                   selectedIds={filters.analytics}

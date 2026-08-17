@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import type { AssetCategory } from "./types";
 
@@ -14,7 +16,7 @@ export function AssetsStackedBar({ categories, total }: AssetsStackedBarProps) {
     return (
       <div className="space-y-4">
         <div className="h-3 w-full rounded-sm bg-muted" />
-        <div className="text-sm text-muted-foreground">No assets tracked</div>
+        <div className="text-sm text-muted-foreground">{translate("noAssetsTracked")}</div>
       </div>
     );
   }

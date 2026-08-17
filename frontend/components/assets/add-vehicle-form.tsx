@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -55,19 +57,19 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
 
   const validateOwners = (): boolean => {
     if (owners.length === 0) {
-      setOwnersError("Select at least one owner.");
+      setOwnersError(translate("selectAtLeastOneOwner"));
       return false;
     }
     const allNull = owners.every((o) => o.share === null);
     const allSet = owners.every((o) => o.share !== null);
     if (!allNull && !allSet) {
-      setOwnersError("All owners must either split equally or specify shares.");
+      setOwnersError(translate("allOwnersMustEitherSplitEquallyOrSpecifyShares"));
       return false;
     }
     if (allSet) {
       const sum = owners.reduce((acc, o) => acc + (o.share as number), 0);
       if (Math.abs(sum - 1) > 0.0001) {
-        setOwnersError(`Shares must sum to 100% (currently ${Math.round(sum * 100)}%).`);
+        setOwnersError(translate("sharesMustSumTo100Currentlyc8e2ea", { value1: Math.round(sum * 100) }));
         return false;
       }
     }
@@ -79,7 +81,7 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
     try {
       await saveVehicleOwnersMutation.mutateAsync({ entityId, owners });
     } catch (err) {
-      toast.error((err as Error).message || "Vehicle created, but failed to save ownership. You can update it later.");
+      toast.error((err as Error).message || translate("vehicleCreatedButFailedToSaveOwnershipYouCan"));
     }
   };
 
@@ -87,22 +89,22 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
     e.preventDefault();
 
     if (!name.trim()) {
-      toast.error("Please enter a vehicle name");
+      toast.error(translate("pleaseEnterAVehicleName"));
       return;
     }
 
     if (!vehicleType) {
-      toast.error("Please select a vehicle type");
+      toast.error(translate("pleaseSelectAVehicleType"));
       return;
     }
 
     if (!currency) {
-      toast.error("Please select a currency");
+      toast.error(translate("pleaseSelectACurrency"));
       return;
     }
 
     if (!peopleLoaded) {
-      setOwnersError("Loading household data, please wait…");
+      setOwnersError(translate("loadingHouseholdDataPleaseWait"));
       return;
     }
     if (people.length > 0 && !validateOwners()) return;
@@ -112,14 +114,14 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
     try {
       const value = currentValue ? parseFloat(currentValue) : 0;
       if (currentValue && isNaN(value)) {
-        toast.error("Please enter a valid value");
+        toast.error(translate("pleaseEnterAValidValue"));
         setIsLoading(false);
         return;
       }
 
       const yearNum = year ? parseInt(year, 10) : undefined;
       if (year && (isNaN(yearNum!) || yearNum! < 1900 || yearNum! > new Date().getFullYear() + 1)) {
-        toast.error("Please enter a valid year");
+        toast.error(translate("pleaseEnterAValidYear"));
         setIsLoading(false);
         return;
       }
@@ -138,13 +140,13 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
         if (result.vehicleId) {
           await putOwners(result.vehicleId);
         }
-        toast.success("Vehicle added successfully");
+        toast.success(translate("vehicleAddedSuccessfully"));
         onSuccess?.();
       } else {
-        toast.error(result.error || "Failed to add vehicle");
+        toast.error(result.error || translate("failedToAddVehicle"));
       }
     } catch {
-      toast.error("An error occurred. Please try again.");
+      toast.error(translate("anErrorOccurredPleaseTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -155,10 +157,10 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
       <div className="grid gap-4 py-4">
         {/* Vehicle Name */}
         <div className="space-y-2">
-          <Label htmlFor="vehicle-name">Vehicle Name</Label>
+          <Label htmlFor="vehicle-name">{translate("vehicleName")}</Label>
           <Input
             id="vehicle-name"
-            placeholder="e.g., Family Car"
+            placeholder={translate("eGFamilyCar")}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -166,10 +168,10 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
 
         {/* Vehicle Type */}
         <div className="space-y-2">
-          <Label htmlFor="vehicle-type">Vehicle Type</Label>
+          <Label htmlFor="vehicle-type">{translate("vehicleType")}</Label>
           <Select value={vehicleType} onValueChange={(v) => v && setVehicleType(v)}>
             <SelectTrigger>
-              <SelectValue placeholder="Select vehicle type" />
+              <SelectValue placeholder={translate("selectVehicleType")} />
             </SelectTrigger>
             <SelectContent>
               {VEHICLE_TYPES.map((type) => (
@@ -184,19 +186,19 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
         {/* Make and Model */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="vehicle-make">Make (optional)</Label>
+            <Label htmlFor="vehicle-make">{translate("makeOptional")}</Label>
             <Input
               id="vehicle-make"
-              placeholder="e.g., Toyota"
+              placeholder={translate("eGToyota")}
               value={make}
               onChange={(e) => setMake(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="vehicle-model">Model (optional)</Label>
+            <Label htmlFor="vehicle-model">{translate("modelOptional")}</Label>
             <Input
               id="vehicle-model"
-              placeholder="e.g., Camry"
+              placeholder={translate("eGCamry")}
               value={model}
               onChange={(e) => setModel(e.target.value)}
             />
@@ -205,11 +207,11 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
 
         {/* Year */}
         <div className="space-y-2">
-          <Label htmlFor="vehicle-year">Year (optional)</Label>
+          <Label htmlFor="vehicle-year">{translate("yearOptional")}</Label>
           <Input
             id="vehicle-year"
             type="number"
-            placeholder="e.g., 2020"
+            placeholder={translate("eG2020")}
             value={year}
             onChange={(e) => setYear(e.target.value)}
           />
@@ -217,7 +219,7 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
 
         {/* Current Value */}
         <div className="space-y-2">
-          <Label htmlFor="vehicle-value">Current Value</Label>
+          <Label htmlFor="vehicle-value">{translate("currentValue")}</Label>
           <Input
             id="vehicle-value"
             type="number"
@@ -230,10 +232,10 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
 
         {/* Currency */}
         <div className="space-y-2">
-          <Label htmlFor="vehicle-currency">Currency</Label>
+          <Label htmlFor="vehicle-currency">{translate("currency")}</Label>
           <Select value={currency} onValueChange={(v) => v && setCurrency(v)}>
             <SelectTrigger>
-              <SelectValue placeholder="Select currency" />
+              <SelectValue placeholder={translate("selectCurrency")} />
             </SelectTrigger>
             <SelectContent>
               {CURRENCIES.map((curr) => (
@@ -270,10 +272,10 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
           onClick={onCancel}
           disabled={isLoading}
         >
-          Cancel
+          {translate("cancel")}
         </Button>
         <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Adding..." : "Add Vehicle"}
+          {isLoading ? translate("adding") : translate("addVehicle")}
         </Button>
       </div>
     </form>

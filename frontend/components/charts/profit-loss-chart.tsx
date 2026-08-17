@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import * as React from "react";
 import {
@@ -43,14 +45,14 @@ function formatCompactNumber(value: number): string {
 
 const chartConfig = {
   income: {
-    label: "Income",
+    label: translate("income1c89b1"),
     theme: {
       light: "oklch(0.147 0.004 49.25)",   // near black in light mode
       dark: "oklch(0.985 0.001 106.423)",  // near white in dark mode
     },
   },
   expenses: {
-    label: "Expenses",
+    label: translate("expenses"),
     theme: {
       light: "oklch(0.553 0.013 58.071)",  // muted gray in light mode
       dark: "oklch(0.553 0.013 58.071)",   // muted gray in dark mode
@@ -104,7 +106,7 @@ function CustomTooltip({ active, payload, label, currency }: CustomTooltipProps)
               className="h-3 w-1 shrink-0"
               style={{ backgroundColor: "var(--color-income)" }}
             />
-            <span className="text-muted-foreground">Income</span>
+            <span className="text-muted-foreground">{translate("income1c89b1")}</span>
           </div>
           <span className="font-mono font-medium tabular-nums">
             {formatCurrency(income, currency)}
@@ -116,14 +118,14 @@ function CustomTooltip({ active, payload, label, currency }: CustomTooltipProps)
               className="h-3 w-1 shrink-0"
               style={{ backgroundColor: "var(--color-expenses)" }}
             />
-            <span className="text-muted-foreground">Expenses</span>
+            <span className="text-muted-foreground">{translate("expenses")}</span>
           </div>
           <span className="font-mono font-medium tabular-nums">
             {formatCurrency(expenses, currency)}
           </span>
         </div>
         <div className="mt-2 flex items-center justify-between gap-8 border-t border-border/50 pt-2">
-          <span className="text-muted-foreground">Net</span>
+          <span className="text-muted-foreground">{translate("net")}</span>
           <span
             className={cn(
               "font-mono font-medium tabular-nums",
@@ -152,7 +154,7 @@ export function ProfitLossChart({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium">Income vs Expenses</CardTitle>
+        <CardTitle className="text-sm font-medium">{translate("incomeVsExpenses")}</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         <ChartContainer config={chartConfig} className="h-[260px] w-full sm:h-[300px]">
@@ -218,7 +220,7 @@ export function ProfitLossChart({
                 strokeDasharray="5 5"
                 strokeWidth={1}
                 label={{
-                  value: `Avg: ${formatCompactNumber(average)}`,
+                  value: translate("avg", { value1: formatCompactNumber(average) }),
                   position: "right",
                   fill: "var(--muted-foreground)",
                   fontSize: 11,

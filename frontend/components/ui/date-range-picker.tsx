@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import * as React from "react";
 import { type DateRange } from "react-day-picker";
@@ -27,13 +29,13 @@ import { cn } from "@/lib/utils";
 
 // Date range presets
 const datePresets = [
-  { label: "This Week", getValue: () => ({ from: startOfWeek(new Date(), { weekStartsOn: 1 }), to: endOfWeek(new Date(), { weekStartsOn: 1 }) }) },
-  { label: "This Month", getValue: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }) },
-  { label: "Last Month", getValue: () => ({ from: startOfMonth(subMonths(new Date(), 1)), to: endOfMonth(subMonths(new Date(), 1)) }) },
-  { label: "This Quarter", getValue: () => ({ from: startOfQuarter(new Date()), to: endOfQuarter(new Date()) }) },
-  { label: "Last Quarter", getValue: () => ({ from: startOfQuarter(subQuarters(new Date(), 1)), to: endOfQuarter(subQuarters(new Date(), 1)) }) },
-  { label: "This Year", getValue: () => ({ from: startOfYear(new Date()), to: endOfYear(new Date()) }) },
-  { label: "Last Year", getValue: () => ({ from: startOfYear(subYears(new Date(), 1)), to: endOfYear(subYears(new Date(), 1)) }) },
+  { label: translate("thisWeek"), getValue: () => ({ from: startOfWeek(new Date(), { weekStartsOn: 1 }), to: endOfWeek(new Date(), { weekStartsOn: 1 }) }) },
+  { label: translate("thisMonth"), getValue: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }) },
+  { label: translate("lastMonth20fe4f"), getValue: () => ({ from: startOfMonth(subMonths(new Date(), 1)), to: endOfMonth(subMonths(new Date(), 1)) }) },
+  { label: translate("thisQuarter"), getValue: () => ({ from: startOfQuarter(new Date()), to: endOfQuarter(new Date()) }) },
+  { label: translate("lastQuarter"), getValue: () => ({ from: startOfQuarter(subQuarters(new Date(), 1)), to: endOfQuarter(subQuarters(new Date(), 1)) }) },
+  { label: translate("thisYear"), getValue: () => ({ from: startOfYear(new Date()), to: endOfYear(new Date()) }) },
+  { label: translate("lastYear"), getValue: () => ({ from: startOfYear(subYears(new Date(), 1)), to: endOfYear(subYears(new Date(), 1)) }) },
 ];
 
 interface DateRangePickerProps {
@@ -105,7 +107,7 @@ export function DateRangePicker({
                 !value?.from && "bg-accent"
               )}
             >
-              All time
+              {translate("allTime")}
             </button>
             {datePresets.map((preset) => (
               <button

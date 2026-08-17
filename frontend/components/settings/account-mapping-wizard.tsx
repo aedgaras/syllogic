@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -160,13 +162,13 @@ export function AccountMappingWizard({
         initialSyncDays
       );
       if (!result.success) {
-        setError(result.error || "Failed to submit account mappings");
+        setError(result.error || translate("failedToSubmitAccountMappings"));
         setIsSubmitting(false);
         return;
       }
       router.push("/settings?tab=bank-connections");
     } catch {
-      setError("An unexpected error occurred");
+      setError(translate("anUnexpectedErrorOccurred"));
       setIsSubmitting(false);
     }
   }
@@ -182,8 +184,8 @@ export function AccountMappingWizard({
         <div className="mb-2 flex items-center justify-between text-sm text-muted-foreground">
           <span>
             {isSummaryStep
-              ? "Review & Confirm"
-              : `Account ${currentStep + 1} of ${bankAccounts.length}`}
+              ? translate("reviewConfirm")
+              : translate("accountOf", { value1: currentStep + 1, value2: bankAccounts.length })}
           </span>
           <span>{Math.round(progressPercent)}%</span>
         </div>
@@ -199,7 +201,7 @@ export function AccountMappingWizard({
       <div className="mb-6 flex items-center gap-2">
         <RiBankLine className="h-5 w-5 text-muted-foreground" />
         <span className="text-sm text-muted-foreground">
-          Connecting to{" "}
+          {translate("connectingTo")}{" "}
           <span className="font-medium text-foreground">{aspspName}</span>
         </span>
       </div>
@@ -226,11 +228,11 @@ export function AccountMappingWizard({
             {suggestionByUid[currentAccount.uid]?.suggested_action === "link" && (
               <div className="mb-3 flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
                 <RiCheckLine className="h-3.5 w-3.5 shrink-0 text-green-500" />
-                Previously linked — pre-selected for you. You can change this below.
+                {translate("previouslyLinkedPreSelectedForYouYouCanChange")}
               </div>
             )}
             <Label className="text-sm font-medium">
-              What would you like to do with this account?
+              {translate("whatWouldYouLikeToDoWithThisAccount")}
             </Label>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {/* Create new */}
@@ -245,9 +247,9 @@ export function AccountMappingWizard({
               >
                 <RiAddLine className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
                 <div>
-                  <p className="font-medium text-sm">Create new account</p>
+                  <p className="font-medium text-sm">{translate("createNewAccounta7bff9")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Add this as a new account in Syllogic
+                    {translate("addThisAsANewAccountInSyllogic")}
                   </p>
                 </div>
                 {currentMapping.action === "create" && (
@@ -268,11 +270,11 @@ export function AccountMappingWizard({
               >
                 <RiLinkM className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
                 <div>
-                  <p className="font-medium text-sm">Link to existing account</p>
+                  <p className="font-medium text-sm">{translate("linkToExistingAccount")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {availableLinkableAccounts.length === 0
-                      ? "No unlinked accounts available"
-                      : "Connect to an account you already have"}
+                      ? translate("noUnlinkedAccountsAvailable")
+                      : translate("connectToAnAccountYouAlreadyHave")}
                   </p>
                 </div>
                 {currentMapping.action === "link" && (
@@ -285,12 +287,12 @@ export function AccountMappingWizard({
           {/* Create: name input */}
           {currentMapping.action === "create" && (
             <div className="space-y-2">
-              <Label htmlFor="account-name">Account name</Label>
+              <Label htmlFor="account-name">{translate("accountNameabe4d6")}</Label>
               <Input
                 id="account-name"
                 value={currentMapping.name || ""}
                 onChange={(e) => updateCurrentMapping({ name: e.target.value })}
-                placeholder="e.g. Main Checking"
+                placeholder={translate("eGMainChecking0c94c6")}
               />
             </div>
           )}
@@ -298,7 +300,7 @@ export function AccountMappingWizard({
           {/* Link: account dropdown */}
           {currentMapping.action === "link" && (
             <div className="space-y-2">
-              <Label htmlFor="existing-account">Select existing account</Label>
+              <Label htmlFor="existing-account">{translate("selectExistingAccount")}</Label>
               <Select
                 value={currentMapping.existing_account_id || ""}
                 onValueChange={(v) =>
@@ -306,13 +308,13 @@ export function AccountMappingWizard({
                 }
               >
                 <SelectTrigger id="existing-account">
-                  <SelectValue placeholder="Choose an account..." />
+                  <SelectValue placeholder={translate("chooseAnAccount")} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableLinkableAccounts.map((account) => (
                     <SelectItem key={account.id} value={account.id}>
                       {account.name}
-                      {account.currency && ` (${account.currency})`}
+                      {account.currency && translate("messagecd176d", { value1: account.currency })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -333,11 +335,9 @@ export function AccountMappingWizard({
                     <div className="flex items-start gap-2 rounded-none border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
                       <RiAlertLine className="mt-0.5 h-4 w-4 shrink-0" />
                       <p className="text-xs">
-                        Currency mismatch: bank account is{" "}
-                        <strong>{currentAccount.currency}</strong> but selected
-                        account is{" "}
-                        <strong>{linked.currency.toUpperCase()}</strong>.
-                        Transactions may be recorded in different currencies.
+                        {translate("currencyMismatchBankAccountIs")}{" "}
+                        <strong>{currentAccount.currency}</strong> {translate("butSelectedAccountIs")}{" "}
+                        <strong>{linked.currency.toUpperCase()}</strong>{translate("transactionsMayBeRecordedInDifferentCurrencies")}
                       </p>
                     </div>
                   );
@@ -353,9 +353,9 @@ export function AccountMappingWizard({
       {isSummaryStep && (
         <div className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold">Review your mappings</h2>
+            <h2 className="text-lg font-semibold">{translate("reviewYourMappings")}</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Confirm how each bank account will be set up in Syllogic.
+              {translate("confirmHowEachBankAccountWillBeSetUp")}
             </p>
           </div>
 
@@ -388,7 +388,7 @@ export function AccountMappingWizard({
                       {mapping.action === "create" ? (
                         <div className="text-right">
                           <Badge variant="secondary" className="mb-1">
-                            New
+                            {translate("new")}
                           </Badge>
                           <p className="text-xs text-muted-foreground">
                             {mapping.name}
@@ -397,10 +397,10 @@ export function AccountMappingWizard({
                       ) : (
                         <div className="text-right">
                           <Badge variant="outline" className="mb-1">
-                            Link
+                            {translate("linkd05170")}
                           </Badge>
                           <p className="text-xs text-muted-foreground">
-                            {linkedAccount?.name || "Unknown"}
+                            {linkedAccount?.name || translate("unknown")}
                           </p>
                         </div>
                       )}
@@ -413,9 +413,9 @@ export function AccountMappingWizard({
 
           {/* Initial sync period */}
           <div className="space-y-2">
-            <Label htmlFor="sync-days">Initial sync period</Label>
+            <Label htmlFor="sync-days">{translate("initialSyncPeriod")}</Label>
             <p className="text-xs text-muted-foreground">
-              How far back should we fetch your transaction history?
+              {translate("howFarBackShouldWeFetchYourTransactionHistory")}
             </p>
             <Select
               value={String(initialSyncDays)}
@@ -427,7 +427,7 @@ export function AccountMappingWizard({
               <SelectContent>
                 {SYNC_DAY_OPTIONS.map((days) => (
                   <SelectItem key={days} value={String(days)}>
-                    {days === 365 ? "1 year" : days === 730 ? "2 years" : `${days} days`}
+                    {days === 365 ? translate("message1Year") : days === 730 ? translate("message2Years") : translate("days", { days: days })}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -451,7 +451,7 @@ export function AccountMappingWizard({
           disabled={currentStep === 0 || isSubmitting}
         >
           <RiArrowLeftLine className="mr-2 h-4 w-4" />
-          Back
+          {translate("back")}
         </Button>
 
         {isSummaryStep ? (
@@ -459,12 +459,12 @@ export function AccountMappingWizard({
             {isSubmitting ? (
               <>
                 <RiLoader4Line className="mr-2 h-4 w-4 animate-spin" />
-                Connecting...
+                {translate("connecting")}
               </>
             ) : (
               <>
                 <RiCheckLine className="mr-2 h-4 w-4" />
-                Connect & Sync
+                {translate("connectSync3cf846")}
               </>
             )}
           </Button>
@@ -473,7 +473,7 @@ export function AccountMappingWizard({
             onClick={() => setCurrentStep((s) => s + 1)}
             disabled={!canProceed()}
           >
-            Next
+            {translate("next")}
             <RiArrowRightLine className="ml-2 h-4 w-4" />
           </Button>
         )}

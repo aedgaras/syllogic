@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -104,7 +106,7 @@ export function SpendingByCategoryChart({
     <Card>
       <CardHeader className="pb-4">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-sm font-medium">{periodTitle} Expenses</CardTitle>
+          <CardTitle className="text-sm font-medium">{periodTitle} {translate("expenses")}</CardTitle>
           <span className="break-words font-mono text-xl font-semibold tracking-tight sm:text-2xl">
             {formatCurrency(total, currency)}
           </span>
@@ -113,7 +115,7 @@ export function SpendingByCategoryChart({
       <CardContent className="space-y-4 pb-3">
         {displayData.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No expense data for this period
+            {translate("noExpenseDataForThisPeriod")}
           </p>
         ) : (
           displayData.map((category, index) => {
@@ -130,7 +132,7 @@ export function SpendingByCategoryChart({
                 }}
               >
                 <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
-                  <span className="truncate font-medium">{category.name || "Unknown"}</span>
+                  <span className="truncate font-medium">{category.name || translate("unknown")}</span>
                   <span className="shrink-0 font-mono text-muted-foreground">
                     {formatCurrency(category.amount, currency)}
                   </span>
@@ -157,7 +159,7 @@ export function SpendingByCategoryChart({
           className="h-7 bg-transparent px-2 text-xs"
           onClick={navigateToCategorySpendingAll}
         >
-          View All
+          {translate("viewAll")}
         </Button>
       </div>
     </Card>

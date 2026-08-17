@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -25,24 +27,24 @@ import { fetchAspsps, type Aspsp } from "@/lib/bank-connections/client";
 
 // European countries with Enable Banking support
 const COUNTRIES = [
-  { code: "NL", name: "Netherlands" },
-  { code: "DE", name: "Germany" },
-  { code: "FR", name: "France" },
-  { code: "ES", name: "Spain" },
-  { code: "IT", name: "Italy" },
-  { code: "BE", name: "Belgium" },
-  { code: "AT", name: "Austria" },
-  { code: "FI", name: "Finland" },
-  { code: "SE", name: "Sweden" },
-  { code: "NO", name: "Norway" },
-  { code: "DK", name: "Denmark" },
-  { code: "PT", name: "Portugal" },
-  { code: "IE", name: "Ireland" },
-  { code: "LU", name: "Luxembourg" },
-  { code: "PL", name: "Poland" },
-  { code: "EE", name: "Estonia" },
-  { code: "LV", name: "Latvia" },
-  { code: "LT", name: "Lithuania" },
+  { code: "NL", name: translate("netherlands") },
+  { code: "DE", name: translate("germany") },
+  { code: "FR", name: translate("france") },
+  { code: "ES", name: translate("spain") },
+  { code: "IT", name: translate("italy") },
+  { code: "BE", name: translate("belgium") },
+  { code: "AT", name: translate("austria") },
+  { code: "FI", name: translate("finland") },
+  { code: "SE", name: translate("sweden") },
+  { code: "NO", name: translate("norway") },
+  { code: "DK", name: translate("denmark") },
+  { code: "PT", name: translate("portugal") },
+  { code: "IE", name: translate("ireland") },
+  { code: "LU", name: translate("luxembourg") },
+  { code: "PL", name: translate("poland") },
+  { code: "EE", name: translate("estonia") },
+  { code: "LV", name: translate("latvia") },
+  { code: "LT", name: translate("lithuania") },
 ];
 
 export function BankPicker() {
@@ -67,7 +69,7 @@ export function BankPicker() {
     },
   });
 
-  const loadError = fetchError ?? (isError ? "Failed to load available banks. Please try again." : null);
+  const loadError = fetchError ?? (isError ? translate("failedToLoadAvailableBanksPleaseTryAgain") : null);
 
   const filtered = useMemo(() => {
     if (!search) return aspsps;
@@ -82,11 +84,11 @@ export function BankPicker() {
       if (result.success && result.url) {
         router.push(result.url);
       } else {
-        setFetchError(result.error || "Failed to initiate connection");
+        setFetchError(result.error || translate("failedToInitiateConnection"));
         setConnectingBank(null);
       }
     } catch {
-      setFetchError("Failed to initiate connection. Please try again.");
+      setFetchError(translate("failedToInitiateConnectionPleaseTryAgain"));
       setConnectingBank(null);
     }
   };
@@ -99,7 +101,7 @@ export function BankPicker() {
         className={buttonVariants({ variant: "ghost", size: "sm" })}
       >
         <RiArrowLeftLine className="mr-1.5 h-4 w-4" />
-        Back to Settings
+        {translate("backToSettings")}
       </Link>
 
       {/* Error from callback */}
@@ -112,9 +114,9 @@ export function BankPicker() {
 
       {/* Header */}
       <div>
-        <h2 className="text-lg font-semibold">Select Your Bank</h2>
+        <h2 className="text-lg font-semibold">{translate("selectYourBank")}</h2>
         <p className="text-sm text-muted-foreground">
-          Choose your bank to connect via Open Banking. You&apos;ll be redirected to authorize access.
+          {translate("chooseYourBankToConnectViaOpenBankingYou")}
         </p>
       </div>
 
@@ -122,7 +124,7 @@ export function BankPicker() {
       <div className="flex items-center gap-3">
         <Select value={country} onValueChange={(v) => v && setCountry(v)}>
           <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Select country" />
+            <SelectValue placeholder={translate("selectCountry")} />
           </SelectTrigger>
           <SelectContent>
             {COUNTRIES.map((c) => (
@@ -136,7 +138,7 @@ export function BankPicker() {
         <div className="relative flex-1">
           <RiSearchLine className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search banks..."
+            placeholder={translate("searchBanks")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -155,7 +157,7 @@ export function BankPicker() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No banks found{search ? ` matching "${search}"` : ` for ${country}`}.
+          {translate("noBanksFound")}{search ? translate("matching", { search: search }) : translate("for", { country: country })}.
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -177,7 +179,7 @@ export function BankPicker() {
                   )}
                 </p>
                 {aspsp.beta && (
-                  <span className="text-xs text-muted-foreground">Beta</span>
+                  <span className="text-xs text-muted-foreground">{translate("beta")}</span>
                 )}
               </div>
             </button>

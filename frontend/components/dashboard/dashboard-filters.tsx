@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import * as React from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
@@ -29,9 +31,9 @@ interface DashboardFiltersProps {
 }
 
 const HORIZON_OPTIONS = [
-  { value: "7", label: "7D" },
-  { value: "30", label: "30D" },
-  { value: "365", label: "12M" },
+  { value: "7", label: translate("message7d") },
+  { value: "30", label: translate("message30d") },
+  { value: "365", label: translate("message12m") },
 ] as const;
 
 export function DashboardFilters({ accounts }: DashboardFiltersProps) {
@@ -56,7 +58,7 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
 
   const isAllAccountsSelected = selectedAccountIds.length === 0;
   const selectedAccountsCount = selectedAccountIds.length;
-  const accountTriggerText = isAllAccountsSelected ? "All accounts" : "Accounts";
+  const accountTriggerText = isAllAccountsSelected ? translate("allAccounts6a19f2") : translate("accounts");
 
   const dateFromParam = globalFilters.from;
   const dateToParam = globalFilters.to;
@@ -177,7 +179,7 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
                 checked={isAllAccountsSelected}
                 className="pointer-events-none"
               />
-              <span>All accounts ({accounts.length})</span>
+              <span>{translate("allAccounts")}{accounts.length})</span>
             </button>
           </div>
           <div className="max-h-56 overflow-y-auto p-1">
@@ -204,7 +206,7 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
           value={dateRange}
           onChange={updateDateRange}
           className="!h-9 min-w-0 flex-1 sm:w-fit sm:flex-none"
-          placeholder="Date"
+          placeholder={translate("date")}
           showSelectedText={false}
           active={isDateRangeActive}
         />

@@ -1,16 +1,17 @@
+import { t as translate } from "@/i18n/translate";
 export const CATEGORY_COLORS = [
-  { name: "Amber", value: "#92400E" },
-  { name: "Blue", value: "#1E40AF" },
-  { name: "Green", value: "#047857" },
-  { name: "Red", value: "#B91C1C" },
-  { name: "Purple", value: "#5B21B6" },
-  { name: "Teal", value: "#0F766E" },
-  { name: "Pink", value: "#9D174D" },
-  { name: "Indigo", value: "#3730A3" },
-  { name: "Emerald", value: "#15803D" },
-  { name: "Slate", value: "#334155" },
-  { name: "Stone", value: "#44403C" },
-  { name: "Zinc", value: "#52525B" },
+  { name: translate("amber"), value: "#92400E" },
+  { name: translate("blue"), value: "#1E40AF" },
+  { name: translate("green"), value: "#047857" },
+  { name: translate("red"), value: "#B91C1C" },
+  { name: translate("purple"), value: "#5B21B6" },
+  { name: translate("teal"), value: "#0F766E" },
+  { name: translate("pink"), value: "#9D174D" },
+  { name: translate("indigo"), value: "#3730A3" },
+  { name: translate("emerald"), value: "#15803D" },
+  { name: translate("slate"), value: "#334155" },
+  { name: translate("stone"), value: "#44403C" },
+  { name: translate("zinc"), value: "#52525B" },
 ] as const;
 
 export type CategoryColor = (typeof CATEGORY_COLORS)[number];

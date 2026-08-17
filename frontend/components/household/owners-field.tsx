@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useEffect, useMemo, useState } from "react";
 import { Label } from "@/components/ui/label";
@@ -65,11 +67,11 @@ export function OwnersField(props: {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <Label>Owners</Label>
+        <Label>{translate("owners")}</Label>
         {value.length > 1 && (
           <div className="flex items-center gap-2">
             <Label htmlFor="equal-split" className="text-sm font-normal text-muted-foreground">
-              Split equally
+              {translate("splitEqually")}
             </Label>
             <Switch
               id="equal-split"
@@ -116,11 +118,11 @@ export function OwnersField(props: {
 
       {sumOff && (
         <p className="text-sm text-destructive">
-          Shares must sum to 100% (currently {Math.round(sum * 100)}%).
+          {translate("sharesMustSumTo100Currently")} {Math.round(sum * 100)}%).
         </p>
       )}
       {value.length === 0 && (
-        <p className="text-sm text-destructive">Select at least one owner.</p>
+        <p className="text-sm text-destructive">{translate("selectAtLeastOneOwner")}</p>
       )}
     </div>
   );

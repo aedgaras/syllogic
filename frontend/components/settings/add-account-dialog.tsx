@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import { RiAddLine } from "@remixicon/react";
@@ -24,13 +26,13 @@ export function AddAccountDialog({ onAccountAdded }: AddAccountDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button />}>
         <RiAddLine className="mr-2 h-4 w-4" />
-        Add Account
+        {translate("addAccount")}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add Account</DialogTitle>
+          <DialogTitle>{translate("addAccount")}</DialogTitle>
           <DialogDescription>
-            Create a new account to track your finances.
+            {translate("createANewAccountToTrackYourFinances")}
           </DialogDescription>
         </DialogHeader>
         <AccountForm

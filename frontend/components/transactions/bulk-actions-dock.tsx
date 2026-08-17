@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useMemo } from "react";
 import {
@@ -133,7 +135,7 @@ export function BulkActionsDock({
       >
         {/* Selection count */}
         <div className="flex items-center gap-2 px-2 text-sm font-medium">
-          <span>{selectedCount} selected</span>
+          <span>{selectedCount} {translate("selected")}</span>
         </div>
 
         <Separator orientation="vertical" className="h-8" />
@@ -148,19 +150,19 @@ export function BulkActionsDock({
         >
           <PopoverTrigger
             nativeButton={false}
-            render={<DockIcon className="bg-muted hover:bg-muted/80" title="Categorize" />}
+            render={<DockIcon className="bg-muted hover:bg-muted/80" title={translate("categorize")} />}
           >
             <RiPriceTag3Line className="size-5" />
           </PopoverTrigger>
           <PopoverContent className="w-56 p-0" align="center" side="top" sideOffset={12}>
             <div className="p-2 border-b space-y-2">
               <p className="text-xs font-medium text-muted-foreground">
-                Select category
+                {translate("selectCategory")}
               </p>
               <div className="relative">
                 <RiSearchLine className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search..."
+                  placeholder={translate("search6d7a30")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 pl-8 text-sm"
@@ -176,7 +178,7 @@ export function BulkActionsDock({
                 disabled={isLoading}
               >
                 <RiDeleteBinLine className="mr-2 h-4 w-4" />
-                Remove category
+                {translate("removeCategory")}
               </Button>
               {filteredCategories.map((category) => (
                 <Button
@@ -196,7 +198,7 @@ export function BulkActionsDock({
               ))}
               {filteredCategories.length === 0 && searchQuery && (
                 <p className="text-xs text-muted-foreground text-center py-2">
-                  No categories found
+                  {translate("noCategoriesFound")}
                 </p>
               )}
             </div>
@@ -210,14 +212,14 @@ export function BulkActionsDock({
         >
           <PopoverTrigger
             nativeButton={false}
-            render={<DockIcon className="bg-muted hover:bg-muted/80" title="Analytics" />}
+            render={<DockIcon className="bg-muted hover:bg-muted/80" title={translate("analytics")} />}
           >
             <RiLineChartLine className="size-5" />
           </PopoverTrigger>
           <PopoverContent className="w-48 p-0" align="center" side="top" sideOffset={12}>
             <div className="p-2 border-b">
               <p className="text-xs font-medium text-muted-foreground">
-                Analytics
+                {translate("analytics")}
               </p>
             </div>
             <div className="p-1">
@@ -228,7 +230,7 @@ export function BulkActionsDock({
                 onClick={() => handleAnalyticsUpdate(true)}
                 disabled={isAnalyticsLoading}
               >
-                Include in Analytics
+                {translate("includeInAnalytics")}
               </Button>
               <Button
                 variant="ghost"
@@ -237,7 +239,7 @@ export function BulkActionsDock({
                 onClick={() => handleAnalyticsUpdate(false)}
                 disabled={isAnalyticsLoading}
               >
-                Exclude from Analytics
+                {translate("excludeFromAnalytics")}
               </Button>
             </div>
           </PopoverContent>
@@ -267,8 +269,8 @@ export function BulkActionsDock({
             <TooltipContent side="top" sideOffset={8}>
               <p>
                 {hasLinkedTransactions
-                  ? "Some transactions already linked"
-                  : "Link as reimbursement group"}
+                  ? translate("someTransactionsAlreadyLinked")
+                  : translate("linkAsReimbursementGroup")}
               </p>
             </TooltipContent>
           </Tooltip>
@@ -288,7 +290,7 @@ export function BulkActionsDock({
               <RiDeleteBinLine className="size-5" />
             </TooltipTrigger>
             <TooltipContent side="top" sideOffset={8}>
-              <p>Delete selected</p>
+              <p>{translate("deleteSelected")}</p>
             </TooltipContent>
           </Tooltip>
         )}
@@ -306,7 +308,7 @@ export function BulkActionsDock({
             <RiDownloadLine className="size-5" />
           </TooltipTrigger>
           <TooltipContent side="top" sideOffset={8}>
-            <p>Export CSV</p>
+            <p>{translate("exportCsv")}</p>
           </TooltipContent>
         </Tooltip>
 
@@ -325,7 +327,7 @@ export function BulkActionsDock({
             <RiCloseLine className="size-5" />
           </TooltipTrigger>
           <TooltipContent side="top" sideOffset={8}>
-            <p>Clear selection</p>
+            <p>{translate("clearSelection")}</p>
           </TooltipContent>
         </Tooltip>
       </Dock>

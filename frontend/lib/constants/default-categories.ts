@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { CATEGORY_COLORS } from "./colors";
 
 export type CategoryType = "expense" | "income" | "transfer";
@@ -14,152 +15,152 @@ export interface DefaultCategory {
 
 export const DEFAULT_EXPENSE_CATEGORIES: DefaultCategory[] = [
   {
-    name: "Food & Dining",
+    name: translate("foodDining"),
     categoryType: "expense",
     color: CATEGORY_COLORS[0].value, // Amber
     icon: "RiRestaurantLine",
-    description: "Restaurants, food delivery, cafes",
+    description: translate("restaurantsFoodDeliveryCafes"),
   },
   {
-    name: "Groceries",
+    name: translate("groceries"),
     categoryType: "expense",
     color: CATEGORY_COLORS[8].value, // Emerald
     icon: "RiShoppingCartLine",
-    description: "Supermarkets, grocery stores, household essentials",
+    description: translate("supermarketsGroceryStoresHouseholdEssentials"),
   },
   {
-    name: "Transportation",
+    name: translate("transportation"),
     categoryType: "expense",
     color: CATEGORY_COLORS[1].value, // Blue
     icon: "RiCarLine",
-    description: "Fuel, public transit, parking, ride-sharing",
+    description: translate("fuelPublicTransitParkingRideSharing"),
   },
   {
-    name: "Shopping",
+    name: translate("shopping"),
     categoryType: "expense",
     color: CATEGORY_COLORS[6].value, // Pink
     icon: "RiShoppingBagLine",
-    description: "Clothing, electronics, general purchases",
+    description: translate("clothingElectronicsGeneralPurchases"),
   },
   {
-    name: "Entertainment",
+    name: translate("entertainment"),
     categoryType: "expense",
     color: CATEGORY_COLORS[4].value, // Purple
     icon: "RiGamepadLine",
-    description: "Movies, games, concerts, streaming services",
+    description: translate("moviesGamesConcertsStreamingServices"),
   },
   {
-    name: "Bills & Utilities",
+    name: translate("billsUtilities"),
     categoryType: "expense",
     color: CATEGORY_COLORS[9].value, // Slate
     icon: "RiFileTextLine",
-    description: "Electricity, water, internet, phone",
+    description: translate("electricityWaterInternetPhone"),
   },
   {
-    name: "Health & Fitness",
+    name: translate("healthFitness"),
     categoryType: "expense",
     color: CATEGORY_COLORS[2].value, // Green
     icon: "RiHeartPulseLine",
-    description: "Gym, medical expenses, pharmacy",
+    description: translate("gymMedicalExpensesPharmacy"),
   },
   {
-    name: "Housing",
+    name: translate("housing"),
     categoryType: "expense",
     color: CATEGORY_COLORS[10].value, // Stone
     icon: "RiHome4Line",
-    description: "Rent, mortgage, home maintenance",
+    description: translate("rentMortgageHomeMaintenance"),
   },
   {
-    name: "Education",
+    name: translate("education"),
     categoryType: "expense",
     color: CATEGORY_COLORS[7].value, // Indigo
     icon: "RiBookOpenLine",
-    description: "Courses, books, tuition, training",
+    description: translate("coursesBooksTuitionTraining"),
   },
   {
-    name: "Travel",
+    name: translate("travel"),
     categoryType: "expense",
     color: CATEGORY_COLORS[5].value, // Teal
     icon: "RiPlaneLine",
-    description: "Hotels, flights, vacation expenses",
+    description: translate("hotelsFlightsVacationExpenses"),
   },
   {
-    name: "Personal Care",
+    name: translate("personalCare"),
     categoryType: "expense",
     color: CATEGORY_COLORS[8].value, // Emerald
     icon: "RiUser3Line",
-    description: "Haircuts, spa, personal hygiene",
+    description: translate("haircutsSpaPersonalHygiene"),
   },
   {
-    name: "Gifts & Donations",
+    name: translate("giftsDonations"),
     categoryType: "expense",
     color: CATEGORY_COLORS[3].value, // Red
     icon: "RiGiftLine",
-    description: "Presents, charity donations",
+    description: translate("presentsCharityDonations"),
   },
   {
-    name: "Other Expenses",
+    name: translate("otherExpenses"),
     categoryType: "expense",
     color: CATEGORY_COLORS[11].value, // Zinc
     icon: "RiMore2Line",
-    description: "Miscellaneous expenses",
+    description: translate("miscellaneousExpenses"),
   },
 ];
 
 export const DEFAULT_INCOME_CATEGORIES: DefaultCategory[] = [
   {
-    name: "Salary",
+    name: translate("salary"),
     categoryType: "income",
     color: CATEGORY_COLORS[2].value, // Green
     icon: "RiBriefcaseLine",
-    description: "Regular employment income",
+    description: translate("regularEmploymentIncome"),
   },
   {
-    name: "Other Income",
+    name: translate("otherIncome"),
     categoryType: "income",
     color: CATEGORY_COLORS[9].value, // Slate
     icon: "RiAddCircleLine",
-    description: "Miscellaneous income",
+    description: translate("miscellaneousIncome"),
   },
   {
-    name: "Refunds",
+    name: translate("refunds"),
     categoryType: "income",
     color: CATEGORY_COLORS[1].value, // Blue
     icon: "RiArrowGoBackLine",
-    description: "Refunds, reimbursements, chargebacks",
+    description: translate("refundsReimbursementsChargebacks"),
   },
   {
-    name: "Freelance",
+    name: translate("freelance"),
     categoryType: "income",
     color: CATEGORY_COLORS[5].value, // Teal
     icon: "RiComputerLine",
-    description: "Freelance and contract work",
+    description: translate("freelanceAndContractWork"),
   },
 ];
 
 export const DEFAULT_TRANSFER_CATEGORIES: DefaultCategory[] = [
   {
-    name: "Internal Transfer",
+    name: translate("internalTransfere06d01"),
     categoryType: "transfer",
     color: CATEGORY_COLORS[9].value, // Slate
     icon: "RiExchangeLine",
-    description: "Transfers between your own accounts to move money internally",
+    description: translate("transfersBetweenYourOwnAccountsToMoveMoneyInternally"),
     isSystem: true,
   },
   {
-    name: "External Transfer",
+    name: translate("externalTransfer"),
     categoryType: "transfer",
     color: CATEGORY_COLORS[10].value, // Stone
     icon: "RiArrowLeftRightLine",
-    description: "Money moved to or from external accounts not tracked here",
+    description: translate("moneyMovedToOrFromExternalAccountsNotTracked"),
     isSystem: true,
   },
   {
-    name: "Balancing Transfer",
+    name: translate("balancingTransfer"),
     categoryType: "transfer",
     color: CATEGORY_COLORS[11].value, // Zinc
     icon: "RiScalesLine",
-    description: "Balance adjustments for account reconciliation",
+    description: translate("balanceAdjustmentsForAccountReconciliation"),
     isSystem: true,
     hideFromSelection: true,
   },

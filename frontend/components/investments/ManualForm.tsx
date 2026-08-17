@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RiAddLine, RiCloseLine } from "@remixicon/react";
@@ -148,10 +150,10 @@ export function ManualForm({
     <Card className="border-t-2 border-t-primary">
       <CardContent className="p-6 space-y-4">
         <form onSubmit={submit} className="space-y-4">
-          <div className="text-sm font-semibold">Add holdings</div>
+          <div className="text-sm font-semibold">{translate("addHoldings")}</div>
 
           <div className="flex gap-3">
-            <Field label="Account" className="flex-1">
+            <Field label={translate("account85dfa3")} className="flex-1">
               <Select
                 value={accountId}
                 onValueChange={(v) => v && setAccountId(v)}
@@ -165,7 +167,7 @@ export function ManualForm({
                       {a.name} · {a.base_currency}
                     </SelectItem>
                   ))}
-                  <SelectItem value={NEW}>+ Create new account…</SelectItem>
+                  <SelectItem value={NEW}>{translate("createNewAccount")}</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
@@ -173,13 +175,13 @@ export function ManualForm({
 
           {accountId === NEW && (
             <div className="flex gap-3">
-              <Field label="New account name" className="flex-[2_1_0%]">
+              <Field label={translate("newAccountName")} className="flex-[2_1_0%]">
                 <Input
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                 />
               </Field>
-              <Field label="Base currency" className="flex-1">
+              <Field label={translate("baseCurrency")} className="flex-1">
                 <Select
                   value={baseCcy}
                   onValueChange={(v) => v && setBaseCcy(v)}
@@ -188,9 +190,9 @@ export function ManualForm({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="GBP">GBP</SelectItem>
+                    <SelectItem value="EUR">{translate("eur")}</SelectItem>
+                    <SelectItem value="USD">{translate("usd")}</SelectItem>
+                    <SelectItem value="GBP">{translate("gbp")}</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
@@ -199,7 +201,7 @@ export function ManualForm({
 
           <div className="space-y-3">
             <div className="text-xs uppercase tracking-wider text-muted-foreground">
-              Holdings ({rows.length})
+              {translate("holdings93ec09")}{rows.length})
             </div>
             {rows.map((r, i) => (
               <HoldingRow
@@ -219,7 +221,7 @@ export function ManualForm({
               className="w-full"
             >
               <RiAddLine className="size-4" />
-              Add another holding
+              {translate("addAnotherHolding")}
             </Button>
           </div>
 
@@ -227,12 +229,12 @@ export function ManualForm({
 
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
+              {translate("cancel")}
             </Button>
             <Button type="submit" disabled={busy}>
               {busy
-                ? "Adding…"
-                : `Add ${rows.length} holding${rows.length === 1 ? "" : "s"}`}
+                ? translate("addingffb2e6")
+                : translate("addHolding385635", { value1: rows.length, value2: rows.length === 1 ? "" : "s" })}
             </Button>
           </div>
         </form>
@@ -256,19 +258,19 @@ function HoldingRow({
 }) {
   const symbolLabel = row.symbol ? (
     <span className="flex items-center gap-1.5">
-      Symbol
+      {translate("symbol")}
       {row.symbolConfirmed ? (
         <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-px text-[9px] font-semibold tracking-wide text-emerald-700 dark:text-emerald-400">
-          ✓ verified
+          {translate("verified")}
         </span>
       ) : (
         <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-px text-[9px] font-semibold tracking-wide text-amber-700 dark:text-amber-400">
-          ⚠ pick from list
+          {translate("pickFromList")}
         </span>
       )}
     </span>
   ) : (
-    "Symbol"
+    translate("symbol")
   );
 
   return (
@@ -283,7 +285,7 @@ function HoldingRow({
             variant="ghost"
             size="icon-sm"
             onClick={onRemove}
-            aria-label="Remove holding"
+            aria-label={translate("removeHolding")}
           >
             <RiCloseLine className="size-4" />
           </Button>
@@ -303,12 +305,12 @@ function HoldingRow({
                 ...(r.currency ? { currency: r.currency } : {}),
               })
             }
-            placeholder="Search symbol or name…"
+            placeholder={translate("searchSymbolOrName")}
           />
         </Field>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Field label="Quantity" className="flex-1">
+        <Field label={translate("quantity")} className="flex-1">
           <Input
             type="number"
             placeholder="0.00"
@@ -316,7 +318,7 @@ function HoldingRow({
             onChange={(e) => onChange({ qty: e.target.value })}
           />
         </Field>
-        <Field label="Instrument type" className="flex-1">
+        <Field label={translate("instrumentType")} className="flex-1">
           <ToggleGroup
             multiple={false}
             value={[row.type]}
@@ -332,12 +334,12 @@ function HoldingRow({
                 value={t}
                 className="capitalize flex-1"
               >
-                {t === "etf" ? "ETF" : t}
+                {t === "etf" ? translate("etf") : t}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
         </Field>
-        <Field label="Currency" className="flex-1">
+        <Field label={translate("currency")} className="flex-1">
           <Select
             value={row.currency}
             onValueChange={(v) => v && onChange({ currency: v })}
@@ -346,18 +348,18 @@ function HoldingRow({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="EUR">EUR</SelectItem>
-              <SelectItem value="USD">USD</SelectItem>
-              <SelectItem value="GBP">GBP</SelectItem>
+              <SelectItem value="EUR">{translate("eur")}</SelectItem>
+              <SelectItem value="USD">{translate("usd")}</SelectItem>
+              <SelectItem value="GBP">{translate("gbp")}</SelectItem>
             </SelectContent>
           </Select>
         </Field>
         <Field
           label={
             <>
-              Avg cost{" "}
+              {translate("avgCost")}{" "}
               <span className="font-normal text-muted-foreground normal-case tracking-normal">
-                (optional)
+                {translate("optional")}
               </span>
             </>
           }

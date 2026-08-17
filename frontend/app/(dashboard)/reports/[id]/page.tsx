@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -23,8 +25,8 @@ export default function EditReportPage() {
   if (reportLoading) {
     return (
       <>
-        <Header title="Edit report" />
-        <div className="p-4 pt-0 text-sm text-muted-foreground">Loading…</div>
+        <Header title={translate("editReport")} />
+        <div className="p-4 pt-0 text-sm text-muted-foreground">{translate("loading")}</div>
       </>
     );
   }
@@ -32,11 +34,11 @@ export default function EditReportPage() {
   if (reportError || !report) {
     return (
       <>
-        <Header title="Edit report" />
+        <Header title={translate("editReport")} />
         <div className="p-4 pt-0 text-sm text-muted-foreground">
-          Report not found or failed to load.{" "}
+          {translate("reportNotFoundOrFailedToLoad")}{" "}
           <Link href="/reports" className="text-foreground underline underline-offset-4">
-            Back to reports
+            {translate("backToReports")}
           </Link>
         </div>
       </>
@@ -45,7 +47,7 @@ export default function EditReportPage() {
 
   return (
     <>
-      <Header title="Edit report" />
+      <Header title={translate("editReport")} />
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0 text-foreground">
         <ReportForm
           report={report}

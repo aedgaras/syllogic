@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { RiQuestionLine } from "@remixicon/react";
 import {
@@ -49,9 +51,7 @@ export function CurrencySelector({
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <p>
-                  Your functional currency is the primary currency you use for budgeting and
-                  reporting. All amounts will be converted to this currency for charts and
-                  summaries.
+                  {translate("yourFunctionalCurrencyIsThePrimaryCurrencyYouUse")}
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -60,7 +60,7 @@ export function CurrencySelector({
       </div>
       <Select value={value} onValueChange={(v) => v && onChange(v)}>
         <SelectTrigger>
-          <SelectValue placeholder="Select a currency" />
+          <SelectValue placeholder={translate("selectACurrency")} />
         </SelectTrigger>
         <SelectContent>
           {currencies.map((currency) => (

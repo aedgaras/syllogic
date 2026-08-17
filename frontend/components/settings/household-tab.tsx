@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { PeopleList } from "@/components/household/people-list";
 
 type Person = {
@@ -12,9 +13,9 @@ export function HouseholdTab({ people }: { people: Person[] }) {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Your household</h2>
+        <h2 className="text-lg font-semibold">{translate("yourHousehold")}</h2>
         <p className="text-sm text-muted-foreground">
-          Track who owns what — useful for joint accounts and household-level reports.
+          {translate("trackWhoOwnsWhatUsefulForJointAccountsAnd")}
         </p>
       </div>
       <PeopleList initialPeople={people} />

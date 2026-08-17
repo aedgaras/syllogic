@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { notFound } from "next/navigation";
 import { AccountDetail } from "@/features/accounts/public";
 import { getAccountById, getAccountBalanceHistory } from "@/features/accounts/server";
@@ -55,7 +56,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
       />
       {isInvestmentAccount && (
         <section className="rounded-xl border p-4">
-          <h2 className="font-medium mb-3">Holdings</h2>
+          <h2 className="font-medium mb-3">{translate("holdings")}</h2>
           <HoldingsTable holdings={holdings} />
         </section>
       )}

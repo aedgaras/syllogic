@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -50,7 +52,7 @@ export default function OnboardingStep3Page() {
 
   const handleComplete = async () => {
     if (accounts.length === 0) {
-      toast.error("Please create at least one account to continue");
+      toast.error(translate("pleaseCreateAtLeastOneAccountToContinue"));
       return;
     }
 
@@ -60,7 +62,7 @@ export default function OnboardingStep3Page() {
       if (result.success) {
         router.push("/step-4");
       } else {
-        toast.error(result.error || "Failed to complete onboarding");
+        toast.error(result.error || translate("failedToCompleteOnboarding"));
       }
     });
   };
@@ -88,17 +90,16 @@ export default function OnboardingStep3Page() {
 
       <Card className="min-h-[640px] h-[640px] flex flex-col">
         <CardHeader>
-          <CardTitle>Set up your first bank account</CardTitle>
+          <CardTitle>{translate("setUpYourFirstBankAccount")}</CardTitle>
           <CardDescription>
-            We&apos;re starting with CSV import only. Create your first account to
-            begin importing transactions.
+            {translate("weReStartingWithCsvImportOnlyCreateYour")}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 min-h-0">
           <div className="space-y-6">
             {accounts.length > 0 ? (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">Accounts created</p>
+                <p className="text-sm text-muted-foreground">{translate("accountsCreated")}</p>
                 <div className="space-y-2">
                   {accounts.map((account) => (
                     <div
@@ -119,9 +120,9 @@ export default function OnboardingStep3Page() {
                   <RiBankLine className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="font-medium">No accounts yet</h3>
+                  <h3 className="font-medium">{translate("noAccountsYet")}</h3>
                   <p className="text-sm text-muted-foreground max-w-md">
-                    Create one account to start importing your transactions via CSV.
+                    {translate("createOneAccountToStartImportingYourTransactionsVia")}
                   </p>
                 </div>
               </div>
@@ -129,24 +130,24 @@ export default function OnboardingStep3Page() {
 
             <Button onClick={() => setIsDialogOpen(true)} className="w-full" size="lg">
               <RiAddLine className="mr-2 h-4 w-4" />
-              {accounts.length > 0 ? "Add another account" : "Create your first account"}
+              {accounts.length > 0 ? translate("addAnotherAccount") : translate("createYourFirstAccount")}
             </Button>
           </div>
         </CardContent>
         <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <Button variant="outline" onClick={handleBack}>
             <RiArrowLeftLine className="mr-2 h-4 w-4" />
-            Back
+            {translate("back")}
           </Button>
           <Button onClick={handleComplete} disabled={isPending || accounts.length === 0}>
             {isPending ? (
               <>
                 <RiLoader4Line className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                {translate("saving")}
               </>
             ) : (
               <>
-                Continue
+                {translate("continue")}
                 <RiArrowRightLine className="ml-2 h-4 w-4" />
               </>
             )}
@@ -157,7 +158,7 @@ export default function OnboardingStep3Page() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Create Account</DialogTitle>
+            <DialogTitle>{translate("createAccount")}</DialogTitle>
           </DialogHeader>
           <AccountForm
             onSuccess={() => {

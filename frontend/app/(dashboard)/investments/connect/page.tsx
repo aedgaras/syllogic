@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { redirect } from "next/navigation";
 import { listInvestmentAccounts } from "@/lib/api/investments";
 import { Header } from "@/components/layout/header";
@@ -15,7 +16,7 @@ export default async function ConnectPage() {
   const accounts = await listInvestmentAccounts();
   return (
     <>
-      <Header title="Connect investments" />
+      <Header title={translate("connectInvestments")} />
       <div className="flex flex-1 flex-col gap-6 p-4 pt-0">
         <ConnectPathPicker accounts={accounts} />
       </div>

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import {
   Sheet,
@@ -101,7 +103,7 @@ export function SubscriptionDetailSheet({
             {/* Importance blocks */}
             <div
               className="flex items-center gap-1 cursor-default"
-              title={importance === 3 ? "High importance" : importance === 2 ? "Medium importance" : "Low importance"}
+              title={importance === 3 ? translate("highImportance") : importance === 2 ? translate("mediumImportance") : translate("lowImportance")}
             >
               {Array.from({ length: 3 }).map((_, i) => (
                 <div
@@ -127,7 +129,7 @@ export function SubscriptionDetailSheet({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="bg-muted/50 p-4 space-y-1">
                 <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                  This Year
+                  {translate("thisYear")}
                 </div>
                 <div className="text-xl font-mono font-medium">
                   {costAggregations.thisYear.toFixed(2)} {currency}
@@ -135,7 +137,7 @@ export function SubscriptionDetailSheet({
               </div>
               <div className="bg-muted/50 p-4 space-y-1">
                 <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                  All Time
+                  {translate("allTime4745c5")}
                 </div>
                 <div className="text-xl font-mono font-medium">
                   {costAggregations.allTime.toFixed(2)} {currency}
@@ -152,11 +154,11 @@ export function SubscriptionDetailSheet({
                 disabled={isMatching}
               >
                 <RiLink className="mr-2 h-4 w-4" />
-                {isMatching ? "Matching..." : "Match Transactions"}
+                {isMatching ? translate("matching11cb2a") : translate("matchTransactions")}
               </Button>
               <Button variant="outline" onClick={handleEdit}>
                 <RiEditLine className="mr-2 h-4 w-4" />
-                Edit
+                {translate("edit")}
               </Button>
             </div>
 
@@ -166,13 +168,13 @@ export function SubscriptionDetailSheet({
             <div className="flex-1 flex flex-col min-h-0">
               <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-sm font-medium">
-                  Linked Transactions ({linkedTransactions.length})
+                  {translate("linkedTransactions")}{linkedTransactions.length})
                 </h3>
               </div>
 
               {linkedTransactions.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-                  No transactions linked yet
+                  {translate("noTransactionsLinkedYet")}
                 </div>
               ) : (
                 <ScrollArea className="flex-1 min-h-0">
@@ -184,7 +186,7 @@ export function SubscriptionDetailSheet({
                       >
                         <div className="min-w-0 flex-1">
                           <div className="text-sm truncate">
-                            {txn.merchant || txn.description || "Transaction"}
+                            {txn.merchant || txn.description || translate("transaction")}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {format(new Date(txn.bookedAt), "MMM d, yyyy")}

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useQuery } from "@tanstack/react-query";
 import { listAccounts } from "@/lib/reports/api";
@@ -14,7 +16,7 @@ export default function NewReportPage() {
 
   return (
     <>
-      <Header title="New report" />
+      <Header title={translate("newReport")} />
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0 text-foreground">
         <ReportForm
           availableAccounts={accounts ?? []}

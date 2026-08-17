@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { type ColumnDef } from "@tanstack/react-table";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -67,7 +69,7 @@ function CategoryCell({
   const displayCategory = transaction.category ?? transaction.categorySystem;
 
   if (!displayCategory) {
-    return <div className="text-center text-muted-foreground">Uncategorized</div>;
+    return <div className="text-center text-muted-foreground">{translate("uncategorized")}</div>;
   }
 
   return (
@@ -132,7 +134,7 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
           checked={isChecked}
           indeterminate={isIndeterminate}
           onCheckedChange={handleClick}
-          aria-label="Select all"
+          aria-label={translate("selectAll")}
         />
       );
     },
@@ -141,7 +143,7 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
+          aria-label={translate("selectRow")}
         />
       </div>
     ),
@@ -163,7 +165,7 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
           className="flex items-center gap-1 cursor-pointer"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Date
+          {translate("date")}
           {sorted === "asc" ? (
             <RiArrowUpLine className="h-4 w-4" />
           ) : sorted === "desc" ? (
@@ -207,7 +209,7 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
                 <RiSubtractLine className="h-4 w-4 text-muted-foreground" />
               </TooltipTrigger>
               <TooltipContent side="top">
-                <p>Excluded from analytics</p>
+                <p>{translate("excludedFromAnalytics")}</p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -254,7 +256,7 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
   },
   {
     accessorKey: "category",
-    header: () => <div className="text-center" data-walkthrough="walkthrough-category-badge">Category</div>,
+    header: () => <div className="text-center" data-walkthrough="walkthrough-category-badge">{translate("category")}</div>,
     cell: ({ row, column }) => {
       const columnSize = column.getSize();
       return (
@@ -284,7 +286,7 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
           className="flex cursor-pointer items-center justify-center gap-1"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Amount
+          {translate("amount")}
           {sorted === "asc" ? (
             <RiArrowUpLine className="h-4 w-4" />
           ) : sorted === "desc" ? (
@@ -319,12 +321,12 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
   },
   {
     accessorKey: "account",
-    header: () => <div className="text-center">Account</div>,
+    header: () => <div className="text-center">{translate("account85dfa3")}</div>,
     cell: ({ row, column }) => {
       const columnSize = column.getSize();
       const account = row.original.account;
       if (!account) {
-        return <div className="text-center text-muted-foreground">Unknown</div>;
+        return <div className="text-center text-muted-foreground">{translate("unknown")}</div>;
       }
       return (
         <div className="flex justify-center">
@@ -351,7 +353,7 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
   },
   {
     accessorKey: "recurringTransaction",
-    header: () => <div className="text-center">Sub</div>,
+    header: () => <div className="text-center">{translate("sub")}</div>,
     cell: ({ row }) => {
       const recurring = row.original.recurringTransaction;
       if (!recurring) {
@@ -359,7 +361,7 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       }
       return (
         <div className="flex justify-center">
-          <span title={`${recurring.name} (${recurring.frequency})`}>
+          <span title={translate("message", { value1: recurring.name, value2: recurring.frequency })}>
             <RiCheckLine className="h-4 w-4 text-emerald-600" />
           </span>
         </div>
@@ -380,7 +382,7 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
   },
   {
     accessorKey: "transactionLink",
-    header: () => <div className="text-center">Link</div>,
+    header: () => <div className="text-center">{translate("linkd05170")}</div>,
     cell: ({ row }) => {
       const link = row.original.transactionLink;
       if (!link) {
@@ -394,7 +396,7 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
               <RiLink className="h-4 w-4 text-blue-600" />
             </TooltipTrigger>
             <TooltipContent side="top">
-              <p>Linked ({roleLabel})</p>
+              <p>{translate("linked")}{roleLabel})</p>
             </TooltipContent>
           </Tooltip>
         </div>
@@ -417,7 +419,7 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
     cell: ({ row }) => {
       const pending = row.getValue("pending") as boolean;
       return pending ? (
-        <Badge variant="outline">Pending</Badge>
+        <Badge variant="outline">{translate("pending")}</Badge>
       ) : null;
     },
     size: 80,

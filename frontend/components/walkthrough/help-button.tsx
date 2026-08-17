@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { usePathname } from "next/navigation";
 import { RiInformationLine } from "@remixicon/react";
@@ -42,12 +44,12 @@ export function HelpButton() {
       <PopoverTrigger
         render={
           <SidebarMenuButton
-            tooltip="Help"
+            tooltip={translate("help")}
             onClick={() => (isOpen ? closeOverview() : openOverview(config.page))}
             className="data-[popup-open]:bg-sidebar-accent data-[popup-open]:text-sidebar-accent-foreground"
           >
             <RiInformationLine className="shrink-0" />
-            {!isCollapsed && <span>Help</span>}
+            {!isCollapsed && <span>{translate("help")}</span>}
           </SidebarMenuButton>
         }
       />
@@ -60,10 +62,10 @@ export function HelpButton() {
         <div className="flex flex-col gap-3">
           <p className="text-sm text-muted-foreground">{config.overview}</p>
           <p className="text-xs text-muted-foreground">
-            You can always restart this tour from the Help (ⓘ) button in the sidebar.
+            {translate("youCanAlwaysRestartThisTourFromTheHelp")}
           </p>
           <Button size="sm" onClick={handleStartTour} className="w-full">
-            Start Tour
+            {translate("startTour")}
           </Button>
         </div>
       </PopoverContent>

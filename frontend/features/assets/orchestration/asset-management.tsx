@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -38,14 +40,14 @@ export function AssetManagement({ model }: { model: AssetManagementViewModel }) 
   const deletePending = dialog.assetType === "account" ? accountController.pending : dialog.assetType === "property" ? propertyController.pending : vehicleController.pending;
   const confirmDelete = () => { if (dialog.assetType === "account") void accountController.remove(); else if (dialog.assetType === "property") void propertyController.remove(); else if (dialog.assetType === "vehicle") void vehicleController.remove(); };
 
-  return <div className="space-y-6"><div className="flex items-center justify-between"><div><h2 className="text-lg font-semibold">Asset Management</h2><p className="text-sm text-muted-foreground">Add and manage your accounts, properties, and vehicles.</p></div><AddAssetDialog onAssetAdded={refresh} open={addOpen} onOpenChange={setAddOpen} /></div>
+  return <div className="space-y-6"><div className="flex items-center justify-between"><div><h2 className="text-lg font-semibold">{translate("assetManagement")}</h2><p className="text-sm text-muted-foreground">{translate("addAndManageYourAccountsPropertiesAndVehicles")}</p></div><AddAssetDialog onAssetAdded={refresh} open={addOpen} onOpenChange={setAddOpen} /></div>
     <AccountAssetList accounts={model.accounts} people={model.people} onView={(id) => router.push(`/accounts/${id}`)} onEdit={(id) => open("edit", "account", id)} onDelete={(id) => open("delete", "account", id)} onRecalculate={(id) => { const target = model.accounts.find((item) => item.id === id); if (target) void accountController.recalculate(target); }} />
     <PropertyAssetList properties={model.properties} people={model.people} onEdit={(id) => open("edit", "property", id)} onDelete={(id) => open("delete", "property", id)} />
     <VehicleAssetList vehicles={model.vehicles} people={model.people} onEdit={(id) => open("edit", "vehicle", id)} onDelete={(id) => open("delete", "vehicle", id)} />
-    {dialog.mode === "edit" && accountController.values && <AccountEditForm key={account?.id} values={accountController.values} people={model.people} open pending={accountController.pending} logoLookupEnabled={accountController.logoLookupEnabled} onOpenChange={(isOpen) => !isOpen && close()} onSubmit={accountController.save} onLookupLogo={accountController.lookupLogo} onAdjustBalance={() => account && open("balance", "account", account.id)} />}
-    {dialog.mode === "edit" && propertyController.values && <PropertyEditForm key={property?.id} values={propertyController.values} people={model.people} open pending={propertyController.pending} onOpenChange={(isOpen) => !isOpen && close()} onSubmit={propertyController.save} />}
-    {dialog.mode === "edit" && vehicleController.values && <VehicleEditForm key={vehicle?.id} values={vehicleController.values} people={model.people} open pending={vehicleController.pending} onOpenChange={(isOpen) => !isOpen && close()} onSubmit={vehicleController.save} />}
+    {dialog.mode === translate("edit9ead47") && accountController.values && <AccountEditForm key={account?.id} values={accountController.values} people={model.people} open pending={accountController.pending} logoLookupEnabled={accountController.logoLookupEnabled} onOpenChange={(isOpen) => !isOpen && close()} onSubmit={accountController.save} onLookupLogo={accountController.lookupLogo} onAdjustBalance={() => account && open("balance", "account", account.id)} />}
+    {dialog.mode === translate("edit9ead47") && propertyController.values && <PropertyEditForm key={property?.id} values={propertyController.values} people={model.people} open pending={propertyController.pending} onOpenChange={(isOpen) => !isOpen && close()} onSubmit={propertyController.save} />}
+    {dialog.mode === translate("edit9ead47") && vehicleController.values && <VehicleEditForm key={vehicle?.id} values={vehicleController.values} people={model.people} open pending={vehicleController.pending} onOpenChange={(isOpen) => !isOpen && close()} onSubmit={vehicleController.save} />}
     {deleting && dialog.assetType && <DeleteAssetDialog type={dialog.assetType} name={deleting.name} open pending={deletePending} onOpenChange={(isOpen) => !isOpen && close()} onConfirm={confirmDelete} />}
-    {dialog.mode === "balance" && account && <UpdateBalanceDialog account={{ id: account.id, name: account.name, currency: account.currency, functionalBalance: account.balance }} open onOpenChange={(isOpen) => !isOpen && close()} onSuccess={() => { close(); refresh(); }} />}
+    {dialog.mode === translate("balance8dfa30") && account && <UpdateBalanceDialog account={{ id: account.id, name: account.name, currency: account.currency, functionalBalance: account.balance }} open onOpenChange={(isOpen) => !isOpen && close()} onSuccess={() => { close(); refresh(); }} />}
   </div>;
 }

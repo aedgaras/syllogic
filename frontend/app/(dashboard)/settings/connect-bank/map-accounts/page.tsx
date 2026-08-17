@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/header";
@@ -45,7 +46,7 @@ export default async function MapAccountsPage({ searchParams }: MapAccountsPageP
 
   return (
     <>
-      <Header title="Map Bank Accounts" />
+      <Header title={translate("mapBankAccounts")} />
       <div className="flex flex-1 flex-col p-4 pt-0">
         <Suspense
           fallback={

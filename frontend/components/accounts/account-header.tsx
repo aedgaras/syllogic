@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { RiRefreshLine } from "@remixicon/react";
 import { Badge } from "@/components/ui/badge";
@@ -31,8 +33,8 @@ function formatCurrency(value: string | null, currency: string): string {
 export function AccountHeader({ account, currency }: AccountHeaderProps) {
   const typeLabel = ACCOUNT_TYPE_LABELS[account.accountType] || account.accountType;
   const lastSyncedText = account.lastSyncedAt
-    ? `Synced ${formatDistanceToNow(new Date(account.lastSyncedAt), { addSuffix: true })}`
-    : "Manual account";
+    ? translate("synced", { value1: formatDistanceToNow(new Date(account.lastSyncedAt), { addSuffix: true }) })
+    : translate("manualAccount");
 
   return (
     <Card>

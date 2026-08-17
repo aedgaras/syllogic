@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { Section, Text } from "@react-email/components";
 
 export function IdleCashCallout({ nudge }: { nudge: string }) {
@@ -10,7 +11,7 @@ export function IdleCashCallout({ nudge }: { nudge: string }) {
         marginBottom: "16px",
       }}
     >
-      <Text style={{ margin: 0, fontWeight: 500 }}>Idle cash</Text>
+      <Text style={{ margin: 0, fontWeight: 500 }}>{translate("idleCash")}</Text>
       <Text style={{ margin: "4px 0 0 0", fontSize: "14px" }}>{nudge}</Text>
     </Section>
   );

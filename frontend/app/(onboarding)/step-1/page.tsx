@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -46,7 +48,7 @@ export default function OnboardingStep1Page() {
     e.preventDefault();
 
     if (!name.trim()) {
-      toast.error("Please enter your name");
+      toast.error(translate("pleaseEnterYourName"));
       return;
     }
 
@@ -63,7 +65,7 @@ export default function OnboardingStep1Page() {
       if (result.success) {
         router.push("/step-2");
       } else {
-        toast.error(result.error || "Failed to save profile");
+        toast.error(result.error || translate("failedToSaveProfile"));
       }
     });
   };
@@ -74,15 +76,15 @@ export default function OnboardingStep1Page() {
 
       <Card className="min-h-[640px] h-[640px] flex flex-col">
         <CardHeader>
-          <CardTitle>Welcome! Let&apos;s set up your profile</CardTitle>
+          <CardTitle>{translate("welcomeLetSSetUpYourProfile")}</CardTitle>
           <CardDescription>
-            Tell us a bit about yourself to personalize your experience.
+            {translate("tellUsABitAboutYourselfToPersonalizeYour")}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col">
           <CardContent className="space-y-6 flex-1 min-h-0">
             <div className="flex flex-col items-center gap-4">
-              <Label className="text-center">Profile Photo</Label>
+              <Label className="text-center">{translate("profilePhoto")}</Label>
               <ProfilePhotoUpload
                 value={profilePhoto}
                 onChange={setProfilePhoto}
@@ -90,15 +92,15 @@ export default function OnboardingStep1Page() {
                 name={name}
               />
               <p className="text-xs text-muted-foreground text-center">
-                Click or drag to upload a profile photo (optional)
+                {translate("clickOrDragToUploadAProfilePhotoOptional")}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="name">Your Name *</Label>
+              <Label htmlFor="name">{translate("yourName")}</Label>
               <Input
                 id="name"
-                placeholder="Enter your name"
+                placeholder={translate("enterYourName")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -108,7 +110,7 @@ export default function OnboardingStep1Page() {
             <CurrencySelector
               value={currency}
               onChange={setCurrency}
-              label="Functional Currency"
+              label={translate("functionalCurrency")}
               showTooltip={true}
             />
           </CardContent>
@@ -117,11 +119,11 @@ export default function OnboardingStep1Page() {
               {isPending ? (
                 <>
                   <RiLoader4Line className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  {translate("saving")}
                 </>
               ) : (
                 <>
-                  Continue
+                  {translate("continue")}
                   <RiArrowRightLine className="ml-2 h-4 w-4" />
                 </>
               )}

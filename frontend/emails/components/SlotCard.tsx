@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { Section, Text } from "@react-email/components";
 
 export function PinnedSlotCard({
@@ -31,7 +32,7 @@ export function PinnedSlotCard({
       <Text style={{ fontSize: "14px", margin: "4px 0" }}>{p.rationale}</Text>
       {p.riskFlags.length > 0 && (
         <Text style={{ fontSize: "12px", color: "#a16207", margin: 0 }}>
-          Risk: {p.riskFlags.join(" · ")}
+          {translate("risk")} {p.riskFlags.join(" · ")}
         </Text>
       )}
     </Section>

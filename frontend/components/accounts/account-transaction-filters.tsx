@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import * as React from "react";
 import { type Table } from "@tanstack/react-table";
@@ -55,12 +57,12 @@ interface FilterOption {
 }
 
 const datePresets = [
-  { label: "Today", getValue: () => ({ from: startOfDay(new Date()), to: endOfDay(new Date()) }) },
-  { label: "Yesterday", getValue: () => ({ from: startOfDay(subDays(new Date(), 1)), to: endOfDay(subDays(new Date(), 1)) }) },
-  { label: "This Week", getValue: () => ({ from: startOfWeek(new Date(), { weekStartsOn: 1 }), to: endOfWeek(new Date(), { weekStartsOn: 1 }) }) },
-  { label: "This Month", getValue: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }) },
-  { label: "This Quarter", getValue: () => ({ from: startOfQuarter(new Date()), to: endOfQuarter(new Date()) }) },
-  { label: "This Year", getValue: () => ({ from: startOfYear(new Date()), to: endOfYear(new Date()) }) },
+  { label: translate("today"), getValue: () => ({ from: startOfDay(new Date()), to: endOfDay(new Date()) }) },
+  { label: translate("yesterday"), getValue: () => ({ from: startOfDay(subDays(new Date(), 1)), to: endOfDay(subDays(new Date(), 1)) }) },
+  { label: translate("thisWeek"), getValue: () => ({ from: startOfWeek(new Date(), { weekStartsOn: 1 }), to: endOfWeek(new Date(), { weekStartsOn: 1 }) }) },
+  { label: translate("thisMonth"), getValue: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }) },
+  { label: translate("thisQuarter"), getValue: () => ({ from: startOfQuarter(new Date()), to: endOfQuarter(new Date()) }) },
+  { label: translate("thisYear"), getValue: () => ({ from: startOfYear(new Date()), to: endOfYear(new Date()) }) },
 ];
 
 interface MultiSelectFilterProps {
@@ -128,7 +130,7 @@ function MultiSelectFilter({
           {searchable && (
             <div className="p-2 border-b">
               <Input
-                placeholder={`Search ${label.toLowerCase()}...`}
+                placeholder={translate("search", { value1: label.toLowerCase() })}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-7 text-xs"
@@ -147,7 +149,7 @@ function MultiSelectFilter({
                   className="pointer-events-none"
                 />
                 <span className="inline-flex items-center px-1.5 py-0.5 text-xs bg-muted text-muted-foreground">
-                  Uncategorized
+                  {translate("uncategorized")}
                 </span>
               </button>
             )}
@@ -176,7 +178,7 @@ function MultiSelectFilter({
             ))}
             {filteredOptions.length === 0 && (
               <div className="px-2 py-4 text-center text-xs text-muted-foreground">
-                No results found
+                {translate("noResultsFound")}
               </div>
             )}
           </div>
@@ -204,7 +206,7 @@ function DateRangeFilter({ dateRange, onDateRangeChange }: DateRangeFilterProps)
     <div className="space-y-2">
       <Label className="flex items-center gap-2 text-xs text-muted-foreground">
         <RiCalendarLine className="h-4 w-4" />
-        Date Range
+        {translate("dateRange")}
         {dateRange?.from && (
           <span className="text-foreground">(1)</span>
         )}
@@ -228,7 +230,7 @@ function DateRangeFilter({ dateRange, onDateRangeChange }: DateRangeFilterProps)
                   !dateRange?.from && "bg-accent"
                 )}
               >
-                All time
+                {translate("allTime")}
               </button>
               {datePresets.map((preset) => (
                 <button
@@ -279,7 +281,7 @@ function AmountRangeFilter({
     <div className="space-y-2">
       <Label className="flex items-center gap-2 text-xs text-muted-foreground">
         <RiMoneyDollarCircleLine className="h-4 w-4" />
-        Amount Range
+        {translate("amountRange")}
         {hasFilter && (
           <span className="text-foreground">(1)</span>
         )}
@@ -287,15 +289,15 @@ function AmountRangeFilter({
       <div className="flex items-center gap-2">
         <Input
           type="number"
-          placeholder="Min"
+          placeholder={translate("min")}
           value={minAmount}
           onChange={(e) => onMinChange(e.target.value)}
           className="h-8 text-xs"
         />
-        <span className="text-muted-foreground text-xs">to</span>
+        <span className="text-muted-foreground text-xs">{translate("to")}</span>
         <Input
           type="number"
-          placeholder="Max"
+          placeholder={translate("max")}
           value={maxAmount}
           onChange={(e) => onMaxChange(e.target.value)}
           className="h-8 text-xs"
@@ -362,8 +364,8 @@ export function AccountTransactionFilters({ table, categories }: AccountTransact
   }));
 
   const statusOptions: FilterOption[] = [
-    { id: "completed", label: "Completed" },
-    { id: "pending", label: "Pending" },
+    { id: "completed", label: translate("completed") },
+    { id: "pending", label: translate("pending") },
   ];
 
   const recurringTransactionMap = new Map<string, { id: string; name: string; merchant?: string; frequency: string }>();
@@ -380,7 +382,7 @@ export function AccountTransactionFilters({ table, categories }: AccountTransact
   });
   const recurringTransactionOptions: FilterOption[] = Array.from(recurringTransactionMap.values()).map((rt) => ({
     id: rt.id,
-    label: rt.merchant ? `${rt.name} (${rt.merchant})` : rt.name,
+    label: rt.merchant ? translate("message", { value1: rt.name, value2: rt.merchant }) : rt.name,
   }));
 
   const filterTags: { label: string; onRemove: () => void }[] = [];
@@ -388,7 +390,7 @@ export function AccountTransactionFilters({ table, categories }: AccountTransact
   categoryValues.forEach((id) => {
     if (id === "uncategorized") {
       filterTags.push({
-        label: "Uncategorized",
+        label: translate("uncategorized"),
         onRemove: () => categoryColumn?.setFilterValue(categoryValues.filter((v) => v !== id)),
       });
     } else {
@@ -404,7 +406,7 @@ export function AccountTransactionFilters({ table, categories }: AccountTransact
 
   statusValues.forEach((id) => {
     filterTags.push({
-      label: id === "pending" ? "Pending" : "Completed",
+      label: id === "pending" ? translate("pending") : translate("completed"),
       onRemove: () => pendingColumn?.setFilterValue(statusValues.filter((v) => v !== id)),
     });
   });
@@ -412,14 +414,14 @@ export function AccountTransactionFilters({ table, categories }: AccountTransact
   recurringTransactionValues.forEach((id) => {
     if (id === "no_subscription") {
       filterTags.push({
-        label: "No Subscription",
+        label: translate("noSubscription"),
         onRemove: () => recurringTransactionColumn?.setFilterValue(recurringTransactionValues.filter((v) => v !== id)),
       });
     } else {
       const rt = recurringTransactionMap.get(id);
       if (rt) {
         filterTags.push({
-          label: rt.merchant ? `${rt.name} (${rt.merchant})` : rt.name,
+          label: rt.merchant ? translate("message", { value1: rt.name, value2: rt.merchant }) : rt.name,
           onRemove: () => recurringTransactionColumn?.setFilterValue(recurringTransactionValues.filter((v) => v !== id)),
         });
       }
@@ -428,8 +430,8 @@ export function AccountTransactionFilters({ table, categories }: AccountTransact
 
   if (dateRange?.from) {
     const label = dateRange.to
-      ? `${format(dateRange.from, "MMM d")} - ${format(dateRange.to, "MMM d")}`
-      : format(dateRange.from, "MMM d, yyyy");
+      ? translate("messagedca30a", { value1: format(dateRange.from, "MMM d"), value2: format(dateRange.to, "MMM d") })
+      : format(dateRange.from, translate("mmmDYyyy"));
     filterTags.push({
       label,
       onRemove: () => bookedAtColumn?.setFilterValue(undefined),
@@ -461,7 +463,7 @@ export function AccountTransactionFilters({ table, categories }: AccountTransact
         <div className="relative w-full sm:w-64">
           <RiSearchLine className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search transactions..."
+            placeholder={translate("searchTransactions")}
             value={descriptionValue}
             onChange={(event) =>
               descriptionColumn?.setFilterValue(event.target.value)
@@ -473,7 +475,7 @@ export function AccountTransactionFilters({ table, categories }: AccountTransact
         <Popover>
           <PopoverTrigger className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-transparent hover:bg-accent hover:text-accent-foreground h-8 px-3">
             <RiFilter3Line className="h-4 w-4" />
-            Filters
+            {translate("filters")}
             {activeFilterCount > 0 && (
               <span className="flex h-5 min-w-5 items-center justify-center bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
                 {activeFilterCount}
@@ -482,7 +484,7 @@ export function AccountTransactionFilters({ table, categories }: AccountTransact
           </PopoverTrigger>
           <PopoverContent align="start" className="w-[calc(100vw-2rem)] sm:w-80">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Filters</span>
+              <span className="text-sm font-medium">{translate("filters")}</span>
               {activeFilterCount > 0 && (
                 <Button
                   variant="ghost"
@@ -490,7 +492,7 @@ export function AccountTransactionFilters({ table, categories }: AccountTransact
                   onClick={clearFilters}
                   className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
                 >
-                  Clear all
+                  {translate("clearAll")}
                 </Button>
               )}
             </div>
@@ -504,7 +506,7 @@ export function AccountTransactionFilters({ table, categories }: AccountTransact
               />
 
               <MultiSelectFilter
-                label="Category"
+                label={translate("category")}
                 icon={<RiPriceTag3Line className="h-4 w-4" />}
                 options={categoryOptions}
                 selectedIds={categoryValues}
@@ -514,7 +516,7 @@ export function AccountTransactionFilters({ table, categories }: AccountTransact
               />
 
               <MultiSelectFilter
-                label="Status"
+                label={translate("status")}
                 icon={<RiTimeLine className="h-4 w-4" />}
                 options={statusOptions}
                 selectedIds={statusValues}
@@ -522,7 +524,7 @@ export function AccountTransactionFilters({ table, categories }: AccountTransact
               />
 
               <MultiSelectFilter
-                label="Subscription"
+                label={translate("subscription")}
                 icon={<RiRepeatLine className="h-4 w-4" />}
                 options={[
                   { id: "no_subscription", label: "No Subscription" },
@@ -564,7 +566,7 @@ export function AccountTransactionFilters({ table, categories }: AccountTransact
 
       {isFiltered && (
         <p className="text-xs text-muted-foreground">
-          Showing {totalRows} of {totalUnfiltered} transactions
+          {translate("showing")} {totalRows} {translate("of")} {totalUnfiltered} {translate("transactions60858a")}
         </p>
       )}
     </div>

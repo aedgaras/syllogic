@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
@@ -20,13 +22,13 @@ import { cn } from "@/lib/utils";
 import { usePreviewController } from "@/features/csv-import/hooks/use-preview-controller";
 
 const SHORTCUTS: Array<{ keys: string[]; label: string }> = [
-  { keys: ["Cmd", "K"], label: "Open command palette" },
-  { keys: ["B"], label: "Go to dashboard" },
-  { keys: ["T"], label: "Go to transactions" },
-  { keys: ["A"], label: "Go to assets" },
-  { keys: ["S"], label: "Go to settings" },
-  { keys: ["N"], label: "New transaction" },
-  { keys: ["M"], label: "Toggle theme" },
+  { keys: ["Cmd", "K"], label: translate("openCommandPalette") },
+  { keys: ["B"], label: translate("goToDashboard") },
+  { keys: ["T"], label: translate("goToTransactions") },
+  { keys: ["A"], label: translate("goToAssets") },
+  { keys: ["S"], label: translate("goToSettings") },
+  { keys: ["N"], label: translate("newTransaction") },
+  { keys: ["M"], label: translate("toggleTheme9b0eaf") },
 ];
 
 function ShortcutKeys({ keys }: { keys: string[] }) {
@@ -94,7 +96,7 @@ function PreviewPageContent() {
           <CardContent className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-              <p className="text-muted-foreground">Loading preview...</p>
+              <p className="text-muted-foreground">{translate("loadingPreview")}</p>
             </div>
           </CardContent>
         </Card>
@@ -107,9 +109,9 @@ function PreviewPageContent() {
       <OnboardingProgress currentStep={4} />
       <Card className="flex min-h-[640px] flex-col sm:h-[640px]">
         <CardHeader>
-          <CardTitle>Preview your import</CardTitle>
+          <CardTitle>{translate("previewYourImport")}</CardTitle>
           <CardDescription>
-            Review what will be imported before we add transactions to your account.
+            {translate("reviewWhatWillBeImportedBeforeWeAddTransactions")}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 min-h-0 flex flex-col gap-4">
@@ -134,16 +136,16 @@ function PreviewPageContent() {
                 )}
                 <span className="font-medium">
                   {!balanceVerification.canVerify
-                    ? "Balance Info (partial)"
+                    ? translate("balanceInfoPartial")
                     : balanceVerification.isVerified
-                      ? "Balance Verified"
-                      : "Balance Discrepancy Detected"}
+                      ? translate("balanceVerified")
+                      : translate("balanceDiscrepancyDetected")}
                 </span>
               </div>
               <div className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
                 {balanceVerification.fileStartingBalance !== null && (
                   <div className="flex justify-between gap-3">
-                    <span className="text-muted-foreground">Starting Balance:</span>
+                    <span className="text-muted-foreground">{translate("startingBalancebc3b92")}</span>
                     <span className="font-mono">
                       {balanceVerification.fileStartingBalance.toFixed(2)}
                     </span>
@@ -151,7 +153,7 @@ function PreviewPageContent() {
                 )}
                 {balanceVerification.fileEndingBalance !== null && (
                   <div className="flex justify-between gap-3">
-                    <span className="text-muted-foreground">Ending Balance (file):</span>
+                    <span className="text-muted-foreground">{translate("endingBalanceFile")}</span>
                     <span className="font-mono">
                       {balanceVerification.fileEndingBalance.toFixed(2)}
                     </span>
@@ -159,7 +161,7 @@ function PreviewPageContent() {
                 )}
                 {balanceVerification.calculatedEndingBalance !== null && (
                   <div className="flex justify-between gap-3">
-                    <span className="text-muted-foreground">Calculated Ending:</span>
+                    <span className="text-muted-foreground">{translate("calculatedEnding")}</span>
                     <span className="font-mono">
                       {balanceVerification.calculatedEndingBalance.toFixed(2)}
                     </span>
@@ -169,7 +171,7 @@ function PreviewPageContent() {
                   !balanceVerification.isVerified &&
                   balanceVerification.discrepancy !== null && (
                     <div className="flex justify-between gap-3 text-amber-600 dark:text-amber-400">
-                      <span>Discrepancy:</span>
+                      <span>{translate("discrepancy")}</span>
                       <span className="font-mono font-medium">
                         {balanceVerification.discrepancy.toFixed(2)}
                       </span>
@@ -178,12 +180,12 @@ function PreviewPageContent() {
               </div>
               {!balanceVerification.canVerify && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Map both starting and ending balance columns for full verification.
+                  {translate("mapBothStartingAndEndingBalanceColumnsForFull")}
                 </p>
               )}
               {balanceVerification.hasBalanceData && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Daily balances from the CSV will be used to update the account balance history.
+                  {translate("dailyBalancesFromTheCsvWillBeUsedTo")}
                 </p>
               )}
             </div>
@@ -192,13 +194,13 @@ function PreviewPageContent() {
           <Tabs defaultValue="to-import" className="flex min-h-0 flex-1 flex-col">
             <TabsList className="mb-2 w-full sm:w-fit">
               <TabsTrigger value="to-import" className="gap-2">
-                To Import
+                {translate("toImport")}
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium">
                   {toImport.length}
                 </span>
               </TabsTrigger>
               <TabsTrigger value="skipped" className="gap-2" disabled={skipped.length === 0}>
-                Skipped
+                {translate("skipped")}
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
                   {skipped.length}
                 </span>
@@ -237,13 +239,13 @@ function PreviewPageContent() {
             onClick={goBack}
           >
             <RiArrowLeftLine className="mr-2 h-4 w-4" />
-            Back to Mapping
+            {translate("backToMapping")}
           </Button>
           <Button
             onClick={enqueue}
             disabled={isImporting || selectedIndices.length === 0 || hasStartedImport}
           >
-            {isImporting ? "Importing..." : `Import ${selectedIndices.length} Transactions`}
+            {isImporting ? translate("importing") : translate("importTransactions", { value1: selectedIndices.length })}
             <RiCheckLine className="ml-2 h-4 w-4" />
           </Button>
         </CardFooter>
@@ -252,21 +254,21 @@ function PreviewPageContent() {
       <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Your first account is being created!</DialogTitle>
+            <DialogTitle>{translate("yourFirstAccountIsBeingCreated")}</DialogTitle>
             <DialogDescription>
-              This can take a few minutes depending on the number of transactions.
+              {translate("thisCanTakeAFewMinutesDependingOnThe")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="rounded-lg border bg-muted/40 p-3">
               <p className="text-xs text-muted-foreground">
-                Tip: Press Cmd + K anytime to open the command palette.
+                {translate("tipPressCmdKAnytimeToOpenTheCommand")}
               </p>
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Shortcuts</p>
+              <p className="text-xs font-medium text-muted-foreground">{translate("shortcuts")}</p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {SHORTCUTS.map((shortcut) => (
                   <div
@@ -281,7 +283,7 @@ function PreviewPageContent() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Press M to toggle the theme and try it out.
+              {translate("pressMToToggleTheThemeAndTryIt")}
             </p>
           </div>
 
@@ -292,7 +294,7 @@ function PreviewPageContent() {
                 router.push("/?tour=1");
               }}
             >
-              Get Started
+              {translate("getStarted")}
             </Button>
           </div>
         </DialogContent>
@@ -311,7 +313,7 @@ export default function PreviewPage() {
             <CardContent className="flex items-center justify-center py-12">
               <div className="text-center">
                 <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-                <p className="text-muted-foreground">Loading...</p>
+                <p className="text-muted-foreground">{translate("loadingb04ba4")}</p>
               </div>
             </CardContent>
           </Card>

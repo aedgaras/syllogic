@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { cn } from "@/lib/utils";
 
@@ -11,23 +13,23 @@ interface Step {
 const steps: Step[] = [
   {
     number: 1,
-    title: "Profile",
-    description: "Set up your account",
+    title: translate("profile"),
+    description: translate("setUpYourAccount"),
   },
   {
     number: 2,
-    title: "Categories",
-    description: "Customize spending categories",
+    title: translate("categories"),
+    description: translate("customizeSpendingCategories"),
   },
   {
     number: 3,
-    title: "Bank Accounts",
-    description: "Create your first account",
+    title: translate("bankAccounts"),
+    description: translate("createYourFirstAccount"),
   },
   {
     number: 4,
-    title: "Add Transactions",
-    description: "Optional import",
+    title: translate("addTransactions"),
+    description: translate("optionalImport"),
   },
 ];
 

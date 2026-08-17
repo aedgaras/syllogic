@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -32,7 +34,7 @@ const registerSchema = z
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
+    message: translate("passwordsDonTMatch"),
     path: ["confirmPassword"],
   });
 
@@ -75,7 +77,7 @@ export function RegisterForm({ firstUserWillBeAdmin = false }: { firstUserWillBe
       });
 
       if (result.error) {
-        setError(result.error.message || "Failed to create account");
+        setError(result.error.message || translate("failedToCreateAccount"));
         return;
       }
 
@@ -87,7 +89,7 @@ export function RegisterForm({ firstUserWillBeAdmin = false }: { firstUserWillBe
       router.push("/");
       router.refresh();
     } catch {
-      setError("An unexpected error occurred");
+      setError(translate("anUnexpectedErrorOccurred"));
     } finally {
       setIsLoading(false);
     }
@@ -96,11 +98,11 @@ export function RegisterForm({ firstUserWillBeAdmin = false }: { firstUserWillBe
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create an account</CardTitle>
+        <CardTitle>{translate("createAnAccount")}</CardTitle>
         <CardDescription>
           {firstUserWillBeAdmin
-            ? "Create the first account. It will be the application administrator."
-            : "Enter your details below to create your account"}
+            ? translate("createTheFirstAccountItWillBeTheApplication")
+            : translate("enterYourDetailsBelowToCreateYourAccount")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -112,11 +114,11 @@ export function RegisterForm({ firstUserWillBeAdmin = false }: { firstUserWillBe
               </div>
             )}
             <Field>
-              <FieldLabel htmlFor="name">Name</FieldLabel>
+              <FieldLabel htmlFor="name">{translate("name")}</FieldLabel>
               <Input
                 id="name"
                 type="text"
-                placeholder="John Doe"
+                placeholder={translate("johnDoe")}
                 {...register("name")}
                 disabled={isLoading}
               />
@@ -125,11 +127,11 @@ export function RegisterForm({ firstUserWillBeAdmin = false }: { firstUserWillBe
               )}
             </Field>
             <Field>
-              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <FieldLabel htmlFor="email">{translate("email84add5")}</FieldLabel>
               <Input
                 id="email"
                 type="email"
-                placeholder="m@example.com"
+                placeholder={translate("mExampleCom")}
                 {...register("email")}
                 disabled={isLoading}
               />
@@ -138,7 +140,7 @@ export function RegisterForm({ firstUserWillBeAdmin = false }: { firstUserWillBe
               )}
             </Field>
             <Field>
-              <FieldLabel htmlFor="password">Password</FieldLabel>
+              <FieldLabel htmlFor="password">{translate("password8be3c9")}</FieldLabel>
               <Input
                 id="password"
                 type="password"
@@ -150,7 +152,7 @@ export function RegisterForm({ firstUserWillBeAdmin = false }: { firstUserWillBe
               )}
             </Field>
             <Field>
-              <FieldLabel htmlFor="confirmPassword">Confirm Password</FieldLabel>
+              <FieldLabel htmlFor="confirmPassword">{translate("confirmPassword")}</FieldLabel>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -163,12 +165,12 @@ export function RegisterForm({ firstUserWillBeAdmin = false }: { firstUserWillBe
             </Field>
             <Field>
               <Button type="submit" disabled={isLoading} className="w-full">
-                {isLoading ? "Creating account..." : "Sign up"}
+                {isLoading ? translate("creatingAccount") : translate("signUp")}
               </Button>
               <FieldDescription className="text-center">
-                Already have an account?{" "}
+                {translate("alreadyHaveAnAccount")}{" "}
                 <Link href="/login" className="underline underline-offset-4">
-                  Login
+                  {translate("login")}
                 </Link>
               </FieldDescription>
             </Field>
@@ -183,8 +185,8 @@ function RegisterPageFallback() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create an account</CardTitle>
-        <CardDescription>Loading registration form...</CardDescription>
+        <CardTitle>{translate("createAnAccount")}</CardTitle>
+        <CardDescription>{translate("loadingRegistrationForm")}</CardDescription>
       </CardHeader>
       <CardContent />
     </Card>

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
@@ -50,11 +52,11 @@ interface SubscriptionFormDialogProps {
 }
 
 const frequencyOptions = [
-  { value: "monthly", label: "Monthly" },
-  { value: "weekly", label: "Weekly" },
-  { value: "biweekly", label: "Bi-weekly" },
-  { value: "quarterly", label: "Quarterly" },
-  { value: "yearly", label: "Yearly" },
+  { value: "monthly", label: translate("monthly") },
+  { value: "weekly", label: translate("weekly") },
+  { value: "biweekly", label: translate("biWeekly") },
+  { value: "quarterly", label: translate("quarterly") },
+  { value: "yearly", label: translate("yearly") },
 ];
 
 export function SubscriptionFormDialog({
@@ -162,14 +164,14 @@ export function SubscriptionFormDialog({
       if (result.success && result.logo) {
         setLogoId(result.logo.id);
         setLogoUrl(withAssetVersion(result.logo.logoUrl, result.logo.updatedAt));
-        toast.success("Logo found");
+        toast.success(translate("logoFound"));
       } else if (result.success) {
-        toast.info("No logo found for this company");
+        toast.info(translate("noLogoFoundForThisCompany"));
       } else {
-        toast.error(result.error || "Failed to search for logo");
+        toast.error(result.error || translate("failedToSearchForLogo"));
       }
     } catch {
-      toast.error("Failed to search for logo");
+      toast.error(translate("failedToSearchForLogo"));
     } finally {
       setIsSearchingLogo(false);
     }
@@ -200,23 +202,23 @@ export function SubscriptionFormDialog({
 
     // Validation
     if (!name.trim()) {
-      toast.error("Name is required");
+      toast.error(translate("nameIsRequired"));
       return;
     }
 
     if (!accountId) {
-      toast.error("Account is required");
+      toast.error(translate("accountIsRequired"));
       return;
     }
 
     const amountNum = parseFloat(amount);
     if (!amount || isNaN(amountNum) || amountNum <= 0) {
-      toast.error("Amount must be greater than 0");
+      toast.error(translate("amountMustBeGreaterThan0"));
       return;
     }
 
     if (importance < 1 || importance > 3) {
-      toast.error("Importance must be between 1 and 3");
+      toast.error(translate("importanceMustBeBetween1And3"));
       return;
     }
 
@@ -240,7 +242,7 @@ export function SubscriptionFormDialog({
         const result = await updateSubscription(subscription.id, input);
 
         if (result.success) {
-          toast.success("Subscription updated");
+          toast.success(translate("subscriptionUpdated"));
           onOpenChange(false);
           // Pass the updated subscription data for immediate UI update
           const updatedSubscription = {
@@ -262,7 +264,7 @@ export function SubscriptionFormDialog({
           };
           onSuccess?.(undefined, updatedSubscription);
         } else {
-          toast.error(result.error || "Failed to update");
+          toast.error(result.error || translate("failedToUpdate"));
         }
       } else if (isVerifyMode) {
         // Verify suggestion - creates subscription and links transactions
@@ -283,13 +285,13 @@ export function SubscriptionFormDialog({
           const skipped = result.skippedCountDifferentAccount || 0;
           const message =
             skipped > 0
-              ? `Subscription created. Linked ${result.linkedCount || 0} transaction(s), skipped ${skipped} from other account(s).`
-              : `Subscription created and ${result.linkedCount || 0} transaction(s) linked`;
+              ? translate("subscriptionCreatedLinkedTransactionSSkippedFromOtherAccount", { value1: result.linkedCount || 0, skipped: skipped })
+              : translate("subscriptionCreatedAndTransactionSLinked", { value1: result.linkedCount || 0 });
           toast.success(message);
           onOpenChange(false);
           onSuccess?.(suggestion.id, result.subscription as SubscriptionViewModel);
         } else {
-          toast.error(result.error || "Failed to verify");
+          toast.error(result.error || translate("failedToVerify"));
         }
       } else {
         // Create new
@@ -308,7 +310,7 @@ export function SubscriptionFormDialog({
         const result = await createSubscription(input);
 
         if (result.success) {
-          toast.success("Subscription created");
+          toast.success(translate("subscriptionCreated"));
           onOpenChange(false);
           if (result.subscription) {
             onSuccess?.(undefined, result.subscription);
@@ -316,12 +318,12 @@ export function SubscriptionFormDialog({
             onSuccess?.();
           }
         } else {
-          toast.error(result.error || "Failed to create");
+          toast.error(result.error || translate("failedToCreate"));
         }
       }
     } catch (error) {
       console.error("Submit error:", error);
-      toast.error("An error occurred");
+      toast.error(translate("anErrorOccurred"));
     } finally {
       setIsSubmitting(false);
     }
@@ -333,17 +335,17 @@ export function SubscriptionFormDialog({
         <DialogHeader>
           <DialogTitle>
             {isEditMode
-              ? "Edit Subscription"
+              ? translate("editSubscription")
               : isVerifyMode
-              ? "Verify Subscription"
-              : "Add Subscription"}
+              ? translate("verifySubscription")
+              : translate("addSubscription")}
           </DialogTitle>
           <DialogDescription>
             {isEditMode
-              ? "Update the details of this subscription."
+              ? translate("updateTheDetailsOfThisSubscription")
               : isVerifyMode
-              ? `We detected this recurring payment pattern. Review and confirm the details to create it as a subscription. ${suggestion?.matchCount || 0} transaction(s) will be linked.`
-              : "Create a new subscription to track recurring payments and bills."}
+              ? translate("weDetectedThisRecurringPaymentPatternReviewAndConfirm", { value1: suggestion?.matchCount || 0 })
+              : translate("createANewSubscriptionToTrackRecurringPaymentsAnd")}
           </DialogDescription>
         </DialogHeader>
 
@@ -352,11 +354,11 @@ export function SubscriptionFormDialog({
             {/* Name */}
             <div className="grid gap-2">
               <Label htmlFor="name">
-                Name <span className="text-destructive">*</span>
+                {translate("name")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="name"
-                placeholder="e.g., Netflix, Rent, Gym Membership"
+                placeholder={translate("eGNetflixRentGymMembership")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -365,10 +367,10 @@ export function SubscriptionFormDialog({
 
             {/* Merchant */}
             <div className="grid gap-2">
-              <Label htmlFor="merchant">Merchant</Label>
+              <Label htmlFor="merchant">{translate("merchant")}</Label>
               <Input
                 id="merchant"
-                placeholder="e.g., Netflix Inc"
+                placeholder={translate("eGNetflixInc")}
                 value={merchant}
                 onChange={(e) => setMerchant(e.target.value)}
               />
@@ -377,7 +379,7 @@ export function SubscriptionFormDialog({
             {/* Company Logo - only show if API key is configured */}
             {logoApiEnabled && (
               <div className="grid gap-2">
-                <Label>Company Logo</Label>
+                <Label>{translate("companyLogo")}</Label>
                 <div className="flex items-center gap-2">
                   {/* Current logo preview - size-9 matches input height */}
                   <div className="size-9 shrink-0">
@@ -389,7 +391,7 @@ export function SubscriptionFormDialog({
                   </div>
                   <div className="flex-1 flex gap-2">
                     <Input
-                      placeholder="Search by domain (e.g., netflix.com)"
+                      placeholder={translate("searchByDomainEGNetflixCom")}
                       value={logoSearch}
                       onChange={(e) => setLogoSearch(e.target.value)}
                       onKeyDown={(e) => {
@@ -425,7 +427,7 @@ export function SubscriptionFormDialog({
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Search for a company logo by name or domain. Logos are automatically searched when you enter a name.
+                  {translate("searchForACompanyLogoByNameOrDomain")}
                 </p>
               </div>
             )}
@@ -433,7 +435,7 @@ export function SubscriptionFormDialog({
             {/* Amount */}
             <div className="grid gap-2">
               <Label htmlFor="amount">
-                Amount <span className="text-destructive">*</span>
+                {translate("amount")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="amount"
@@ -450,21 +452,21 @@ export function SubscriptionFormDialog({
             {/* Account */}
             <div className="grid gap-2">
               <Label htmlFor="account">
-                Account <span className="text-destructive">*</span>
+                {translate("account85dfa3")} <span className="text-destructive">*</span>
               </Label>
               {isVerifyMode && suggestion?.accountId ? (
                 <div className="flex h-10 items-center rounded-md border border-border px-3 text-sm">
                   {accounts.find((account) => account.id === accountId)?.name ||
                     suggestion.accountName ||
-                    "Detected account"}
+                    translate("detectedAccount")}
                 </div>
               ) : (
                 <Select value={accountId} onValueChange={(value) => setAccountId(value ?? "")}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select an account">
+                    <SelectValue placeholder={translate("selectAnAccount")}>
                       {accountId
-                        ? accounts.find((account) => account.id === accountId)?.name || "Select an account"
-                        : "Select an account"}
+                        ? accounts.find((account) => account.id === accountId)?.name || translate("selectAnAccount")
+                        : translate("selectAnAccount")}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -480,17 +482,17 @@ export function SubscriptionFormDialog({
 
             {/* Category */}
             <div className="grid gap-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">{translate("category")}</Label>
               <Select value={categoryId} onValueChange={(value) => setCategoryId(value ?? "")}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a category">
+                  <SelectValue placeholder={translate("selectACategory")}>
                     {categoryId
-                      ? categories.find((c) => c.id === categoryId)?.name || "Uncategorized"
-                      : "Uncategorized"}
+                      ? categories.find((c) => c.id === categoryId)?.name || translate("uncategorized")
+                      : translate("uncategorized")}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Uncategorized</SelectItem>
+                  <SelectItem value="">{translate("uncategorized")}</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
@@ -503,7 +505,7 @@ export function SubscriptionFormDialog({
             {/* Frequency */}
             <div className="grid gap-2">
               <Label htmlFor="frequency">
-                Frequency <span className="text-destructive">*</span>
+                {translate("frequency")} <span className="text-destructive">*</span>
               </Label>
               <Select value={frequency} onValueChange={(value) => setFrequency((value ?? "monthly") as SubscriptionFrequency)}>
                 <SelectTrigger>
@@ -522,7 +524,7 @@ export function SubscriptionFormDialog({
             {/* Importance - 3 blocks */}
             <div className="grid gap-2">
               <Label>
-                Importance <span className="text-destructive">*</span>
+                {translate("importance")} <span className="text-destructive">*</span>
               </Label>
               <div className="flex items-center gap-1">
                 {Array.from({ length: 3 }).map((_, i) => {
@@ -549,10 +551,10 @@ export function SubscriptionFormDialog({
 
             {/* Description */}
             <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{translate("description55f8eb")}</Label>
               <Textarea
                 id="description"
-                placeholder="Optional notes about this subscription"
+                placeholder={translate("optionalNotesAboutThisSubscription")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
@@ -567,10 +569,10 @@ export function SubscriptionFormDialog({
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              {translate("cancel")}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Confirm"}
+              {isSubmitting ? translate("saving") : translate("confirm")}
             </Button>
           </DialogFooter>
         </form>

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { Button } from "@/components/ui/button";
 import { PersonAvatar } from "@/components/household/person-avatar";
@@ -20,13 +22,13 @@ export function PersonFilter(props: {
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-sm text-muted-foreground">View:</span>
+      <span className="text-sm text-muted-foreground">{translate("view")}</span>
       <Button
         size="sm"
         variant={props.value.length === 0 ? "default" : "outline"}
         onClick={() => props.onChange([])}
       >
-        All
+        {translate("all6a7208")}
       </Button>
       {people.map((p) => (
         <Button

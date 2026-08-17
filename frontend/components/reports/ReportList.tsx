@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import Link from "next/link";
 import type { Report } from "@/lib/reports/types";
@@ -33,25 +35,25 @@ export function ReportList({ reports, onDelete }: ReportListProps) {
               </Link>
               <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-xs text-muted-foreground min-[420px]:grid-cols-3">
                 <div className="min-w-0">
-                  <dt className="sr-only">Frequency</dt>
+                  <dt className="sr-only">{translate("frequency")}</dt>
                   <dd className="truncate">{schedule.frequency}</dd>
                 </div>
                 <div className="min-w-0">
-                  <dt className="sr-only">Next run</dt>
-                  <dd className="truncate">next run {schedule.nextRun}</dd>
+                  <dt className="sr-only">{translate("nextRun")}</dt>
+                  <dd className="truncate">{translate("nextRun69a403")} {schedule.nextRun}</dd>
                 </div>
                 <div className="min-w-0">
-                  <dt className="sr-only">Status</dt>
+                  <dt className="sr-only">{translate("status")}</dt>
                   <dd className="truncate">{schedule.status}</dd>
                 </div>
               </dl>
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <Link href={`/reports/${report.id}/runs`} className="text-sm text-muted-foreground hover:text-foreground">
-                Runs
+                {translate("runsfcde5c")}
               </Link>
               <button onClick={() => onDelete(report.id)} className="text-sm text-destructive hover:underline">
-                Delete
+                {translate("delete")}
               </button>
             </div>
           </li>

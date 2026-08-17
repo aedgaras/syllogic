@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import type { AssetCategoryKey } from "@/lib/assets/asset-category";
 
 export type { AssetCategoryKey };
@@ -35,18 +36,18 @@ export interface AssetsOverviewData {
 }
 
 export const PROPERTY_TYPES = [
-  { value: "residential", label: "Residential" },
-  { value: "commercial", label: "Commercial" },
-  { value: "land", label: "Land" },
-  { value: "other", label: "Other" },
+  { value: "residential", label: translate("residential") },
+  { value: "commercial", label: translate("commercial") },
+  { value: "land", label: translate("land") },
+  { value: "other", label: translate("other") },
 ] as const;
 
 export const VEHICLE_TYPES = [
-  { value: "car", label: "Car" },
-  { value: "motorcycle", label: "Motorcycle" },
-  { value: "boat", label: "Boat" },
-  { value: "rv", label: "RV" },
-  { value: "other", label: "Other" },
+  { value: "car", label: translate("car") },
+  { value: "motorcycle", label: translate("motorcycle") },
+  { value: "boat", label: translate("boat") },
+  { value: "rv", label: translate("rv") },
+  { value: "other", label: translate("other") },
 ] as const;
 
 export type PropertyType = typeof PROPERTY_TYPES[number]["value"];

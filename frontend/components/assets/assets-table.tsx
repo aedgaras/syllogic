@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import { RiArrowDownSLine, RiArrowRightSLine } from "@remixicon/react";
@@ -155,9 +157,9 @@ export function AssetsTable({ categories, currency }: AssetsTableProps) {
     <div className="rounded-md border">
       {/* Header */}
       <div className="hidden items-center px-4 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground sm:flex">
-        <div className="flex-1">Name</div>
-        <div className="w-36 text-center">Weight</div>
-        <div className="w-24 text-right">Value</div>
+        <div className="flex-1">{translate("name")}</div>
+        <div className="w-36 text-center">{translate("weight")}</div>
+        <div className="w-24 text-right">{translate("value")}</div>
       </div>
 
       {/* Rows */}

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import {
   Select,
@@ -20,13 +22,13 @@ interface CsvMappingTableProps {
 }
 
 const FIELD_MAPPINGS = [
-  { key: "date", label: "Date", description: "Transaction date", required: true },
-  { key: "amount", label: "Amount", description: "Transaction amount", required: true },
-  { key: "description", label: "Description", description: "Transaction description", required: true },
-  { key: "fee", label: "Fee", description: "Transaction fee (deducted from balance)", required: false },
-  { key: "state", label: "State/Status", description: "Transaction status (e.g., COMPLETED, PENDING)", required: false },
-  { key: "startingBalance", label: "Starting Balance", description: "Opening balance (for verification)", required: false },
-  { key: "endingBalance", label: "Ending Balance", description: "Closing balance (for verification)", required: false },
+  { key: "date", label: translate("date"), description: translate("transactionDate"), required: true },
+  { key: "amount", label: translate("amount"), description: translate("transactionAmount"), required: true },
+  { key: "description", label: translate("description55f8eb"), description: translate("transactionDescription"), required: true },
+  { key: "fee", label: translate("fee"), description: translate("transactionFeeDeductedFromBalance"), required: false },
+  { key: "state", label: translate("stateStatus"), description: translate("transactionStatusEGCompletedPending"), required: false },
+  { key: "startingBalance", label: translate("startingBalance"), description: translate("openingBalanceForVerification"), required: false },
+  { key: "endingBalance", label: translate("endingBalance"), description: translate("closingBalanceForVerification"), required: false },
 ] as const;
 
 export function CsvMappingTable({
@@ -55,7 +57,7 @@ export function CsvMappingTable({
     <div className="space-y-6">
       {/* Field Mappings as List */}
       <div className="space-y-4">
-        <h3 className="text-sm font-medium text-muted-foreground">Column Mappings</h3>
+        <h3 className="text-sm font-medium text-muted-foreground">{translate("columnMappings")}</h3>
         <div className="space-y-3">
           {FIELD_MAPPINGS.map((field) => (
             <div
@@ -76,10 +78,10 @@ export function CsvMappingTable({
                 onValueChange={(value) => updateMapping(field.key as keyof ColumnMapping, value)}
               >
                 <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Select column" />
+                  <SelectValue placeholder={translate("selectColumn")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">-- Not mapped --</SelectItem>
+                  <SelectItem value="none">{translate("notMapped")}</SelectItem>
                   {headers.map((header) => (
                     <SelectItem key={header} value={header}>
                       {header}
@@ -94,7 +96,7 @@ export function CsvMappingTable({
 
       {/* Configuration Options */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-muted-foreground">Options</h3>
+        <h3 className="text-sm font-medium text-muted-foreground">{translate("options")}</h3>
 
         {/* Amount Sign Configuration */}
         <div className="rounded-lg border bg-card p-4">
@@ -106,10 +108,10 @@ export function CsvMappingTable({
             />
             <div>
               <Label htmlFor="isAmountSigned" className="font-medium">
-                Amount is signed
+                {translate("amountIsSigned")}
               </Label>
               <p className="text-xs text-muted-foreground">
-                Positive values = income, negative values = expense
+                {translate("positiveValuesIncomeNegativeValuesExpense")}
               </p>
             </div>
           </div>
@@ -119,9 +121,9 @@ export function CsvMappingTable({
         <div className="rounded-lg border bg-card p-4">
           <div className="space-y-3">
             <div>
-              <Label className="font-medium">Date Format</Label>
+              <Label className="font-medium">{translate("dateFormat")}</Label>
               <p className="text-xs text-muted-foreground">
-                For ambiguous dates (e.g., 01/02/2025), specify the format
+                {translate("forAmbiguousDatesEG01022025Specify")}
               </p>
             </div>
             <Select
@@ -129,12 +131,12 @@ export function CsvMappingTable({
               onValueChange={(value) => updateTypeConfig("dateFormat", value as ImportDateFormat)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select date format" />
+                <SelectValue placeholder={translate("selectDateFormat")} />
               </SelectTrigger>
               <SelectContent>
                 {DATE_FORMAT_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    {option.label} (e.g., {option.example})
+                    {option.label} {translate("eG")} {option.example})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -145,9 +147,9 @@ export function CsvMappingTable({
         <div className="rounded-lg border bg-card p-4">
           <div className="space-y-3">
             <div>
-              <Label className="font-medium">Amount Format</Label>
+              <Label className="font-medium">{translate("amountFormat")}</Label>
               <p className="text-xs text-muted-foreground">
-                Controls decimal separators for amounts, fees, and balance columns.
+                {translate("controlsDecimalSeparatorsForAmountsFeesAndBalanceColumns")}
               </p>
             </div>
             <Select
@@ -155,10 +157,10 @@ export function CsvMappingTable({
               onValueChange={(value) => updateTypeConfig("amountFormat", value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select amount format" />
+                <SelectValue placeholder={translate("selectAmountFormat")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="AUTO">Auto detect</SelectItem>
+                <SelectItem value="AUTO">{translate("autoDetect")}</SelectItem>
                 <SelectItem value="DOT_DECIMAL">1,234.56</SelectItem>
                 <SelectItem value="COMMA_DECIMAL">1.234,56</SelectItem>
               </SelectContent>
@@ -171,14 +173,13 @@ export function CsvMappingTable({
           <div className="rounded-lg border bg-card p-4">
             <div className="space-y-3">
               <div>
-                <Label className="font-medium">Completed State Value</Label>
+                <Label className="font-medium">{translate("completedStateValue")}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Value that indicates a completed transaction (e.g., &quot;COMPLETED&quot;, &quot;settled&quot;).
-                  Pending/reverted transactions will be excluded from import.
+                  {translate("valueThatIndicatesACompletedTransactionEGCompleted")}
                 </p>
               </div>
               <Input
-                placeholder="e.g., COMPLETED"
+                placeholder={translate("eGCompleted")}
                 value={mapping.typeConfig?.completedStateValue ?? ""}
                 onChange={(e) => updateTypeConfig("completedStateValue", e.target.value)}
               />

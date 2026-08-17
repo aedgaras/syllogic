@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 import { RiAlertLine } from "@remixicon/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -8,11 +10,11 @@ import type { Range } from "@/lib/actions/investments";
 const RANGES: Range[] = ["1W", "1M", "3M", "1Y", "ALL"];
 
 const RANGE_LABEL: Record<Range, string> = {
-  "1W": "this week",
-  "1M": "this month",
-  "3M": "this 3 months",
-  "1Y": "this year",
-  ALL: "all time",
+  "1W": translate("thisWeekdae1e5"),
+  "1M": translate("thisMonth0bd41b"),
+  "3M": translate("this3Months"),
+  "1Y": translate("thisYear4acfb8"),
+  ALL: translate("allTime5ae5c4"),
 };
 
 export function PortfolioHero({
@@ -46,7 +48,7 @@ export function PortfolioHero({
       <CardContent className="flex flex-col gap-2 p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="text-xs uppercase tracking-wider text-muted-foreground">
-            Portfolio value
+            {translate("portfolioValue")}
           </div>
           {headerAction}
         </div>
@@ -72,11 +74,11 @@ export function PortfolioHero({
             {RANGE_LABEL[range]}
           </span>
           {asOf && (
-            <span className="text-xs text-muted-foreground">· as of {asOf}</span>
+            <span className="text-xs text-muted-foreground">{translate("asOf")} {asOf}</span>
           )}
           {staleCount > 0 && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] text-amber-600 dark:text-amber-400 border border-amber-600/30 rounded">
-              <RiAlertLine size={10} /> {staleCount} stale price
+              <RiAlertLine size={10} /> {staleCount} {translate("stalePrice")}
               {staleCount > 1 ? "s" : ""}
             </span>
           )}
@@ -90,7 +92,7 @@ export function PortfolioHero({
             size="sm"
           >
             {RANGES.map((r) => (
-              <ToggleGroupItem key={r} value={r} aria-label={`Range ${r}`}>
+              <ToggleGroupItem key={r} value={r} aria-label={translate("range", { r: r })}>
                 {r}
               </ToggleGroupItem>
             ))}

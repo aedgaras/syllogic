@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
@@ -108,7 +110,7 @@ export function UpdateBalanceDialog({
     e.preventDefault();
 
     if (!balancingCategoryId) {
-      toast.error("Balancing Transfer category not found. Please ensure it exists.");
+      toast.error(translate("balancingTransferCategoryNotFoundPleaseEnsureItExists"));
       return;
     }
 
@@ -124,16 +126,16 @@ export function UpdateBalanceDialog({
 
       if (result.success) {
         const message = result.isUpdate
-          ? "Balance adjustment updated successfully"
-          : "Balance updated successfully";
+          ? translate("balanceAdjustmentUpdatedSuccessfully")
+          : translate("balanceUpdatedSuccessfully");
         toast.success(message);
         onOpenChange(false);
         onSuccess?.();
       } else {
-        toast.error(result.error || "Failed to update balance");
+        toast.error(result.error || translate("failedToUpdateBalance"));
       }
     } catch {
-      toast.error("An error occurred. Please try again.");
+      toast.error(translate("anErrorOccurredPleaseTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -143,15 +145,15 @@ export function UpdateBalanceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Update Balance</DialogTitle>
+          <DialogTitle>{translate("updateBalance")}</DialogTitle>
           <DialogDescription>
-            Adjust the balance for {account.name}. An adjustment transaction will be created.
+            {translate("adjustTheBalanceFor")} {account.name}{translate("anAdjustmentTransactionWillBeCreated")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label>Adjustment Date</Label>
+              <Label>{translate("adjustmentDate")}</Label>
               <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                 <PopoverTrigger
                   className={cn(
@@ -160,7 +162,7 @@ export function UpdateBalanceDialog({
                   )}
                 >
                   <RiCalendarLine className="h-4 w-4" />
-                  {adjustmentDate ? format(adjustmentDate, "PPP") : "Select date"}
+                  {adjustmentDate ? format(adjustmentDate, "PPP") : translate("selectDate")}
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
@@ -177,7 +179,7 @@ export function UpdateBalanceDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>Balance on {format(adjustmentDate, "MMM d, yyyy")}</Label>
+              <Label>{translate("balanceOn")} {format(adjustmentDate, "MMM d, yyyy")}</Label>
               <div className="flex items-center gap-2 text-lg font-medium">
                 {isLoadingBalance ? (
                   <RiLoader4Line className="h-4 w-4 animate-spin" />
@@ -188,12 +190,12 @@ export function UpdateBalanceDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="new-balance">Correct Balance</Label>
+              <Label htmlFor="new-balance">{translate("correctBalance")}</Label>
               <Input
                 id="new-balance"
                 type="number"
                 step="0.01"
-                placeholder="Enter correct balance"
+                placeholder={translate("enterCorrectBalance")}
                 value={newBalance}
                 onChange={(e) => setNewBalance(e.target.value)}
                 autoFocus
@@ -202,7 +204,7 @@ export function UpdateBalanceDialog({
 
             {newBalance !== "" && difference !== 0 && (
               <div className="space-y-2 rounded-md border p-3">
-                <Label className="text-sm text-muted-foreground">Adjustment Amount</Label>
+                <Label className="text-sm text-muted-foreground">{translate("adjustmentAmount")}</Label>
                 <div
                   className={cn(
                     "text-lg font-medium",
@@ -212,8 +214,7 @@ export function UpdateBalanceDialog({
                   {formatCurrencyValue(difference, true)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  A {difference > 0 ? "credit" : "debit"} transaction will be created with category
-                  &quot;Balancing Transfer&quot;
+                  A {difference > 0 ? translate("credit") : translate("debit")} {translate("transactionWillBeCreatedWithCategoryBalancingTransfer")}
                 </p>
               </div>
             )}
@@ -225,13 +226,13 @@ export function UpdateBalanceDialog({
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
-              Cancel
+              {translate("cancel")}
             </Button>
             <Button
               type="submit"
               disabled={isLoading || isLoadingBalance || !newBalance || !balancingCategoryId}
             >
-              {isLoading ? "Updating..." : "Update Balance"}
+              {isLoading ? translate("updating") : translate("updateBalance")}
             </Button>
           </DialogFooter>
         </form>

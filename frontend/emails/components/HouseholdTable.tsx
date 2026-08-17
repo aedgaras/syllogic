@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { Section, Text } from "@react-email/components";
 
 type Person = {
@@ -16,16 +17,16 @@ const fmt = (n: number) =>
 export function HouseholdTable({ people }: { people: Person[] }) {
   return (
     <Section style={{ marginBottom: "16px" }}>
-      <Text style={{ fontSize: "16px", fontWeight: 600 }}>Household snapshot</Text>
+      <Text style={{ fontSize: "16px", fontWeight: 600 }}>{translate("householdSnapshot")}</Text>
       <table cellPadding={6} style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
         <thead>
           <tr style={{ borderBottom: "1px solid #ddd", textAlign: "left" }}>
-            <th>Person</th>
-            <th>Cash</th>
-            <th>Investments</th>
-            <th>Properties</th>
-            <th>Vehicles</th>
-            <th>Total</th>
+            <th>{translate("person")}</th>
+            <th>{translate("cash")}</th>
+            <th>{translate("investments")}</th>
+            <th>{translate("properties")}</th>
+            <th>{translate("vehicles")}</th>
+            <th>{translate("totalb25928")}</th>
           </tr>
         </thead>
         <tbody>

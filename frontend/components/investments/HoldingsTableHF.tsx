@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -50,9 +52,9 @@ type Filter = "All" | "ETF" | "Equity" | "Cash";
 type SortKey = "sym" | "acct" | "type" | "qty" | "price" | "value" | "pnl";
 
 export function TypeBadge({ type }: { type: "etf" | "equity" | "cash" }) {
-  if (type === "etf") return <Badge>ETF</Badge>;
-  if (type === "equity") return <Badge variant="secondary">Equity</Badge>;
-  return <Badge variant="outline">Cash</Badge>;
+  if (type === "etf") return <Badge>{translate("etf")}</Badge>;
+  if (type === "equity") return <Badge variant="secondary">{translate("equity")}</Badge>;
+  return <Badge variant="outline">{translate("cash")}</Badge>;
 }
 
 export function HoldingsTableHF({
@@ -156,9 +158,9 @@ export function HoldingsTableHF({
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center gap-3">
         <div>
-          <h2 className="text-sm font-semibold">All holdings</h2>
+          <h2 className="text-sm font-semibold">{translate("allHoldings")}</h2>
           <p className="text-xs text-muted-foreground">
-            {holdings.length} positions · {accountsCount} account
+            {holdings.length} {translate("positions")} {accountsCount} {translate("account")}
             {accountsCount !== 1 ? "s" : ""}
           </p>
         </div>
@@ -174,7 +176,7 @@ export function HoldingsTableHF({
           size="sm"
         >
           {(["All", "ETF", "Equity", "Cash"] as Filter[]).map((t) => (
-            <ToggleGroupItem key={t} value={t} aria-label={`Filter ${t}`}>
+            <ToggleGroupItem key={t} value={t} aria-label={translate("filter", { t: t })}>
               {t}
             </ToggleGroupItem>
           ))}
@@ -182,7 +184,7 @@ export function HoldingsTableHF({
         {onAddClick && (
           <Button size="sm" onClick={onAddClick}>
             <RiAddLine className="size-4" />
-            Add holding
+            {translate("addHolding")}
           </Button>
         )}
       </CardHeader>
@@ -193,7 +195,7 @@ export function HoldingsTableHF({
             if (groupRows.length === 0) return null;
             const groupTotal = groupRows.reduce((s, r) => s + r._value, 0);
             const groupLabel =
-              groupType === "etf" ? "ETF" : groupType === "equity" ? "Equity" : "Cash";
+              groupType === "etf" ? translate("etf") : groupType === "equity" ? translate("equity") : translate("cash");
 
             return (
               <section key={groupType}>
@@ -214,7 +216,7 @@ export function HoldingsTableHF({
                         key={h.id}
                         tabIndex={0}
                         role="button"
-                        aria-label={`View details for ${h.symbol}`}
+                        aria-label={translate("viewDetailsFor", { value1: h.symbol })}
                         onClick={() => router.push(`/investments/${h.id}`)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
@@ -231,7 +233,7 @@ export function HoldingsTableHF({
                               <TypeBadge type={h.instrument_type} />
                               {h.is_stale && (
                                 <span
-                                  title="Price may be stale"
+                                  title={translate("priceMayBeStale")}
                                   className="size-1.5 rounded-full bg-amber-500"
                                 />
                               )}
@@ -249,21 +251,21 @@ export function HoldingsTableHF({
                               })}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {h.current_price ? `${sym} ${h._price.toFixed(2)}` : "—"}
+                              {h.current_price ? translate("messagee9c086", { sym: sym, value2: h._price.toFixed(2) }) : "—"}
                             </div>
                           </div>
                         </div>
                         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                           <div>
-                            <div className="text-muted-foreground">Account</div>
+                            <div className="text-muted-foreground">{translate("account85dfa3")}</div>
                             <Badge variant="outline">{h._acct}</Badge>
                           </div>
                           <div className="text-right">
-                            <div className="text-muted-foreground">Qty</div>
+                            <div className="text-muted-foreground">{translate("qty")}</div>
                             <div className="tabular-nums">{h._qty.toLocaleString()}</div>
                           </div>
                           <div>
-                            <div className="text-muted-foreground">P&L</div>
+                            <div className="text-muted-foreground">{translate("pL")}</div>
                             <div
                               className={`tabular-nums ${
                                 h._pnl == null
@@ -275,10 +277,10 @@ export function HoldingsTableHF({
                             >
                               {h._pnl == null
                                 ? "—"
-                                : `${h._pnl >= 0 ? "+" : ""}${portfolioCurrencySymbol} ${h._pnl.toLocaleString("en", {
+                                : translate("message4ec9f0", { value1: h._pnl >= 0 ? "+" : "", portfolioCurrencySymbol: portfolioCurrencySymbol, value3: h._pnl.toLocaleString("en", {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
-                                  })}`}
+                                  }) })}
                             </div>
                           </div>
                           {!readOnly && h.source === "manual" && (
@@ -291,7 +293,7 @@ export function HoldingsTableHF({
                                   setEditingId(h.id);
                                 }}
                               >
-                                Edit
+                                {translate("edit")}
                               </Button>
                               <Button
                                 variant="outline"
@@ -301,7 +303,7 @@ export function HoldingsTableHF({
                                   setDeletingId(h.id);
                                 }}
                               >
-                                Delete
+                                {translate("delete")}
                               </Button>
                             </div>
                           )}
@@ -314,7 +316,7 @@ export function HoldingsTableHF({
             );
           })}
           <div className="flex items-center justify-between gap-3 bg-muted/40 px-4 py-3 text-sm font-semibold">
-            <span>Total</span>
+            <span>{translate("totalb25928")}</span>
             <span className="tabular-nums">
               {portfolioCurrencySymbol} {totalValue.toLocaleString("en", {
                 minimumFractionDigits: 2,
@@ -328,13 +330,13 @@ export function HoldingsTableHF({
             <TableRow>
               {(
                 [
-                  ["sym", "Symbol", "left"],
-                  ["acct", "Account", "left"],
-                  ["type", "Type", "left"],
-                  ["qty", "Qty", "right"],
-                  ["price", "Price", "right"],
-                  ["value", "Value", "right"],
-                  ["pnl", "P&L", "right"],
+                  ["sym", translate("symbol"), "left"],
+                  ["acct", translate("account85dfa3"), "left"],
+                  ["type", translate("type"), "left"],
+                  ["qty", translate("qty"), "right"],
+                  ["price", translate("price"), "right"],
+                  ["value", translate("value"), "right"],
+                  ["pnl", translate("pL"), "right"],
                 ] as const
               ).map(([k, label, align]) => (
                 <TableHead
@@ -361,7 +363,7 @@ export function HoldingsTableHF({
               if (groupRows.length === 0) return [];
               const groupTotal = groupRows.reduce((s, r) => s + r._value, 0);
               const groupLabel =
-                groupType === "etf" ? "ETF" : groupType === "equity" ? "Equity" : "Cash";
+                groupType === "etf" ? translate("etf") : groupType === "equity" ? translate("equity") : translate("cash");
               return [
                 <TableRow key={`group-${groupType}`} className="bg-muted/40 hover:bg-muted/40">
                   <TableCell
@@ -386,7 +388,7 @@ export function HoldingsTableHF({
                 <TableRow
                   key={h.id}
                   tabIndex={0}
-                  aria-label={`View details for ${h.symbol}`}
+                  aria-label={translate("viewDetailsFor", { value1: h.symbol })}
                   onClick={() => router.push(`/investments/${h.id}`)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -403,7 +405,7 @@ export function HoldingsTableHF({
                       <span className="font-bold">{h.symbol}</span>
                       {h.is_stale && (
                         <span
-                          title="Price may be stale"
+                          title={translate("priceMayBeStale")}
                           className="size-1.5 rounded-full bg-amber-500"
                         />
                       )}
@@ -423,7 +425,7 @@ export function HoldingsTableHF({
                     {h._qty.toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
-                    {h.current_price ? `${sym} ${h._price.toFixed(2)}` : "—"}
+                    {h.current_price ? translate("messagee9c086", { sym: sym, value2: h._price.toFixed(2) }) : "—"}
                   </TableCell>
                   <TableCell className="text-right tabular-nums font-semibold">
                     {portfolioCurrencySymbol} {h._value.toLocaleString("en", {
@@ -440,10 +442,10 @@ export function HoldingsTableHF({
                   }`}>
                     {h._pnl == null
                       ? "—"
-                      : `${h._pnl >= 0 ? "+" : ""}${portfolioCurrencySymbol} ${h._pnl.toLocaleString("en", {
+                      : translate("message4ec9f0", { value1: h._pnl >= 0 ? "+" : "", portfolioCurrencySymbol: portfolioCurrencySymbol, value3: h._pnl.toLocaleString("en", {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
-                        })}`}
+                        }) })}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -451,7 +453,7 @@ export function HoldingsTableHF({
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          aria-label="Row actions"
+                          aria-label={translate("rowActions")}
                           onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === " ") e.stopPropagation();
@@ -467,19 +469,19 @@ export function HoldingsTableHF({
                         <DropdownMenuItem
                           onClick={() => router.push(`/investments/${h.id}`)}
                         >
-                          View details
+                          {translate("viewDetails")}
                         </DropdownMenuItem>
                         {!readOnly && h.source === "manual" && (
                           <>
                             <DropdownMenuItem onClick={() => setEditingId(h.id)}>
-                              Edit
+                              {translate("edit")}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => setDeletingId(h.id)}
                               className="text-destructive focus:text-destructive"
                             >
-                              Delete
+                              {translate("delete")}
                             </DropdownMenuItem>
                           </>
                         )}
@@ -495,7 +497,7 @@ export function HoldingsTableHF({
           <TableFooter>
             <TableRow>
               <TableCell colSpan={6} className="font-semibold text-muted-foreground">
-                Total
+                {translate("totalb25928")}
               </TableCell>
               <TableCell className="text-right tabular-nums font-bold">
                 {portfolioCurrencySymbol} {totalValue.toLocaleString("en", {
@@ -523,14 +525,13 @@ export function HoldingsTableHF({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this holding?</AlertDialogTitle>
+            <AlertDialogTitle>{translate("deleteThisHolding")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the manual position. Price history is retained but the
-              position will no longer count toward your portfolio.
+              {translate("thisRemovesTheManualPositionPriceHistoryIsRetained")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{translate("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (deletingId && onDelete) onDelete(deletingId);
@@ -538,7 +539,7 @@ export function HoldingsTableHF({
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {translate("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

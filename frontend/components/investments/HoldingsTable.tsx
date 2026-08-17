@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 import type { Holding } from "@/lib/api/investments";
 
 export function HoldingsTable({
@@ -28,15 +30,15 @@ export function HoldingsTable({
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
             <div>
-              <div className="text-muted-foreground">Type</div>
+              <div className="text-muted-foreground">{translate("type")}</div>
               <div className="capitalize">{h.instrument_type}</div>
             </div>
             <div className="text-right">
-              <div className="text-muted-foreground">Qty</div>
+              <div className="text-muted-foreground">{translate("qty")}</div>
               <div>{h.quantity}</div>
             </div>
             <div>
-              <div className="text-muted-foreground">Price</div>
+              <div className="text-muted-foreground">{translate("price")}</div>
               <div>
                 {h.current_price ?? "—"} {h.currency}
               </div>
@@ -48,7 +50,7 @@ export function HoldingsTable({
                   className="text-xs text-red-600"
                   onClick={() => onDelete(h.id)}
                 >
-                  Remove
+                  {translate("remove")}
                 </button>
               )}
             </div>
@@ -59,11 +61,11 @@ export function HoldingsTable({
     <table className="hidden w-full text-sm md:table">
       <thead className="text-left text-muted-foreground">
         <tr>
-          <th>Symbol</th>
-          <th>Type</th>
-          <th className="text-right">Qty</th>
-          <th className="text-right">Price</th>
-          <th className="text-right">Value</th>
+          <th>{translate("symbol")}</th>
+          <th>{translate("type")}</th>
+          <th className="text-right">{translate("qty")}</th>
+          <th className="text-right">{translate("price")}</th>
+          <th className="text-right">{translate("value")}</th>
           <th />
         </tr>
       </thead>
@@ -91,7 +93,7 @@ export function HoldingsTable({
                   className="text-xs text-red-600"
                   onClick={() => onDelete(h.id)}
                 >
-                  Remove
+                  {translate("remove")}
                 </button>
               )}
             </td>

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import { RiAddLine } from "@remixicon/react";
@@ -33,9 +35,9 @@ export function CategoryListEditor({
   const groupedCategories = groupCategoriesByType(categories);
 
   const groups: CategoryGroup[] = [
-    { type: "expense", label: "Expenses", categories: groupedCategories.expense },
-    { type: "income", label: "Income", categories: groupedCategories.income },
-    { type: "transfer", label: "Transfers", categories: groupedCategories.transfer },
+    { type: "expense", label: translate("expenses"), categories: groupedCategories.expense },
+    { type: "income", label: translate("income1c89b1"), categories: groupedCategories.income },
+    { type: "transfer", label: translate("transfers"), categories: groupedCategories.transfer },
   ];
 
   const getCategoriesByType = (type: CategoryType) => groupedCategories[type];
@@ -91,13 +93,13 @@ export function CategoryListEditor({
                 onClick={() => handleAddClick(group.type)}
               >
                 <RiAddLine className="mr-1 h-3 w-3" />
-                Add
+                {translate("add")}
               </Button>
             </div>
             <div className="space-y-1 border rounded-md p-2">
               {group.categories.length === 0 ? (
                 <div className="flex h-12 items-center justify-center">
-                  <p className="text-sm text-muted-foreground">No categories</p>
+                  <p className="text-sm text-muted-foreground">{translate("noCategories")}</p>
                 </div>
               ) : (
                 group.categories.map((category) => {

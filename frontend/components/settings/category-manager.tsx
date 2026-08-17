@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -57,7 +59,7 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
 
   const handleDelete = async (category: SettingsCategory) => {
     if (category.isSystem) {
-      toast.error("System categories cannot be deleted");
+      toast.error(translate("systemCategoriesCannotBeDeleted"));
       return;
     }
 
@@ -69,7 +71,7 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
       setDeleteTransactionCount(count);
       setDeleteDialogOpen(true);
     } catch {
-      toast.error("Failed to check category usage");
+      toast.error(translate("failedToCheckCategoryUsage"));
     } finally {
       setIsLoading(false);
     }
@@ -84,16 +86,16 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
       if (result.success) {
         setCategories(categories.filter((c) => c.id !== deletingCategory.id));
         const message = result.reassignedCount && result.reassignedCount > 0
-          ? `Category deleted. ${result.reassignedCount} transaction${result.reassignedCount !== 1 ? "s" : ""} ${reassignToCategoryId ? "reassigned" : "set to uncategorized"}.`
-          : "Category deleted";
+          ? translate("categoryDeletedTransaction", { value1: result.reassignedCount, value2: result.reassignedCount !== 1 ? "s" : "", value3: reassignToCategoryId ? "reassigned" : "set to uncategorized" })
+          : translate("categoryDeleted");
         toast.success(message);
         router.refresh();
         setDeleteDialogOpen(false);
       } else {
-        toast.error(result.error || "Failed to delete category");
+        toast.error(result.error || translate("failedToDeleteCategory"));
       }
     } catch {
-      toast.error("An error occurred. Please try again.");
+      toast.error(translate("anErrorOccurredPleaseTryAgain"));
     } finally {
       setIsDeleting(false);
     }
@@ -133,10 +135,10 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
                 }
               : c
           ));
-          toast.success("Category updated");
+          toast.success(translate("categoryUpdated"));
           router.refresh();
         } else {
-          toast.error(result.error || "Failed to update category");
+          toast.error(result.error || translate("failedToUpdateCategory"));
         }
       } else {
         // Create new category
@@ -167,14 +169,14 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
             createdAt: new Date(),
           };
           setCategories([...categories, newCategory]);
-          toast.success("Category created");
+          toast.success(translate("categoryCreated"));
           router.refresh();
         } else {
-          toast.error(result.error || "Failed to create category");
+          toast.error(result.error || translate("failedToCreateCategory"));
         }
       }
     } catch {
-      toast.error("An error occurred. Please try again.");
+      toast.error(translate("anErrorOccurredPleaseTryAgain"));
     } finally {
       setIsLoading(false);
       setDialogOpen(false);
@@ -204,7 +206,7 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
         <div className="space-y-1 min-h-[200px] max-h-[400px] overflow-y-auto">
           {categoryList.length === 0 ? (
             <div className="flex h-24 items-center justify-center rounded border border-dashed">
-              <p className="text-sm text-muted-foreground">No categories yet</p>
+              <p className="text-sm text-muted-foreground">{translate("noCategoriesYet")}</p>
             </div>
           ) : (
             categoryList.map((category) => {
@@ -233,7 +235,7 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
             disabled={isLoading}
           >
             <RiAddLine className="mr-2 h-4 w-4" />
-            Add {getCategoryTypeLabel(categoryType)} Category
+            {translate("add")} {getCategoryTypeLabel(categoryType)} {translate("category")}
           </Button>
         </div>
       </div>
@@ -244,9 +246,9 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Categories</CardTitle>
+          <CardTitle>{translate("categories")}</CardTitle>
           <CardDescription>
-            Manage your transaction categories. Categories help you organize and track your spending.
+            {translate("manageYourTransactionCategoriesCategoriesHelpYouOrganizeAnd")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -256,13 +258,13 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
           >
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="expense">
-                Expenses ({groupedCategories.expense.length})
+                {translate("expenses10fcd2")}{groupedCategories.expense.length})
               </TabsTrigger>
               <TabsTrigger value="income">
-                Income ({groupedCategories.income.length})
+                {translate("incomec43e68")}{groupedCategories.income.length})
               </TabsTrigger>
               <TabsTrigger value="transfer">
-                Transfers ({groupedCategories.transfer.length})
+                {translate("transfers908301")}{groupedCategories.transfer.length})
               </TabsTrigger>
             </TabsList>
             <TabsContent value="expense" className="mt-4">

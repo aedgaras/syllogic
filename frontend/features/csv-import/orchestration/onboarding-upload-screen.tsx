@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useRouter } from "next/navigation";
 import { RiArrowLeftLine, RiArrowRightLine, RiSkipForwardLine } from "@remixicon/react";
@@ -32,32 +34,31 @@ export default function StepFourImportPage() {
       <OnboardingProgress currentStep={4} />
       <Card className="min-h-[640px] h-[640px] flex flex-col">
         <CardHeader>
-          <CardTitle>Import your transactions</CardTitle>
+          <CardTitle>{translate("importYourTransactions")}</CardTitle>
           <CardDescription>
-            Upload a CSV or Excel file. We&apos;ll help you map the columns to the
-            correct fields.
+            {translate("uploadACsvOrExcelFileWeLlHelp")}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 min-h-0 space-y-6">
           <div className="space-y-2">
-            <Label>Select Account</Label>
+            <Label>{translate("selectAccount")}</Label>
             {accounts.length === 0 ? (
               <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-2">
-                <p>No accounts found. Create one first to continue.</p>
+                <p>{translate("noAccountsFoundCreateOneFirstToContinue")}</p>
                 <Button
                   type="button"
                   variant="link"
                   className="h-auto p-0 text-xs"
                   onClick={() => router.push("/step-3")}
                 >
-                  Go to Bank Accounts
+                  {translate("goToBankAccounts")}
                 </Button>
               </div>
             ) : (
               <Select value={selectedAccountId} onValueChange={(v) => v && setSelectedAccountId(v)}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select an account">
-                    {accounts.find((a) => a.id === selectedAccountId)?.name ?? "Select an account"}
+                  <SelectValue placeholder={translate("selectAnAccount")}>
+                    {accounts.find((a) => a.id === selectedAccountId)?.name ?? translate("selectAnAccount")}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
@@ -72,25 +73,25 @@ export default function StepFourImportPage() {
           </div>
 
           <div className="space-y-2">
-            <Label>Upload File</Label>
+            <Label>{translate("uploadFile")}</Label>
             <CsvUploadDropzone onFileSelect={selectFile} isUploading={isLoading} />
           </div>
         </CardContent>
         <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <Button type="button" variant="outline" onClick={goBack}>
             <RiArrowLeftLine className="mr-2 h-4 w-4" />
-            Back
+            {translate("back")}
           </Button>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="ghost" onClick={() => skip?.()} disabled={isLoading}>
-              Skip for now
+              {translate("skipForNow")}
               <RiSkipForwardLine className="ml-2 h-4 w-4" />
             </Button>
             <Button
               onClick={continueToMapping}
               disabled={isLoading || !selectedFile || accounts.length === 0}
             >
-              {isLoading ? "Processing..." : "Continue"}
+              {isLoading ? translate("processing") : translate("continue")}
               <RiArrowRightLine className="ml-2 h-4 w-4" />
             </Button>
           </div>

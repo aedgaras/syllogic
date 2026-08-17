@@ -1,4 +1,6 @@
 "use client"
+import { t as translate } from "@/i18n/translate";
+
 
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
@@ -69,7 +71,7 @@ function DialogContent({
           >
             <RiCloseLine
             />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{translate("close")}</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Popup>
@@ -107,7 +109,7 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close render={<Button variant="outline" />}>
-          Close
+          {translate("close")}
         </DialogPrimitive.Close>
       )}
     </div>

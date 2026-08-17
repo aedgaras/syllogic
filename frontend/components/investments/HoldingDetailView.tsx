@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { RiArrowLeftLine, RiEditLine } from "@remixicon/react";
@@ -98,7 +100,7 @@ export function HoldingDetailView({
         if (activeRangeRef.current === r) {
           activeRangeRef.current = prev;
           setRange(prev);
-          setChartErr("Could not load history.");
+          setChartErr(translate("couldNotLoadHistory"));
         }
       }
     });
@@ -106,17 +108,17 @@ export function HoldingDetailView({
 
   const stats: { label: string; value: string; tone?: "positive" | "negative" }[] = [
     {
-      label: "Current price",
+      label: translate("currentPrice"),
       value: holding.current_price
         ? `${holdingCurrSym} ${fmt(Number(holding.current_price))}`
         : "—",
     },
     {
-      label: "Market value",
+      label: translate("marketValue"),
       value: `${portfolioCurrSym} ${fmt(marketValue)}`,
     },
     {
-      label: "Total return",
+      label: translate("totalReturn"),
       value:
         totalReturn != null
           ? `${totalReturn >= 0 ? "+" : ""}${fmt(totalReturn)}%`
@@ -129,13 +131,13 @@ export function HoldingDetailView({
             : "negative",
     },
     {
-      label: "Avg cost / share",
+      label: translate("avgCostShare"),
       value: holding.avg_cost
         ? `${holdingCurrSym} ${fmt(Number(holding.avg_cost))}`
         : "—",
     },
     {
-      label: "Portfolio weight",
+      label: translate("portfolioWeight"),
       value: `${fmt(weight, 1)}%`,
     },
   ];
@@ -149,7 +151,7 @@ export function HoldingDetailView({
         onClick={() => router.push("/investments")}
       >
         <RiArrowLeftLine className="size-4" />
-        All holdings
+        {translate("allHoldings")}
       </Button>
 
       <Card>
@@ -161,7 +163,7 @@ export function HoldingDetailView({
           )}
           {holding.is_stale && (
             <span
-              title="Price may be stale"
+              title={translate("priceMayBeStale")}
               className="size-2 rounded-full bg-amber-500"
             />
           )}
@@ -171,7 +173,7 @@ export function HoldingDetailView({
           {!isDemoRestricted && holding.source === "manual" && (
             <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
               <RiEditLine className="size-4" />
-              Edit
+              {translate("edit")}
             </Button>
           )}
         </CardContent>
@@ -210,7 +212,7 @@ export function HoldingDetailView({
             size="sm"
           >
             {RANGES.map((r) => (
-              <ToggleGroupItem key={r} value={r} aria-label={`Range ${r}`}>
+              <ToggleGroupItem key={r} value={r} aria-label={translate("range", { r: r })}>
                 {r}
               </ToggleGroupItem>
             ))}
@@ -226,18 +228,18 @@ export function HoldingDetailView({
 
       <Tabs defaultValue="overview">
         <TabsList className="w-full sm:w-fit">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="about">About</TabsTrigger>
+          <TabsTrigger value="overview">{translate("overview")}</TabsTrigger>
+          <TabsTrigger value="transactions">{translate("transactions")}</TabsTrigger>
+          <TabsTrigger value="about">{translate("about")}</TabsTrigger>
         </TabsList>
         <TabsContent value="overview">
           <Card>
             <CardContent className="p-4">
               {lots.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No open lots. {holding.source === "trade_import"
-                    ? "All shares for this position have been sold."
-                    : "Position metadata, cost-basis breakdown and lots will appear here once trades are imported."}
+                  {translate("noOpenLots")} {holding.source === "trade_import"
+                    ? translate("allSharesForThisPositionHaveBeenSold")
+                    : translate("positionMetadataCostBasisBreakdownAndLotsWillAppear")}
                 </p>
               ) : (
                 <>
@@ -254,29 +256,29 @@ export function HoldingDetailView({
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <div className="text-xs text-muted-foreground">Open date</div>
+                              <div className="text-xs text-muted-foreground">{translate("openDate")}</div>
                               <div className="tabular-nums">{lot.open_date}</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-xs text-muted-foreground">Lot value</div>
+                              <div className="text-xs text-muted-foreground">{translate("lotValue")}</div>
                               <div className="tabular-nums font-medium">
                                 {Number.isFinite(lotValue)
-                                  ? `${holdingCurrSym} ${fmt(lotValue)}`
+                                  ? translate("messagea2c07b", { holdingCurrSym: holdingCurrSym, value2: fmt(lotValue) })
                                   : "—"}
                               </div>
                             </div>
                           </div>
                           <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                             <div>
-                              <div className="text-muted-foreground">Qty</div>
+                              <div className="text-muted-foreground">{translate("qty")}</div>
                               <div className="tabular-nums">{fmt(qty, qty < 1 ? 4 : 2)}</div>
                             </div>
                             <div>
-                              <div className="text-muted-foreground">Cost / share</div>
+                              <div className="text-muted-foreground">{translate("costShare")}</div>
                               <div className="tabular-nums">{fmt(cps, 4)}</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-muted-foreground">Age</div>
+                              <div className="text-muted-foreground">{translate("age")}</div>
                               <div className="tabular-nums">{lot.age_days}d</div>
                             </div>
                           </div>
@@ -288,15 +290,15 @@ export function HoldingDetailView({
                     <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
-                        <th className="py-2 pr-4">Open date</th>
-                        <th className="py-2 pr-4 text-right">Quantity</th>
+                        <th className="py-2 pr-4">{translate("openDate")}</th>
+                        <th className="py-2 pr-4 text-right">{translate("quantity")}</th>
                         <th className="py-2 pr-4 text-right">
-                          Cost / share ({holding.currency})
+                          {translate("costShare8a5175")}{holding.currency})
                         </th>
                         <th className="py-2 pr-4 text-right">
-                          Lot value ({holdingCurrSym})
+                          {translate("lotValuea4ca2f")}{holdingCurrSym})
                         </th>
-                        <th className="py-2 pr-4 text-right">Age</th>
+                        <th className="py-2 pr-4 text-right">{translate("age")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -321,7 +323,7 @@ export function HoldingDetailView({
                             </td>
                             <td className="py-2 pr-4 text-right tabular-nums">
                               {Number.isFinite(lotValue)
-                                ? `${holdingCurrSym} ${fmt(lotValue)}`
+                                ? translate("messagea2c07b", { holdingCurrSym: holdingCurrSym, value2: fmt(lotValue) })
                                 : "—"}
                             </td>
                             <td className="py-2 pr-4 text-right tabular-nums text-muted-foreground">
@@ -343,7 +345,7 @@ export function HoldingDetailView({
             <CardContent className="p-4">
               {trades.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No trades recorded for this holding yet.
+                  {translate("noTradesRecordedForThisHoldingYet")}
                 </p>
               ) : (
                 <>
@@ -357,11 +359,11 @@ export function HoldingDetailView({
                         <article key={t.id} className="rounded border p-3 text-sm">
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <div className="text-xs text-muted-foreground">Date</div>
+                              <div className="text-xs text-muted-foreground">{translate("date")}</div>
                               <div className="tabular-nums">{t.trade_date}</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-xs text-muted-foreground">Total</div>
+                              <div className="text-xs text-muted-foreground">{translate("totalb25928")}</div>
                               <div className="tabular-nums font-medium">
                                 {holdingCurrSym} {fmt(total)}
                               </div>
@@ -369,7 +371,7 @@ export function HoldingDetailView({
                           </div>
                           <div className="mt-3 grid grid-cols-2 gap-2 text-xs min-[420px]:grid-cols-4">
                             <div>
-                              <div className="text-muted-foreground">Side</div>
+                              <div className="text-muted-foreground">{translate("side")}</div>
                               <div
                                 className={
                                   t.side === "buy"
@@ -381,15 +383,15 @@ export function HoldingDetailView({
                               </div>
                             </div>
                             <div>
-                              <div className="text-muted-foreground">Qty</div>
+                              <div className="text-muted-foreground">{translate("qty")}</div>
                               <div className="tabular-nums">{fmt(Number(t.quantity), 4)}</div>
                             </div>
                             <div>
-                              <div className="text-muted-foreground">Price</div>
+                              <div className="text-muted-foreground">{translate("price")}</div>
                               <div className="tabular-nums">{fmt(Number(t.price), 4)}</div>
                             </div>
                             <div>
-                              <div className="text-muted-foreground">Fees</div>
+                              <div className="text-muted-foreground">{translate("fees")}</div>
                               <div className="tabular-nums">
                                 {Number(t.fees) > 0 ? fmt(Number(t.fees), 2) : "—"}
                               </div>
@@ -403,14 +405,14 @@ export function HoldingDetailView({
                     <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
-                        <th className="py-2 pr-4">Date</th>
-                        <th className="py-2 pr-4">Side</th>
-                        <th className="py-2 pr-4 text-right">Qty</th>
+                        <th className="py-2 pr-4">{translate("date")}</th>
+                        <th className="py-2 pr-4">{translate("side")}</th>
+                        <th className="py-2 pr-4 text-right">{translate("qty")}</th>
                         <th className="py-2 pr-4 text-right">
-                          Price ({holding.currency})
+                          {translate("price40f8de")}{holding.currency})
                         </th>
-                        <th className="py-2 pr-4 text-right">Fees</th>
-                        <th className="py-2 pr-4 text-right">Total</th>
+                        <th className="py-2 pr-4 text-right">{translate("fees")}</th>
+                        <th className="py-2 pr-4 text-right">{translate("totalb25928")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -462,15 +464,15 @@ export function HoldingDetailView({
           <Card>
             <CardContent className="p-4 text-sm">
               <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
-                <dt className="text-muted-foreground">Symbol</dt>
+                <dt className="text-muted-foreground">{translate("symbol")}</dt>
                 <dd className="break-words">{holding.symbol}</dd>
-                <dt className="text-muted-foreground">Instrument type</dt>
+                <dt className="text-muted-foreground">{translate("instrumentType")}</dt>
                 <dd className="capitalize">{holding.instrument_type}</dd>
-                <dt className="text-muted-foreground">Currency</dt>
+                <dt className="text-muted-foreground">{translate("currency")}</dt>
                 <dd className="break-words">{holding.currency}</dd>
-                <dt className="text-muted-foreground">Source</dt>
+                <dt className="text-muted-foreground">{translate("source")}</dt>
                 <dd className="capitalize">{holding.source}</dd>
-                <dt className="text-muted-foreground">Account</dt>
+                <dt className="text-muted-foreground">{translate("account85dfa3")}</dt>
                 <dd className="break-words">{accountName}</dd>
               </dl>
             </CardContent>

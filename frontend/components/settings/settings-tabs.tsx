@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -91,38 +93,38 @@ export function SettingsTabs({
       <TabsList variant="line" className="mb-6 w-full">
         <TabsTrigger value="profile" data-walkthrough="walkthrough-profile">
           <RiUserLine className="mr-1.5 h-4 w-4" />
-          Profile
+          {translate("profile")}
         </TabsTrigger>
         <TabsTrigger value="categories" data-walkthrough="walkthrough-categories">
           <RiFolderLine className="mr-1.5 h-4 w-4" />
-          Categories
+          {translate("categories")}
         </TabsTrigger>
         <TabsTrigger value="api-keys" data-walkthrough="walkthrough-api-keys">
           <RiKeyLine className="mr-1.5 h-4 w-4" />
-          API Keys
+          {translate("apiKeys")}
         </TabsTrigger>
         <TabsTrigger value="import-history" data-walkthrough="walkthrough-import-history">
           <RiUploadLine className="mr-1.5 h-4 w-4" />
-          Import History
+          {translate("importHistory")}
         </TabsTrigger>
         {!isDemoUser && (
           <TabsTrigger value="bank-connections">
             <RiBankLine className="mr-1.5 h-4 w-4" />
-            Bank Connections
+            {translate("bankConnections")}
           </TabsTrigger>
         )}
         <TabsTrigger value="household">
           <RiGroupLine className="mr-1.5 h-4 w-4" />
-          Household
+          {translate("household")}
         </TabsTrigger>
         <TabsTrigger value="preferences">
           <RiSettings4Line className="mr-1.5 h-4 w-4" />
-          Preferences
+          {translate("preferences")}
         </TabsTrigger>
         {isAdmin && (
           <TabsTrigger value="authentication">
             <RiLockLine className="mr-1.5 h-4 w-4" />
-            Authentication
+            {translate("authentication")}
           </TabsTrigger>
         )}
       </TabsList>

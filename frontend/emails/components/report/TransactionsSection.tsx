@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { Column, Row, Section, Text } from "@react-email/components";
 import { fmtMoney, light } from "./tokens";
 
@@ -17,7 +18,7 @@ export function TransactionsSection({ modeLabel, items }: { modeLabel: string; i
       </Text>
       {items.length === 0 ? (
         <Text className="sy-muted" style={{ fontSize: "12px", color: light.mutedForeground, margin: 0, padding: "12px 0" }}>
-          No transactions in this period.
+          {translate("noTransactionsInThisPeriod")}
         </Text>
       ) : (
         items.map((t, i) => (
@@ -41,7 +42,7 @@ export function TransactionsSection({ modeLabel, items }: { modeLabel: string; i
                 className={t.direction === "out" ? "sy-out" : "sy-fg"}
                 style={{ fontSize: "13px", fontWeight: 600, margin: 0, color: t.direction === "out" ? light.destructive : light.foreground }}
               >
-                {t.direction === "out" ? "−" : "+"}
+                {t.direction === translate("out") ? "−" : "+"}
                 {fmtMoney(t.amount, t.currency)}
               </Text>
             </Column>

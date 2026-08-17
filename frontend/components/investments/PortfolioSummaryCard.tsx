@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import Link from "next/link";
 import { getPortfolio } from "@/lib/api/investments";
 
@@ -17,7 +18,7 @@ export async function PortfolioSummaryCard() {
       className="block rounded-xl border p-4 hover:bg-muted/40"
     >
       <div className="flex items-baseline justify-between">
-        <h3 className="font-medium">Investments</h3>
+        <h3 className="font-medium">{translate("investments")}</h3>
         <span
           className={
             change >= 0
@@ -26,7 +27,7 @@ export async function PortfolioSummaryCard() {
           }
         >
           {change >= 0 ? "+" : ""}
-          {change.toFixed(2)} today
+          {change.toFixed(2)} {translate("today2dd2be")}
         </span>
       </div>
       <p className="text-2xl mt-1">

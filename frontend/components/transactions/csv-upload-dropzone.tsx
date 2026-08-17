@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useCallback } from "react";
 import { RiUploadCloud2Line, RiFileTextLine, RiCloseLine } from "@remixicon/react";
@@ -34,13 +36,13 @@ export function CsvUploadDropzone({ onFileSelect, isUploading }: CsvUploadDropzo
       const isValidType = VALID_TYPES.includes(file.type) || file.type === "";
 
       if (!isValidExtension && !isValidType) {
-        setError("Please upload a CSV or Excel file");
+        setError(translate("pleaseUploadACsvOrExcelFile"));
         return;
       }
 
       // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
-        setError("File size must be less than 10MB");
+        setError(translate("fileSizeMustBeLessThan10mb"));
         return;
       }
 
@@ -63,12 +65,12 @@ export function CsvUploadDropzone({ onFileSelect, isUploading }: CsvUploadDropzo
             onFileSelect(file, content);
           };
           reader.onerror = () => {
-            setError("Failed to read file");
+            setError(translate("failedToReadFile"));
           };
           reader.readAsText(file);
         }
       } catch {
-        setError("Failed to read file");
+        setError(translate("failedToReadFile"));
       }
     },
     [onFileSelect]
@@ -123,7 +125,7 @@ export function CsvUploadDropzone({ onFileSelect, isUploading }: CsvUploadDropzo
             <div>
               <p className="font-medium">{selectedFile.name}</p>
               <p className="text-xs text-muted-foreground">
-                {(selectedFile.size / 1024).toFixed(1)} KB
+                {(selectedFile.size / 1024).toFixed(1)} {translate("kb")}
               </p>
             </div>
           </div>
@@ -166,14 +168,14 @@ export function CsvUploadDropzone({ onFileSelect, isUploading }: CsvUploadDropzo
         </div>
         <div>
           <p className="text-lg font-medium">
-            {isDragging ? "Drop your file here" : "Upload your file"}
+            {isDragging ? translate("dropYourFileHere") : translate("uploadYourFile")}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Drag and drop or click to browse
+            {translate("dragAndDropOrClickToBrowse")}
           </p>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <p className="text-xs text-muted-foreground">CSV or Excel (max 10MB)</p>
+        <p className="text-xs text-muted-foreground">{translate("csvOrExcelMax10mb")}</p>
       </div>
     </div>
   );

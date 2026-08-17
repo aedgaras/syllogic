@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import {
@@ -73,14 +75,14 @@ export function SubscriptionLinkedDialog({
       const result = await unlinkTransactionFromSubscription(transaction.id);
 
       if (result.success) {
-        toast.success("Transaction unlinked from subscription");
+        toast.success(translate("transactionUnlinkedFromSubscription"));
         onSuccess();
         onOpenChange(false);
       } else {
-        toast.error(result.error || "Failed to unlink transaction");
+        toast.error(result.error || translate("failedToUnlinkTransaction"));
       }
     } catch (error) {
-      toast.error("Failed to unlink transaction");
+      toast.error(translate("failedToUnlinkTransaction"));
     } finally {
       setIsUnlinking(false);
     }
@@ -90,9 +92,9 @@ export function SubscriptionLinkedDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Linked Subscription</DialogTitle>
+          <DialogTitle>{translate("linkedSubscription")}</DialogTitle>
           <DialogDescription>
-            This transaction is linked to a subscription.
+            {translate("thisTransactionIsLinkedToASubscription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -108,7 +110,7 @@ export function SubscriptionLinkedDialog({
 
             {subscription.merchant && (
               <div className="text-sm text-muted-foreground">
-                Merchant: {subscription.merchant}
+                {translate("merchant0bfafe")} {subscription.merchant}
               </div>
             )}
           </div>
@@ -123,7 +125,7 @@ export function SubscriptionLinkedDialog({
                 className="w-full justify-start"
               >
                 <RiExternalLinkLine className="h-4 w-4 mr-2" />
-                View All Subscriptions
+                {translate("viewAllSubscriptions")}
               </Button>
             </Link>
 
@@ -136,25 +138,24 @@ export function SubscriptionLinkedDialog({
                     disabled={isUnlinking}
                   >
                     <RiLinkUnlinkM className="h-4 w-4 mr-2" />
-                    {isUnlinking ? "Unlinking..." : "Unlink from Subscription"}
+                    {isUnlinking ? translate("unlinking") : translate("unlinkFromSubscription")}
                   </Button>
                 }
               />
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Unlink Transaction?</AlertDialogTitle>
+                  <AlertDialogTitle>{translate("unlinkTransaction")}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will remove the link between this transaction and the subscription
-                    "{subscription.name}". The subscription itself will not be deleted.
+                    {translate("thisWillRemoveTheLinkBetweenThisTransactionAnd")}{subscription.name}{translate("theSubscriptionItselfWillNotBeDeleted")}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>{translate("cancel")}</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleUnlink}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    Unlink
+                    {translate("unlink")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -164,7 +165,7 @@ export function SubscriptionLinkedDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+            {translate("close")}
           </Button>
         </DialogFooter>
       </DialogContent>

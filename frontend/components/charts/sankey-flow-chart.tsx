@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import * as React from "react";
 import { Sankey, Tooltip, Rectangle, ResponsiveContainer } from "recharts";
@@ -235,7 +237,7 @@ function CustomTooltip({ active, payload, currency }: CustomTooltipProps) {
       <div className="border-border/50 bg-background min-w-[140px] border px-3 py-2.5 text-xs shadow-xl">
         <div className="mb-1 font-medium">{data.name}</div>
         <div className="text-muted-foreground">
-          Total: <span className="font-mono font-medium text-foreground">{formatCurrency(total, currency)}</span>
+          {translate("total")} <span className="font-mono font-medium text-foreground">{formatCurrency(total, currency)}</span>
         </div>
       </div>
     );
@@ -248,7 +250,7 @@ function CustomTooltip({ active, payload, currency }: CustomTooltipProps) {
           {data.source.name} → {data.target.name}
         </div>
         <div className="text-muted-foreground">
-          Amount: <span className="font-mono font-medium text-foreground">{formatCurrency(data.value, currency)}</span>
+          {translate("amount281473")} <span className="font-mono font-medium text-foreground">{formatCurrency(data.value, currency)}</span>
         </div>
       </div>
     );
@@ -354,14 +356,14 @@ export function SankeyFlowChart({
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Cash Flow</CardTitle>
+          <CardTitle className="text-sm font-medium">{translate("cashFlow")}</CardTitle>
           {subtitle && (
             <p className="text-xs text-muted-foreground">{subtitle}</p>
           )}
         </CardHeader>
         <CardContent className="flex h-[320px] items-center justify-center sm:h-[400px]">
           <p className="text-muted-foreground text-sm">
-            No transaction data available for cash flow visualization
+            {translate("noTransactionDataAvailableForCashFlowVisualization")}
           </p>
         </CardContent>
       </Card>
@@ -371,19 +373,19 @@ export function SankeyFlowChart({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Cash Flow</CardTitle>
+        <CardTitle className="text-sm font-medium">{translate("cashFlow")}</CardTitle>
         {subtitle && (
           <p className="text-xs text-muted-foreground">{subtitle}</p>
         )}
         {selectedNode && selectedTotal !== null && (
           <p className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <span className="font-medium text-foreground">
-              {selectedNode.name || "Unknown"}
+              {selectedNode.name || translate("unknown")}
             </span>
             <span className="font-mono">
               {formatCurrency(selectedTotal, currency)}
             </span>
-            <span>Click again to view transactions</span>
+            <span>{translate("clickAgainToViewTransactions")}</span>
           </p>
         )}
       </CardHeader>

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useRef, useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
@@ -43,11 +45,11 @@ export function PersonForm(props: {
     setError(null);
     if (!file) return;
     if (file.size > MAX_BYTES) {
-      setError("Image too large (max 2 MB)");
+      setError(translate("imageTooLargeMax2Mb"));
       return;
     }
     if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) {
-      setError("Unsupported image type");
+      setError(translate("unsupportedImageType"));
       return;
     }
     setPickedFile(file);
@@ -98,11 +100,11 @@ export function PersonForm(props: {
             size="sm"
             onClick={() => fileRef.current?.click()}
           >
-            {previewUrl ? "Change photo" : "Upload photo"}
+            {previewUrl ? translate("changePhoto") : translate("uploadPhoto")}
           </Button>
           {previewUrl && (
             <Button type="button" variant="ghost" size="sm" onClick={clearAvatar}>
-              Remove photo
+              {translate("removePhoto")}
             </Button>
           )}
           <input
@@ -118,18 +120,18 @@ export function PersonForm(props: {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div>
-        <Label>Name</Label>
+        <Label>{translate("name")}</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} required maxLength={255} />
       </div>
 
       <div>
-        <Label>Color (used as fallback when no photo)</Label>
+        <Label>{translate("colorUsedAsFallbackWhenNoPhoto")}</Label>
         <div className="flex gap-2 mt-1">
           {COLORS.map((c) => (
             <button
               type="button"
               key={c}
-              aria-label={`color ${c}`}
+              aria-label={translate("color", { c: c })}
               onClick={() => setColor(c)}
               className="h-7 w-7 rounded-full ring-offset-2"
               style={{
@@ -144,7 +146,7 @@ export function PersonForm(props: {
       <div className="flex gap-2 justify-end">
         {props.onCancel && (
           <Button type="button" variant="ghost" onClick={props.onCancel} disabled={busy}>
-            Cancel
+            {translate("cancel")}
           </Button>
         )}
         <Button type="submit" disabled={busy || name.trim().length === 0}>

@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import * as React from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -198,7 +200,7 @@ export function CommandPalette() {
     switch (pathname) {
       case "/":
         actions.push({
-          label: "Refresh data",
+          label: translate("refreshData"),
           icon: RiRefreshLine,
           onSelect: handleRefreshData,
         });
@@ -206,14 +208,14 @@ export function CommandPalette() {
       case "/transactions":
         if (onExportCSV) {
           actions.push({
-            label: "Export CSV",
+            label: translate("exportCsv"),
             icon: RiDownloadLine,
             onSelect: onExportCSV,
           });
         }
         if (onImportCsv) {
           actions.push({
-            label: "Import CSV",
+            label: translate("importCsv"),
             icon: RiUploadLine,
             onSelect: onImportCsv,
           });
@@ -222,7 +224,7 @@ export function CommandPalette() {
       case "/assets":
         if (onAddAsset) {
           actions.push({
-            label: "Add asset",
+            label: translate("addAsset9703e1"),
             icon: RiAddLine,
             onSelect: onAddAsset,
           });
@@ -314,18 +316,18 @@ export function CommandPalette() {
 
   // Navigation items for filtering
   const navigationItems = [
-    { label: "Dashboard", path: "/", icon: RiHomeLine, shortcut: "B" },
-    { label: "Transactions", path: "/transactions", icon: RiExchangeLine, shortcut: "T" },
-    { label: "Subscriptions", path: "/subscriptions", icon: RiLoopRightLine, shortcut: "S" },
-    { label: "Assets", path: "/assets", icon: RiWallet3Line, shortcut: "A" },
-    { label: "Settings", path: "/settings", icon: RiSettings3Line, shortcut: "D" },
+    { label: translate("dashboard"), path: "/", icon: RiHomeLine, shortcut: "B" },
+    { label: translate("transactions"), path: "/transactions", icon: RiExchangeLine, shortcut: "T" },
+    { label: translate("subscriptions"), path: "/subscriptions", icon: RiLoopRightLine, shortcut: "S" },
+    { label: translate("assets"), path: "/assets", icon: RiWallet3Line, shortcut: "A" },
+    { label: translate("settings"), path: "/settings", icon: RiSettings3Line, shortcut: "D" },
   ];
 
   // Theme items for filtering
   const themeItems = [
-    { label: "Light Mode", action: () => setTheme("light"), icon: RiSunLine },
-    { label: "Dark Mode", action: () => setTheme("dark"), icon: RiMoonLine },
-    { label: "Toggle Theme", action: () => setTheme(theme === "dark" ? "light" : "dark"), icon: theme === "dark" ? RiSunLine : RiMoonLine, shortcut: "M" },
+    { label: translate("lightMode"), action: () => setTheme("light"), icon: RiSunLine },
+    { label: translate("darkMode"), action: () => setTheme("dark"), icon: RiMoonLine },
+    { label: translate("toggleTheme"), action: () => setTheme(theme === "dark" ? "light" : "dark"), icon: theme === "dark" ? RiSunLine : RiMoonLine, shortcut: "M" },
   ];
 
   // Filter navigation items based on search
@@ -376,7 +378,7 @@ export function CommandPalette() {
         shouldFilter={false}
       >
         <CommandInput
-          placeholder="Search or type a command..."
+          placeholder={translate("searchOrTypeACommand")}
           value={search}
           onValueChange={setSearch}
         />
@@ -389,7 +391,7 @@ export function CommandPalette() {
             <>
               {/* Show "no results" when nothing matches */}
               {search && !hasSearchResults && !hasCommandResults && (
-                <CommandEmpty>No results found.</CommandEmpty>
+                <CommandEmpty>{translate("noResultsFounde9cc6d")}</CommandEmpty>
               )}
 
               {/* Search results - only show when searching with 2+ characters */}
@@ -481,7 +483,7 @@ export function CommandPalette() {
                             <div className="flex items-center gap-2 min-w-0">
                               <RiExchangeLine className="h-4 w-4 shrink-0 text-muted-foreground" />
                               <span className="truncate">
-                                {tx.merchant || tx.description || "Transaction"}
+                                {tx.merchant || tx.description || translate("transaction")}
                               </span>
                             </div>
                             <div className="flex items-center gap-3 shrink-0 ml-2">

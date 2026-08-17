@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState, useEffect, useRef } from "react";
 import {
@@ -89,10 +91,10 @@ export function DeleteConfirmationDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <RiDeleteBinLine className="size-4 shrink-0" />
-            Delete {transactionIds.length === 1 ? "Transaction" : `${transactionIds.length} Transactions`}
+            {translate("delete")} {transactionIds.length === 1 ? translate("transaction") : translate("transactions22e992", { value1: transactionIds.length })}
           </DialogTitle>
           <DialogDescription>
-            This action is permanent and cannot be undone.
+            {translate("thisActionIsPermanentAndCannotBeUndone")}
           </DialogDescription>
         </DialogHeader>
 
@@ -107,7 +109,7 @@ export function DeleteConfirmationDialog({
           ) : impact ? (
             <>
               <p className="text-xs text-muted-foreground">
-                Balance impact across {impact.accountImpacts.length} account
+                {translate("balanceImpactAcross")} {impact.accountImpacts.length} {translate("account")}
                 {impact.accountImpacts.length !== 1 ? "s" : ""}:
               </p>
               <div className="divide-y divide-border rounded-none border">
@@ -129,12 +131,12 @@ export function DeleteConfirmationDialog({
                       <div className="flex items-start gap-1.5 text-xs text-amber-600">
                         <RiAlertLine className="size-3.5 shrink-0 mt-0.5" />
                         <span>
-                          Anchored balance — deletion will create a reconciliation gap. Verify your balance after deletion.
+                          {translate("anchoredBalanceDeletionWillCreateAReconciliationGapVerify")}
                         </span>
                       </div>
                     ) : (
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>New balance</span>
+                        <span>{translate("newBalance")}</span>
                         <span className="font-mono">
                           {formatAmount(acc.projectedBalance, acc.currency)}
                         </span>
@@ -148,7 +150,7 @@ export function DeleteConfirmationDialog({
                 <div className="flex items-start gap-2 rounded-none border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
                   <RiErrorWarningLine className="size-4 shrink-0 mt-0.5" />
                   <span>
-                    One or more affected accounts have an anchored balance derived from known bank data. After deletion, the opening and closing balances on record may no longer agree with the remaining transactions.
+                    {translate("oneOrMoreAffectedAccountsHaveAnAnchoredBalance")}
                   </span>
                 </div>
               )}
@@ -161,14 +163,14 @@ export function DeleteConfirmationDialog({
         {/* Typed confirmation */}
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            Type{" "}
-            <span className="font-mono text-foreground">delete transactions</span>{" "}
-            to confirm:
+            {translate("type")}{" "}
+            <span className="font-mono text-foreground">{translate("deleteTransactions")}</span>{" "}
+            {translate("toConfirm12ef9b")}
           </p>
           <Input
             value={confirmInput}
             onChange={(e) => setConfirmInput(e.target.value)}
-            placeholder="delete transactions"
+            placeholder={translate("deleteTransactions")}
             className="font-mono text-xs"
             onKeyDown={(e) => {
               if (e.key === "Enter" && isConfirmed && !deleting) handleDelete();
@@ -182,7 +184,7 @@ export function DeleteConfirmationDialog({
             onClick={() => onOpenChange(false)}
             disabled={deleting}
           >
-            Cancel
+            {translate("cancel")}
           </Button>
           <Button
             variant="destructive"
@@ -192,15 +194,15 @@ export function DeleteConfirmationDialog({
             {deleting ? (
               <>
                 <RiLoader4Line className="size-4 animate-spin" />
-                Deleting…
+                {translate("deletingc7ac55")}
               </>
             ) : (
               <>
                 <RiDeleteBinLine className="size-4" />
-                Delete{" "}
+                {translate("delete")}{" "}
                 {transactionIds.length === 1
-                  ? "Transaction"
-                  : `${transactionIds.length} Transactions`}
+                  ? translate("transaction")
+                  : translate("transactions22e992", { value1: transactionIds.length })}
               </>
             )}
           </Button>

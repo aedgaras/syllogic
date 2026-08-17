@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { Suspense } from "react";
 import { Header } from "@/components/layout/header";
 import { ChartSkeleton, FiltersSkeleton, TableSkeleton } from "@/components/skeletons/page-skeletons";
@@ -18,7 +19,7 @@ export default async function CategorySpendingPage({ searchParams }: CategorySpe
 
   return (
     <>
-      <Header title="Category Spending" />
+      <Header title={translate("categorySpending")} />
       <Suspense
         key={JSON.stringify({ parsed, tableQueryState })}
         fallback={

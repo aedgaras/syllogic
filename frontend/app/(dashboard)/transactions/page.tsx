@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { Suspense } from "react";
 import { Header } from "@/components/layout/header";
 import { TableSkeleton, FiltersSkeleton } from "@/components/skeletons/page-skeletons";
@@ -16,7 +17,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
 
   return (
     <>
-      <Header title="Transactions" />
+      <Header title={translate("transactions")} />
       <div className="flex h-[calc(100vh-4rem)] flex-col gap-4 p-4 pt-0">
         <Suspense
           key={JSON.stringify(queryState)}

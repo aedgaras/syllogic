@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import type { ReportRun } from "@/lib/reports/types";
 import { RunStatusBadge } from "@/components/reports/RunStatusBadge";
@@ -28,18 +30,18 @@ export function ReportRunsTable({ runs }: ReportRunsTableProps) {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="break-words font-medium">{formatScheduledRun(run)}</p>
-                <p className="text-xs text-muted-foreground">Scheduled for</p>
+                <p className="text-xs text-muted-foreground">{translate("scheduledFor")}</p>
               </div>
               <RunStatusBadge status={run.status} />
             </div>
             <dl className="mt-3 grid gap-2 text-xs">
               <div className="min-w-0">
-                <dt className="uppercase text-muted-foreground">Finished</dt>
+                <dt className="uppercase text-muted-foreground">{translate("finished")}</dt>
                 <dd className="mt-0.5 break-words">{formatRunTime(run.finished_at)}</dd>
               </div>
               {run.error_message && (
                 <div className="min-w-0">
-                  <dt className="uppercase text-muted-foreground">Error</dt>
+                  <dt className="uppercase text-muted-foreground">{translate("error")}</dt>
                   <dd className="mt-0.5 break-words text-destructive">{run.error_message}</dd>
                 </div>
               )}
@@ -52,10 +54,10 @@ export function ReportRunsTable({ runs }: ReportRunsTableProps) {
         <table className="w-full min-w-[44rem] text-sm">
           <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
             <tr>
-              <th className="px-4 py-2">Scheduled for</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2">Finished</th>
-              <th className="px-4 py-2">Error</th>
+              <th className="px-4 py-2">{translate("scheduledFor")}</th>
+              <th className="px-4 py-2">{translate("status")}</th>
+              <th className="px-4 py-2">{translate("finished")}</th>
+              <th className="px-4 py-2">{translate("error")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">

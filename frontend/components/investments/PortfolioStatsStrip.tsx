@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 export function computeBestDay(
   series: number[],
 ): { delta: number; index: number } | null {
@@ -31,32 +32,32 @@ export function PortfolioStatsStrip({
 }) {
   const cells: { label: string; value: string; tone: Tone }[] = [
     {
-      label: "Cost basis",
+      label: translate("costBasis"),
       value: `${currencySymbol} ${costBasis.toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       tone: "neutral",
     },
     {
-      label: "Unrealized P&L",
+      label: translate("unrealizedPL"),
       value: `${unrealizedPnl >= 0 ? "▲ +" : "▼ -"}${currencySymbol} ${Math.abs(unrealizedPnl).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       tone: unrealizedPnl >= 0 ? "positive" : "negative",
     },
     {
-      label: "Return",
+      label: translate("return"),
       value: `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(1)}%`,
       tone: returnPct >= 0 ? "positive" : "negative",
     },
     {
-      label: "Holdings",
+      label: translate("holdings"),
       value: `${holdingsCount}`,
       tone: "neutral",
     },
     {
-      label: "Accounts",
+      label: translate("accounts"),
       value: `${accountsCount}`,
       tone: "neutral",
     },
     {
-      label: "Best day",
+      label: translate("bestDay"),
       value: bestDay
         ? `▲ +${currencySymbol} ${bestDay.delta.toLocaleString("en", { maximumFractionDigits: 0 })} (${bestDay.label})`
         : "—",

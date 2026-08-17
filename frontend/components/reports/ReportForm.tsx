@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -87,7 +89,7 @@ export function ReportForm({
       }
       router.push("/reports");
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Failed to save report. Please try again.");
+      setSubmitError(err instanceof Error ? err.message : translate("failedToSaveReportPleaseTryAgain"));
     }
   }
 
@@ -100,7 +102,7 @@ export function ReportForm({
       await sendTestReport(report.id);
       setSendTestSuccess(true);
     } catch (err) {
-      setSendTestError(err instanceof Error ? err.message : "Failed to send test. Please try again.");
+      setSendTestError(err instanceof Error ? err.message : translate("failedToSendTestPleaseTryAgain"));
     } finally {
       setSendingTest(false);
     }
@@ -116,7 +118,7 @@ export function ReportForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-5 text-foreground">
       <div>
-        <label className="block text-sm font-medium mb-1">Name</label>
+        <label className="block text-sm font-medium mb-1">{translate("name")}</label>
         <input
           {...register("name")}
           className="w-full border border-border bg-background text-foreground rounded px-3 py-2 text-sm placeholder:text-muted-foreground"
@@ -125,7 +127,7 @@ export function ReportForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">Accounts</label>
+        <label className="block text-sm font-medium mb-1">{translate("accounts")}</label>
         <AccountPicker
           accounts={availableAccounts}
           selectedIds={accountIds}
@@ -137,17 +139,17 @@ export function ReportForm({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
-          <label className="block text-sm font-medium mb-1">Mode</label>
+          <label className="block text-sm font-medium mb-1">{translate("mode")}</label>
           <select
             {...register("transaction_mode")}
             className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
           >
-            <option value="RECENT">Most recent</option>
-            <option value="TOP_N">Top N by amount</option>
+            <option value="RECENT">{translate("mostRecent")}</option>
+            <option value="TOP_N">{translate("topNByAmount")}</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Count</label>
+          <label className="block text-sm font-medium mb-1">{translate("count")}</label>
           <input
             type="number"
             {...register("transaction_count")}
@@ -158,35 +160,35 @@ export function ReportForm({
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Direction</label>
+          <label className="block text-sm font-medium mb-1">{translate("direction")}</label>
           <select
             {...register("transaction_direction")}
             className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
           >
-            <option value="ALL">All</option>
-            <option value="EXPENSE">Expenses</option>
-            <option value="INCOME">Income</option>
-            <option value="INFLOW">Inflows</option>
-            <option value="OUTFLOW">Outflows</option>
+            <option value="ALL">{translate("all6a7208")}</option>
+            <option value="EXPENSE">{translate("expenses")}</option>
+            <option value="INCOME">{translate("income1c89b1")}</option>
+            <option value="INFLOW">{translate("inflows")}</option>
+            <option value="OUTFLOW">{translate("outflows")}</option>
           </select>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium mb-1">Frequency</label>
+          <label className="block text-sm font-medium mb-1">{translate("frequency")}</label>
           <select
             {...register("frequency")}
             className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
           >
-            <option value="DAILY">Daily</option>
-            <option value="WEEKLY">Weekly</option>
-            <option value="BIWEEKLY">Biweekly</option>
-            <option value="MONTHLY">Monthly</option>
+            <option value="DAILY">{translate("daily")}</option>
+            <option value="WEEKLY">{translate("weekly")}</option>
+            <option value="BIWEEKLY">{translate("biweekly")}</option>
+            <option value="MONTHLY">{translate("monthly")}</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Time</label>
+          <label className="block text-sm font-medium mb-1">{translate("time")}</label>
           <input
             type="time"
             step={60}
@@ -198,7 +200,7 @@ export function ReportForm({
 
       {(frequency === "WEEKLY" || frequency === "BIWEEKLY") && (
         <div>
-          <label className="block text-sm font-medium mb-1">Day of week</label>
+          <label className="block text-sm font-medium mb-1">{translate("dayOfWeek")}</label>
           <select
             {...register("send_day_of_week")}
             className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
@@ -217,7 +219,7 @@ export function ReportForm({
 
       {frequency === "MONTHLY" && (
         <div>
-          <label className="block text-sm font-medium mb-1">Day of month</label>
+          <label className="block text-sm font-medium mb-1">{translate("dayOfMonth")}</label>
           <input
             type="number"
             min={1}
@@ -232,16 +234,16 @@ export function ReportForm({
       )}
 
       <div>
-        <label className="block text-sm font-medium mb-1">Recipients</label>
+        <label className="block text-sm font-medium mb-1">{translate("recipients")}</label>
         <div className="mb-2 flex flex-col gap-2 sm:flex-row">
           <input
             value={recipientDraft}
             onChange={(e) => setRecipientDraft(e.target.value)}
-            placeholder="name@example.com"
+            placeholder={translate("nameExampleCom")}
             className="min-w-0 flex-1 border border-border bg-background text-foreground rounded px-3 py-2 text-sm placeholder:text-muted-foreground"
           />
           <Button type="button" variant="outline" className="sm:w-auto" onClick={addRecipient}>
-            Add
+            {translate("add")}
           </Button>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -275,17 +277,17 @@ export function ReportForm({
       <div>
         <label className="flex items-center gap-2 text-sm font-medium">
           <input type="checkbox" {...register("is_active")} />
-          Active
+          {translate("active")}
         </label>
       </div>
 
       <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:gap-3">
         <Button type="submit" disabled={isSubmitting || accountsLoading || accountsError}>
-          {report ? "Save changes" : "Create report"}
+          {report ? translate("saveChanges") : translate("createReport")}
         </Button>
         {report && (
           <Button type="button" variant="outline" onClick={handleSendTest} disabled={sendingTest}>
-            {sendingTest ? "Sending…" : "Send test now"}
+            {sendingTest ? translate("sending") : translate("sendTestNow")}
           </Button>
         )}
       </div>
@@ -293,7 +295,7 @@ export function ReportForm({
       {sendTestError && <p className="text-xs text-destructive">{sendTestError}</p>}
       {sendTestSuccess && (
         <p className="text-xs text-muted-foreground">
-          Test queued — check the Runs tab for delivery status.
+          {translate("testQueuedCheckTheRunsTabForDeliveryStatus")}
         </p>
       )}
     </form>

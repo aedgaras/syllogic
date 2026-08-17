@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { RiLoader4Line } from "@remixicon/react";
 import { Progress } from "@/components/ui/progress";
 
@@ -21,7 +22,7 @@ export function ImportProgressView({
       <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
           <RiLoader4Line className="h-4 w-4 shrink-0 animate-spin" />
-          <span>Importing transactions</span>
+          <span>{translate("importingTransactions")}</span>
         </div>
         {progress !== null && (
           <span className="font-mono text-xs tabular-nums">{progress}%</span>
@@ -30,7 +31,7 @@ export function ImportProgressView({
       {progress !== null && <Progress value={progress} className="h-1.5" />}
       {processedRows !== null && totalRows !== null && (
         <span className="font-mono text-xs tabular-nums text-muted-foreground">
-          {processedRows} / {totalRows} rows
+          {processedRows} / {totalRows} {translate("rows")}
         </span>
       )}
     </div>

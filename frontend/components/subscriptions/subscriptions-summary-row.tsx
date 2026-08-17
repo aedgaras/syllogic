@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import type { SubscriptionListRow as SubscriptionOrSuggestion } from "@/features/subscriptions/public";
 import { calculateMonthlyEquivalent, getCurrencyFallback } from "./subscription-math";
@@ -23,7 +25,7 @@ export function SubscriptionsSummaryRow({
   return (
     <div className="flex flex-col gap-2 border-t bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <span className="text-sm font-medium text-muted-foreground">
-        Monthly Total
+        {translate("monthlyTotal")}
       </span>
       <span className="text-sm font-mono font-semibold">
         {monthlyTotal.toFixed(2)} {currency}

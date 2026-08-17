@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import { RiDeleteBinLine, RiKey2Line, RiSave3Line } from "@remixicon/react";
@@ -34,7 +36,7 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
   async function handleSave() {
     const normalized = apiKey.trim();
     if (!normalized) {
-      toast.error("Enter an LLM API key");
+      toast.error(translate("enterAnLlmApiKey"));
       return;
     }
 
@@ -42,14 +44,14 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
     try {
       const result = await updateOpenAiApiKey(normalized);
       if (!result.success || !result.settings) {
-        toast.error(result.error || "Failed to save LLM API key");
+        toast.error(result.error || translate("failedToSaveLlmApiKey"));
         return;
       }
       setOpenAiSettings(result.settings);
       setApiKey("");
-      toast.success("LLM API key saved");
+      toast.success(translate("llmApiKeySaved"));
     } catch {
-      toast.error("Failed to save LLM API key");
+      toast.error(translate("failedToSaveLlmApiKey"));
     } finally {
       setSaving(false);
     }
@@ -60,14 +62,14 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
     try {
       const result = await clearOpenAiApiKey();
       if (!result.success || !result.settings) {
-        toast.error(result.error || "Failed to remove LLM API key");
+        toast.error(result.error || translate("failedToRemoveLlmApiKey"));
         return;
       }
       setOpenAiSettings(result.settings);
       setApiKey("");
-      toast.success("LLM API key removed from settings");
+      toast.success(translate("llmApiKeyRemovedFromSettings"));
     } catch {
-      toast.error("Failed to remove LLM API key");
+      toast.error(translate("failedToRemoveLlmApiKey"));
     } finally {
       setClearing(false);
     }
@@ -78,16 +80,16 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
       <div className="border border-border p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <Label htmlFor="tutorials-enabled">Tours and tutorials</Label>
+            <Label htmlFor="tutorials-enabled">{translate("toursAndTutorials")}</Label>
             <p className="text-xs text-muted-foreground">
-              Show page tours, onboarding tips, and the sidebar Help tour controls.
+              {translate("showPageToursOnboardingTipsAndTheSidebarHelp")}
             </p>
           </div>
           <Switch
             id="tutorials-enabled"
             checked={tutorialsEnabled}
             onCheckedChange={setTutorialsEnabled}
-            aria-label="Enable tours and tutorials"
+            aria-label={translate("enableToursAndTutorials")}
           />
         </div>
       </div>
@@ -97,11 +99,10 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
           <div className="space-y-1">
             <Label htmlFor="openai-api-key" className="flex items-center gap-2">
               <RiKey2Line className="h-4 w-4" />
-              LLM API key
+              {translate("llmApiKey")}
             </Label>
             <p className="text-xs text-muted-foreground">
-              Used by AI categorization. OpenAI and OpenAI-compatible providers are supported.
-              The saved key is encrypted and is never shown again.
+              {translate("usedByAiCategorizationOpenaiAndOpenaiCompatibleProviders")}
             </p>
           </div>
           <div className="shrink-0 border border-border px-2 py-1 text-xs">
@@ -117,26 +118,26 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
 
         {openAiSettings.environmentConfigured && openAiSettings.source !== "database" && (
           <p className="border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            A deployment key is currently active. Saving a key here will override it at runtime.
+            {translate("aDeploymentKeyIsCurrentlyActiveSavingAKey")}
           </p>
         )}
 
         <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
-          <p>Provider: {openAiSettings.provider === "custom" ? "Custom endpoint" : "OpenAI"}</p>
-          <p>Model: {openAiSettings.model}</p>
-          {openAiSettings.baseUrl && <p className="break-all sm:col-span-2">Endpoint: {openAiSettings.baseUrl}</p>}
+          <p>{translate("provider")} {openAiSettings.provider === "custom" ? translate("customEndpoint") : translate("openai")}</p>
+          <p>{translate("model")} {openAiSettings.model}</p>
+          {openAiSettings.baseUrl && <p className="break-all sm:col-span-2">{translate("endpoint")} {openAiSettings.baseUrl}</p>}
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="openai-api-key" className="text-xs">
-            New key
+            {translate("newKey")}
           </Label>
           <Input
             id="openai-api-key"
             type="password"
             inputMode="text"
             autoComplete="off"
-            placeholder="API key or local placeholder"
+            placeholder={translate("apiKeyOrLocalPlaceholder")}
             value={apiKey}
             onChange={(event) => setApiKey(event.target.value)}
             disabled={saving || clearing}
@@ -146,7 +147,7 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
         <div className="flex flex-wrap gap-2">
           <Button onClick={handleSave} disabled={saving || clearing || !apiKey.trim()}>
             <RiSave3Line />
-            {saving ? "Saving..." : "Save key"}
+            {saving ? translate("saving") : translate("saveKey")}
           </Button>
           <Button
             type="button"
@@ -155,7 +156,7 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
             disabled={saving || clearing || !openAiSettings.databaseConfigured}
           >
             <RiDeleteBinLine />
-            {clearing ? "Removing..." : "Remove saved key"}
+            {clearing ? translate("removing") : translate("removeSavedKey")}
           </Button>
         </div>
       </div>

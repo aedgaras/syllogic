@@ -1,3 +1,4 @@
+import { t as translate } from "@/i18n/translate";
 import { Column, Img, Row, Section, Text } from "@react-email/components";
 import { fmtMoney, light } from "./tokens";
 
@@ -14,7 +15,7 @@ export function BalancesSection({ accounts }: { accounts: BalanceItem[] }) {
   return (
     <Section style={{ padding: "26px 28px 0" }}>
       <Text className="sy-muted" style={{ fontSize: "10px", letterSpacing: "0.14em", textTransform: "uppercase", color: light.mutedForeground, margin: "0 0 10px" }}>
-        Accounts
+        {translate("accounts")}
       </Text>
       {accounts.map((a, i) => (
         <Row

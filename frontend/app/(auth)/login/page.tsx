@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -138,7 +140,7 @@ function LoginPageContent() {
       });
 
       if (result.error) {
-        setError(result.error.message || "Failed to sign in");
+        setError(result.error.message || translate("failedToSignIn"));
         return;
       }
 
@@ -153,7 +155,7 @@ function LoginPageContent() {
       // calling router.refresh() here would redundantly re-render it a second time.
       router.push("/");
     } catch {
-      setError("An unexpected error occurred");
+      setError(translate("anUnexpectedErrorOccurred"));
     } finally {
       setIsLoading(false);
     }
@@ -169,11 +171,11 @@ function LoginPageContent() {
         errorCallbackURL: "/login?oidc_error=1",
       });
       if (result.error) {
-        setError(result.error.message || "Single sign-on failed");
+        setError(result.error.message || translate("singleSignOnFailed"));
         setIsLoading(false);
       }
     } catch {
-      setError("Single sign-on failed");
+      setError(translate("singleSignOnFailed"));
       setIsLoading(false);
     }
   };
@@ -181,9 +183,9 @@ function LoginPageContent() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Login to your account</CardTitle>
+        <CardTitle>{translate("loginToYourAccount")}</CardTitle>
         <CardDescription>
-          Enter your email below to login to your account
+          {translate("enterYourEmailBelowToLoginToYourAccount")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -196,11 +198,11 @@ function LoginPageContent() {
               disabled={isLoading}
               onClick={onOidcSignIn}
             >
-              Continue with {oidcConfig.displayName}
+              {translate("continueWith")} {oidcConfig.displayName}
             </Button>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <div className="h-px flex-1 bg-border" />
-              <span>or use email</span>
+              <span>{translate("orUseEmail")}</span>
               <div className="h-px flex-1 bg-border" />
             </div>
           </div>
@@ -214,32 +216,31 @@ function LoginPageContent() {
             )}
             {searchParams.get("registration") === "disabled" && (
               <div className="bg-muted p-3 text-sm text-muted-foreground">
-                New account registration is currently disabled.
+                {translate("newAccountRegistrationIsCurrentlyDisabled")}
               </div>
             )}
             {demoModeRequested && demoEmail && demoPassword && (
               <div className="bg-muted border border-border p-3 text-sm space-y-1">
-                <p className="font-medium text-foreground">Demo account credentials</p>
+                <p className="font-medium text-foreground">{translate("demoAccountCredentials")}</p>
                 <p className="text-muted-foreground">
-                  Email: <span className="text-foreground font-mono">{demoEmail}</span>
+                  {translate("email")} <span className="text-foreground font-mono">{demoEmail}</span>
                 </p>
                 <p className="text-muted-foreground">
-                  Password: <span className="text-foreground font-mono">{demoPassword}</span>
+                  {translate("password")} <span className="text-foreground font-mono">{demoPassword}</span>
                 </p>
               </div>
             )}
             {demoModeRequested && !demoPassword && (
               <div className="bg-muted p-3 text-sm">
-                Demo mode link detected, but demo credentials are not configured
-                on this deployment.
+                {translate("demoModeLinkDetectedButDemoCredentialsAreNot")}
               </div>
             )}
             <Field>
-              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <FieldLabel htmlFor="email">{translate("email84add5")}</FieldLabel>
               <Input
                 id="email"
                 type="email"
-                placeholder="m@example.com"
+                placeholder={translate("mExampleCom")}
                 {...register("email")}
                 disabled={isLoading}
               />
@@ -249,7 +250,7 @@ function LoginPageContent() {
             </Field>
             <Field>
               <div className="flex items-center">
-                <FieldLabel htmlFor="password">Password</FieldLabel>
+                <FieldLabel htmlFor="password">{translate("password8be3c9")}</FieldLabel>
               </div>
               <Input
                 id="password"
@@ -263,13 +264,13 @@ function LoginPageContent() {
             </Field>
             <Field>
               <Button type="submit" disabled={isLoading} className="w-full">
-                {isLoading ? "Signing in..." : "Login"}
+                {isLoading ? translate("signingIn") : translate("login")}
               </Button>
               {signUpsEnabled && (
                 <FieldDescription className="text-center">
-                  Don&apos;t have an account?{" "}
+                  {translate("donTHaveAnAccount")}{" "}
                   <Link href="/register" className="underline underline-offset-4">
-                    Sign up
+                    {translate("signUp")}
                   </Link>
                 </FieldDescription>
               )}
@@ -285,8 +286,8 @@ function LoginPageFallback() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Login to your account</CardTitle>
-        <CardDescription>Loading login form...</CardDescription>
+        <CardTitle>{translate("loginToYourAccount")}</CardTitle>
+        <CardDescription>{translate("loadingLoginForm")}</CardDescription>
       </CardHeader>
       <CardContent />
     </Card>

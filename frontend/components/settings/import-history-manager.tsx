@@ -1,4 +1,6 @@
 "use client";
+import { t as translate } from "@/i18n/translate";
+
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -57,19 +59,19 @@ export function ImportHistoryManager({ initialImports, canDelete = true }: Impor
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm">
             <RiUploadLine className="size-4" />
-            Import History
+            {translate("importHistory")}
           </CardTitle>
           <CardDescription>
-            All CSV file imports for your accounts. Revert an import to permanently delete all transactions it brought in.
+            {translate("allCsvFileImportsForYourAccountsRevertAn")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {initialImports.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
               <RiInboxLine className="size-8 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">No imports yet</p>
+              <p className="text-sm text-muted-foreground">{translate("noImportsYet")}</p>
               <p className="text-xs text-muted-foreground">
-                CSV imports will appear here once you upload a file.
+                {translate("csvImportsWillAppearHereOnceYouUploadA")}
               </p>
             </div>
           ) : (
@@ -95,7 +97,7 @@ export function ImportHistoryManager({ initialImports, canDelete = true }: Impor
                               <RiAlertLine className="size-3.5 shrink-0 text-amber-500" />
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                              <p>Some transactions were manually re-categorized</p>
+                              <p>{translate("someTransactionsWereManuallyReCategorized")}</p>
                             </TooltipContent>
                           </Tooltip>
                         )}
@@ -109,7 +111,7 @@ export function ImportHistoryManager({ initialImports, canDelete = true }: Impor
                         {imp.transactionCount > 0 && (
                           <>
                             <span>·</span>
-                            <span className="font-mono">{imp.transactionCount} transaction{imp.transactionCount !== 1 ? "s" : ""}</span>
+                            <span className="font-mono">{imp.transactionCount} {translate("transaction41c48b")}{imp.transactionCount !== 1 ? "s" : ""}</span>
                           </>
                         )}
                       </div>
@@ -118,7 +120,7 @@ export function ImportHistoryManager({ initialImports, canDelete = true }: Impor
                     {/* Right: status + action */}
                     <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">
                       <Badge variant={statusBadgeVariant(imp.status)} className="text-xs capitalize">
-                        {imp.status ?? "unknown"}
+                        {imp.status ?? translate("unknown50d8b4")}
                       </Badge>
 
                       {canRevert ? (
@@ -129,7 +131,7 @@ export function ImportHistoryManager({ initialImports, canDelete = true }: Impor
                           onClick={() => setSelectedImport(imp)}
                         >
                           <RiDeleteBinLine className="size-3.5 mr-1" />
-                          Revert
+                          {translate("revert")}
                         </Button>
                       ) : (
                         <Tooltip>
@@ -141,15 +143,15 @@ export function ImportHistoryManager({ initialImports, canDelete = true }: Impor
                               />
                             }
                           >
-                            Revert
+                            {translate("revert")}
                           </TooltipTrigger>
                           <TooltipContent side="left">
                             <p>
                               {!canDelete
-                                ? "Reverting imports is disabled for the demo account"
+                                ? translate("revertingImportsIsDisabledForTheDemoAccount")
                                 : imp.transactionCount === 0
-                                ? "No linked transactions — this import may predate transaction tracking"
-                                : "Cannot revert"}
+                                ? translate("noLinkedTransactionsThisImportMayPredateTransactionTracking")
+                                : translate("cannotRevert")}
                             </p>
                           </TooltipContent>
                         </Tooltip>
