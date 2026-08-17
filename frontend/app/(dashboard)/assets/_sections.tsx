@@ -4,7 +4,12 @@ import { getVehicles } from "@/lib/actions/vehicles";
 import { getPeople, getOwnersForEntities } from "@/lib/people";
 import { avatarUrl } from "@/lib/people/avatars";
 import { requireAuth } from "@/lib/auth-helpers";
-import { AssetManagement } from "./asset-management";
+import { AssetManagement } from "@/features/assets/public";
+import {
+  toAccountAssetViewModel,
+  toPropertyAssetViewModel,
+  toVehicleAssetViewModel,
+} from "@/features/assets/server";
 
 function ownerIdsByEntity(
   map: Map<string, { personId: string }[]>
@@ -43,15 +48,14 @@ export async function AssetsSection() {
     avatarUrl: avatarUrl(p.avatarPath),
   }));
 
-  return (
-    <AssetManagement
-      initialAccounts={accounts}
-      initialProperties={properties}
-      initialVehicles={vehicles}
-      initialPeople={people}
-      initialAccountOwnerIds={ownerIdsByEntity(accountOwnersMap)}
-      initialPropertyOwnerIds={ownerIdsByEntity(propertyOwnersMap)}
-      initialVehicleOwnerIds={ownerIdsByEntity(vehicleOwnersMap)}
-    />
-  );
+  const accountOwnerIds = ownerIdsByEntity(accountOwnersMap);
+  const propertyOwnerIds = ownerIdsByEntity(propertyOwnersMap);
+  const vehicleOwnerIds = ownerIdsByEntity(vehicleOwnersMap);
+
+  return <AssetManagement model={{
+    accounts: accounts.map((account) => toAccountAssetViewModel(account, accountOwnerIds[account.id])),
+    properties: properties.map((property) => toPropertyAssetViewModel(property, propertyOwnerIds[property.id])),
+    vehicles: vehicles.map((vehicle) => toVehicleAssetViewModel(vehicle, vehicleOwnerIds[vehicle.id])),
+    people,
+  }} />;
 }

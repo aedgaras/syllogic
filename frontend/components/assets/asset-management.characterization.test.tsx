@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AssetManagement } from "@/app/(dashboard)/assets/asset-management";
+import { AssetManagement } from "@/features/assets/public";
 
 const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
@@ -16,10 +16,25 @@ vi.mock("sonner", () => ({
 }));
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({
-    fetchQuery: ({ queryFn }: { queryFn: () => unknown }) => queryFn(),
-    invalidateQueries: vi.fn(),
+    invalidateQueries: vi.fn().mockResolvedValue(undefined),
   }),
-  useMutation: ({ mutationFn }: { mutationFn: (variables: unknown) => unknown }) => ({ mutateAsync: mutationFn }),
+  useQuery: ({ queryKey }: { queryKey: string[] }) => ({
+    data: queryKey[1] === "logo-lookup-enabled" ? false : [{ personId: "person-1", share: null }],
+    isSuccess: true,
+  }),
+  useMutation: ({ mutationFn, onSuccess, onError }: { mutationFn: (variables?: unknown) => Promise<unknown>; onSuccess?: () => void; onError?: (error: Error) => void }) => ({
+    mutateAsync: async (variables?: unknown) => {
+      try {
+        const result = await mutationFn(variables);
+        await onSuccess?.();
+        return result;
+      } catch (error) {
+        onError?.(error as Error);
+        throw error;
+      }
+    },
+    isPending: false,
+  }),
 }));
 vi.mock("@/lib/actions/accounts", () => ({
   updateAccount: mocks.updateAccount,
@@ -33,7 +48,6 @@ vi.mock("@/lib/people/client", () => ({
   fetchOwners: vi.fn().mockResolvedValue([{ personId: "person-1", share: null }]),
   ownersQueryKey: (type: string, id: string) => ["owners", type, id],
   saveOwners: mocks.saveOwners,
-  usePeopleQuery: () => ({ data: [{ id: "person-1", name: "Owner", kind: "self" }] }),
 }));
 vi.mock("@/components/command-palette-context", () => ({ useRegisterCommandPaletteCallbacks: vi.fn() }));
 vi.mock("@/components/assets/add-asset-dialog", () => ({ AddAssetDialog: () => null }));
@@ -79,8 +93,16 @@ const account = {
   accountType: "checking",
   institution: "Bank",
   currency: "EUR",
-  functionalBalance: "100.00",
+  balance: "100.00",
   logo: null,
+  ownerIds: ["person-1"],
+};
+
+const model = {
+  accounts: [account],
+  properties: [],
+  vehicles: [],
+  people: [{ id: "person-1", name: "Owner", kind: "self" }],
 };
 
 describe("AssetManagement account workflow characterization", () => {
@@ -92,7 +114,7 @@ describe("AssetManagement account workflow characterization", () => {
   });
 
   it("hydrates the edit form, saves account fields and ownership, then refreshes", async () => {
-    render(<AssetManagement initialAccounts={[account] as never} initialProperties={[]} initialVehicles={[]} />);
+    render(<AssetManagement model={model} />);
 
     fireEvent.click(screen.getAllByRole("button", { name: /edit/i })[0]);
     const name = await screen.findByLabelText("Account Name");
@@ -110,7 +132,7 @@ describe("AssetManagement account workflow characterization", () => {
   });
 
   it("requires confirmation, deletes the selected account, and refreshes", async () => {
-    render(<AssetManagement initialAccounts={[account] as never} initialProperties={[]} initialVehicles={[]} />);
+    render(<AssetManagement model={model} />);
 
     fireEvent.click(screen.getAllByRole("button", { name: /delete/i })[0]);
     expect(await screen.findByRole("heading", { name: "Delete Account" })).toBeInTheDocument();
