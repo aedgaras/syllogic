@@ -1,5 +1,6 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { renderWithQueryClient as render } from "@/test/render";
 import { HoldingsTableHF } from "./HoldingsTableHF";
 import type { Holding } from "@/lib/api/investments";
 
@@ -64,7 +65,7 @@ describe("HoldingsTableHF", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Filter ETF" }));
     expect(screen.queryByText("MSFT")).toBeNull();
-    expect(screen.getByText("VUAA")).toBeTruthy();
+    expect(screen.getAllByText("VUAA")).toHaveLength(2);
   });
   it("flags stale rows with amber background", () => {
     render(
@@ -76,7 +77,7 @@ describe("HoldingsTableHF", () => {
       />,
     );
     // Find the row containing MSFT (the stale holding) and check class
-    const msftCell = screen.getByText("MSFT");
+    const msftCell = within(screen.getByRole("table")).getByText("MSFT");
     const row = msftCell.closest("tr");
     expect(row?.className).toMatch(/bg-amber/);
   });
@@ -94,7 +95,7 @@ describe("HoldingsTableHF row navigation", () => {
         portfolioCurrencySymbol="€"
       />,
     );
-    fireEvent.click(screen.getByText("VUAA"));
+    fireEvent.click(within(screen.getByRole("table")).getByText("VUAA"));
     expect(mockPush).toHaveBeenCalledWith("/investments/1");
   });
 
@@ -111,7 +112,7 @@ describe("HoldingsTableHF row navigation", () => {
     fireEvent.click(triggers[0]);
     expect(mockPush).not.toHaveBeenCalled();
     // Menu should render Edit/Delete for manual rows
-    expect(await screen.findByText("Edit")).toBeTruthy();
+    expect(await screen.findByRole("menuitem", { name: "Edit" })).toBeTruthy();
   });
 
   it("calls onDelete with id when Delete menu item then confirm clicked", async () => {
@@ -125,10 +126,10 @@ describe("HoldingsTableHF row navigation", () => {
         onDelete={onDelete}
       />,
     );
-    // MSFT (id "2") sorts first by value (2000 > 1000)
-    const triggers = screen.getAllByRole("button", { name: "Row actions" });
-    fireEvent.click(triggers[0]);
-    const deleteItem = await screen.findByText("Delete");
+    const msftRow = within(screen.getByRole("table")).getByText("MSFT").closest("tr");
+    expect(msftRow).not.toBeNull();
+    fireEvent.click(within(msftRow!).getByRole("button", { name: "Row actions" }));
+    const deleteItem = await screen.findByRole("menuitem", { name: "Delete" });
     fireEvent.click(deleteItem);
     // AlertDialog "Delete" button confirms
     const confirmBtn = await screen.findByRole("button", { name: "Delete" });

@@ -6,7 +6,7 @@ const scriptPath = path.resolve(__dirname, "../render-report.ts");
 const cwd = path.resolve(__dirname, "../..");
 
 function runRenderReport(input: string) {
-  return spawnSync("npx", ["tsx", scriptPath], {
+  return spawnSync(process.execPath, ["--import", "tsx", scriptPath], {
     input,
     cwd,
     encoding: "utf-8",
