@@ -365,6 +365,7 @@ export function TransactionTable({
         onDeleteTransaction={onDeleteTransaction}
         categories={categories}
         canDelete={canDelete}
+        canEdit={canDelete}
       />
     </>
   );

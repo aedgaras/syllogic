@@ -4,7 +4,10 @@ import type { Category, Account } from "@/lib/db/schema";
  * Reusable category subset for UI components
  * Contains only the fields needed for display purposes
  */
-export type CategoryDisplay = Pick<Category, "id" | "name" | "color" | "icon">;
+export type CategoryDisplay = Pick<
+  Category,
+  "id" | "name" | "color" | "icon" | "categoryType" | "hideFromSelection"
+>;
 
 /**
  * Account subset for filters and dropdowns

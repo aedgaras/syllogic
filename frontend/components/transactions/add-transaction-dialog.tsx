@@ -31,9 +31,13 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { createTransaction, getUserAccounts } from "@/lib/actions/transactions";
+import {
+  createTransaction,
+  getUserAccounts,
+  updateTransaction,
+  type TransactionWithRelations,
+} from "@/lib/actions/transactions";
 import { getUserCategories } from "@/lib/actions/categories";
-import type { Category } from "@/lib/db/schema";
 type Account = { id: string; name: string; institution: string | null; accountType: string; currency: string | null };
 import type { CategoryDisplay } from "@/types";
 import { getCategoriesForTransactionType } from "@/lib/utils/category-utils";
@@ -42,13 +46,25 @@ interface AddTransactionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categories?: CategoryDisplay[];
+  transaction?: TransactionWithRelations | null;
+  onTransactionUpdated?: (
+    id: string,
+    updates: Partial<TransactionWithRelations>
+  ) => void;
 }
 
-export function AddTransactionDialog({ open, onOpenChange, categories: propCategories }: AddTransactionDialogProps) {
+export function AddTransactionDialog({
+  open,
+  onOpenChange,
+  categories: propCategories,
+  transaction,
+  onTransactionUpdated,
+}: AddTransactionDialogProps) {
   const router = useRouter();
+  const isEditing = Boolean(transaction);
   const [isLoading, setIsLoading] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<CategoryDisplay[]>([]);
 
   // Form state
   const [transactionType, setTransactionType] = useState<"debit" | "credit">("debit");
@@ -67,20 +83,27 @@ export function AddTransactionDialog({ open, onOpenChange, categories: propCateg
 
         // Use prop categories if available, otherwise fetch
         if (propCategories && propCategories.length > 0) {
-          setCategories(propCategories as Category[]);
+          setCategories(propCategories);
         } else {
           const categoriesData = await getUserCategories();
           setCategories(categoriesData);
         }
 
-        // Set default account if available
-        if (accountsData.length > 0 && !accountId) {
-          setAccountId(accountsData[0].id);
+        if (transaction) {
+          setTransactionType(transaction.transactionType === "credit" ? "credit" : "debit");
+          setAccountId(transaction.accountId);
+          setAmount(Math.abs(transaction.amount).toFixed(2));
+          setDescription(transaction.description || "");
+          setCategoryId(transaction.categoryId || "");
+          setBookedAt(new Date(transaction.bookedAt));
+          setMerchant(transaction.merchant || "");
+        } else if (accountsData.length > 0) {
+          setAccountId((currentAccountId) => currentAccountId || accountsData[0].id);
         }
       };
       loadData();
     }
-  }, [open, accountId, propCategories]);
+  }, [open, propCategories, transaction]);
 
   const resetForm = () => {
     setTransactionType("debit");
@@ -89,6 +112,16 @@ export function AddTransactionDialog({ open, onOpenChange, categories: propCateg
     setCategoryId("");
     setBookedAt(new Date());
     setMerchant("");
+  };
+
+  const handleTransactionTypeChange = (nextType: "debit" | "credit") => {
+    setTransactionType(nextType);
+    if (categoryId) {
+      const nextCategories = getCategoriesForTransactionType(categories, nextType);
+      if (!nextCategories.some((category) => category.id === categoryId)) {
+        setCategoryId("");
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,23 +146,62 @@ export function AddTransactionDialog({ open, onOpenChange, categories: propCateg
     setIsLoading(true);
 
     try {
-      const result = await createTransaction({
+      const transactionInput = {
         accountId,
         amount: parsedAmount,
         description: description.trim(),
-        categoryId: categoryId || undefined,
+        categoryId: categoryId || null,
         bookedAt,
         transactionType,
         merchant: merchant.trim() || undefined,
-      });
+      };
+      const result = transaction
+        ? await updateTransaction({
+            ...transactionInput,
+            transactionId: transaction.id,
+          })
+        : await createTransaction({
+            ...transactionInput,
+            categoryId: transactionInput.categoryId || undefined,
+          });
 
       if (result.success) {
-        toast.success("Transaction added");
-        resetForm();
+        if (transaction) {
+          const selectedAccount = accounts.find((account) => account.id === accountId);
+          const selectedCategory = categoryId
+            ? categories.find((category) => category.id === categoryId) || null
+            : null;
+          onTransactionUpdated?.(transaction.id, {
+            accountId,
+            account: selectedAccount
+              ? {
+                  id: selectedAccount.id,
+                  name: selectedAccount.name,
+                  institution: selectedAccount.institution,
+                  accountType: selectedAccount.accountType,
+                  logo: selectedAccount.id === transaction.account?.id
+                    ? transaction.account.logo
+                    : null,
+                }
+              : transaction.account,
+            amount: transactionType === "debit" ? -parsedAmount : parsedAmount,
+            currency: selectedAccount?.currency || transaction.currency,
+            description: description.trim(),
+            merchant: merchant.trim() || null,
+            categoryId: categoryId || null,
+            category: selectedCategory,
+            bookedAt,
+            transactionType,
+          });
+          toast.success("Transaction updated");
+        } else {
+          toast.success("Transaction added");
+          resetForm();
+        }
         onOpenChange(false);
         router.refresh();
       } else {
-        toast.error(result.error || "Failed to add transaction");
+        toast.error(result.error || `Failed to ${isEditing ? "update" : "add"} transaction`);
       }
     } catch {
       toast.error("An error occurred. Please try again.");
@@ -146,9 +218,11 @@ export function AddTransactionDialog({ open, onOpenChange, categories: propCateg
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Add Transaction</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit Transaction" : "Add Transaction"}</DialogTitle>
           <DialogDescription>
-            Enter the details for your transaction.
+            {isEditing
+              ? "Update the details for your transaction."
+              : "Enter the details for your transaction."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -159,7 +233,7 @@ export function AddTransactionDialog({ open, onOpenChange, categories: propCateg
                 type="button"
                 variant={transactionType === "debit" ? "default" : "outline"}
                 className="flex-1"
-                onClick={() => setTransactionType("debit")}
+                onClick={() => handleTransactionTypeChange("debit")}
               >
                 <RiArrowDownLine className="mr-2 h-4 w-4" />
                 Expense
@@ -168,7 +242,7 @@ export function AddTransactionDialog({ open, onOpenChange, categories: propCateg
                 type="button"
                 variant={transactionType === "credit" ? "default" : "outline"}
                 className="flex-1"
-                onClick={() => setTransactionType("credit")}
+                onClick={() => handleTransactionTypeChange("credit")}
               >
                 <RiArrowUpLine className="mr-2 h-4 w-4" />
                 Income
@@ -301,7 +375,9 @@ export function AddTransactionDialog({ open, onOpenChange, categories: propCateg
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading || accounts.length === 0}>
-              {isLoading ? "Adding..." : "Add Transaction"}
+              {isLoading
+                ? isEditing ? "Saving..." : "Adding..."
+                : isEditing ? "Save Changes" : "Add Transaction"}
             </Button>
           </DialogFooter>
         </form>

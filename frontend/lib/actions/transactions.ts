@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { eq, and, desc, inArray, notInArray, sql, gte, lte, gt, asc, ne, or, ilike, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { transactions, accounts, categories, accountBalances, csvImports } from "@/lib/db/schema";
+import { transactions, accounts, categories, accountBalances, exchangeRates, users } from "@/lib/db/schema";
 import { requireAuth, getAuthenticatedSession } from "@/lib/auth-helpers";
 import { isDemoRestrictedUserEmail, DEMO_RESTRICTED_ACTION_ERROR } from "@/lib/demo-access";
 import { getBackendBaseUrl } from "@/lib/backend-url";
@@ -24,6 +24,11 @@ export interface CreateTransactionInput {
   bookedAt: Date;
   transactionType: "debit" | "credit";
   merchant?: string;
+}
+
+export interface UpdateTransactionInput extends Omit<CreateTransactionInput, "categoryId"> {
+  transactionId: string;
+  categoryId?: string | null;
 }
 
 /**
@@ -260,6 +265,167 @@ export async function createTransaction(
   } catch (error) {
     console.error("Failed to create transaction:", error);
     return { success: false, error: "Failed to create transaction" };
+  }
+}
+
+export async function updateTransaction(
+  input: UpdateTransactionInput
+): Promise<{ success: boolean; error?: string }> {
+  const session = await getAuthenticatedSession();
+  const userId = session?.user?.id ?? null;
+
+  if (!userId) {
+    return { success: false, error: "Not authenticated" };
+  }
+  if (isDemoRestrictedUserEmail(session?.user?.email)) {
+    return { success: false, error: DEMO_RESTRICTED_ACTION_ERROR };
+  }
+
+  const description = input.description.trim();
+  const merchant = input.merchant?.trim() || null;
+  if (!description) {
+    return { success: false, error: "Description is required" };
+  }
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
+    return { success: false, error: "Amount must be greater than zero" };
+  }
+  if (!(input.bookedAt instanceof Date) || Number.isNaN(input.bookedAt.getTime())) {
+    return { success: false, error: "A valid transaction date is required" };
+  }
+  if (input.transactionType !== "debit" && input.transactionType !== "credit") {
+    return { success: false, error: "A valid transaction type is required" };
+  }
+
+  try {
+    const existing = await db.query.transactions.findFirst({
+      where: and(
+        eq(transactions.id, input.transactionId),
+        eq(transactions.userId, userId)
+      ),
+      with: {
+        account: true,
+        category: true,
+      },
+    });
+
+    if (!existing) {
+      return { success: false, error: "Transaction not found" };
+    }
+    if (existing.internalTransferId) {
+      return { success: false, error: "Unlink the internal transfer before editing it" };
+    }
+    if (existing.category?.name === "Balancing Transfer") {
+      return { success: false, error: "Balancing transfers cannot be edited" };
+    }
+
+    const account = await db.query.accounts.findFirst({
+      where: and(eq(accounts.id, input.accountId), eq(accounts.userId, userId)),
+    });
+    if (!account) {
+      return { success: false, error: "Account not found" };
+    }
+
+    if (input.categoryId) {
+      const category = await db.query.categories.findFirst({
+        where: and(
+          eq(categories.id, input.categoryId),
+          eq(categories.userId, userId)
+        ),
+      });
+      if (!category) {
+        return { success: false, error: "Category not found" };
+      }
+    }
+
+    const signedAmount = input.transactionType === "debit"
+      ? -Math.abs(input.amount)
+      : Math.abs(input.amount);
+    const amountForStorage = signedAmount.toFixed(2);
+    const currency = account.currency || "EUR";
+
+    const [user] = await db
+      .select({ functionalCurrency: users.functionalCurrency })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const functionalCurrency = user?.functionalCurrency || "EUR";
+    let functionalAmount: string | null = null;
+
+    if (currency === functionalCurrency) {
+      functionalAmount = amountForStorage;
+    } else {
+      const endOfBookedDay = new Date(input.bookedAt);
+      endOfBookedDay.setHours(23, 59, 59, 999);
+      const sevenDaysEarlier = new Date(input.bookedAt);
+      sevenDaysEarlier.setDate(sevenDaysEarlier.getDate() - 7);
+      sevenDaysEarlier.setHours(0, 0, 0, 0);
+
+      const rate = await db.query.exchangeRates.findFirst({
+        where: and(
+          eq(exchangeRates.baseCurrency, currency),
+          eq(exchangeRates.targetCurrency, functionalCurrency),
+          gte(exchangeRates.date, sevenDaysEarlier),
+          lte(exchangeRates.date, endOfBookedDay)
+        ),
+        orderBy: [desc(exchangeRates.date)],
+      });
+      if (rate) {
+        functionalAmount = (signedAmount * parseFloat(rate.rate)).toFixed(2);
+      }
+    }
+
+    await db
+      .update(transactions)
+      .set({
+        accountId: input.accountId,
+        amount: amountForStorage,
+        functionalAmount,
+        currency,
+        description,
+        merchant,
+        categoryId: input.categoryId || null,
+        bookedAt: input.bookedAt,
+        transactionType: input.transactionType,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(transactions.id, input.transactionId), eq(transactions.userId, userId)));
+
+    const affectedAccounts = new Map<string, { startingBalance: number; fromDate: Date }>();
+    affectedAccounts.set(existing.accountId, {
+      startingBalance: parseFloat(existing.account?.startingBalance || "0"),
+      fromDate: existing.bookedAt < input.bookedAt ? existing.bookedAt : input.bookedAt,
+    });
+    if (input.accountId !== existing.accountId) {
+      affectedAccounts.set(input.accountId, {
+        startingBalance: parseFloat(account.startingBalance || "0"),
+        fromDate: input.bookedAt,
+      });
+    }
+
+    for (const [accountId, { startingBalance, fromDate }] of affectedAccounts) {
+      const [balanceResult] = await db
+        .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+        .from(transactions)
+        .where(and(eq(transactions.accountId, accountId), eq(transactions.userId, userId)));
+      const newBalance = startingBalance + parseFloat(balanceResult?.total || "0");
+
+      await db
+        .update(accounts)
+        .set({ functionalBalance: newBalance.toFixed(2), updatedAt: new Date() })
+        .where(and(eq(accounts.id, accountId), eq(accounts.userId, userId)));
+      await recalculateAccountBalancesFromDate(accountId, fromDate, startingBalance);
+    }
+
+    revalidatePath("/transactions");
+    revalidatePath("/");
+    revalidatePath("/settings");
+    revalidatePath("/assets");
+    revalidatePath("/subscriptions");
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update transaction:", error);
+    return { success: false, error: "Failed to update transaction" };
   }
 }
 

@@ -38,13 +38,14 @@ import { unlinkInternalTransfer } from "@/lib/actions/accounts";
 import { Switch } from "@/components/ui/switch";
 import type { CategoryDisplay } from "@/types";
 import { filterSelectableCategories } from "@/lib/utils/category-utils";
-import { RiDeleteBinLine, RiExchangeLine, RiLoopRightLine } from "@remixicon/react";
+import { RiDeleteBinLine, RiEditLine, RiExchangeLine, RiLoopRightLine } from "@remixicon/react";
 import { toast } from "sonner";
 import { SubscriptionDetectionDialog } from "./subscription-detection-dialog";
 import { SubscriptionLinkedDialog } from "./subscription-linked-dialog";
 import { LinkReimbursementsDialog } from "./link-reimbursements-dialog";
 import { LinkedTransactionsSection } from "./linked-transactions-section";
 import { DeleteConfirmationDialog } from "./delete-confirmation-dialog";
+import { AddTransactionDialog } from "./add-transaction-dialog";
 
 interface TransactionSheetProps {
   transaction: TransactionWithRelations | null;
@@ -54,6 +55,7 @@ interface TransactionSheetProps {
   onDeleteTransaction?: (id: string) => void;
   categories?: CategoryDisplay[];
   canDelete?: boolean;
+  canEdit?: boolean;
 }
 
 export function TransactionSheet({
@@ -64,6 +66,7 @@ export function TransactionSheet({
   onDeleteTransaction,
   categories = [],
   canDelete = true,
+  canEdit = true,
 }: TransactionSheetProps) {
   const router = useRouter();
   // Filter out categories hidden from manual selection (e.g., Balancing Transfer)
@@ -80,6 +83,7 @@ export function TransactionSheet({
   const [showLinkedSubscriptionDialog, setShowLinkedSubscriptionDialog] = useState(false);
   const [showLinkReimbursementsDialog, setShowLinkReimbursementsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [isUnlinkingTransfer, setIsUnlinkingTransfer] = useState(false);
 
   const isBalancingTransfer = transaction?.category?.name === "Balancing Transfer";
@@ -124,7 +128,7 @@ export function TransactionSheet({
       } else {
         toast.error(result.error || "Failed to revert balancing transfer");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to revert balancing transfer");
     } finally {
       setIsReverting(false);
@@ -415,6 +419,17 @@ export function TransactionSheet({
 
         {/* Fixed Footer with Save Button, Subscription Button and Revert Option */}
         <div className="pt-4 pb-4 border-t space-y-3 shrink-0 mt-auto">
+          {canEdit && !isBalancingTransfer && !internalTransferId && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setShowEditDialog(true)}
+            >
+              <RiEditLine className="h-4 w-4 mr-2" />
+              Edit Transaction
+            </Button>
+          )}
+
           {/* Subscription button - only show for expenses and not balancing transfers */}
           {isExpense && !isBalancingTransfer && (
             <Button
@@ -522,6 +537,14 @@ export function TransactionSheet({
           if (transaction) onDeleteTransaction?.(transaction.id);
           onOpenChange(false);
         }}
+      />
+
+      <AddTransactionDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        categories={categories}
+        transaction={transaction}
+        onTransactionUpdated={onUpdateTransaction}
       />
     </Sheet>
   );

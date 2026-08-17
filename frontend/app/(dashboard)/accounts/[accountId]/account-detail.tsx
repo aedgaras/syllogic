@@ -35,6 +35,8 @@ export function AccountDetail({
     name: cat.name,
     color: cat.color,
     icon: cat.icon,
+    categoryType: cat.categoryType,
+    hideFromSelection: cat.hideFromSelection,
   }));
 
   const handleUpdateTransaction = (

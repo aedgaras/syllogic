@@ -54,6 +54,30 @@ function errorToLogContext(error: unknown): {
   };
 }
 
+/**
+ * Classify transactions by their explicit category when one exists, and fall
+ * back to the debit/credit direction for genuinely uncategorized rows. Manual
+ * transaction creation allows the category to be omitted, so those rows must
+ * not disappear from dashboard analytics. An explicit transfer category still
+ * wins over the direction and remains excluded.
+ */
+function isAnalyticsType(
+  categoryType: "expense" | "income",
+  transactionType: "debit" | "credit"
+) {
+  return sql`(
+    ${transactions.transactionType} = ${transactionType}
+    AND (
+      ${categories.categoryType} = ${categoryType}
+      OR (
+        ${categories.id} IS NULL
+        AND ${transactions.categoryId} IS NULL
+        AND ${transactions.categorySystemId} IS NULL
+      )
+    )
+  )`;
+}
+
 async function getLatestTransactionDate(userId: string, accountIds?: string[]): Promise<Date> {
   const normalizedAccountIds = normalizeAccountIds(accountIds);
   const conditions = [eq(transactions.userId, userId)];
@@ -253,7 +277,7 @@ export async function getPeriodSpending(startDate: Date, endDate: Date, accountI
           ), 0)`,
         })
         .from(transactions)
-        .innerJoin(
+        .leftJoin(
           categories,
           sql`${categories.id} = COALESCE(${transactions.categoryId}, ${transactions.categorySystemId})`
         )
@@ -261,7 +285,7 @@ export async function getPeriodSpending(startDate: Date, endDate: Date, accountI
           transactionLinks,
           eq(transactions.id, transactionLinks.transactionId)
         )
-        .where(and(...conditions, eq(categories.categoryType, "expense"))),
+        .where(and(...conditions, isAnalyticsType("expense", "debit"))),
       getUserCurrency(session.user.id),
     ]);
 
@@ -330,7 +354,7 @@ export async function getPeriodIncome(startDate: Date, endDate: Date, accountIds
           ), 0)`,
         })
         .from(transactions)
-        .innerJoin(
+        .leftJoin(
           categories,
           sql`${categories.id} = COALESCE(${transactions.categoryId}, ${transactions.categorySystemId})`
         )
@@ -338,7 +362,7 @@ export async function getPeriodIncome(startDate: Date, endDate: Date, accountIds
           transactionLinks,
           eq(transactions.id, transactionLinks.transactionId)
         )
-        .where(and(...conditions, eq(categories.categoryType, "income"))),
+        .where(and(...conditions, isAnalyticsType("income", "credit"))),
       getUserCurrency(session.user.id),
     ]);
 
@@ -389,11 +413,11 @@ export async function getSpendingHistory(startDate: Date, endDate: Date, account
       value: sql<string>`COALESCE(SUM(ABS(${transactions.amount})), 0)`,
     })
     .from(transactions)
-    .innerJoin(
+    .leftJoin(
       categories,
       sql`${categories.id} = COALESCE(${transactions.categoryId}, ${transactions.categorySystemId})`
     )
-    .where(and(...conditions, eq(categories.categoryType, "expense")))
+    .where(and(...conditions, isAnalyticsType("expense", "debit")))
     .groupBy(sql`DATE(${transactions.bookedAt})`)
     .orderBy(sql`DATE(${transactions.bookedAt})`);
 
@@ -430,11 +454,11 @@ export async function getIncomeHistory(startDate: Date, endDate: Date, accountId
       value: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
     })
     .from(transactions)
-    .innerJoin(
+    .leftJoin(
       categories,
       sql`${categories.id} = COALESCE(${transactions.categoryId}, ${transactions.categorySystemId})`
     )
-    .where(and(...conditions, eq(categories.categoryType, "income")))
+    .where(and(...conditions, isAnalyticsType("income", "credit")))
     .groupBy(sql`DATE(${transactions.bookedAt})`)
     .orderBy(sql`DATE(${transactions.bookedAt})`);
 
@@ -478,7 +502,7 @@ export async function getIncomeExpenseData(
       date: sql<string>`DATE(${transactions.bookedAt})`,
       income: sql<string>`COALESCE(SUM(
         CASE
-          WHEN ${categories.categoryType} = 'income' THEN
+          WHEN ${isAnalyticsType("income", "credit")} THEN
             CASE
               WHEN ${transactionLinks.linkRole} = 'primary' AND ${transactionLinks.groupId} IS NOT NULL THEN
                 COALESCE((
@@ -499,7 +523,7 @@ export async function getIncomeExpenseData(
       ), 0)`,
       expenses: sql<string>`COALESCE(SUM(
         CASE
-          WHEN ${categories.categoryType} = 'expense' THEN
+          WHEN ${isAnalyticsType("expense", "debit")} THEN
             CASE
               WHEN ${transactionLinks.linkRole} = 'primary' AND ${transactionLinks.groupId} IS NOT NULL THEN
                 COALESCE((
@@ -520,7 +544,7 @@ export async function getIncomeExpenseData(
       ), 0)`,
     })
     .from(transactions)
-    .innerJoin(
+    .leftJoin(
       categories,
       sql`${categories.id} = COALESCE(${transactions.categoryId}, ${transactions.categorySystemId})`
     )
@@ -682,7 +706,7 @@ export async function getSpendingByCategory(
     ), 0)`,
     })
     .from(transactions)
-    .innerJoin(
+    .leftJoin(
       categories,
       sql`${categories.id} = COALESCE(${transactions.categoryId}, ${transactions.categorySystemId})`
     )
@@ -690,7 +714,7 @@ export async function getSpendingByCategory(
       transactionLinks,
       eq(transactions.id, transactionLinks.transactionId)
     )
-    .where(and(...baseConditions, eq(categories.categoryType, "expense")));
+    .where(and(...baseConditions, isAnalyticsType("expense", "debit")));
 
     const categorizedCategories = categorizedResult.map((row) => ({
       id: row.id,
@@ -1021,14 +1045,14 @@ export async function getSankeyData(
       total: sql<string>`COALESCE(SUM(ABS(${transactions.amount})), 0)`,
     })
     .from(transactions)
-    .innerJoin(
+    .leftJoin(
       categories,
       sql`${categories.id} = COALESCE(${transactions.categoryId}, ${transactions.categorySystemId})`
     )
     .where(
       and(
         ...conditions,
-        eq(categories.categoryType, "income")
+        isAnalyticsType("income", "credit")
       )
     )
     .groupBy(
@@ -1045,14 +1069,14 @@ export async function getSankeyData(
       total: sql<string>`COALESCE(SUM(ABS(${transactions.amount})), 0)`,
     })
     .from(transactions)
-    .innerJoin(
+    .leftJoin(
       categories,
       sql`${categories.id} = COALESCE(${transactions.categoryId}, ${transactions.categorySystemId})`
     )
     .where(
       and(
         ...conditions,
-        eq(categories.categoryType, "expense")
+        isAnalyticsType("expense", "debit")
       )
     )
     .groupBy(
