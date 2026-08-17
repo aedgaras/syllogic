@@ -25,6 +25,15 @@ Fixes #(issue_number)
 - [ ] All new and existing tests pass
 - [ ] I have checked my changes for sensitive data or secrets
 
+### Frontend architecture (when `frontend/` changes)
+
+- [ ] Routes only compose features; workflow behavior lives in orchestration
+- [ ] Domain code is framework-independent, and presentation only renders data/emits intent
+- [ ] Client and presentation code use feature contracts rather than DB or server-action types
+- [ ] Cross-feature imports use `public.ts` or `server.ts`; shared/UI code imports no features
+- [ ] I ran `pnpm lint:boundaries` and did not expand the legacy allowlist
+- [ ] I documented remote-state/cache ownership and added proportional characterization tests
+
 ## Additional Context
 
 Add any other context or screenshots about the PR here.

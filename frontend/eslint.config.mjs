@@ -1,12 +1,15 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import architecture from "./eslint-plugins/architecture-boundaries.mjs";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    plugins: { architecture },
     rules: {
+      "architecture/boundaries": "warn",
       "@typescript-eslint/no-explicit-any": "warn",
       "react/no-unescaped-entities": "warn",
       "react-hooks/set-state-in-effect": "warn",
@@ -18,6 +21,17 @@ const eslintConfig = defineConfig([
     files: ["scripts/**/*.js"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
+    files: ["features/*/domain/**/*.{js,jsx,ts,tsx}"],
+    rules: {
+      "no-restricted-globals": [
+        "warn",
+        ...["window", "document", "navigator", "localStorage", "sessionStorage", "EventSource", "FileReader"].map(
+          (name) => ({ name, message: "Domain modules cannot use browser APIs." })
+        ),
+      ],
     },
   },
   {
