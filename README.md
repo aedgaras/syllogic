@@ -234,7 +234,7 @@ docker compose ps
 docker compose down
 ```
 
-Optional local secrets and integrations can be provided in `deploy/compose/.env`; `dev-up` will use it when present. For day-to-day development, the script has safe local defaults for required auth secrets and database URLs.
+On first run, `dev-up` creates `deploy/compose/.env` when needed and generates the persistent data-encryption key required by the full settings workflow. Existing values are preserved. The OpenAI API key is intentionally not generated or requested by the script; add your own key under **Settings > Preferences** when you want AI categorization. Other optional local secrets and integrations can also be provided in that env file.
 
 ### Prebuilt Mode
 

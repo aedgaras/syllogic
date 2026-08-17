@@ -45,7 +45,7 @@ docker compose logs -f frontend backend
 docker compose down
 ```
 
-Optional local secrets and integration keys can go in `deploy/compose/.env`; `dev-up` automatically uses that file when it exists. The Docker dev stack has local defaults for required auth secrets, database URLs, and Redis URLs.
+On first run, `dev-up` creates `deploy/compose/.env` when needed and generates the persistent data-encryption key required to store app settings securely. Existing values are preserved. Add your own OpenAI API key under **Settings > Preferences** when you want to exercise AI categorization; the startup script intentionally does not collect it. Other optional local secrets and integration keys can go in the same env file. The Docker dev stack has local defaults for required auth secrets, database URLs, and Redis URLs.
 
 ### Host-Run Backend
 

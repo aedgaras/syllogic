@@ -32,6 +32,54 @@ function Show-Usage {
     Write-Host "  -Help           Show this help message"
 }
 
+function Ensure-LocalEncryptionKey {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $lines = @()
+    if (Test-Path $Path) {
+        $lines = @(Get-Content -Path $Path)
+        $configuredValue = $lines |
+            Where-Object { $_ -match '^\s*DATA_ENCRYPTION_KEY_CURRENT\s*=' } |
+            ForEach-Object { ($_ -split '=', 2)[1].Trim() } |
+            Where-Object { $_.Length -gt 0 } |
+            Select-Object -Last 1
+        if ($null -ne $configuredValue) {
+            return
+        }
+    } else {
+        $parent = Split-Path -Parent $Path
+        $null = New-Item -ItemType Directory -Path $parent -Force
+    }
+
+    $keyBytes = New-Object byte[] 32
+    $generator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $generator.GetBytes($keyBytes)
+    } finally {
+        $generator.Dispose()
+    }
+    $generatedKey = -join ($keyBytes | ForEach-Object { $_.ToString("x2") })
+
+    $updatedLines = New-Object System.Collections.Generic.List[string]
+    $written = $false
+    foreach ($line in $lines) {
+        if ($line -match '^\s*DATA_ENCRYPTION_KEY_CURRENT\s*=') {
+            if (-not $written) {
+                $updatedLines.Add("DATA_ENCRYPTION_KEY_CURRENT=$generatedKey")
+                $written = $true
+            }
+            continue
+        }
+        $updatedLines.Add($line)
+    }
+    if (-not $written) {
+        $updatedLines.Add("DATA_ENCRYPTION_KEY_CURRENT=$generatedKey")
+    }
+
+    Set-Content -Path $Path -Value $updatedLines -Encoding ASCII
+    Write-Host "Generated the local data-encryption key in deploy\compose\.env." -ForegroundColor Green
+}
+
 if ($Help) {
     Show-Usage
     exit 0
@@ -82,10 +130,8 @@ if ($Mode -eq "prebuilt") {
 }
 
 # Local mode - uses development defaults from docker-compose.yml
-$ComposeArgs = @()
-if (Test-Path $EnvFile) {
-    $ComposeArgs += @("--env-file", $EnvFile)
-}
+Ensure-LocalEncryptionKey -Path $EnvFile
+$ComposeArgs = @("--env-file", $EnvFile)
 
 Write-Host "Starting local development stack..." -ForegroundColor Cyan
 docker compose @ComposeArgs -f $LocalComposeFile up -d --build
@@ -99,5 +145,6 @@ Write-Host "Done." -ForegroundColor Green
 Write-Host ""
 Write-Host "Open http://localhost:3000" -ForegroundColor Gray
 Write-Host "Backend API: http://localhost:8000" -ForegroundColor Gray
+Write-Host "Add your OpenAI API key in Settings > Preferences when you need AI categorization." -ForegroundColor Gray
 Write-Host ""
 Write-Host "Logs: docker compose -f docker-compose.yml logs -f frontend backend" -ForegroundColor Cyan
