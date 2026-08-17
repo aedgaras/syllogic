@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { RiArrowDownLine, RiArrowUpLine } from "@remixicon/react";
+import { RiArrowDownLine, RiArrowUpLine, RiExchangeLine } from "@remixicon/react";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   createTransaction,
+  createTransferTransaction,
   getUserAccounts,
   updateTransaction,
   type TransactionWithRelations,
@@ -62,13 +63,15 @@ export function AddTransactionDialog({
 }: AddTransactionDialogProps) {
   const router = useRouter();
   const isEditing = Boolean(transaction);
+  const isLinkedTransfer = Boolean(transaction?.internalTransferId);
   const [isLoading, setIsLoading] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<CategoryDisplay[]>([]);
 
   // Form state
-  const [transactionType, setTransactionType] = useState<"debit" | "credit">("debit");
+  const [transactionType, setTransactionType] = useState<"debit" | "credit" | "transfer">("debit");
   const [accountId, setAccountId] = useState<string>("");
+  const [destinationAccountId, setDestinationAccountId] = useState<string>("");
   const [amount, setAmount] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [categoryId, setCategoryId] = useState<string>("");
@@ -90,8 +93,19 @@ export function AddTransactionDialog({
         }
 
         if (transaction) {
-          setTransactionType(transaction.transactionType === "credit" ? "credit" : "debit");
-          setAccountId(transaction.accountId);
+          if (transaction.internalTransfer) {
+            setTransactionType("transfer");
+            setAccountId(
+              transaction.internalTransfer.sourceAccount?.id || transaction.accountId
+            );
+            setDestinationAccountId(
+              transaction.internalTransfer.pocketAccount?.id || transaction.accountId
+            );
+          } else {
+            setTransactionType(transaction.transactionType === "credit" ? "credit" : "debit");
+            setAccountId(transaction.accountId);
+            setDestinationAccountId("");
+          }
           setAmount(Math.abs(transaction.amount).toFixed(2));
           setDescription(transaction.description || "");
           setCategoryId(transaction.categoryId || "");
@@ -107,6 +121,7 @@ export function AddTransactionDialog({
 
   const resetForm = () => {
     setTransactionType("debit");
+    setDestinationAccountId("");
     setAmount("");
     setDescription("");
     setCategoryId("");
@@ -114,8 +129,12 @@ export function AddTransactionDialog({
     setMerchant("");
   };
 
-  const handleTransactionTypeChange = (nextType: "debit" | "credit") => {
+  const handleTransactionTypeChange = (nextType: "debit" | "credit" | "transfer") => {
     setTransactionType(nextType);
+    if (nextType === "transfer") {
+      setCategoryId("");
+      return;
+    }
     if (categoryId) {
       const nextCategories = getCategoriesForTransactionType(categories, nextType);
       if (!nextCategories.some((category) => category.id === categoryId)) {
@@ -129,6 +148,15 @@ export function AddTransactionDialog({
 
     if (!accountId) {
       toast.error("Please select an account");
+      return;
+    }
+
+    if (transactionType === "transfer" && !destinationAccountId) {
+      toast.error("Please select a destination account");
+      return;
+    }
+    if (transactionType === "transfer" && accountId === destinationAccountId) {
+      toast.error("Source and destination accounts must be different");
       return;
     }
 
@@ -146,13 +174,33 @@ export function AddTransactionDialog({
     setIsLoading(true);
 
     try {
+      if (transactionType === "transfer" && !transaction) {
+        const result = await createTransferTransaction({
+          sourceAccountId: accountId,
+          destinationAccountId,
+          amount: parsedAmount,
+          description: description.trim(),
+          bookedAt,
+        });
+        if (!result.success) {
+          toast.error(result.error || "Failed to create transfer");
+          return;
+        }
+        toast.success("Transfer created");
+        resetForm();
+        onOpenChange(false);
+        router.refresh();
+        return;
+      }
+
+      const standardTransactionType = transactionType === "transfer" ? "debit" : transactionType;
       const transactionInput = {
         accountId,
         amount: parsedAmount,
         description: description.trim(),
         categoryId: categoryId || null,
         bookedAt,
-        transactionType,
+        transactionType: standardTransactionType,
         merchant: merchant.trim() || undefined,
       };
       const result = transaction
@@ -184,14 +232,14 @@ export function AddTransactionDialog({
                     : null,
                 }
               : transaction.account,
-            amount: transactionType === "debit" ? -parsedAmount : parsedAmount,
+            amount: standardTransactionType === "debit" ? -parsedAmount : parsedAmount,
             currency: selectedAccount?.currency || transaction.currency,
             description: description.trim(),
             merchant: merchant.trim() || null,
             categoryId: categoryId || null,
             category: selectedCategory,
             bookedAt,
-            transactionType,
+            transactionType: standardTransactionType,
           });
           toast.success("Transaction updated");
         } else {
@@ -211,16 +259,33 @@ export function AddTransactionDialog({
   };
 
   // Filter categories based on transaction type
-  const filteredCategories = getCategoriesForTransactionType(categories, transactionType);
+  const filteredCategories = getCategoriesForTransactionType(
+    categories,
+    transactionType === "transfer" ? "debit" : transactionType
+  );
   const selectedAccount = accounts.find((account) => account.id === accountId);
+  const eligibleDestinationAccounts = selectedAccount
+    ? accounts.filter(
+        (account) =>
+          account.id !== accountId &&
+          (account.currency || "EUR") === (selectedAccount.currency || "EUR")
+      )
+    : [];
+  const selectedDestinationAccount = accounts.find(
+    (account) => account.id === destinationAccountId
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Transaction" : "Add Transaction"}</DialogTitle>
+          <DialogTitle>
+            {isLinkedTransfer ? "Transfer Details" : isEditing ? "Edit Transaction" : "Add Transaction"}
+          </DialogTitle>
           <DialogDescription>
-            {isEditing
+            {isLinkedTransfer
+              ? "View the linked entries for this account transfer."
+              : isEditing
               ? "Update the details for your transaction."
               : "Enter the details for your transaction."}
           </DialogDescription>
@@ -233,6 +298,7 @@ export function AddTransactionDialog({
                 type="button"
                 variant={transactionType === "debit" ? "default" : "outline"}
                 className="flex-1"
+                disabled={isLinkedTransfer}
                 onClick={() => handleTransactionTypeChange("debit")}
               >
                 <RiArrowDownLine className="mr-2 h-4 w-4" />
@@ -242,22 +308,55 @@ export function AddTransactionDialog({
                 type="button"
                 variant={transactionType === "credit" ? "default" : "outline"}
                 className="flex-1"
+                disabled={isLinkedTransfer}
                 onClick={() => handleTransactionTypeChange("credit")}
               >
                 <RiArrowUpLine className="mr-2 h-4 w-4" />
                 Income
               </Button>
+              {(!isEditing || isLinkedTransfer) && (
+                <Button
+                  type="button"
+                  variant={transactionType === "transfer" ? "default" : "outline"}
+                  className="flex-1"
+                  disabled={isLinkedTransfer}
+                  onClick={() => handleTransactionTypeChange("transfer")}
+                >
+                  <RiExchangeLine className="mr-2 h-4 w-4" />
+                  Transfer
+                </Button>
+              )}
             </div>
 
             {/* Account Select */}
             <div className="space-y-2">
-              <Label htmlFor="account">Account</Label>
+              <Label htmlFor="account">
+                {transactionType === "transfer" ? "From account" : "Account"}
+              </Label>
               {accounts.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No accounts found. Please create an account first.
                 </p>
               ) : (
-                <Select value={accountId} onValueChange={(v) => v && setAccountId(v)}>
+                <Select
+                  value={accountId}
+                  disabled={isLinkedTransfer}
+                  onValueChange={(value) => {
+                    if (!value) return;
+                    setAccountId(value);
+                    const nextSource = accounts.find((account) => account.id === value);
+                    const currentDestination = accounts.find(
+                      (account) => account.id === destinationAccountId
+                    );
+                    if (
+                      value === destinationAccountId ||
+                      (nextSource?.currency || "EUR") !==
+                        (currentDestination?.currency || "EUR")
+                    ) {
+                      setDestinationAccountId("");
+                    }
+                  }}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select an account">
                       {selectedAccount
@@ -276,6 +375,37 @@ export function AddTransactionDialog({
               )}
             </div>
 
+            {transactionType === "transfer" && (
+              <div className="space-y-2">
+                <Label htmlFor="destination-account">To account</Label>
+                <Select
+                  value={destinationAccountId}
+                  disabled={isLinkedTransfer}
+                  onValueChange={(value) => value && setDestinationAccountId(value)}
+                >
+                  <SelectTrigger id="destination-account" className="w-full">
+                    <SelectValue placeholder="Select a destination account">
+                      {selectedDestinationAccount
+                        ? `${selectedDestinationAccount.name}${selectedDestinationAccount.currency ? ` (${selectedDestinationAccount.currency})` : ""}`
+                        : "Select a destination account"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
+                    {eligibleDestinationAccounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id} className="pr-10">
+                        {account.name}{account.currency ? ` (${account.currency})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedAccount && eligibleDestinationAccounts.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Add another {selectedAccount.currency || "same-currency"} account to make a transfer.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Amount */}
             <div className="space-y-2">
               <Label htmlFor="amount">Amount</Label>
@@ -286,6 +416,7 @@ export function AddTransactionDialog({
                 min="0"
                 placeholder="0.00"
                 value={amount}
+                disabled={isLinkedTransfer}
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
@@ -298,6 +429,7 @@ export function AddTransactionDialog({
                   render={
                     <Button
                       variant="outline"
+                      disabled={isLinkedTransfer}
                       className={cn(
                         "w-full justify-start text-left font-normal",
                         !bookedAt && "text-muted-foreground"
@@ -323,15 +455,20 @@ export function AddTransactionDialog({
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                placeholder="Enter a description"
+                placeholder={
+                  transactionType === "transfer"
+                    ? "e.g., Move money to savings"
+                    : "Enter a description"
+                }
                 value={description}
+                disabled={isLinkedTransfer}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
               />
             </div>
 
             {/* Merchant (optional) */}
-            <div className="space-y-2">
+            {transactionType !== "transfer" && <div className="space-y-2">
               <Label htmlFor="merchant">Merchant (optional)</Label>
               <Input
                 id="merchant"
@@ -339,10 +476,10 @@ export function AddTransactionDialog({
                 value={merchant}
                 onChange={(e) => setMerchant(e.target.value)}
               />
-            </div>
+            </div>}
 
             {/* Category */}
-            <div className="space-y-2">
+            {transactionType !== "transfer" && <div className="space-y-2">
               <Label htmlFor="category">Category (optional)</Label>
               <Select value={categoryId} onValueChange={(v) => setCategoryId(v ?? "")}>
                 <SelectTrigger>
@@ -363,22 +500,34 @@ export function AddTransactionDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div>}
           </div>
           <DialogFooter>
+            {isLinkedTransfer && (
+              <p className="mr-auto text-sm text-muted-foreground">
+                Linked transfers cannot be edited independently.
+              </p>
+            )}
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
-              Cancel
+              {isLinkedTransfer ? "Close" : "Cancel"}
             </Button>
-            <Button type="submit" disabled={isLoading || accounts.length === 0}>
+            {!isLinkedTransfer && <Button
+              type="submit"
+              disabled={
+                isLoading ||
+                accounts.length === 0 ||
+                (transactionType === "transfer" && eligibleDestinationAccounts.length === 0)
+              }
+            >
               {isLoading
                 ? isEditing ? "Saving..." : "Adding..."
-                : isEditing ? "Save Changes" : "Add Transaction"}
-            </Button>
+                : isEditing ? "Save Changes" : transactionType === "transfer" ? "Create Transfer" : "Add Transaction"}
+            </Button>}
           </DialogFooter>
         </form>
       </DialogContent>

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { eq, and, desc, inArray, notInArray, sql, gte, lte, gt, asc, ne, or, ilike, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { transactions, accounts, categories, accountBalances, exchangeRates, users } from "@/lib/db/schema";
+import { transactions, accounts, categories, accountBalances, exchangeRates, internalTransfers, users } from "@/lib/db/schema";
 import { requireAuth, getAuthenticatedSession } from "@/lib/auth-helpers";
 import { isDemoRestrictedUserEmail, DEMO_RESTRICTED_ACTION_ERROR } from "@/lib/demo-access";
 import { getBackendBaseUrl } from "@/lib/backend-url";
@@ -29,6 +29,14 @@ export interface CreateTransactionInput {
 export interface UpdateTransactionInput extends Omit<CreateTransactionInput, "categoryId"> {
   transactionId: string;
   categoryId?: string | null;
+}
+
+export interface CreateTransferTransactionInput {
+  sourceAccountId: string;
+  destinationAccountId: string;
+  amount: number;
+  description: string;
+  bookedAt: Date;
 }
 
 /**
@@ -265,6 +273,208 @@ export async function createTransaction(
   } catch (error) {
     console.error("Failed to create transaction:", error);
     return { success: false, error: "Failed to create transaction" };
+  }
+}
+
+/**
+ * Creates both sides of an account-to-account transfer and links them so the
+ * movement affects account balances without being counted as income/spending.
+ */
+export async function createTransferTransaction(
+  input: CreateTransferTransactionInput
+): Promise<{
+  success: boolean;
+  error?: string;
+  sourceTransactionId?: string;
+  destinationTransactionId?: string;
+}> {
+  const session = await getAuthenticatedSession();
+  const userId = session?.user?.id ?? null;
+
+  if (!userId) return { success: false, error: "Not authenticated" };
+  if (isDemoRestrictedUserEmail(session?.user?.email)) {
+    return { success: false, error: DEMO_RESTRICTED_ACTION_ERROR };
+  }
+
+  const description = input.description.trim();
+  if (!description) return { success: false, error: "Description is required" };
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
+    return { success: false, error: "Amount must be greater than zero" };
+  }
+  if (!(input.bookedAt instanceof Date) || Number.isNaN(input.bookedAt.getTime())) {
+    return { success: false, error: "A valid transaction date is required" };
+  }
+  if (input.sourceAccountId === input.destinationAccountId) {
+    return { success: false, error: "Source and destination accounts must be different" };
+  }
+
+  try {
+    const ownedAccounts = await db.query.accounts.findMany({
+      where: and(
+        inArray(accounts.id, [input.sourceAccountId, input.destinationAccountId]),
+        eq(accounts.userId, userId)
+      ),
+    });
+    const sourceAccount = ownedAccounts.find((account) => account.id === input.sourceAccountId);
+    const destinationAccount = ownedAccounts.find(
+      (account) => account.id === input.destinationAccountId
+    );
+
+    if (!sourceAccount || !destinationAccount) {
+      return { success: false, error: "One or both accounts were not found" };
+    }
+
+    const sourceCurrency = sourceAccount.currency || "EUR";
+    const destinationCurrency = destinationAccount.currency || "EUR";
+    if (sourceCurrency !== destinationCurrency) {
+      return {
+        success: false,
+        error: "Transfers between accounts with different currencies are not supported yet",
+      };
+    }
+
+    const transferCategory = await db.query.categories.findFirst({
+      where: and(eq(categories.userId, userId), eq(categories.categoryType, "transfer")),
+      orderBy: [desc(categories.isSystem), asc(categories.createdAt)],
+    });
+
+    const [user] = await db
+      .select({ functionalCurrency: users.functionalCurrency })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const functionalCurrency = user?.functionalCurrency || "EUR";
+    let functionalRate: number | null = sourceCurrency === functionalCurrency ? 1 : null;
+
+    if (functionalRate === null) {
+      const endOfBookedDay = new Date(input.bookedAt);
+      endOfBookedDay.setHours(23, 59, 59, 999);
+      const sevenDaysEarlier = new Date(input.bookedAt);
+      sevenDaysEarlier.setDate(sevenDaysEarlier.getDate() - 7);
+      sevenDaysEarlier.setHours(0, 0, 0, 0);
+      const rate = await db.query.exchangeRates.findFirst({
+        where: and(
+          eq(exchangeRates.baseCurrency, sourceCurrency),
+          eq(exchangeRates.targetCurrency, functionalCurrency),
+          gte(exchangeRates.date, sevenDaysEarlier),
+          lte(exchangeRates.date, endOfBookedDay)
+        ),
+        orderBy: [desc(exchangeRates.date)],
+      });
+      if (rate) functionalRate = parseFloat(rate.rate);
+    }
+
+    const amount = Math.abs(input.amount);
+    const sourceAmount = (-amount).toFixed(2);
+    const destinationAmount = amount.toFixed(2);
+    const sourceFunctionalAmount = functionalRate === null
+      ? null
+      : (-amount * functionalRate).toFixed(2);
+    const destinationFunctionalAmount = functionalRate === null
+      ? null
+      : (amount * functionalRate).toFixed(2);
+    const result = await db.transaction(async (tx) => {
+      const [sourceTransaction] = await tx
+        .insert(transactions)
+        .values({
+          userId,
+          accountId: sourceAccount.id,
+          transactionType: "debit",
+          amount: sourceAmount,
+          currency: sourceCurrency,
+          functionalAmount: sourceFunctionalAmount,
+          description,
+          merchant: destinationAccount.name,
+          categorySystemId: transferCategory?.id || null,
+          bookedAt: input.bookedAt,
+          pending: false,
+          includeInAnalytics: false,
+        })
+        .returning({ id: transactions.id });
+      const [destinationTransaction] = await tx
+        .insert(transactions)
+        .values({
+          userId,
+          accountId: destinationAccount.id,
+          transactionType: "credit",
+          amount: destinationAmount,
+          currency: destinationCurrency,
+          functionalAmount: destinationFunctionalAmount,
+          description,
+          merchant: sourceAccount.name,
+          categorySystemId: transferCategory?.id || null,
+          bookedAt: input.bookedAt,
+          pending: false,
+          includeInAnalytics: false,
+        })
+        .returning({ id: transactions.id });
+
+      const [transfer] = await tx
+        .insert(internalTransfers)
+        .values({
+          userId,
+          sourceTxnId: sourceTransaction.id,
+          mirrorTxnId: destinationTransaction.id,
+          sourceAccountId: sourceAccount.id,
+          pocketAccountId: destinationAccount.id,
+          amount: amount.toFixed(2),
+          currency: sourceCurrency,
+        })
+        .returning({ id: internalTransfers.id });
+
+      await tx
+        .update(transactions)
+        .set({ internalTransferId: transfer.id, updatedAt: new Date() })
+        .where(inArray(transactions.id, [sourceTransaction.id, destinationTransaction.id]));
+
+      for (const account of [sourceAccount, destinationAccount]) {
+        const [balanceResult] = await tx
+          .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+          .from(transactions)
+          .where(and(eq(transactions.accountId, account.id), eq(transactions.userId, userId)));
+        const newBalance = parseFloat(account.startingBalance || "0")
+          + parseFloat(balanceResult?.total || "0");
+        await tx
+          .update(accounts)
+          .set({ functionalBalance: newBalance.toFixed(2), updatedAt: new Date() })
+          .where(and(eq(accounts.id, account.id), eq(accounts.userId, userId)));
+      }
+
+      return {
+        sourceTransactionId: sourceTransaction.id,
+        destinationTransactionId: destinationTransaction.id,
+      };
+    });
+
+    // Daily snapshots are derived data. The linked transfer itself and current
+    // balances above are committed atomically, so a snapshot failure must not
+    // invite the user to retry and create a duplicate transfer.
+    try {
+      await recalculateAccountBalancesFromDate(
+        sourceAccount.id,
+        input.bookedAt,
+        parseFloat(sourceAccount.startingBalance || "0")
+      );
+      await recalculateAccountBalancesFromDate(
+        destinationAccount.id,
+        input.bookedAt,
+        parseFloat(destinationAccount.startingBalance || "0")
+      );
+    } catch (snapshotError) {
+      console.error("Transfer created, but balance snapshot recalculation failed:", snapshotError);
+    }
+
+    revalidatePath("/transactions");
+    revalidatePath("/");
+    revalidatePath("/settings");
+    revalidatePath("/assets");
+    revalidatePath(`/accounts/${sourceAccount.id}`);
+    revalidatePath(`/accounts/${destinationAccount.id}`);
+
+    return { success: true, ...result };
+  } catch (error) {
+    console.error("Failed to create transfer transaction:", error);
+    return { success: false, error: "Failed to create transfer" };
   }
 }
 
@@ -539,6 +749,12 @@ export interface TransactionWithRelations {
   internalTransferId: string | null;
   internalTransfer: {
     id: string;
+    sourceTransactionId?: string;
+    mirrorTransactionId?: string | null;
+    sourceAccount?: {
+      id: string;
+      name: string;
+    } | null;
     pocketAccount: {
       id: string;
       name: string;
@@ -654,6 +870,12 @@ interface TransactionRowWithRelations {
   internalTransferId: string | null;
   internalTransfer: {
     id: string;
+    sourceTxnId: string;
+    mirrorTxnId: string | null;
+    sourceAccount: {
+      id: string;
+      name: string;
+    } | null;
     pocketAccount: {
       id: string;
       name: string;
@@ -734,6 +956,14 @@ function mapTransactionRowsForUi(
         internalTransfer: tx.internalTransfer
           ? {
               id: tx.internalTransfer.id,
+              sourceTransactionId: tx.internalTransfer.sourceTxnId,
+              mirrorTransactionId: tx.internalTransfer.mirrorTxnId,
+              sourceAccount: tx.internalTransfer.sourceAccount
+                ? {
+                    id: tx.internalTransfer.sourceAccount.id,
+                    name: tx.internalTransfer.sourceAccount.name,
+                  }
+                : null,
               pocketAccount: tx.internalTransfer.pocketAccount
                 ? {
                     id: tx.internalTransfer.pocketAccount.id,
@@ -998,6 +1228,12 @@ export async function getTransactionsPage(
         transactionLink: true,
         internalTransfer: {
           with: {
+            sourceAccount: {
+              columns: {
+                id: true,
+                name: true,
+              },
+            },
             pocketAccount: {
               columns: {
                 id: true,
@@ -1080,6 +1316,12 @@ export async function getTransactions(): Promise<TransactionWithRelations[]> {
         transactionLink: true,
         internalTransfer: {
           with: {
+            sourceAccount: {
+              columns: {
+                id: true,
+                name: true,
+              },
+            },
             pocketAccount: {
               columns: {
                 id: true,
@@ -1158,6 +1400,12 @@ export async function getTransactionsForAccount(
         transactionLink: true,
         internalTransfer: {
           with: {
+            sourceAccount: {
+              columns: {
+                id: true,
+                name: true,
+              },
+            },
             pocketAccount: {
               columns: {
                 id: true,
@@ -1620,6 +1868,30 @@ export async function createOrUpdateBalancingTransaction(
 // Deletion Flows
 // ============================================================================
 
+async function includeLinkedTransferTransactions(
+  userId: string,
+  transactionIds: string[]
+): Promise<string[]> {
+  const normalizedIds = Array.from(new Set(transactionIds));
+  if (!normalizedIds.length) return normalizedIds;
+
+  const linkedTransfers = await db.query.internalTransfers.findMany({
+    where: and(
+      eq(internalTransfers.userId, userId),
+      or(
+        inArray(internalTransfers.sourceTxnId, normalizedIds),
+        inArray(internalTransfers.mirrorTxnId, normalizedIds)
+      )
+    ),
+  });
+
+  for (const transfer of linkedTransfers) {
+    normalizedIds.push(transfer.sourceTxnId);
+    if (transfer.mirrorTxnId) normalizedIds.push(transfer.mirrorTxnId);
+  }
+  return Array.from(new Set(normalizedIds));
+}
+
 export interface AccountDeleteImpact {
   accountId: string;
   accountName: string;
@@ -1648,9 +1920,10 @@ export async function getDeleteImpact(
   if (!transactionIds.length) return { success: false, error: "No transactions selected" };
 
   try {
+    const idsToDelete = await includeLinkedTransferTransactions(userId, transactionIds);
     const txRows = await db.query.transactions.findMany({
       where: and(
-        inArray(transactions.id, transactionIds),
+        inArray(transactions.id, idsToDelete),
         eq(transactions.userId, userId)
       ),
       with: { account: true },
@@ -1691,7 +1964,7 @@ export async function getDeleteImpact(
         and(
           inArray(transactions.accountId, accountIds),
           eq(transactions.userId, userId),
-          notInArray(transactions.id, transactionIds)
+          notInArray(transactions.id, idsToDelete)
         )
       )
       .groupBy(transactions.accountId);
@@ -1748,10 +2021,11 @@ export async function deleteTransactions(
   if (!transactionIds.length) return { success: false, error: "No transactions selected" };
 
   try {
+    const idsToDelete = await includeLinkedTransferTransactions(userId, transactionIds);
     // Fetch target transactions to get per-account data before deleting
     const txRows = await db.query.transactions.findMany({
       where: and(
-        inArray(transactions.id, transactionIds),
+        inArray(transactions.id, idsToDelete),
         eq(transactions.userId, userId)
       ),
       with: { account: true },
@@ -1779,7 +2053,7 @@ export async function deleteTransactions(
     // Delete all transactions (userId filter ensures security)
     await db
       .delete(transactions)
-      .where(and(inArray(transactions.id, transactionIds), eq(transactions.userId, userId)));
+      .where(and(inArray(transactions.id, idsToDelete), eq(transactions.userId, userId)));
 
     // Update functionalBalance and recalculate daily snapshots per affected account
     const affectedAccountIds: string[] = [];

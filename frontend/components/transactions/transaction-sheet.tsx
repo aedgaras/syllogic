@@ -419,14 +419,14 @@ export function TransactionSheet({
 
         {/* Fixed Footer with Save Button, Subscription Button and Revert Option */}
         <div className="pt-4 pb-4 border-t space-y-3 shrink-0 mt-auto">
-          {canEdit && !isBalancingTransfer && !internalTransferId && (
+          {canEdit && !isBalancingTransfer && (
             <Button
               variant="outline"
               className="w-full"
               onClick={() => setShowEditDialog(true)}
             >
               <RiEditLine className="h-4 w-4 mr-2" />
-              Edit Transaction
+              {internalTransferId ? "View Transfer Details" : "Edit Transaction"}
             </Button>
           )}
 

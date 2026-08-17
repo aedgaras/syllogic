@@ -164,6 +164,12 @@ interface CategorySpendingTransactionRowWithRelations {
   } | null;
   internalTransfer: {
     id: string;
+    sourceTxnId: string;
+    mirrorTxnId: string | null;
+    sourceAccount: {
+      id: string;
+      name: string;
+    } | null;
     pocketAccount: {
       id: string;
       name: string;
@@ -762,6 +768,12 @@ export async function getCategorySpendingTransactionsPage(
         transactionLink: true,
         internalTransfer: {
           with: {
+            sourceAccount: {
+              columns: {
+                id: true,
+                name: true,
+              },
+            },
             pocketAccount: {
               columns: {
                 id: true,
