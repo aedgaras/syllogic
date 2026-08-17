@@ -4,8 +4,6 @@ export function isProductionEnvironment(): boolean {
     process.env.NODE_ENV,
     process.env.ENVIRONMENT,
     process.env.APP_ENV,
-    process.env.RAILWAY_ENVIRONMENT,
-    process.env.RAILWAY_ENVIRONMENT_NAME,
   ];
 
   return candidates.some((value) => {

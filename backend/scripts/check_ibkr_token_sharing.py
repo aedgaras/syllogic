@@ -3,7 +3,7 @@
 Prints a SHA256 fingerprint (first 12 chars) of each connection's flex_token plus
 its query IDs — never the plaintext. Run inside the backend service:
 
-    railway run -s backend python scripts/check_ibkr_token_sharing.py
+    python scripts/check_ibkr_token_sharing.py
 """
 from __future__ import annotations
 import hashlib

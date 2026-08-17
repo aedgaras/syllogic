@@ -41,19 +41,14 @@ function Assert-Contains {
 
 # Required files
 Require-File -Path (Join-Path $RootDir "docs/deployment-matrix.md")
-Require-File -Path (Join-Path $RootDir "frontend/railway.toml")
-Require-File -Path (Join-Path $RootDir "backend/railway.api.toml")
-Require-File -Path (Join-Path $RootDir "backend/railway.worker.toml")
-Require-File -Path (Join-Path $RootDir "backend/railway.beat.toml")
-Require-File -Path (Join-Path $RootDir "backend/railway.mcp.toml")
 Require-File -Path (Join-Path $RootDir "scripts/local-smoke.sh")
 Require-File -Path (Join-Path $RootDir "scripts/local-smoke.ps1")
 
 # Assert patterns (literal substring match, like grep -qF)
 Assert-Contains -FilePath (Join-Path $RootDir "docker-compose.yml") -Pattern "postgres:16-alpine"
 Assert-Contains -FilePath (Join-Path $RootDir "deploy/compose/docker-compose.yml") -Pattern "postgres:16-alpine"
-Assert-Contains -FilePath (Join-Path $RootDir "deploy/railway/docker-compose.yml") -Pattern "mcp"
-Assert-Contains -FilePath (Join-Path $RootDir "deploy/railway/docker-compose.yml") -Pattern "/health"
+Assert-Contains -FilePath (Join-Path $RootDir "deploy/compose/docker-compose.yml") -Pattern "mcp"
+Assert-Contains -FilePath (Join-Path $RootDir "deploy/compose/docker-compose.yml") -Pattern "/health"
 Assert-Contains -FilePath (Join-Path $RootDir "docs/deployment-matrix.md") -Pattern "edge"
 Assert-Contains -FilePath (Join-Path $RootDir "docs/deployment-matrix.md") -Pattern "vX.Y.Z"
 

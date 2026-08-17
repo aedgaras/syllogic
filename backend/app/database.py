@@ -18,8 +18,6 @@ def _is_production_environment() -> bool:
         "NODE_ENV",
         "ENVIRONMENT",
         "APP_ENV",
-        "RAILWAY_ENVIRONMENT",
-        "RAILWAY_ENVIRONMENT_NAME",
     ):
         value = os.getenv(env_var, "").strip().lower()
         if value in production_markers:

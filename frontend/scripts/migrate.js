@@ -40,8 +40,6 @@ function isProductionEnvironment() {
     process.env.NODE_ENV,
     process.env.ENVIRONMENT,
     process.env.APP_ENV,
-    process.env.RAILWAY_ENVIRONMENT,
-    process.env.RAILWAY_ENVIRONMENT_NAME,
   ];
   return candidates.some((value) =>
     value ? productionMarkers.has(String(value).trim().toLowerCase()) : false
@@ -60,9 +58,6 @@ function shouldEnforceDatabaseTls(databaseUrl) {
   try {
     const parsed = new URL(databaseUrl);
     const hostname = parsed.hostname.toLowerCase();
-    // Railway private-network hostnames (*.railway.internal) are equivalent to
-    // localhost — TLS is not available on the private mesh.
-    if (hostname.endsWith(".railway.internal")) return false;
     return !localHosts.has(hostname);
   } catch {
     return true;

@@ -8,8 +8,6 @@ This document defines the supported deployment surfaces and a shared environment
 |---|---|---|---|---|
 | `local` | Day-to-day development | Source workflow + local infra containers | Local Postgres/Redis containers | Local source checkout |
 | `self-host` | VPS / one-click install | Docker Compose (image-based) | Bundled Postgres/Redis containers | Pinned release tags (`vX.Y.Z`) |
-| `railway-v1` | Existing template installs | Railway compose template (image-based) | Template Postgres/Redis or plugins | Pinned release tags (`vX.Y.Z`) |
-| `railway-v2` | New template installs | Railway GitHub-source services | Railway Postgres/Redis plugins | GitHub source builds from `main` |
 
 ## Image Channel Policy
 
@@ -23,7 +21,7 @@ The table below is the canonical contract. Keep all deploy docs aligned with it.
 
 | Variable | Class | Scope | Notes |
 |---|---|---|---|
-| `POSTGRES_PASSWORD` | Required | self-host, railway-v1 | Required for containerized Postgres init. |
+| `POSTGRES_PASSWORD` | Required | self-host | Required for containerized Postgres init. |
 | `BETTER_AUTH_SECRET` | Required | all except local infra-only | Session/auth signing secret. |
 | `INTERNAL_AUTH_SECRET` | Required | all | Internal signed app->backend calls. |
 | `DATABASE_URL` | Required | all | Must use TLS in production-like external DB paths (`sslmode=require` or stricter). |
@@ -44,8 +42,6 @@ The table below is the canonical contract. Keep all deploy docs aligned with it.
 
 1. `local`: encryption keys optional, but local smoke should validate encryption helpers.
 2. `self-host`: encryption keys strongly recommended by default; run upgrade script on existing data.
-3. `railway-v1`: set encryption keys in shared variables; run upgrade script after rollout.
-4. `railway-v2`: same as v1; source-service model does not change encryption contract.
 
 Upgrade command for existing data:
 

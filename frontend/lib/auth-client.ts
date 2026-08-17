@@ -24,8 +24,6 @@ const defaultBaseUrl =
         process.env.APP_URL,
         process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
         process.env.BETTER_AUTH_URL,
-        process.env.RAILWAY_STATIC_URL,
-        process.env.RAILWAY_PUBLIC_DOMAIN,
       ]
         .map((value) => toValidOrigin(value))
         .find((value): value is string => Boolean(value)) ||

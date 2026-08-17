@@ -27,8 +27,6 @@ const resolvedBaseURL = [
   process.env.BETTER_AUTH_URL,
   process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
   process.env.RENDER_EXTERNAL_URL,
-  process.env.RAILWAY_STATIC_URL,
-  process.env.RAILWAY_PUBLIC_DOMAIN,
 ]
   .map((value) => toValidOrigin(value))
   .find((value): value is string => Boolean(value));
@@ -131,8 +129,6 @@ export function createAuth(
       process.env.BETTER_AUTH_URL,
       process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
       process.env.RENDER_EXTERNAL_URL,
-      process.env.RAILWAY_PUBLIC_DOMAIN,
-      process.env.RAILWAY_STATIC_URL,
     ]
       .map((value) => toValidOrigin(value))
       .filter((value): value is string => Boolean(value));

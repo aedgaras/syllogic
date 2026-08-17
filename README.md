@@ -1,321 +1,228 @@
-<p align="center">
-  <h1 align="center"><b>Syllogic</b></h1>
-  <p align="center">
-    Self-hosted personal finance dashboard with AI categorization, recurring spend tracking, and a live demo.
-    <br />
-    <br />
-    <a href="https://app.syllogic.ai/login?demo=1&utm_source=github&utm_medium=readme&utm_campaign=oss_promotion&utm_content=hero_demo">Live Demo</a>
-    ·
-    <a href="START_HERE.md">Start Here</a>
-    ·
-    <a href="#quick-start">Self-Host</a>
-    ·
+<div align="center">
+  <h1>Syllogic</h1>
+  <p>A home-server-focused personal finance app.</p>
+  <p>
+    <a href="#quick-start">Quick start</a> ·
+    <a href="deploy/compose/README.md">Deployment guide</a> ·
+    <a href="CONTRIBUTING.md">Contributing</a> ·
     <a href="ROADMAP.md">Roadmap</a>
-    ·
-    <a href="https://github.com/syllogic-ai/syllogic/discussions">Discussions</a>
   </p>
-</p>
+</div>
 
-<p align="center">
-  <a href="LICENSE">
-    <img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License" />
-  </a>
-  <a href="https://github.com/orgs/syllogic-ai/packages">
-    <img src="https://img.shields.io/badge/Docker-GHCR-blue?logo=docker" alt="Docker" />
-  </a>
-  <a href="https://railway.com/deploy/syllogic?referralCode=25KFsK&utm_source=github&utm_medium=readme&utm_campaign=oss_promotion&utm_content=hero_railway">
-    <img src="https://img.shields.io/badge/Deploy-Railway-blueviolet?logo=railway" alt="Deploy on Railway" />
-  </a>
-</p>
+Syllogic is an open-source personal finance dashboard for people who want to
+keep their financial data on infrastructure they control. It tracks balances,
+transactions, spending, recurring charges, investments, and cash-flow trends.
+It also supports CSV imports, bank integrations, optional AI categorization,
+and an MCP server for compatible clients.
 
-![Syllogic dashboard screenshot](landing/public/images/screenshots/dashboard.png)
+> [!IMPORTANT]
+> This repository is an independent fork of
+> [`syllogic-ai/syllogic`](https://github.com/syllogic-ai/syllogic). It is not
+> the upstream project. This fork focuses on private Docker Compose deployments,
+> including resource-constrained VPS and ARM64 home servers.
 
-## About Syllogic
+## Highlights
 
-Syllogic is an open-source personal finance app for self-hosters who want control over their data without giving up a polished product. Track balances, spending, recurring charges, and trends, import and export CSVs, and optionally enable AI categorization.
+- Self-hosted Next.js and FastAPI application
+- PostgreSQL-backed accounts, transactions, categories, and investments
+- CSV import/export and optional bank synchronization
+- Recurring-payment and subscription detection
+- Optional OpenAI-powered transaction categorization
+- Optional OIDC single sign-on configured by an administrator
+- Full and lightweight Docker Compose stacks
+- MCP access for trusted local or VPN-connected clients
 
-## Why self-hosters care
+## Quick start
 
-- Keep financial data on infrastructure you control
-- Start with Docker, Railway, or CasaOS instead of building from scratch
-- Export your data whenever you want
-- Use AI categorization only if it helps your workflow
+### Requirements
 
-## Try it now
+- Git
+- Docker Engine or Docker Desktop
+- Docker Compose v2 (`docker compose version`)
 
-- Live demo: [app.syllogic.ai/login?demo=1](https://app.syllogic.ai/login?demo=1&utm_source=github&utm_medium=readme&utm_campaign=oss_promotion&utm_content=top_demo)
-- Quick guide: [START_HERE.md](START_HERE.md)
-- Roadmap: [ROADMAP.md](ROADMAP.md)
-
-## What works today
-
-- **Balances and cash flow**: dashboard views, savings trends, and cash-flow breakdowns
-- **AI categorization**: optional OpenAI-powered categorization with rule-based fallback
-- **Recurring spend tracking**: identify subscriptions and recurring charges
-- **Category analytics**: compare spending over time and spot trends
-- **Transfer and reimbursement linking**: avoid double-counting across accounts
-- **CSV import/export**: ingest bank exports and keep your data portable
-- **MCP server**: connect compatible LLM clients for technical finance workflows
-
-## Quick Start
-
-### Self-Hosted (Docker)
-
-**One-liner** (requires root, Docker, and Docker Compose):
+### 1. Clone and configure
 
 ```bash
-curl -fsSL https://github.com/syllogic-ai/syllogic/releases/latest/download/install.sh | sudo bash
+git clone https://github.com/aedgaras/syllogic.git
+cd syllogic
+cp deploy/compose/.env.example deploy/compose/.env
 ```
 
-**Or manually:**
+Edit `deploy/compose/.env` and replace at least these values:
 
-1. Clone and configure:
+- `POSTGRES_PASSWORD`
+- `BETTER_AUTH_SECRET`
+- `INTERNAL_AUTH_SECRET`
+- `DATA_ENCRYPTION_KEY_CURRENT` (strongly recommended)
 
-   **Linux/macOS:**
-   ```bash
-   git clone https://github.com/syllogic-ai/syllogic.git
-   cd syllogic
-   cp deploy/compose/.env.example deploy/compose/.env
-   # Edit deploy/compose/.env — set POSTGRES_PASSWORD, BETTER_AUTH_SECRET, INTERNAL_AUTH_SECRET
-   ```
+Generate independent secrets with:
 
-   **Windows (PowerShell):**
-   ```powershell
-   git clone https://github.com/syllogic-ai/syllogic.git
-   cd syllogic
-   copy deploy\compose\.env.example deploy\compose\.env
-   # Edit deploy\compose\.env — set POSTGRES_PASSWORD, BETTER_AUTH_SECRET, INTERNAL_AUTH_SECRET
-   ```
+```bash
+openssl rand -hex 32
+openssl rand -base64 32
+```
 
-2. Start:
+Keep the password embedded in `DATABASE_URL` identical to
+`POSTGRES_PASSWORD`.
 
-   **Linux/macOS:**
-   ```bash
-   ./scripts/prod-up.sh
-   ```
+For LAN-only HTTP, use:
 
-   **Windows (PowerShell or CMD):**
-   ```powershell
-   .\scripts\prod-up.bat
-   ```
+```dotenv
+APP_URL=http://localhost:8080
+CADDY_ADDRESS=:80
+```
 
-   On a Raspberry Pi or memory-constrained server, start the ARM64 lite stack:
+For an internet-facing deployment, use your real HTTPS origin and configure
+`ACME_EMAIL`:
 
-   ```bash
-   ./scripts/prod-up.sh --lite
-   ```
+```dotenv
+APP_URL=https://finance.example.com
+CADDY_ADDRESS=finance.example.com
+ACME_EMAIL=admin@example.com
+```
 
-3. Open `http://localhost:8080` and create your account.
+### 2. Start the stack
 
-For advanced configuration (TLS, custom domains, MCP server), see [`deploy/compose/README.md`](deploy/compose/README.md).
+Build the current checkout and start it:
 
-### Railway (One-Click)
+```bash
+docker compose \
+  --env-file deploy/compose/.env \
+  -f deploy/compose/docker-compose.yml \
+  -f deploy/compose/docker-compose.local.yml \
+  up -d --build
+```
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/syllogic?referralCode=25KFsK&utm_source=github&utm_medium=readme&utm_campaign=oss_promotion&utm_content=quickstart_railway)
+Or use the production helper to run the prebuilt images configured by the
+Compose bundle:
 
-The template configures everything through Railway **Shared Variables** — one place
-that every service reads from. The required secrets (`POSTGRES_PASSWORD`,
-`BETTER_AUTH_SECRET`, `INTERNAL_AUTH_SECRET`, `DATA_ENCRYPTION_KEY_CURRENT`) are
-**auto-generated at deploy time**, so a default deploy needs **no manual input**.
+```bash
+./scripts/prod-up.sh
+```
 
-Optionally set these Shared Variables to enable extra features:
+Windows users can run:
 
-- `OPENAI_API_KEY` (enables AI categorization)
-- `LOGO_DEV_API_KEY` (enables company logos)
+```powershell
+.\scripts\prod-up.bat
+```
 
-For full Railway setup details, see [`deploy/railway/README.md`](deploy/railway/README.md).
-Maintainers publishing the template: see [`deploy/railway/TEMPLATE.md`](deploy/railway/TEMPLATE.md).
+### 3. Verify and sign in
 
-### Shared Demo Login Link
+```bash
+docker compose \
+  --env-file deploy/compose/.env \
+  -f deploy/compose/docker-compose.yml \
+  ps
+```
 
-For public demo environments, you can share a login URL that prefills demo credentials:
+Open the configured `APP_URL`. The one-shot `migrate` service should exit with
+code 0; the other services should be running or healthy. The first registered
+user becomes the administrator.
 
-`https://your-app-domain.com/login?demo=1`
+See [`deploy/compose/README.md`](deploy/compose/README.md) for TLS, updates,
+backups, MCP configuration, and troubleshooting.
 
-Syllogic public demo:
+## Lightweight mode
 
-`https://app.syllogic.ai/login?demo=1`
+Lite mode is intended for Raspberry Pi and roughly 2 GB-class hosts. It reduces
+database pools and memory limits, combines the Celery worker and scheduler, and
+omits the MCP service.
 
-Set these frontend environment variables on that deployment:
+```bash
+./scripts/prod-up.sh --lite
+```
 
-- `NEXT_PUBLIC_DEMO_EMAIL`
-- `NEXT_PUBLIC_DEMO_PASSWORD`
+When building the current checkout locally:
 
-Optional auth throttling (recommended for public demos):
+```bash
+docker compose \
+  --env-file deploy/compose/.env \
+  -f deploy/compose/docker-compose.yml \
+  -f deploy/compose/docker-compose.local.yml \
+  -f deploy/compose/docker-compose.lite.yml \
+  up -d --build postgres redis uploads-init migrate backend worker app caddy
+```
 
-- `AUTH_RATE_LIMIT_ENABLED=true`
-- `AUTH_RATE_LIMIT_WINDOW_MS=60000`
-- `AUTH_RATE_LIMIT_MAX_ATTEMPTS_PER_WINDOW=30`
-- `DEMO_AUTH_RATE_LIMIT_MAX_ATTEMPTS_PER_WINDOW=10`
-- `DEMO_AUTH_RATE_LIMIT_GLOBAL_MAX_ATTEMPTS_PER_WINDOW=120`
-
-### Other Deployment Methods
-
-| Method | Use case | Docs |
-|--------|----------|------|
-| CasaOS | Home lab / NAS users | [`deploy/casaos/`](deploy/casaos/README.md) |
+Lite mode disables Redis persistence. Interrupted imports or syncs may need to
+be retried, but PostgreSQL data and uploaded files remain persistent.
 
 ## Configuration
 
-| Variable | Description | Required |
-|----------|-------------|----------|
+| Variable | Purpose | Required |
+|---|---|---|
 | `POSTGRES_PASSWORD` | PostgreSQL password | Yes |
-| `BETTER_AUTH_SECRET` | Auth session signing key | Yes |
-| `INTERNAL_AUTH_SECRET` | App-to-backend signed auth | Yes |
-| `DATA_ENCRYPTION_KEY_CURRENT` | Field-level encryption key | Recommended |
-| `OPENAI_API_KEY` | AI transaction categorization | No |
-| `LOGO_DEV_API_KEY` | Company logo lookup | No |
+| `DATABASE_URL` | Shared PostgreSQL connection URL | Yes |
+| `BETTER_AUTH_SECRET` | Session signing secret | Yes |
+| `INTERNAL_AUTH_SECRET` | Frontend-to-backend authentication | Yes |
+| `DATA_ENCRYPTION_KEY_CURRENT` | Encrypts stored credentials and sensitive fields | Recommended |
+| `OPENAI_API_KEY` | Enables AI categorization | No |
+| `LOGO_DEV_API_KEY` | Enables merchant logo lookup | No |
 
-Generate secrets with `openssl rand -hex 32`. For encryption keys: `openssl rand -base64 32`.
+The complete variable reference is in
+[`deploy/compose/.env.example`](deploy/compose/.env.example).
 
-On a fresh database, opening the app redirects to registration. The first user
-is promoted to administrator automatically. Administrators can subsequently
-enable or disable new account registration under **Settings → Authentication**.
-`DISABLE_SIGN_UPS=true` remains available as a deployment-level hard override
-after the bootstrap administrator has been created.
+### OIDC single sign-on
 
-### Optional Features Behavior
+Administrators can configure one OpenID Connect provider from **Settings →
+Authentication**. Before enabling it:
 
-**OIDC single sign-on** — Administrators can enable an OpenID Connect provider
-from **Settings → Authentication** without restarting the app. This supports
-providers such as Authentik, Keycloak, and Okta. Provider credentials are stored
-encrypted with `DATA_ENCRYPTION_KEY_CURRENT`. Configure the provider's redirect
-URI as `https://your-app-domain/api/auth/oauth2/callback/oidc`.
+1. Set `APP_URL` to the exact public HTTPS origin.
+2. Set and back up `DATA_ENCRYPTION_KEY_CURRENT`.
+3. Register this callback with the provider:
+   `https://finance.example.com/api/auth/oauth2/callback/oidc`.
+4. Request the `openid`, `profile`, and `email` scopes.
+5. Test sign-in in a private browser window while keeping the local admin
+   session open.
 
-**`OPENAI_API_KEY`** — AI-powered categorization via OpenAI (GPT-4o-mini by default).
-- **When set**: Transactions are categorized using the LLM for high accuracy.
-- **When not set**: Falls back to keyword-based matching (e.g., "Tesco" → Groceries, "Netflix" → Entertainment). The keyword matcher uses a 70% confidence threshold.
-
-**`LOGO_DEV_API_KEY`** — Company logo lookup via [logo.dev](https://logo.dev).
-- **When set**: Merchant logos are fetched and displayed for transactions and accounts.
-- **When not set**: No logos are shown; the feature is silently disabled.
-
-Full variable reference is available in [`deploy/compose/.env.example`](deploy/compose/.env.example).
+Email/password authentication remains available. Losing or changing the data
+encryption key makes stored provider credentials unreadable.
 
 ## Architecture
 
-- Next.js 16+ (TypeScript, Drizzle ORM, BetterAuth, shadcn/ui, Recharts)
-- FastAPI (SQLAlchemy 2.0, Celery + Redis, OpenAI)
-- PostgreSQL 16, Redis 7, Docker Compose
+| Path | Purpose |
+|---|---|
+| `frontend/` | Next.js UI, authentication, server actions, Drizzle schema, and migrations |
+| `backend/` | FastAPI endpoints, integrations, Celery jobs, and SQLAlchemy models |
+| `deploy/compose/` | Full, local-build, and lightweight Compose definitions |
+| `scripts/` | Development, production, smoke-test, and validation helpers |
 
-Both services share a single PostgreSQL database. The frontend handles all CRUD via Server Actions; the backend handles data enrichment, bank sync, and background jobs.
-
-### People & ownership
-
-Syllogic models a household as a set of `people` belonging to one user. Accounts, properties, and vehicles can have one or more owners with optional shares (a `NULL` share means equal split). Holdings inherit ownership from their account. The Syllogic MCP read tools accept `person_ids` to scope results and attribute share-weighted amounts.
-
-### Investments & holdings
-
-Track brokerage and crypto holdings with portfolio summaries and history. The Syllogic MCP exposes read tools for holdings, portfolio summary/history, and symbol search.
+The frontend and backend share PostgreSQL. The frontend handles interactive
+application workflows; the backend performs enrichment, synchronization,
+reporting, and background jobs. Redis provides task queues and caching.
 
 ## Development
 
-Quick start for contributors:
-
-### Prerequisites
-
-- Docker Desktop or Docker Engine with Docker Compose v2 (`docker compose version`)
-- Git
-- At least 4 GB available Docker memory
-- Internet access for the first run, so Docker can pull base images and install container dependencies
-
-Node.js, pnpm, and Python are only required if you choose to run services directly on your host. The default Docker dev flow installs those dependencies inside containers.
-
-### One-Command Local Development
-
-Runs PostgreSQL, Redis, FastAPI, Celery worker/beat, database migrations, and the Next.js dev server in Docker with source mounts for local edits.
+Start the full development stack with source mounts and hot reload:
 
 ```bash
-git clone https://github.com/syllogic-ai/syllogic.git
-cd syllogic
-
-# Linux/macOS
 ./scripts/dev-up.sh
+```
 
-# Windows
+On Windows:
+
+```powershell
 .\scripts\dev-up.bat
 ```
 
-Open `http://localhost:3000`.
+Then open `http://localhost:3000`.
 
 Useful commands:
 
 ```bash
-docker compose logs -f frontend backend
 docker compose ps
+docker compose logs -f frontend backend
 docker compose down
 ```
 
-On first run, `dev-up` creates `deploy/compose/.env` when needed and generates the persistent data-encryption key required by the full settings workflow. Existing values are preserved. The OpenAI API key is intentionally not generated or requested by the script; add your own key under **Settings > Preferences** when you want AI categorization. Other optional local secrets and integrations can also be provided in that env file.
-
-### Prebuilt Mode
-
-Everything runs in Docker using prebuilt images. Easiest setup for full-stack testing.
-
-**1. Clone and configure:**
+Run the deployment contract check after changing deployment files:
 
 ```bash
-git clone https://github.com/syllogic-ai/syllogic.git
-cd syllogic
-cp deploy/compose/.env.example deploy/compose/.env
-# Edit deploy/compose/.env — set INTERNAL_AUTH_SECRET, BETTER_AUTH_SECRET
-# Keep DATABASE_URL=postgresql://...@postgres:5432/... (Docker internal)
+./scripts/verify-deploy-contract.sh
 ```
 
-**2. Start the stack:**
-
-```bash
-# Linux/macOS
-./scripts/dev-up.sh --prebuilt
-
-# Windows
-.\scripts\dev-up.bat prebuilt
-```
-
-**3. Open http://localhost:8080**
-
-### Host-Run Mode
-
-Infrastructure runs in Docker while frontend/backend run on your host. Use this only when you specifically need host-level tooling or debuggers.
-
-**1. Clone:**
-
-```bash
-git clone https://github.com/syllogic-ai/syllogic.git
-cd syllogic
-```
-
-**2. Start infrastructure:**
-
-```bash
-docker compose up -d db redis
-```
-
-**3. Configure host env files, install dependencies, run migrations, and start services:**
-
-```bash
-cd frontend
-cp .env.example .env.local
-# Edit .env.local: set BETTER_AUTH_SECRET and INTERNAL_AUTH_SECRET
-pnpm install
-pnpm db:migrate
-pnpm dev
-```
-
-```bash
-cd backend
-cp .env.example .env
-# Edit .env: set the same INTERNAL_AUTH_SECRET used by frontend/.env.local
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
-
-**4. Open http://localhost:3000**
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full setup instructions and code style guidelines.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for host-run setup, tests, and code
+style.
 
 ## License
 
-Licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
+Licensed under the [GNU Affero General Public License v3.0](LICENSE).

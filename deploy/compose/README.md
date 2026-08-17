@@ -152,7 +152,7 @@ docker compose \
 - File uploads and CSV imports are stored in `public/uploads` and persisted via the `uploads_data` Docker volume.
 - This bundle defaults to **Postgres 16**. If you have an existing local Docker volume created by **Postgres 15**, you must dump/restore to upgrade (or temporarily set `POSTGRES_IMAGE=postgres:15-alpine` to keep running on 15).
 - We set explicit `container_name` values to avoid the `*-1` suffix. This makes container names stable, but it also means you **cannot** scale services with `--scale`, and you shouldn't run multiple Syllogic stacks on the same Docker host without changing names.
-- See [`docs/deployment-matrix.md`](../../docs/deployment-matrix.md) for the cross-environment contract (local/self-host/Railway v1+v2).
+- See [`docs/deployment-matrix.md`](../../docs/deployment-matrix.md) for the local and self-hosted environment contract.
 
 ## MCP Server (Full Mode)
 
@@ -222,10 +222,6 @@ From repository root:
 - Lightweight ARM64/small-server stack: `./scripts/prod-up.sh --lite`
 - Local source-compose smoke validation: `./scripts/local-smoke.sh`
 - VPS post-install verification: `deploy/install/post-install-check.sh /opt/syllogic`
-
-## Railway Deployment
-
-See [`deploy/railway/`](../railway/) for a Railway-specific compose file and instructions.
 
 ## Backups (Docs-Only in v1)
 

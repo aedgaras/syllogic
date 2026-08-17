@@ -31,15 +31,13 @@ RUN pip install --upgrade pip \
 ##
 # Compile the React Email report renderer into one self-contained script so
 # every backend container does not carry the frontend dependency tree.
-# - This backend Dockerfile's primary build context stays `./backend`
-#   (unchanged, so existing Railway/CI/compose configs that build with
-#   context=./backend keep working). frontend/ is supplied as a separate
+# - This backend Dockerfile's primary build context stays `./backend`.
+#   frontend/ is supplied as a separate
 #   *named* BuildKit context called "frontend" -- see the `additional_contexts`
 #   entries in docker-compose.yml / deploy/compose/docker-compose.local.yml
 #   and the `build-contexts` input in .github/workflows/docker-build.yml.
 #   Any build invocation that does NOT pass that named context (e.g. a bare
-#   `docker build ./backend` or an unmodified Railway service) will fail this
-#   stage -- see final-review-fix-report.md for what's covered vs. not.
+#   `docker build ./backend`) will fail this stage.
 ##
 FROM node:20-bookworm-slim AS report-builder
 

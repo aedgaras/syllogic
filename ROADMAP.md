@@ -4,8 +4,7 @@ Syllogic is already deployable. The near-term focus is trust, onboarding, and sh
 
 ## Working today
 
-- Self-host with Docker Compose or use the install script
-- Deploy on Railway with the published template
+- Deploy on a self-managed host with Docker Compose, including lightweight ARM64 systems
 - Track balances, spending categories, recurring charges, and cash-flow trends
 - Import and export transactions with CSV workflows
 - Enable optional AI categorization and merchant enrichment
@@ -14,20 +13,17 @@ Syllogic is already deployable. The near-term focus is trust, onboarding, and sh
 ## Next up
 
 - Smoother onboarding for first-time imports
-- Better demo and install proof: walkthrough GIFs, comparison pages, and more screenshots
+- Better installation guidance and upgrade diagnostics
 - More explicit self-hosting content for homelab and privacy-first audiences
 - Stronger community feedback loops through Discussions, issue forms, and release notes
 
 ## Feedback channels
 
-- [Install help](https://github.com/syllogic-ai/syllogic/issues/new?template=install_help.yml)
-- [Demo feedback](https://github.com/syllogic-ai/syllogic/issues/new?template=demo_feedback.yml)
-- [Feature request](https://github.com/syllogic-ai/syllogic/issues/new?template=feature_request.yml)
-- [GitHub Discussions](https://github.com/syllogic-ai/syllogic/discussions)
+- [Install help](https://github.com/aedgaras/syllogic/issues/new?template=install_help.yml)
+- [Feature request](https://github.com/aedgaras/syllogic/issues/new?template=feature_request.yml)
 
 ## Release rhythm
 
 - ship small, visible improvements
 - publish short release notes with screenshots or walkthrough assets
 - fold repeated community questions back into docs and onboarding
-
