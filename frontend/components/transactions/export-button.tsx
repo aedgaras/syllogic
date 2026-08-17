@@ -4,7 +4,7 @@ import { RiDownloadLine } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { exportTransactionsToCSV } from "@/lib/utils/csv-export";
-import type { TransactionWithRelations } from "@/lib/actions/transactions";
+import type { TransactionWithRelations } from "@/features/transactions/public";
 
 interface ExportButtonProps {
   transactions: TransactionWithRelations[];

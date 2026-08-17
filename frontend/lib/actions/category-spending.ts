@@ -25,7 +25,7 @@ import { getAuthenticatedSession } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
 import { categories, transactions, transactionLinks, users } from "@/lib/db/schema";
 import { resolveMissingAccountLogos } from "@/lib/actions/account-logos";
-import type { TransactionWithRelations } from "@/lib/actions/transactions";
+import type { TransactionWithRelations } from "@/features/transactions/public";
 import type {
   CategorySpendingSortField,
   CategorySpendingSortOrder,

@@ -24,7 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { RiLoader4Line, RiAlertLine, RiRepeatLine, RiLightbulbLine } from "@remixicon/react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import type { TransactionWithRelations } from "@/lib/actions/transactions";
+import type { TransactionWithRelations } from "@/features/transactions/public";
 import type { CategoryDisplay } from "@/types";
 import {
   detectSubscriptionFromTransaction,

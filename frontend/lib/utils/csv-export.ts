@@ -1,4 +1,4 @@
-import type { TransactionWithRelations } from "@/lib/actions/transactions";
+import type { TransactionWithRelations } from "@/features/transactions/public";
 
 /**
  * Export transactions to a CSV file and trigger download

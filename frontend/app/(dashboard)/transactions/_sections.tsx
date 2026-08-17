@@ -1,9 +1,10 @@
 import { TransactionsClient } from "./transactions-client";
-import { getTransactionsPage, getUserAccounts } from "@/lib/actions/transactions";
+import { getUserAccounts } from "@/lib/actions/transactions";
+import { getTransactionPage } from "@/features/transactions/server";
 import { getUserCategories } from "@/lib/actions/categories";
 import { getAuthenticatedSession } from "@/lib/auth-helpers";
 import { isDemoRestrictedUserEmail } from "@/lib/demo-access";
-import type { TransactionsQueryState } from "@/lib/transactions/query-state";
+import type { TransactionsQueryState } from "@/features/transactions/public";
 
 export async function TransactionsSection({
   queryState,
@@ -12,7 +13,7 @@ export async function TransactionsSection({
 }) {
   const [session, pageData, categories, accounts] = await Promise.all([
     getAuthenticatedSession(),
-    getTransactionsPage(queryState),
+    getTransactionPage(queryState),
     getUserCategories(),
     getUserAccounts(),
   ]);

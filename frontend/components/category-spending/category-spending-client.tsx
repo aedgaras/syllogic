@@ -9,10 +9,10 @@ import { CategorySpendingDonutChart } from "@/components/category-spending/categ
 import { TransactionTable } from "@/components/transactions/transaction-table";
 import { categorySpendingTransactionColumns } from "@/components/transactions/columns";
 import type { CategorySpendingData } from "@/lib/actions/category-spending";
-import type { TransactionWithRelations } from "@/lib/actions/transactions";
+import type { TransactionWithRelations } from "@/features/transactions/public";
 import type { ParsedCategorySpendingQueryParams } from "@/lib/category-spending/query-params";
 import { buildCategorySpendingQuery } from "@/lib/category-spending/query-params";
-import type { TransactionsQueryState } from "@/lib/transactions/query-state";
+import type { TransactionsQueryState } from "@/features/transactions/public";
 import type { AccountDisplay, CategoryDisplay } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";

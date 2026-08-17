@@ -4,7 +4,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import type { TransactionWithRelations } from "@/lib/actions/transactions";
+import type { TransactionWithRelations } from "@/features/transactions/public";
 import { RiArrowUpLine, RiArrowDownLine, RiSubtractLine, RiCheckLine, RiLink } from "@remixicon/react";
 import {
   Tooltip,

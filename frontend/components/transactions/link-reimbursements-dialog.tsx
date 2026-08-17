@@ -34,7 +34,7 @@ import {
 import { format, subDays } from "date-fns";
 import { toast } from "sonner";
 import { cn, formatAmount } from "@/lib/utils";
-import type { TransactionWithRelations } from "@/lib/actions/transactions";
+import type { TransactionWithRelations } from "@/features/transactions/public";
 import {
   findPotentialReimbursements,
   findPotentialExpenses,

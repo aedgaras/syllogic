@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TransactionTable } from "./transaction-table";
-import type { TransactionWithRelations } from "@/lib/actions/transactions";
-import type { TransactionsQueryState } from "@/lib/transactions/query-state";
+import type { TransactionWithRelations } from "@/features/transactions/public";
+import type { TransactionsQueryState } from "@/features/transactions/public";
 
 const navigation = vi.hoisted(() => ({
   replace: vi.fn(),

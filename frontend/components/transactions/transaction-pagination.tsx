@@ -15,7 +15,7 @@ import {
   RiSkipLeftLine,
   RiSkipRightLine,
 } from "@remixicon/react";
-import type { TransactionWithRelations } from "@/lib/actions/transactions";
+import type { TransactionWithRelations } from "@/features/transactions/public";
 
 interface TransactionPaginationProps {
   table: Table<TransactionWithRelations>;

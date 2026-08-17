@@ -37,8 +37,8 @@ import {
   createTransferTransaction,
   getUserAccounts,
   updateTransaction,
-  type TransactionWithRelations,
 } from "@/lib/actions/transactions";
+import type { TransactionWithRelations } from "@/features/transactions/public";
 import { getUserCategories } from "@/lib/actions/categories";
 type Account = { id: string; name: string; institution: string | null; accountType: string; currency: string | null };
 import type { CategoryDisplay } from "@/types";

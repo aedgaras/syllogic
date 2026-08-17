@@ -39,7 +39,7 @@ import {
   RiCloseLine,
   RiRepeatLine,
 } from "@remixicon/react";
-import type { TransactionWithRelations } from "@/lib/actions/transactions";
+import type { TransactionWithRelations } from "@/features/transactions/public";
 import type { CategoryForFilter } from "@/types";
 import { cn } from "@/lib/utils";
 

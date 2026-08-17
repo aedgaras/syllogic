@@ -20,9 +20,9 @@ import { useSession } from "@/lib/auth-client";
 import type {
   FilteredTransactionTotals,
   TransactionWithRelations,
-} from "@/lib/actions/transactions";
+} from "@/features/transactions/public";
 import type { CategoryDisplay, AccountForFilter } from "@/types";
-import type { TransactionsQueryState } from "@/lib/transactions/query-state";
+import type { TransactionsQueryState } from "@/features/transactions/public";
 
 interface TransactionsClientProps {
   initialTransactions: TransactionWithRelations[];

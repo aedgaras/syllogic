@@ -29,7 +29,7 @@ import { bulkUpdateTransactionCategory, bulkUpdateTransactionIncludeInAnalytics 
 import { createLinkGroupFromSelection } from "@/lib/actions/transaction-links";
 import { exportTransactionsToCSV } from "@/lib/utils/csv-export";
 import type { CategoryDisplay } from "@/types";
-import type { TransactionWithRelations } from "@/lib/actions/transactions";
+import type { TransactionWithRelations } from "@/features/transactions/public";
 import { filterSelectableCategories } from "@/lib/utils/category-utils";
 import { DeleteConfirmationDialog } from "./delete-confirmation-dialog";
 

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Header } from "@/components/layout/header";
 import { TableSkeleton, FiltersSkeleton } from "@/components/skeletons/page-skeletons";
-import { parseTransactionsSearchParams } from "@/lib/transactions/query-state";
+import { parseTransactionsSearchParams } from "@/features/transactions/public";
 import { TransactionsSection } from "./_sections";
 
 interface TransactionsPageProps {

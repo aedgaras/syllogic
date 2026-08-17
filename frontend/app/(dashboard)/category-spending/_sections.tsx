@@ -6,7 +6,7 @@ import {
 import { getUserAccounts } from "@/lib/actions/dashboard";
 import { getUserCategories } from "@/lib/actions/categories";
 import type { ParsedCategorySpendingQueryParams } from "@/lib/category-spending/query-params";
-import type { TransactionsQueryState } from "@/lib/transactions/query-state";
+import type { TransactionsQueryState } from "@/features/transactions/public";
 
 export async function CategorySpendingSection({
   parsed,

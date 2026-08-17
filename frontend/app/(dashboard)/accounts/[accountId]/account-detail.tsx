@@ -6,7 +6,7 @@ import { AccountBalanceChart } from "@/components/accounts/account-balance-chart
 import { AccountTransactions } from "@/components/accounts/account-transactions";
 import type { Account, Category } from "@/lib/db/schema";
 import type { BalanceHistoryPoint } from "@/lib/actions/accounts";
-import type { TransactionWithRelations } from "@/lib/actions/transactions";
+import type { TransactionWithRelations } from "@/features/transactions/public";
 import type { CategoryDisplay } from "@/types";
 
 interface AccountDetailProps {

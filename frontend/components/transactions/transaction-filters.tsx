@@ -43,7 +43,7 @@ import {
   RiLineChartLine,
 } from "@remixicon/react";
 import type { CategoryForFilter, AccountForFilter } from "@/types";
-import type { TransactionsQueryState } from "@/lib/transactions/query-state";
+import type { TransactionsQueryState } from "@/features/transactions/public";
 import { cn } from "@/lib/utils";
 
 interface RecurringFilterOption {

@@ -12,7 +12,7 @@ import { DataTable } from "@/components/ui/data-table";
 import type {
   FilteredTransactionTotals,
   TransactionWithRelations,
-} from "@/lib/actions/transactions";
+} from "@/features/transactions/public";
 import type { CategoryDisplay, AccountForFilter } from "@/types";
 import { TransactionSheet } from "./transaction-sheet";
 import { transactionColumns } from "./columns";
@@ -26,7 +26,7 @@ import {
   hasActiveTransactionFilters,
   type TransactionSortField,
   type TransactionsQueryState,
-} from "@/lib/transactions/query-state";
+} from "@/features/transactions/public";
 
 interface TransactionTableProps {
   transactions: TransactionWithRelations[];

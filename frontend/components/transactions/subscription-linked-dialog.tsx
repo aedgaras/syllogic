@@ -29,7 +29,7 @@ import {
 } from "@remixicon/react";
 import Link from "next/link";
 import { toast } from "sonner";
-import type { TransactionWithRelations } from "@/lib/actions/transactions";
+import type { TransactionWithRelations } from "@/features/transactions/public";
 import { unlinkTransactionFromSubscription } from "@/lib/actions/subscriptions";
 
 interface SubscriptionLinkedDialogProps {

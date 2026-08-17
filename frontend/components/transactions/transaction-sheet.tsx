@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn, formatDate, formatAmount } from "@/lib/utils";
-import type { TransactionWithRelations } from "@/lib/actions/transactions";
+import type { TransactionWithRelations } from "@/features/transactions/public";
 import { updateTransactionCategory, updateTransactionIncludeInAnalytics, deleteBalancingTransaction } from "@/lib/actions/transactions";
 import { unlinkInternalTransfer } from "@/lib/actions/accounts";
 import { Switch } from "@/components/ui/switch";
