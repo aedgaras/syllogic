@@ -88,14 +88,12 @@ App available at http://localhost:3000.
 Use this when you need to test the production Compose bundle with images built from your local checkout. For normal source development, use `./scripts/dev-up.sh` instead.
 
 ```bash
-cp deploy/compose/.env.example deploy/compose/.env
-# Edit deploy/compose/.env
-docker compose \
-  --env-file deploy/compose/.env \
-  -f deploy/compose/docker-compose.yml \
-  -f deploy/compose/docker-compose.local.yml \
-  up -d --build
+./scripts/prod-up.sh --local
 ```
+
+The first run creates a localhost-oriented production environment with
+generated secrets. Add integrations or override ports in
+`deploy/compose/.env` as needed.
 
 ## Database Management
 

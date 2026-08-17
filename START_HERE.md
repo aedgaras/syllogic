@@ -25,10 +25,13 @@ Syllogic gives self-hosters a finance app they can actually run themselves:
 ```bash
 git clone https://github.com/aedgaras/syllogic.git
 cd syllogic
-cp deploy/compose/.env.example deploy/compose/.env
-# Edit deploy/compose/.env, then:
-./scripts/prod-up.sh
+./scripts/prod-up.sh --local
 ```
+
+That command builds the production images from the checkout, generates the
+required local secrets, and serves Syllogic at `http://localhost:8080`.
+For a public server using prebuilt images, configure
+`deploy/compose/.env.example` and run `./scripts/prod-up.sh` instead.
 
 For the manual setup, use [README.md](README.md#quick-start).
 

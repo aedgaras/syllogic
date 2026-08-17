@@ -40,11 +40,33 @@ and an MCP server for compatible clients.
 - Docker Engine or Docker Desktop
 - Docker Compose v2 (`docker compose version`)
 
-### 1. Clone and configure
+### 1. Clone
 
 ```bash
 git clone https://github.com/aedgaras/syllogic.git
 cd syllogic
+```
+
+### 2. Start a local production deployment
+
+Build the current checkout with the production Dockerfiles and start it with:
+
+```bash
+./scripts/prod-up.sh --local
+```
+
+On the first run, this creates `deploy/compose/.env`, generates the database,
+authentication, internal-auth, and data-encryption secrets, and uses safe
+localhost defaults. Existing configured values are never replaced. Windows
+users can run `scripts\prod-up.bat -Local`.
+
+Open `http://localhost:8080` when the build finishes.
+
+### Server / public deployment configuration
+
+For a server deployment using prebuilt release images, copy the example first:
+
+```bash
 cp deploy/compose/.env.example deploy/compose/.env
 ```
 
@@ -81,20 +103,7 @@ CADDY_ADDRESS=finance.example.com
 ACME_EMAIL=admin@example.com
 ```
 
-### 2. Start the stack
-
-Build the current checkout and start it:
-
-```bash
-docker compose \
-  --env-file deploy/compose/.env \
-  -f deploy/compose/docker-compose.yml \
-  -f deploy/compose/docker-compose.local.yml \
-  up -d --build
-```
-
-Or use the production helper to run the prebuilt images configured by the
-Compose bundle:
+Then run the prebuilt images configured by the Compose bundle:
 
 ```bash
 ./scripts/prod-up.sh
@@ -135,12 +144,7 @@ omits the MCP service.
 When building the current checkout locally:
 
 ```bash
-docker compose \
-  --env-file deploy/compose/.env \
-  -f deploy/compose/docker-compose.yml \
-  -f deploy/compose/docker-compose.local.yml \
-  -f deploy/compose/docker-compose.lite.yml \
-  up -d --build postgres redis uploads-init migrate backend worker app caddy
+./scripts/prod-up.sh --local --lite
 ```
 
 Lite mode disables Redis persistence. Interrupted imports or syncs may need to

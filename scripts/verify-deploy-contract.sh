@@ -18,7 +18,7 @@ assert_contains() {
     echo "[contract] Missing required file: $file"
     exit 1
   fi
-  if ! grep -qF "$pattern" "$file"; then
+  if ! grep -qF -- "$pattern" "$file"; then
     echo "[contract] Expected pattern not found in $file: $pattern"
     exit 1
   fi
@@ -31,6 +31,10 @@ assert_contains "$ROOT_DIR/docker-compose.yml" "postgres:16-alpine"
 assert_contains "$ROOT_DIR/deploy/compose/docker-compose.yml" "postgres:16-alpine"
 assert_contains "$ROOT_DIR/deploy/compose/docker-compose.yml" "mcp"
 assert_contains "$ROOT_DIR/deploy/compose/docker-compose.yml" "/health"
+assert_contains "$ROOT_DIR/scripts/prod-up.sh" "--local"
+assert_contains "$ROOT_DIR/scripts/prod-up.sh" "docker-compose.local.yml"
+assert_contains "$ROOT_DIR/scripts/prod-up.ps1" '[switch]$Local'
+assert_contains "$ROOT_DIR/README.md" "./scripts/prod-up.sh --local"
 assert_contains "$ROOT_DIR/docs/deployment-matrix.md" "edge"
 assert_contains "$ROOT_DIR/docs/deployment-matrix.md" "vX.Y.Z"
 

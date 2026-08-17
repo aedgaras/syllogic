@@ -33,7 +33,7 @@ function Assert-Contains {
         exit 1
     }
     $content = Get-Content -Path $FilePath -Raw -ErrorAction Stop
-    if ($content -notlike "*$Pattern*") {
+    if (-not $content.Contains($Pattern)) {
         Write-Host "[contract] Expected pattern not found in $FilePath : $Pattern" -ForegroundColor Red
         exit 1
     }
@@ -49,6 +49,10 @@ Assert-Contains -FilePath (Join-Path $RootDir "docker-compose.yml") -Pattern "po
 Assert-Contains -FilePath (Join-Path $RootDir "deploy/compose/docker-compose.yml") -Pattern "postgres:16-alpine"
 Assert-Contains -FilePath (Join-Path $RootDir "deploy/compose/docker-compose.yml") -Pattern "mcp"
 Assert-Contains -FilePath (Join-Path $RootDir "deploy/compose/docker-compose.yml") -Pattern "/health"
+Assert-Contains -FilePath (Join-Path $RootDir "scripts/prod-up.sh") -Pattern "--local"
+Assert-Contains -FilePath (Join-Path $RootDir "scripts/prod-up.sh") -Pattern "docker-compose.local.yml"
+Assert-Contains -FilePath (Join-Path $RootDir "scripts/prod-up.ps1") -Pattern '[switch]$Local'
+Assert-Contains -FilePath (Join-Path $RootDir "README.md") -Pattern "./scripts/prod-up.sh --local"
 Assert-Contains -FilePath (Join-Path $RootDir "docs/deployment-matrix.md") -Pattern "edge"
 Assert-Contains -FilePath (Join-Path $RootDir "docs/deployment-matrix.md") -Pattern "vX.Y.Z"
 

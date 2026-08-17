@@ -11,6 +11,20 @@ This directory contains the production-grade Docker Compose bundle:
 
 ## Quick Start
 
+For a production-mode deployment of the current checkout on your local
+machine, the entire first-time setup is one command from the repository root:
+
+```bash
+./scripts/prod-up.sh --local
+```
+
+This creates `deploy/compose/.env` when needed, fills all required local
+settings with generated secrets, builds the production images, and starts the
+stack at `http://localhost:8080`. It preserves every existing configured value.
+Use `./scripts/prod-up.sh --local --lite` on a resource-constrained machine.
+
+The steps below are for a server or public deployment using prebuilt images.
+
 1. Copy `deploy/compose/.env.example` to `deploy/compose/.env`.
 2. Edit `.env` values (at minimum: `POSTGRES_PASSWORD`, `BETTER_AUTH_SECRET`, `INTERNAL_AUTH_SECRET`).
    - **CRITICAL**: Set a strong `POSTGRES_PASSWORD` (e.g., `openssl rand -hex 32`).
@@ -100,11 +114,7 @@ Once all containers are running:
 Use this when you want containers to run your current local code (instead of GHCR prebuilt images):
 
 ```bash
-docker compose \
-  --env-file deploy/compose/.env \
-  -f deploy/compose/docker-compose.yml \
-  -f deploy/compose/docker-compose.local.yml \
-  up -d --build
+./scripts/prod-up.sh --local
 ```
 
 This is the recommended flow when validating recent code changes.
@@ -113,12 +123,7 @@ To build the lite stack from the current checkout, layer the local-build and
 lite overrides and name the services explicitly:
 
 ```bash
-docker compose \
-  --env-file deploy/compose/.env \
-  -f deploy/compose/docker-compose.yml \
-  -f deploy/compose/docker-compose.local.yml \
-  -f deploy/compose/docker-compose.lite.yml \
-  up -d --build postgres redis uploads-init migrate backend worker app caddy
+./scripts/prod-up.sh --local --lite
 ```
 
 ## Reusing Existing Dev `.env` Files (Optional)
@@ -218,6 +223,7 @@ python postgres_migration/run_encryption_upgrade.py --batch-size 500 --clear-pla
 From repository root:
 
 - Full Docker local development stack: `./scripts/dev-up.sh --local`
+- Local production stack built from this checkout: `./scripts/prod-up.sh --local`
 - Full prebuilt self-host stack: `./scripts/prod-up.sh`
 - Lightweight ARM64/small-server stack: `./scripts/prod-up.sh --lite`
 - Local source-compose smoke validation: `./scripts/local-smoke.sh`

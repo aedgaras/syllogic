@@ -7,6 +7,7 @@ This document defines the supported deployment surfaces and a shared environment
 | Surface | Primary use | Service model | Data services | Artifact strategy |
 |---|---|---|---|---|
 | `local` | Day-to-day development | Source workflow + local infra containers | Local Postgres/Redis containers | Local source checkout |
+| `local-production` | Production-mode QA / local self-hosting | Production Compose stack | Bundled Postgres/Redis containers | Production images built from local source |
 | `self-host` | VPS / one-click install | Docker Compose (image-based) | Bundled Postgres/Redis containers | Pinned release tags (`vX.Y.Z`) |
 
 ## Image Channel Policy
