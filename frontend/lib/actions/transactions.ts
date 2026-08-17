@@ -39,6 +39,10 @@ export interface CreateTransferTransactionInput {
   bookedAt: Date;
 }
 
+export interface ConvertTransactionToTransferInput extends CreateTransferTransactionInput {
+  transactionId: string;
+}
+
 /**
  * Recalculates account_balances records from a given date.
  * Stops at the earlier of:
@@ -475,6 +479,227 @@ export async function createTransferTransaction(
   } catch (error) {
     console.error("Failed to create transfer transaction:", error);
     return { success: false, error: "Failed to create transfer" };
+  }
+}
+
+/**
+ * Converts an existing standalone transaction into the source side of an
+ * account-to-account transfer, then creates and links the destination side.
+ */
+export async function convertTransactionToTransfer(
+  input: ConvertTransactionToTransferInput
+): Promise<{
+  success: boolean;
+  error?: string;
+  sourceTransactionId?: string;
+  destinationTransactionId?: string;
+}> {
+  const session = await getAuthenticatedSession();
+  const userId = session?.user?.id ?? null;
+
+  if (!userId) return { success: false, error: "Not authenticated" };
+  if (isDemoRestrictedUserEmail(session?.user?.email)) {
+    return { success: false, error: DEMO_RESTRICTED_ACTION_ERROR };
+  }
+
+  const description = input.description.trim();
+  if (!description) return { success: false, error: "Description is required" };
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
+    return { success: false, error: "Amount must be greater than zero" };
+  }
+  if (!(input.bookedAt instanceof Date) || Number.isNaN(input.bookedAt.getTime())) {
+    return { success: false, error: "A valid transaction date is required" };
+  }
+  if (input.sourceAccountId === input.destinationAccountId) {
+    return { success: false, error: "Source and destination accounts must be different" };
+  }
+
+  try {
+    const existing = await db.query.transactions.findFirst({
+      where: and(eq(transactions.id, input.transactionId), eq(transactions.userId, userId)),
+      with: { account: true, category: true },
+    });
+    if (!existing) return { success: false, error: "Transaction not found" };
+    if (existing.internalTransferId) {
+      return { success: false, error: "This transaction is already part of a transfer" };
+    }
+    if (existing.category?.name === "Balancing Transfer") {
+      return { success: false, error: "Balancing transfers cannot be converted" };
+    }
+
+    const ownedAccounts = await db.query.accounts.findMany({
+      where: and(
+        inArray(accounts.id, [input.sourceAccountId, input.destinationAccountId]),
+        eq(accounts.userId, userId)
+      ),
+    });
+    const sourceAccount = ownedAccounts.find((account) => account.id === input.sourceAccountId);
+    const destinationAccount = ownedAccounts.find(
+      (account) => account.id === input.destinationAccountId
+    );
+    if (!sourceAccount || !destinationAccount) {
+      return { success: false, error: "One or both accounts were not found" };
+    }
+
+    const sourceCurrency = sourceAccount.currency || "EUR";
+    const destinationCurrency = destinationAccount.currency || "EUR";
+    if (sourceCurrency !== destinationCurrency) {
+      return {
+        success: false,
+        error: "Transfers between accounts with different currencies are not supported yet",
+      };
+    }
+
+    const transferCategory = await db.query.categories.findFirst({
+      where: and(eq(categories.userId, userId), eq(categories.categoryType, "transfer")),
+      orderBy: [desc(categories.isSystem), asc(categories.createdAt)],
+    });
+    const [user] = await db
+      .select({ functionalCurrency: users.functionalCurrency })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const functionalCurrency = user?.functionalCurrency || "EUR";
+    let functionalRate: number | null = sourceCurrency === functionalCurrency ? 1 : null;
+    if (functionalRate === null) {
+      const endOfBookedDay = new Date(input.bookedAt);
+      endOfBookedDay.setHours(23, 59, 59, 999);
+      const sevenDaysEarlier = new Date(input.bookedAt);
+      sevenDaysEarlier.setDate(sevenDaysEarlier.getDate() - 7);
+      sevenDaysEarlier.setHours(0, 0, 0, 0);
+      const rate = await db.query.exchangeRates.findFirst({
+        where: and(
+          eq(exchangeRates.baseCurrency, sourceCurrency),
+          eq(exchangeRates.targetCurrency, functionalCurrency),
+          gte(exchangeRates.date, sevenDaysEarlier),
+          lte(exchangeRates.date, endOfBookedDay)
+        ),
+        orderBy: [desc(exchangeRates.date)],
+      });
+      if (rate) functionalRate = parseFloat(rate.rate);
+    }
+
+    const amount = Math.abs(input.amount);
+    const sourceAmount = (-amount).toFixed(2);
+    const destinationAmount = amount.toFixed(2);
+    const sourceFunctionalAmount = functionalRate === null
+      ? null
+      : (-amount * functionalRate).toFixed(2);
+    const destinationFunctionalAmount = functionalRate === null
+      ? null
+      : (amount * functionalRate).toFixed(2);
+    const affectedAccounts = new Map<string, { startingBalance: number; fromDate: Date }>();
+    if (existing.account) {
+      affectedAccounts.set(existing.accountId, {
+        startingBalance: parseFloat(existing.account.startingBalance || "0"),
+        fromDate: existing.bookedAt < input.bookedAt ? existing.bookedAt : input.bookedAt,
+      });
+    }
+    for (const account of [sourceAccount, destinationAccount]) {
+      const current = affectedAccounts.get(account.id);
+      if (!current) {
+        affectedAccounts.set(account.id, {
+          startingBalance: parseFloat(account.startingBalance || "0"),
+          fromDate: input.bookedAt,
+        });
+      } else if (input.bookedAt < current.fromDate) {
+        current.fromDate = input.bookedAt;
+      }
+    }
+
+    const result = await db.transaction(async (tx) => {
+      await tx
+        .update(transactions)
+        .set({
+          accountId: sourceAccount.id,
+          transactionType: "debit",
+          amount: sourceAmount,
+          currency: sourceCurrency,
+          functionalAmount: sourceFunctionalAmount,
+          description,
+          merchant: destinationAccount.name,
+          creditor: null,
+          debtor: null,
+          counterpartyIbanCiphertext: null,
+          counterpartyIbanHash: null,
+          categoryId: null,
+          categorySystemId: transferCategory?.id || null,
+          recurringTransactionId: null,
+          bookedAt: input.bookedAt,
+          pending: false,
+          includeInAnalytics: false,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(transactions.id, existing.id), eq(transactions.userId, userId)));
+
+      const [destinationTransaction] = await tx
+        .insert(transactions)
+        .values({
+          userId,
+          accountId: destinationAccount.id,
+          transactionType: "credit",
+          amount: destinationAmount,
+          currency: destinationCurrency,
+          functionalAmount: destinationFunctionalAmount,
+          description,
+          merchant: sourceAccount.name,
+          categorySystemId: transferCategory?.id || null,
+          bookedAt: input.bookedAt,
+          pending: false,
+          includeInAnalytics: false,
+        })
+        .returning({ id: transactions.id });
+      const [transfer] = await tx
+        .insert(internalTransfers)
+        .values({
+          userId,
+          sourceTxnId: existing.id,
+          mirrorTxnId: destinationTransaction.id,
+          sourceAccountId: sourceAccount.id,
+          pocketAccountId: destinationAccount.id,
+          amount: amount.toFixed(2),
+          currency: sourceCurrency,
+        })
+        .returning({ id: internalTransfers.id });
+      await tx
+        .update(transactions)
+        .set({ internalTransferId: transfer.id, updatedAt: new Date() })
+        .where(inArray(transactions.id, [existing.id, destinationTransaction.id]));
+
+      for (const [accountId, { startingBalance }] of affectedAccounts) {
+        const [balanceResult] = await tx
+          .select({ total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)` })
+          .from(transactions)
+          .where(and(eq(transactions.accountId, accountId), eq(transactions.userId, userId)));
+        const newBalance = startingBalance + parseFloat(balanceResult?.total || "0");
+        await tx
+          .update(accounts)
+          .set({ functionalBalance: newBalance.toFixed(2), updatedAt: new Date() })
+          .where(and(eq(accounts.id, accountId), eq(accounts.userId, userId)));
+      }
+
+      return { sourceTransactionId: existing.id, destinationTransactionId: destinationTransaction.id };
+    });
+
+    try {
+      for (const [accountId, { startingBalance, fromDate }] of affectedAccounts) {
+        await recalculateAccountBalancesFromDate(accountId, fromDate, startingBalance);
+      }
+    } catch (snapshotError) {
+      console.error("Transaction converted, but balance snapshot recalculation failed:", snapshotError);
+    }
+
+    revalidatePath("/transactions");
+    revalidatePath("/");
+    revalidatePath("/settings");
+    revalidatePath("/assets");
+    revalidatePath("/subscriptions");
+    for (const accountId of affectedAccounts.keys()) revalidatePath(`/accounts/${accountId}`);
+
+    return { success: true, ...result };
+  } catch (error) {
+    console.error("Failed to convert transaction to transfer:", error);
+    return { success: false, error: "Failed to convert transaction to transfer" };
   }
 }
 

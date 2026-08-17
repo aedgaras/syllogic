@@ -32,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
+  convertTransactionToTransfer,
   createTransaction,
   createTransferTransaction,
   getUserAccounts,
@@ -193,6 +194,25 @@ export function AddTransactionDialog({
         return;
       }
 
+      if (transactionType === "transfer" && transaction) {
+        const result = await convertTransactionToTransfer({
+          transactionId: transaction.id,
+          sourceAccountId: accountId,
+          destinationAccountId,
+          amount: parsedAmount,
+          description: description.trim(),
+          bookedAt,
+        });
+        if (!result.success) {
+          toast.error(result.error || "Failed to convert transaction to transfer");
+          return;
+        }
+        toast.success("Transaction converted to transfer");
+        onOpenChange(false);
+        router.refresh();
+        return;
+      }
+
       const standardTransactionType = transactionType === "transfer" ? "debit" : transactionType;
       const transactionInput = {
         accountId,
@@ -314,18 +334,16 @@ export function AddTransactionDialog({
                 <RiArrowUpLine className="mr-2 h-4 w-4" />
                 Income
               </Button>
-              {(!isEditing || isLinkedTransfer) && (
-                <Button
-                  type="button"
-                  variant={transactionType === "transfer" ? "default" : "outline"}
-                  className="flex-1"
-                  disabled={isLinkedTransfer}
-                  onClick={() => handleTransactionTypeChange("transfer")}
-                >
-                  <RiExchangeLine className="mr-2 h-4 w-4" />
-                  Transfer
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant={transactionType === "transfer" ? "default" : "outline"}
+                className="flex-1"
+                disabled={isLinkedTransfer}
+                onClick={() => handleTransactionTypeChange("transfer")}
+              >
+                <RiExchangeLine className="mr-2 h-4 w-4" />
+                Transfer
+              </Button>
             </div>
 
             {/* Account Select */}
@@ -526,7 +544,9 @@ export function AddTransactionDialog({
             >
               {isLoading
                 ? isEditing ? "Saving..." : "Adding..."
-                : isEditing ? "Save Changes" : transactionType === "transfer" ? "Create Transfer" : "Add Transaction"}
+                : transactionType === "transfer"
+                  ? isEditing ? "Convert to Transfer" : "Create Transfer"
+                  : isEditing ? "Save Changes" : "Add Transaction"}
             </Button>}
           </DialogFooter>
         </form>
