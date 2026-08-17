@@ -27,7 +27,7 @@ and an MCP server for compatible clients.
 - PostgreSQL-backed accounts, transactions, categories, and investments
 - CSV import/export and optional bank synchronization
 - Recurring-payment and subscription detection
-- Optional OpenAI-powered transaction categorization
+- Optional OpenAI-compatible AI categorization, including local LLMs
 - Optional OIDC single sign-on configured by an administrator
 - Full and lightweight Docker Compose stacks
 - MCP access for trusted local or VPN-connected clients
@@ -155,11 +155,28 @@ be retried, but PostgreSQL data and uploaded files remain persistent.
 | `BETTER_AUTH_SECRET` | Session signing secret | Yes |
 | `INTERNAL_AUTH_SECRET` | Frontend-to-backend authentication | Yes |
 | `DATA_ENCRYPTION_KEY_CURRENT` | Encrypts stored credentials and sensitive fields | Recommended |
-| `OPENAI_API_KEY` | Enables AI categorization | No |
+| `LLM_API_KEY` | API key (or local placeholder) for AI features | No |
+| `LLM_BASE_URL` | OpenAI-compatible endpoint; omit for OpenAI | No |
+| `LLM_MODEL` | Model name used by categorization and CSV mapping | No |
 | `LOGO_DEV_API_KEY` | Enables merchant logo lookup | No |
 
 The complete variable reference is in
 [`deploy/compose/.env.example`](deploy/compose/.env.example).
+
+OpenAI-compatible local servers such as Ollama, vLLM, LM Studio, and LocalAI
+can be used instead of the OpenAI API. For example, when Ollama runs on a
+Docker Desktop host:
+
+```env
+LLM_BASE_URL=http://host.docker.internal:11434/v1
+LLM_API_KEY=local-llm
+LLM_MODEL=qwen3:8b
+```
+
+The endpoint must be reachable from both the `backend` and `app` containers.
+On Linux, use a reachable LAN address, run the model server as a Compose
+service, or configure Docker's host-gateway mapping. Existing
+`OPENAI_API_KEY` and `OPENAI_BASE_URL` deployments remain supported.
 
 ### OIDC single sign-on
 

@@ -34,7 +34,7 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
   async function handleSave() {
     const normalized = apiKey.trim();
     if (!normalized) {
-      toast.error("Enter an OpenAI API key");
+      toast.error("Enter an LLM API key");
       return;
     }
 
@@ -42,14 +42,14 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
     try {
       const result = await updateOpenAiApiKey(normalized);
       if (!result.success || !result.settings) {
-        toast.error(result.error || "Failed to save OpenAI API key");
+        toast.error(result.error || "Failed to save LLM API key");
         return;
       }
       setOpenAiSettings(result.settings);
       setApiKey("");
-      toast.success("OpenAI API key saved");
+      toast.success("LLM API key saved");
     } catch {
-      toast.error("Failed to save OpenAI API key");
+      toast.error("Failed to save LLM API key");
     } finally {
       setSaving(false);
     }
@@ -60,14 +60,14 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
     try {
       const result = await clearOpenAiApiKey();
       if (!result.success || !result.settings) {
-        toast.error(result.error || "Failed to remove OpenAI API key");
+        toast.error(result.error || "Failed to remove LLM API key");
         return;
       }
       setOpenAiSettings(result.settings);
       setApiKey("");
-      toast.success("OpenAI API key removed from settings");
+      toast.success("LLM API key removed from settings");
     } catch {
-      toast.error("Failed to remove OpenAI API key");
+      toast.error("Failed to remove LLM API key");
     } finally {
       setClearing(false);
     }
@@ -97,10 +97,11 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
           <div className="space-y-1">
             <Label htmlFor="openai-api-key" className="flex items-center gap-2">
               <RiKey2Line className="h-4 w-4" />
-              OpenAI API key
+              LLM API key
             </Label>
             <p className="text-xs text-muted-foreground">
-              Used by AI categorization. The saved key is encrypted and is never shown again.
+              Used by AI categorization. OpenAI and OpenAI-compatible providers are supported.
+              The saved key is encrypted and is never shown again.
             </p>
           </div>
           <div className="shrink-0 border border-border px-2 py-1 text-xs">
@@ -120,6 +121,12 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
           </p>
         )}
 
+        <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+          <p>Provider: {openAiSettings.provider === "custom" ? "Custom endpoint" : "OpenAI"}</p>
+          <p>Model: {openAiSettings.model}</p>
+          {openAiSettings.baseUrl && <p className="break-all sm:col-span-2">Endpoint: {openAiSettings.baseUrl}</p>}
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="openai-api-key" className="text-xs">
             New key
@@ -129,7 +136,7 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
             type="password"
             inputMode="text"
             autoComplete="off"
-            placeholder="sk-..."
+            placeholder="API key or local placeholder"
             value={apiKey}
             onChange={(event) => setApiKey(event.target.value)}
             disabled={saving || clearing}

@@ -29,7 +29,6 @@ import {
 } from "@/lib/import/dates";
 import { detectDuplicates, markDuplicates } from "@/lib/utils/duplicate-detection";
 import { readImportFile, storeImportFile } from "./import-file.storage";
-import OpenAI from "openai";
 import type {
   BalanceVerification,
   ColumnMapping,
@@ -258,89 +257,33 @@ export async function getAiColumnMapping(
   }
   const { userId } = access;
 
-  const openaiApiKey = process.env.OPENAI_API_KEY;
-  if (!openaiApiKey) {
-    return { success: false, error: "OpenAI API key not configured" };
-  }
-
   try {
-    const openai = new OpenAI({ apiKey: openaiApiKey });
-
-    // Prepare sample data for the prompt
-    const sampleData = sampleRows.slice(0, 3).map((row) => {
-      const obj: Record<string, string> = {};
-      csvHeaders.forEach((header, index) => {
-        obj[header] = row[index] || "";
-      });
-      return obj;
+    const pathWithQuery = "/api/llm/column-mapping";
+    const requestBody = JSON.stringify({
+      headers: csvHeaders,
+      sample_rows: sampleRows.slice(0, 3),
+      date_formats: DATE_FORMAT_OPTIONS.map(({ value }) => value),
     });
-
-    const prompt = `You are a CSV column mapping assistant. Analyze these CSV headers and sample data to map them to transaction fields.
-
-Headers: ${JSON.stringify(csvHeaders)}
-
-Sample data (first 3 rows):
-${JSON.stringify(sampleData, null, 2)}
-
-Map these columns to the following transaction fields:
-- date: The transaction date column (prefer "Completed Date" over "Started Date" if both exist)
-- amount: The transaction amount column
-- description: The transaction description/narrative column
-- merchant: The merchant/payee name column (if separate from description)
-- transactionType: The column indicating debit/credit (if exists)
-- fee: Column containing transaction fees (if exists, e.g., "fee", "fees", "charge", "commission") - these are additional charges deducted from balance
-- state: Column containing transaction state/status (if exists, e.g., "state", "status") - used to filter out pending/reverted transactions
-- startingBalance: Column containing opening/starting balance (if exists, e.g., "startsaldo", "opening_balance", "balance_before")
-- endingBalance: Column containing closing/ending balance (if exists, e.g., "endsaldo", "closing_balance", "balance_after", "balance")
-
-Also determine:
-- If amount is signed (positive for credits, negative for debits)
-- The amount format: "DOT_DECIMAL" for values like "1,234.56", "COMMA_DECIMAL" for values like "1.234,56", or "AUTO" if it cannot be determined confidently
-- If there's a separate column for transaction type, what values indicate credit vs debit
-- The exact date format, including field order, separator, year length, compact form, or English month-name form. Choose one of: ${DATE_FORMAT_OPTIONS.map(({ value }) => `"${value}"`).join(", ")}. If it cannot be determined, default to "DD-MM-YYYY".
-- If there's a state column, what value indicates a completed transaction (e.g., "COMPLETED", "Completed", "settled", "posted")
-
-Respond ONLY with a valid JSON object in this exact format:
-{
-  "date": "column_name_or_null",
-  "amount": "column_name_or_null",
-  "description": "column_name_or_null",
-  "merchant": "column_name_or_null",
-  "transactionType": "column_name_or_null",
-  "fee": "column_name_or_null",
-  "state": "column_name_or_null",
-  "startingBalance": "column_name_or_null",
-  "endingBalance": "column_name_or_null",
-  "typeConfig": {
-    "creditValue": "value_that_indicates_credit_or_null",
-    "debitValue": "value_that_indicates_debit_or_null",
-    "isAmountSigned": true_or_false,
-    "amountFormat": "AUTO" or "DOT_DECIMAL" or "COMMA_DECIMAL",
-    "dateFormat": one of the supported date format strings listed above,
-    "completedStateValue": "value_that_indicates_completed_or_null"
-  }
-}
-
-Use null for columns that don't exist or can't be determined.`;
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0,
+    const response = await fetch(`${getBackendBaseUrl()}${pathWithQuery}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...createInternalAuthHeaders({
+          method: "POST",
+          pathWithQuery,
+          userId,
+          body: requestBody,
+        }),
+      },
+      body: requestBody,
+      cache: "no-store",
     });
-
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      return { success: false, error: "No response from AI" };
+    const payload = (await response.json()) as { mapping?: ColumnMapping; detail?: string };
+    if (!response.ok || !payload.mapping) {
+      return { success: false, error: payload.detail || "Failed to analyze CSV columns" };
     }
 
-    // Parse the JSON response
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return { success: false, error: "Invalid AI response format" };
-    }
-
-    const mapping = normalizeColumnMapping(JSON.parse(jsonMatch[0]) as ColumnMapping);
+    const mapping = normalizeColumnMapping(payload.mapping);
 
     // Update the import session with the mapping
     await db

@@ -7,6 +7,8 @@ from app.models import AppSetting, User
 from app.security.data_encryption import reset_encryption_config_cache
 from app.services.app_settings import (
     clear_openai_api_key,
+    get_llm_base_url,
+    get_llm_model,
     get_openai_api_key,
     get_openai_api_key_status,
     set_openai_api_key,
@@ -31,6 +33,11 @@ def _set_encryption_key(monkeypatch):
 
 def test_openai_api_key_uses_environment_fallback(monkeypatch):
     db = _session()
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.delenv("LLM_BASE_URL", raising=False)
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+    monkeypatch.delenv("CATEGORIZATION_LLM_MODEL", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-env")
 
     assert get_openai_api_key(db) == "sk-env"
@@ -39,12 +46,48 @@ def test_openai_api_key_uses_environment_fallback(monkeypatch):
         "source": "environment",
         "database_configured": False,
         "environment_configured": True,
+        "base_url": None,
+        "model": "gpt-4o-mini",
+        "provider": "openai",
     }
+
+
+def test_provider_neutral_environment_takes_precedence(monkeypatch):
+    db = _session()
+    monkeypatch.setenv("LLM_API_KEY", "custom-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-legacy")
+    monkeypatch.setenv("LLM_BASE_URL", "http://ollama:11434/v1")
+    monkeypatch.setenv("OPENAI_BASE_URL", "https://legacy.example/v1")
+    monkeypatch.setenv("LLM_MODEL", "qwen3:8b")
+
+    assert get_openai_api_key(db) == "custom-key"
+    assert get_llm_base_url() == "http://ollama:11434/v1"
+    assert get_llm_model() == "qwen3:8b"
+    assert get_openai_api_key_status(db) == {
+        "configured": True,
+        "source": "environment",
+        "database_configured": False,
+        "environment_configured": True,
+        "base_url": "http://ollama:11434/v1",
+        "model": "qwen3:8b",
+        "provider": "custom",
+    }
+
+
+def test_custom_endpoint_uses_placeholder_key(monkeypatch):
+    db = _session()
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("LLM_BASE_URL", "http://localai:8080/v1")
+
+    assert get_openai_api_key(db) == "local-llm"
+    assert get_openai_api_key_status(db)["configured"] is True
 
 
 def test_saved_openai_api_key_overrides_environment(monkeypatch):
     db = _session()
     _set_encryption_key(monkeypatch)
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-env")
 
     set_openai_api_key(db, "sk-db", updated_by_user_id=None)
@@ -58,6 +101,7 @@ def test_saved_openai_api_key_overrides_environment(monkeypatch):
 def test_clear_openai_api_key_restores_environment_fallback(monkeypatch):
     db = _session()
     _set_encryption_key(monkeypatch)
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-env")
 
     set_openai_api_key(db, "sk-db", updated_by_user_id=None)

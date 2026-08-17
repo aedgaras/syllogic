@@ -336,11 +336,11 @@ def categorize_transactions_batch(
         if request.use_llm and unmatched_indices:
             logger.info(f"[CATEGORIZE] Phase 2: Running LLM batch categorization for {len(unmatched_indices)} unmatched transactions...")
             
-            # Check if OpenAI client is available
+            # Check if the configured LLM client is available
             client = matcher._get_openai_client()
             if not client:
-                llm_warnings.append("OpenAI API client not available. Check that OPENAI_API_KEY is set in your environment.")
-                logger.warning("[CATEGORIZE] OpenAI client not available - skipping LLM categorization")
+                llm_warnings.append("LLM client not available. Check the LLM_API_KEY/LLM_BASE_URL configuration.")
+                logger.warning("[CATEGORIZE] LLM client not available - skipping LLM categorization")
             else:
                 # Prepare batch for LLM
                 llm_batch = []
@@ -370,7 +370,7 @@ def categorize_transactions_batch(
                     
                     error_lower = error_msg.lower()
                     if "401" in error_msg or "authentication" in error_lower or "api key" in error_lower:
-                        error_detail = f"Authentication Error: {error_msg}. Check your OPENAI_API_KEY."
+                        error_detail = f"Authentication Error: {error_msg}. Check your LLM_API_KEY."
                     elif "429" in error_msg or "rate limit" in error_lower:
                         error_detail = f"Rate Limit Error: {error_msg}. Wait and retry."
                     elif "timeout" in error_lower:

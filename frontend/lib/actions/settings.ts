@@ -8,6 +8,7 @@ import { getAuthenticatedSession, requireAuth } from "@/lib/auth-helpers";
 import { storage } from "@/lib/storage";
 import { normalizeProfileImage } from "@/lib/profile-image";
 import { getBackendBaseUrl } from "@/lib/backend-url";
+import { getLlmConfig } from "@/lib/llm-config";
 import { createInternalAuthHeaders } from "@/lib/internal-auth";
 import {
   getOidcAdminSettings,
@@ -141,6 +142,9 @@ export type OpenAiSettings = {
   source: "database" | "environment" | "none";
   databaseConfigured: boolean;
   environmentConfigured: boolean;
+  baseUrl: string | null;
+  model: string;
+  provider: "openai" | "custom";
 };
 
 type BackendOpenAiSettings = {
@@ -148,6 +152,9 @@ type BackendOpenAiSettings = {
   source: "database" | "environment" | "none";
   database_configured: boolean;
   environment_configured: boolean;
+  base_url: string | null;
+  model: string;
+  provider: "openai" | "custom";
 };
 
 function mapOpenAiSettings(settings: BackendOpenAiSettings): OpenAiSettings {
@@ -156,6 +163,9 @@ function mapOpenAiSettings(settings: BackendOpenAiSettings): OpenAiSettings {
     source: settings.source,
     databaseConfigured: settings.database_configured,
     environmentConfigured: settings.environment_configured,
+    baseUrl: settings.base_url,
+    model: settings.model,
+    provider: settings.provider,
   };
 }
 
@@ -181,7 +191,7 @@ async function requestOpenAiSettings(
   body?: { api_key: string }
 ): Promise<{ success: true; settings: OpenAiSettings } | { success: false; error: string }> {
   const backendUrl = getBackendBaseUrl();
-  const pathWithQuery = "/api/app-settings/openai";
+  const pathWithQuery = "/api/app-settings/llm";
   const requestBody = body ? JSON.stringify(body) : undefined;
   const response = await fetch(`${backendUrl}${pathWithQuery}`, {
     method,
@@ -208,7 +218,7 @@ async function requestOpenAiSettings(
   if (!response.ok) {
     return {
       success: false,
-      error: extractBackendError(payload, "Failed to update OpenAI settings"),
+      error: extractBackendError(payload, "Failed to update LLM settings"),
     };
   }
 
@@ -219,7 +229,7 @@ async function requestOpenAiSettings(
 }
 
 /**
- * Check if the OpenAI API key is configured in the environment.
+ * Check if an LLM API is configured.
  * This is used to determine whether to show the CSV import option.
  */
 export async function hasOpenAiApiKey(): Promise<boolean> {
@@ -227,7 +237,7 @@ export async function hasOpenAiApiKey(): Promise<boolean> {
   if (!userId) return false;
 
   const result = await requestOpenAiSettings("GET", userId);
-  return result.success ? result.settings.configured : !!process.env.OPENAI_API_KEY;
+  return result.success ? result.settings.configured : getLlmConfig().configured;
 }
 
 export async function getOpenAiSettings(): Promise<OpenAiSettings & { error?: string }> {
@@ -238,6 +248,9 @@ export async function getOpenAiSettings(): Promise<OpenAiSettings & { error?: st
       source: "none",
       databaseConfigured: false,
       environmentConfigured: false,
+      baseUrl: null,
+      model: process.env.LLM_MODEL || process.env.CATEGORIZATION_LLM_MODEL || "gpt-4o-mini",
+      provider: process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL ? "custom" : "openai",
       error: "Not authenticated",
     };
   }
@@ -246,10 +259,13 @@ export async function getOpenAiSettings(): Promise<OpenAiSettings & { error?: st
   if (result.success) return result.settings;
 
   return {
-    configured: !!process.env.OPENAI_API_KEY,
-    source: process.env.OPENAI_API_KEY ? "environment" : "none",
+    configured: !!(process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL),
+    source: process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL ? "environment" : "none",
     databaseConfigured: false,
-    environmentConfigured: !!process.env.OPENAI_API_KEY,
+    environmentConfigured: !!(process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL),
+    baseUrl: process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL || null,
+    model: process.env.LLM_MODEL || process.env.CATEGORIZATION_LLM_MODEL || "gpt-4o-mini",
+    provider: process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL ? "custom" : "openai",
     error: result.error,
   };
 }
@@ -261,10 +277,7 @@ export async function updateOpenAiApiKey(
   if (!userId) return { success: false, error: "Not authenticated" };
 
   const normalized = apiKey.trim();
-  if (!normalized) return { success: false, error: "OpenAI API key is required" };
-  if (!normalized.startsWith("sk-")) {
-    return { success: false, error: "OpenAI API keys should start with sk-" };
-  }
+  if (!normalized) return { success: false, error: "LLM API key is required" };
 
   const result = await requestOpenAiSettings("PUT", userId, { api_key: normalized });
   if (!result.success) return result;

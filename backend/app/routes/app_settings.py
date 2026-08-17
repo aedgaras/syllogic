@@ -16,14 +16,17 @@ from app.services.app_settings import (
 router = APIRouter()
 
 
-class OpenAISettingsResponse(BaseModel):
+class LlmSettingsResponse(BaseModel):
     configured: bool
     source: str
     database_configured: bool
     environment_configured: bool
+    base_url: str | None = None
+    model: str
+    provider: str
 
 
-class UpdateOpenAISettingsRequest(BaseModel):
+class UpdateLlmSettingsRequest(BaseModel):
     api_key: str = Field(..., min_length=1, max_length=500)
 
     @field_validator("api_key")
@@ -31,9 +34,7 @@ class UpdateOpenAISettingsRequest(BaseModel):
     def normalize_api_key(cls, value: str) -> str:
         normalized = value.strip()
         if not normalized:
-            raise ValueError("OpenAI API key is required.")
-        if not normalized.startswith("sk-"):
-            raise ValueError("OpenAI API keys should start with sk-.")
+            raise ValueError("LLM API key is required.")
         return normalized
 
 
@@ -41,25 +42,27 @@ def _settings_error_response(exc: Exception) -> HTTPException:
     if isinstance(exc, AppSettingEncryptionMissing):
         return HTTPException(
             status_code=500,
-            detail="DATA_ENCRYPTION_KEY_CURRENT is required to store OpenAI API keys in settings.",
+            detail="DATA_ENCRYPTION_KEY_CURRENT is required to store LLM API keys in settings.",
         )
     return HTTPException(
         status_code=500,
-        detail="Stored OpenAI API key could not be decrypted.",
+        detail="Stored LLM API key could not be decrypted.",
     )
 
 
-@router.get("/openai", response_model=OpenAISettingsResponse)
-def get_openai_settings(db: Session = Depends(get_db)):
+@router.get("/llm", response_model=LlmSettingsResponse)
+@router.get("/openai", response_model=LlmSettingsResponse, include_in_schema=False)
+def get_llm_settings(db: Session = Depends(get_db)):
     try:
         return get_openai_api_key_status(db)
     except (AppSettingDecryptError, AppSettingEncryptionMissing) as exc:
         raise _settings_error_response(exc) from exc
 
 
-@router.put("/openai", response_model=OpenAISettingsResponse)
-def update_openai_settings(
-    payload: UpdateOpenAISettingsRequest,
+@router.put("/llm", response_model=LlmSettingsResponse)
+@router.put("/openai", response_model=LlmSettingsResponse, include_in_schema=False)
+def update_llm_settings(
+    payload: UpdateLlmSettingsRequest,
     user_id: str = Depends(get_user_id),
     db: Session = Depends(get_db),
 ):
@@ -72,8 +75,9 @@ def update_openai_settings(
         raise _settings_error_response(exc) from exc
 
 
-@router.delete("/openai", response_model=OpenAISettingsResponse)
-def delete_openai_settings(
+@router.delete("/llm", response_model=LlmSettingsResponse)
+@router.delete("/openai", response_model=LlmSettingsResponse, include_in_schema=False)
+def delete_llm_settings(
     user_id: str = Depends(get_user_id),
     db: Session = Depends(get_db),
 ):

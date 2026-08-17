@@ -18,8 +18,11 @@ from app.db_helpers import get_user_id
 from app.services.app_settings import (
     AppSettingDecryptError,
     AppSettingEncryptionMissing,
+    get_llm_base_url,
+    get_llm_model,
     get_openai_api_key,
 )
+from app.services.llm_client import create_llm_client
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -66,11 +69,14 @@ class CategoryMatcher:
     - Comprehensive logging for debugging
 
     Environment Variables:
-    - OPENAI_API_KEY: fallback OpenAI API key for LLM categorization (optional);
-        a key saved in Settings takes precedence.
+    - LLM_API_KEY: provider-neutral API key for LLM categorization (optional);
+        a key saved in Settings takes precedence. OPENAI_API_KEY is supported
+        for backwards compatibility.
+    - LLM_BASE_URL: optional OpenAI-compatible API base URL.
+    - LLM_MODEL: model to use for all LLM features.
     - CATEGORIZATION_MIN_CONFIDENCE: Minimum confidence % for deterministic matching.
         Defaults to 999.0 (disabled) when an OpenAI key is configured, or 70.0 when not set.
-    - CATEGORIZATION_LLM_MODEL: LLM model to use (default: gpt-4o-mini)
+    - CATEGORIZATION_LLM_MODEL: legacy backend-only model override.
     - CATEGORIZATION_LLM_TEMPERATURE: Temperature for LLM (default: 0.1)
     - CATEGORIZATION_LLM_MAX_TOKENS: Max tokens for LLM response (default: 50)
     - CATEGORIZATION_LLM_MAX_RETRIES: Number of retries for failed API calls (default: 3)
@@ -95,7 +101,7 @@ class CategoryMatcher:
     MIN_CONFIDENCE_THRESHOLD_OVERRIDE = os.getenv("CATEGORIZATION_MIN_CONFIDENCE")
 
     # LLM Configuration (can be overridden via environment variables)
-    LLM_MODEL = os.getenv("CATEGORIZATION_LLM_MODEL", "gpt-4o-mini")
+    LLM_MODEL = get_llm_model()
     LLM_TEMPERATURE = float(os.getenv("CATEGORIZATION_LLM_TEMPERATURE", "0.1"))
     LLM_MAX_TOKENS = int(os.getenv("CATEGORIZATION_LLM_MAX_TOKENS", "50"))
     LLM_MAX_RETRIES = int(os.getenv("CATEGORIZATION_LLM_MAX_RETRIES", "3"))
@@ -187,8 +193,12 @@ class CategoryMatcher:
             try:
                 self._openai_api_key = get_openai_api_key(self.db) or ""
             except (AppSettingDecryptError, AppSettingEncryptionMissing) as exc:
-                logger.warning("Saved OpenAI API key is unavailable: %s", exc)
-                self._openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
+                logger.warning("Saved LLM API key is unavailable: %s", exc)
+                self._openai_api_key = (
+                    os.getenv("LLM_API_KEY", "").strip()
+                    or os.getenv("OPENAI_API_KEY", "").strip()
+                    or ("local-llm" if get_llm_base_url() else "")
+                )
         return self._openai_api_key or None
 
     def _min_confidence_threshold(self) -> float:
@@ -455,26 +465,29 @@ class CategoryMatcher:
 
     def _get_openai_client(self) -> Optional[object]:
         """
-        Get or create OpenAI client instance (cached).
+        Get or create an OpenAI-compatible client instance (cached).
 
         Returns:
-            OpenAI client instance if available, None otherwise.
-            Returns None if OPENAI_API_KEY is not set or library is not installed.
+            OpenAI-compatible client instance if available, None otherwise.
+            Returns None if no API configuration is set or the library is not installed.
         """
         if self._openai_client is None:
             try:
-                from openai import OpenAI
                 api_key = self._get_openai_api_key()
                 if not api_key:
-                    logger.warning("OpenAI API key not configured, LLM categorization will be unavailable")
+                    logger.warning("LLM API configuration not found, LLM categorization will be unavailable")
                     return None
-                self._openai_client = OpenAI(api_key=api_key)
-                logger.info("OpenAI client initialized successfully")
-            except ImportError:
-                logger.warning("OpenAI library not installed, LLM categorization will be unavailable")
-                return None
+                base_url = get_llm_base_url()
+                self._openai_client = create_llm_client(self.db)
+                if self._openai_client is None:
+                    return None
+                logger.info(
+                    "LLM client initialized successfully (model=%s, custom_endpoint=%s)",
+                    self.LLM_MODEL,
+                    bool(base_url),
+                )
             except Exception as e:
-                logger.error(f"Failed to initialize OpenAI client: {str(e)}")
+                logger.error(f"Failed to initialize LLM client: {str(e)}")
                 return None
         return self._openai_client
 
@@ -677,6 +690,19 @@ class CategoryMatcher:
         input_cost = (input_tokens / 1_000_000) * pricing["input"]
         output_cost = (output_tokens / 1_000_000) * pricing["output"]
         return input_cost + output_cost
+
+    @staticmethod
+    def _extract_token_usage(response) -> tuple[int, int, int]:
+        """Read optional OpenAI-style usage metadata.
+
+        Some compatible local servers omit usage entirely or omit total_tokens.
+        Categorization should still succeed in those cases.
+        """
+        usage = getattr(response, "usage", None)
+        input_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+        output_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+        total_tokens = int(getattr(usage, "total_tokens", input_tokens + output_tokens) or 0)
+        return input_tokens, output_tokens, total_tokens
 
     @staticmethod
     def _calculate_similarity(text1: str, text2: str) -> float:
@@ -1131,9 +1157,7 @@ Category name:"""
                 )
 
                 # Extract token usage
-                input_tokens = response.usage.prompt_tokens
-                output_tokens = response.usage.completion_tokens
-                total_tokens = response.usage.total_tokens
+                input_tokens, output_tokens, total_tokens = self._extract_token_usage(response)
 
                 # Calculate cost
                 cost = self._calculate_llm_cost(input_tokens, output_tokens, self.LLM_MODEL)
@@ -1433,7 +1457,7 @@ Category name:"""
 
         client = self._get_openai_client()
         if not client:
-            logger.warning("[BATCH LLM] OpenAI client not available")
+            logger.warning("[BATCH LLM] LLM client not available")
             return {}, 0, 0.0
 
         if not transactions:
@@ -1567,7 +1591,7 @@ Response:"""
 
             # Log the full prompt for debugging (truncated to avoid log spam)
             logger.info(f"[BATCH LLM] Full prompt (first 1000 chars):\n{prompt[:1000]}...")
-            logger.info(f"[BATCH LLM] Sending request to OpenAI API (model: {self.LLM_MODEL})...")
+            logger.info(f"[BATCH LLM] Sending request to LLM API (model: {self.LLM_MODEL})...")
 
             try:
                 response = client.chat.completions.create(
@@ -1584,12 +1608,10 @@ Response:"""
                     timeout=30.0  # 30 second timeout
                 )
 
-                logger.info("[BATCH LLM] Received response from OpenAI API")
+                logger.info("[BATCH LLM] Received response from LLM API")
 
                 # Track tokens and cost
-                input_tokens = response.usage.prompt_tokens
-                output_tokens = response.usage.completion_tokens
-                batch_tokens = response.usage.total_tokens
+                input_tokens, output_tokens, batch_tokens = self._extract_token_usage(response)
                 batch_cost = self._calculate_llm_cost(input_tokens, output_tokens, self.LLM_MODEL)
 
                 logger.info(f"[BATCH LLM] Tokens used - input: {input_tokens}, output: {output_tokens}, total: {batch_tokens}, cost: ${batch_cost:.6f}")

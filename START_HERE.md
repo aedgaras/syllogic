@@ -9,7 +9,7 @@ Syllogic gives self-hosters a finance app they can actually run themselves:
 - balances, spending trends, and cash-flow views
 - recurring subscription tracking
 - CSV import/export workflows
-- optional OpenAI-powered categorization
+- optional OpenAI-compatible categorization, including local LLMs
 - Docker Compose deployment for local servers, VPS hosts, and ARM64 devices
 
 ## Who it is for
