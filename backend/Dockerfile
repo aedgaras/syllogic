@@ -53,6 +53,9 @@ COPY --from=frontend xlsx-0.20.3.tgz ./xlsx-0.20.3.tgz
 RUN pnpm install --frozen-lockfile
 
 COPY --from=frontend emails ./emails
+COPY --from=frontend i18n ./i18n
+COPY --from=frontend messages ./messages
+COPY --from=frontend tsconfig.json ./tsconfig.json
 
 RUN ESBUILD_BIN="$(find node_modules/.pnpm -path '*/node_modules/esbuild/bin/esbuild' -type f -print -quit)" \
   && test -n "$ESBUILD_BIN" \
@@ -61,6 +64,7 @@ RUN ESBUILD_BIN="$(find node_modules/.pnpm -path '*/node_modules/esbuild/bin/esb
     --platform=node \
     --format=cjs \
     --jsx=automatic \
+    --tsconfig=tsconfig.json \
     --outfile=/render-report.cjs
 
 
