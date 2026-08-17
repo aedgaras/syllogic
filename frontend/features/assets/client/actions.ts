@@ -1,4 +1,4 @@
-import { deleteAccount, recalculateAccountTimeseries, updateAccount } from "@/lib/actions/accounts";
+import { deleteAccount, recalculateAccountTimeseries, updateAccount } from "@/features/accounts/client/actions";
 import { deleteProperty, updateProperty } from "@/lib/actions/properties";
 import { deleteVehicle, updateVehicle } from "@/lib/actions/vehicles";
 import { hasLogoApiKey, searchLogo } from "@/lib/actions/logos";

@@ -24,7 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 import { createOrUpdateBalancingTransaction } from "@/lib/actions/transactions";
 import { getCategoryByName } from "@/lib/actions/categories";
-import { getAccountBalanceOnDate } from "@/lib/actions/accounts";
+import { getAccountBalanceOnDate } from "@/features/accounts/client/actions";
 
 interface UpdateBalanceDialogProps {
   account: {

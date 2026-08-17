@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { unlinkInternalTransfer } from "@/lib/actions/accounts";
+import { unlinkInternalTransfer } from "@/features/accounts/client/actions";
 import {
   deleteBalancingTransaction,
   updateTransactionCategory,

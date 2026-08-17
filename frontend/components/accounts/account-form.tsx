@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CURRENCIES, ACCOUNT_TYPES } from "@/lib/constants";
-import { createAccount, createPocketAccount } from "@/lib/actions/accounts";
+import { createAccount, createPocketAccount } from "@/features/accounts/client/actions";
 import { OwnersField, type OwnerValue } from "@/components/household/owners-field";
 import { saveOwners, usePeopleQuery, type ClientPerson } from "@/lib/people/client";
 

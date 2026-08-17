@@ -1,13 +1,12 @@
-import type { Account, Property, Vehicle } from "@/lib/db/schema";
+import type { Property, Vehicle } from "@/lib/db/schema";
+import type { AccountViewModel } from "@/features/accounts/public";
 import type {
   AccountAssetViewModel,
   PropertyAssetViewModel,
   VehicleAssetViewModel,
 } from "../domain/contracts";
 
-type AccountRow = Account & { logo?: { id: string; logoUrl: string | null; updatedAt?: Date | null } | null };
-
-export function toAccountAssetViewModel(row: AccountRow, ownerIds: string[] = []): AccountAssetViewModel {
+export function toAccountAssetViewModel(row: AccountViewModel, ownerIds: string[] = []): AccountAssetViewModel {
   return {
     id: row.id,
     name: row.name,
@@ -15,7 +14,7 @@ export function toAccountAssetViewModel(row: AccountRow, ownerIds: string[] = []
     institution: row.institution,
     currency: row.currency ?? "EUR",
     balance: row.functionalBalance ?? "0",
-    logo: row.logo ? { id: row.logo.id, logoUrl: row.logo.logoUrl, updatedAt: row.logo.updatedAt?.toISOString() ?? null } : null,
+    logo: row.logo,
     ownerIds,
   };
 }

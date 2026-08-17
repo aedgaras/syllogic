@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { AccountDetail } from "./account-detail";
-import { getAccountById, getAccountBalanceHistory } from "@/lib/actions/accounts";
+import { AccountDetail } from "@/features/accounts/public";
+import { getAccountById, getAccountBalanceHistory } from "@/features/accounts/server";
 import { getTransactionsForAccount } from "@/lib/actions/transactions";
 import { getUserCategories } from "@/lib/actions/categories";
 import { listHoldings, type Holding } from "@/lib/api/investments";
@@ -44,7 +44,14 @@ export default async function AccountPage({ params }: AccountPageProps) {
         account={account}
         balanceHistory={balanceHistory}
         initialTransactions={transactions}
-        categories={categories}
+        categories={categories.map((category) => ({
+          id: category.id,
+          name: category.name,
+          color: category.color,
+          icon: category.icon,
+          categoryType: category.categoryType,
+          hideFromSelection: category.hideFromSelection,
+        }))}
       />
       {isInvestmentAccount && (
         <section className="rounded-xl border p-4">

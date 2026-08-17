@@ -26,7 +26,7 @@ import {
   isBefore,
   startOfDay,
 } from "date-fns";
-import type { BalanceHistoryPoint } from "@/lib/actions/accounts";
+import type { BalanceHistoryPoint } from "@/features/accounts/public";
 
 type Horizon = "7D" | "LM" | "30D" | "90D" | "6M" | "1Y" | "5Y" | "ALL";
 

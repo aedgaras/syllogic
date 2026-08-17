@@ -1,4 +1,4 @@
-import { getAccounts } from "@/lib/actions/accounts";
+import { getAccounts } from "@/features/accounts/server";
 import { getProperties } from "@/lib/actions/properties";
 import { getVehicles } from "@/lib/actions/vehicles";
 import { getPeople, getOwnersForEntities } from "@/lib/people";

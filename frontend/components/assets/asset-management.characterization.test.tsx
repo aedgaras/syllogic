@@ -36,7 +36,7 @@ vi.mock("@tanstack/react-query", () => ({
     isPending: false,
   }),
 }));
-vi.mock("@/lib/actions/accounts", () => ({
+vi.mock("@/features/accounts/client/actions", () => ({
   updateAccount: mocks.updateAccount,
   deleteAccount: mocks.deleteAccount,
   recalculateAccountTimeseries: vi.fn(),

@@ -23,13 +23,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { OnboardingProgress } from "@/components/onboarding/onboarding-progress";
 import { AccountForm } from "@/components/accounts/account-form";
 import { completeOnboarding } from "@/lib/actions/onboarding";
-import { getAccounts } from "@/lib/actions/accounts";
-import type { Account } from "@/lib/db/schema";
+import { getAccounts } from "@/features/accounts/client/actions";
+import type { AccountViewModel } from "@/features/accounts/public";
 
 export default function OnboardingStep3Page() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accounts, setAccounts] = useState<AccountViewModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 

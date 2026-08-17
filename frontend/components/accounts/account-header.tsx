@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { AccountLogo } from "@/components/ui/account-logo";
 import { formatDistanceToNow } from "date-fns";
-import type { Account } from "@/lib/db/schema";
+import type { AccountViewModel } from "@/features/accounts/domain/contracts";
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   checking: "Checking",
@@ -17,13 +17,7 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
 };
 
 interface AccountHeaderProps {
-  account: Account & {
-    logo?: {
-      id: string;
-      logoUrl: string | null;
-      updatedAt?: Date | null;
-    } | null;
-  };
+  account: AccountViewModel;
   currency: string;
 }
 
@@ -47,7 +41,7 @@ export function AccountHeader({ account, currency }: AccountHeaderProps) {
           <AccountLogo
             name={account.name}
             logoUrl={account.logo?.logoUrl}
-            updatedAt={account.logo?.updatedAt}
+            updatedAt={account.logo?.updatedAt ? new Date(account.logo.updatedAt) : null}
             className="!size-12"
           />
           <div className="space-y-1">
