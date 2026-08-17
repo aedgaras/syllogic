@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#171716" />
+    <title>Offline · Syllogic</title>
+    <style>
+      :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, sans-serif; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f7f7f6; color: #171716; }
+      main { width: min(28rem, calc(100% - 3rem)); text-align: center; }
+      .mark { display: grid; place-items: center; width: 4rem; height: 4rem; margin: 0 auto 1.5rem; border-radius: 1rem; background: #171716; color: white; font: 700 2rem/1 ui-monospace, monospace; }
+      h1 { margin: 0 0 .75rem; font-size: 1.5rem; }
+      p { margin: 0 0 1.5rem; color: #66645f; line-height: 1.6; }
+      a { display: inline-block; padding: .7rem 1rem; border-radius: .6rem; background: #171716; color: white; text-decoration: none; font-weight: 600; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #171716; color: #f7f7f6; }
+        .mark, a { background: #f7f7f6; color: #171716; }
+        p { color: #aaa7a1; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true">›_</div>
+      <h1>You’re offline</h1>
+      <p>Syllogic needs a connection to load your financial data. No private account data is stored by the offline page.</p>
+      <a href="/">Try again</a>
+    </main>
+  </body>
+</html>

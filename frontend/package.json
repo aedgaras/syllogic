@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:smoke:mobile": "playwright test",
+    "icons:pwa": "node scripts/generate-pwa-icons.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.js",
     "db:migrate:drizzle": "drizzle-kit migrate",

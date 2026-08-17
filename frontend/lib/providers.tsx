@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CommandPalette } from "@/components/command-palette";
 import { CommandPaletteProvider } from "@/components/command-palette-context";
+import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -32,6 +33,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           {children}
           <Toaster position="top-right" />
           <CommandPalette />
+          <ServiceWorkerRegistration />
         </CommandPaletteProvider>
       </QueryClientProvider>
     </ThemeProvider>
