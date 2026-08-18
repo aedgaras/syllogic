@@ -7,8 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.services.app_settings import get_llm_model
-from app.services.llm_client import create_llm_client
+from app.services.llm_client import create_llm_clients, is_fallback_worthy_error
 
 
 router = APIRouter()
@@ -41,8 +40,8 @@ class ColumnMappingResponse(BaseModel):
 
 @router.post("/column-mapping", response_model=ColumnMappingResponse)
 def map_csv_columns(payload: ColumnMappingRequest, db: Session = Depends(get_db)):
-    client = create_llm_client(db)
-    if client is None:
+    providers = create_llm_clients(db)
+    if not providers:
         raise HTTPException(status_code=503, detail="LLM API is not configured.")
 
     sample_data = []
@@ -101,20 +100,39 @@ Respond ONLY with a valid JSON object in this exact shape:
 Use null for columns that do not exist or cannot be determined. amountFormat must
 be AUTO, DOT_DECIMAL, or COMMA_DECIMAL. Default dateFormat to DD-MM-YYYY when uncertain."""
 
-    try:
-        response = client.chat.completions.create(
-            model=get_llm_model(),
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0,
-        )
-        content = response.choices[0].message.content or ""
-        match = re.search(r"\{[\s\S]*\}", content)
-        if not match:
-            raise ValueError("LLM response did not contain a JSON object")
-        mapping = json.loads(match.group(0))
-        if not isinstance(mapping, dict):
-            raise ValueError("LLM response was not a JSON object")
-        return {"mapping": mapping}
-    except Exception as exc:
-        logger.exception("LLM column mapping failed")
-        raise HTTPException(status_code=502, detail="LLM column mapping failed.") from exc
+    last_error: Exception | None = None
+    for client, model, label in providers:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0,
+            )
+            content = response.choices[0].message.content or ""
+            match = re.search(r"\{[\s\S]*\}", content)
+            if not match:
+                raise ValueError("LLM response did not contain a JSON object")
+            mapping = json.loads(match.group(0))
+            if not isinstance(mapping, dict):
+                raise ValueError("LLM response was not a JSON object")
+            if label != "primary":
+                logger.info("LLM column mapping served by '%s' provider (model=%s)", label, model)
+            return {"mapping": mapping}
+        except Exception as exc:
+            last_error = exc
+            logger.warning(
+                "LLM column mapping via '%s' provider failed: %s: %s",
+                label,
+                type(exc).__name__,
+                exc,
+            )
+            if is_fallback_worthy_error(exc):
+                continue
+            # Non-quota/auth error (bad response shape, etc.) — same failure
+            # mode would repeat on the fallback provider, so stop here.
+            break
+
+    logger.error(
+        "LLM column mapping failed on every configured provider", exc_info=last_error
+    )
+    raise HTTPException(status_code=502, detail="LLM column mapping failed.") from last_error

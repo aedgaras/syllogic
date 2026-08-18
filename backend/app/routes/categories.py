@@ -320,9 +320,8 @@ def categorize_transactions_batch(
                 f"[CATEGORIZE] Phase 2: Running LLM batch categorization for {len(unmatched_indices)} unmatched transactions..."
             )
 
-            # Check if the configured LLM client is available
-            client = matcher._get_openai_client()
-            if not client:
+            # Check if a configured LLM provider (primary or fallback) is available
+            if not matcher._get_llm_providers():
                 llm_warnings.append(
                     "LLM client not available. Check the LLM_API_KEY/LLM_BASE_URL configuration."
                 )

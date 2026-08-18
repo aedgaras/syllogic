@@ -81,6 +81,28 @@ def get_llm_model() -> str:
     )
 
 
+def get_llm_fallback_base_url() -> Optional[str]:
+    """Return an optional OpenAI-compatible base URL used when the primary
+    provider is unavailable (out of quota, invalid key). Deployment-only —
+    there is no per-user database setting for the fallback provider.
+    """
+    return _normalize_api_key(os.getenv("LLM_FALLBACK_BASE_URL"))
+
+
+def get_llm_fallback_model() -> str:
+    """Return the model used against the fallback provider."""
+    return _normalize_api_key(os.getenv("LLM_FALLBACK_MODEL")) or DEFAULT_LLM_MODEL
+
+
+def get_llm_fallback_api_key() -> str:
+    """Return the API key for the fallback provider.
+
+    Local OpenAI-compatible servers (Ollama, vLLM, LocalAI) commonly ignore
+    the key, but the OpenAI SDK requires a non-empty value.
+    """
+    return _normalize_api_key(os.getenv("LLM_FALLBACK_API_KEY")) or "local-llm"
+
+
 def _is_custom_llm_endpoint(base_url: Optional[str]) -> bool:
     known_urls = {url.rstrip("/") for url in OPENAI_DEFAULT_BASE_URLS}
     return bool(base_url and base_url.rstrip("/") not in known_urls)

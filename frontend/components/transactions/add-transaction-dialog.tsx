@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -29,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
+import { SubscriptionDetectionDialog } from "./subscription-detection-dialog";
 import {
   Popover,
   PopoverContent,
@@ -91,6 +93,9 @@ export function AddTransactionDialog({
   const [categoryId, setCategoryId] = useState<string>("");
   const [bookedAt, setBookedAt] = useState<Date>(new Date());
   const [merchant, setMerchant] = useState<string>("");
+  const [markAsRecurring, setMarkAsRecurring] = useState(false);
+  const [pendingRecurringTransaction, setPendingRecurringTransaction] =
+    useState<{ id: string; categoryId: string | null } | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -147,6 +152,7 @@ export function AddTransactionDialog({
     setCategoryId("");
     setBookedAt(new Date());
     setMerchant("");
+    setMarkAsRecurring(false);
   };
 
   const handleTransactionTypeChange = (
@@ -297,6 +303,15 @@ export function AddTransactionDialog({
           toast.success(translate("transactionUpdated"));
         } else {
           toast.success(translate("transactionAdded"));
+          // Not editing, so `result` came from createTransaction() and carries transactionId.
+          const newTransactionId = (result as { transactionId?: string })
+            .transactionId;
+          if (markAsRecurring && newTransactionId) {
+            setPendingRecurringTransaction({
+              id: newTransactionId,
+              categoryId: categoryId || null,
+            });
+          }
           resetForm();
         }
         onOpenChange(false);
@@ -334,332 +349,373 @@ export function AddTransactionDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>
-            {isLinkedTransfer
-              ? translate("transferDetails")
-              : isEditing
-                ? translate("editTransaction")
-                : translate("addTransaction")}
-          </DialogTitle>
-          <DialogDescription>
-            {isLinkedTransfer
-              ? translate("viewTheLinkedEntriesForThisAccountTransfer")
-              : isEditing
-                ? translate("updateTheDetailsForYourTransaction")
-                : translate("enterTheDetailsForYourTransaction")}
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            {/* Transaction Type Toggle */}
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={transactionType === "debit" ? "default" : "outline"}
-                className="flex-1"
-                disabled={isLinkedTransfer}
-                onClick={() => handleTransactionTypeChange("debit")}
-              >
-                <RiArrowDownLine className="mr-2 h-4 w-4" />
-                {translate("expense")}
-              </Button>
-              <Button
-                type="button"
-                variant={transactionType === "credit" ? "default" : "outline"}
-                className="flex-1"
-                disabled={isLinkedTransfer}
-                onClick={() => handleTransactionTypeChange("credit")}
-              >
-                <RiArrowUpLine className="mr-2 h-4 w-4" />
-                {translate("income1c89b1")}
-              </Button>
-              <Button
-                type="button"
-                variant={transactionType === "transfer" ? "default" : "outline"}
-                className="flex-1"
-                disabled={isLinkedTransfer}
-                onClick={() => handleTransactionTypeChange("transfer")}
-              >
-                <RiExchangeLine className="mr-2 h-4 w-4" />
-                {translate("transfer")}
-              </Button>
-            </div>
-
-            {/* Account Select */}
-            <div className="space-y-2">
-              <Label htmlFor="account">
-                {transactionType === "transfer"
-                  ? translate("fromAccount")
-                  : translate("account85dfa3")}
-              </Label>
-              {accounts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {translate("noAccountsFoundPleaseCreateAnAccountFirst")}
-                </p>
-              ) : (
-                <Select
-                  value={accountId}
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {isLinkedTransfer
+                ? translate("transferDetails")
+                : isEditing
+                  ? translate("editTransaction")
+                  : translate("addTransaction")}
+            </DialogTitle>
+            <DialogDescription>
+              {isLinkedTransfer
+                ? translate("viewTheLinkedEntriesForThisAccountTransfer")
+                : isEditing
+                  ? translate("updateTheDetailsForYourTransaction")
+                  : translate("enterTheDetailsForYourTransaction")}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <div className="grid gap-4 py-4">
+              {/* Transaction Type Toggle */}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={transactionType === "debit" ? "default" : "outline"}
+                  className="flex-1"
                   disabled={isLinkedTransfer}
-                  onValueChange={(value) => {
-                    if (!value) return;
-                    setAccountId(value);
-                    const nextSource = accounts.find(
-                      (account) => account.id === value,
-                    );
-                    const currentDestination = accounts.find(
-                      (account) => account.id === destinationAccountId,
-                    );
-                    if (
-                      value === destinationAccountId ||
-                      (nextSource?.currency || "EUR") !==
-                        (currentDestination?.currency || "EUR")
-                    ) {
-                      setDestinationAccountId("");
-                    }
-                  }}
+                  onClick={() => handleTransactionTypeChange("debit")}
                 >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={translate("selectAnAccount")}>
-                      {selectedAccount
-                        ? translate("message50844f", {
-                            value1: selectedAccount.name,
-                            value2: selectedAccount.currency
-                              ? ` (${selectedAccount.currency})`
-                              : "",
-                          })
-                        : translate("selectAnAccount")}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
-                    {accounts.map((account) => (
-                      <SelectItem
-                        key={account.id}
-                        value={account.id}
-                        className="pr-10"
-                      >
-                        {account.name}
-                        {account.currency
-                          ? translate("messagecd176d", {
-                              value1: account.currency,
+                  <RiArrowDownLine className="mr-2 h-4 w-4" />
+                  {translate("expense")}
+                </Button>
+                <Button
+                  type="button"
+                  variant={transactionType === "credit" ? "default" : "outline"}
+                  className="flex-1"
+                  disabled={isLinkedTransfer}
+                  onClick={() => handleTransactionTypeChange("credit")}
+                >
+                  <RiArrowUpLine className="mr-2 h-4 w-4" />
+                  {translate("income1c89b1")}
+                </Button>
+                <Button
+                  type="button"
+                  variant={
+                    transactionType === "transfer" ? "default" : "outline"
+                  }
+                  className="flex-1"
+                  disabled={isLinkedTransfer}
+                  onClick={() => handleTransactionTypeChange("transfer")}
+                >
+                  <RiExchangeLine className="mr-2 h-4 w-4" />
+                  {translate("transfer")}
+                </Button>
+              </div>
+
+              {/* Account Select */}
+              <div className="space-y-2">
+                <Label htmlFor="account">
+                  {transactionType === "transfer"
+                    ? translate("fromAccount")
+                    : translate("account85dfa3")}
+                </Label>
+                {accounts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {translate("noAccountsFoundPleaseCreateAnAccountFirst")}
+                  </p>
+                ) : (
+                  <Select
+                    value={accountId}
+                    disabled={isLinkedTransfer}
+                    onValueChange={(value) => {
+                      if (!value) return;
+                      setAccountId(value);
+                      const nextSource = accounts.find(
+                        (account) => account.id === value,
+                      );
+                      const currentDestination = accounts.find(
+                        (account) => account.id === destinationAccountId,
+                      );
+                      if (
+                        value === destinationAccountId ||
+                        (nextSource?.currency || "EUR") !==
+                          (currentDestination?.currency || "EUR")
+                      ) {
+                        setDestinationAccountId("");
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={translate("selectAnAccount")}>
+                        {selectedAccount
+                          ? translate("message50844f", {
+                              value1: selectedAccount.name,
+                              value2: selectedAccount.currency
+                                ? ` (${selectedAccount.currency})`
+                                : "",
                             })
-                          : ""}
+                          : translate("selectAnAccount")}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
+                      {accounts.map((account) => (
+                        <SelectItem
+                          key={account.id}
+                          value={account.id}
+                          className="pr-10"
+                        >
+                          {account.name}
+                          {account.currency
+                            ? translate("messagecd176d", {
+                                value1: account.currency,
+                              })
+                            : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {transactionType === "transfer" && (
+                <div className="space-y-2">
+                  <Label htmlFor="destination-account">
+                    {translate("toAccount")}
+                  </Label>
+                  <Select
+                    value={destinationAccountId}
+                    disabled={isLinkedTransfer}
+                    onValueChange={(value) =>
+                      value && setDestinationAccountId(value)
+                    }
+                  >
+                    <SelectTrigger id="destination-account" className="w-full">
+                      <SelectValue
+                        placeholder={translate("selectADestinationAccount")}
+                      >
+                        {selectedDestinationAccount
+                          ? translate("message50844f", {
+                              value1: selectedDestinationAccount.name,
+                              value2: selectedDestinationAccount.currency
+                                ? ` (${selectedDestinationAccount.currency})`
+                                : "",
+                            })
+                          : translate("selectADestinationAccount")}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
+                      {eligibleDestinationAccounts.map((account) => (
+                        <SelectItem
+                          key={account.id}
+                          value={account.id}
+                          className="pr-10"
+                        >
+                          {account.name}
+                          {account.currency
+                            ? translate("messagecd176d", {
+                                value1: account.currency,
+                              })
+                            : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedAccount &&
+                    eligibleDestinationAccounts.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        {translate("addAnother")}{" "}
+                        {selectedAccount.currency || translate("sameCurrency")}{" "}
+                        {translate("accountToMakeATransfer")}
+                      </p>
+                    )}
+                </div>
+              )}
+
+              {/* Amount */}
+              <div className="space-y-2">
+                <Label htmlFor="amount">{translate("amount")}</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={amount}
+                  disabled={isLinkedTransfer}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
+
+              {/* Date */}
+              <div className="space-y-2">
+                <Label>{translate("date")}</Label>
+                <Popover>
+                  <PopoverTrigger
+                    render={
+                      <Button
+                        variant="outline"
+                        disabled={isLinkedTransfer}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !bookedAt && "text-muted-foreground",
+                        )}
+                      >
+                        {bookedAt
+                          ? format(bookedAt, "PPP")
+                          : translate("pickADate")}
+                      </Button>
+                    }
+                  />
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={bookedAt}
+                      onSelect={(date) => date && setBookedAt(date)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="description">
+                  {translate("description55f8eb")}
+                </Label>
+                <Textarea
+                  id="description"
+                  placeholder={
+                    transactionType === "transfer"
+                      ? translate("eGMoveMoneyToSavings")
+                      : translate("enterADescription")
+                  }
+                  value={description}
+                  disabled={isLinkedTransfer}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={2}
+                />
+              </div>
+
+              {/* Merchant (optional) */}
+              {transactionType !== "transfer" && (
+                <div className="space-y-2">
+                  <Label htmlFor="merchant">
+                    {translate("merchantOptional")}
+                  </Label>
+                  <Input
+                    id="merchant"
+                    placeholder={translate("eGAmazonStarbucks")}
+                    value={merchant}
+                    onChange={(e) => setMerchant(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* Category */}
+              {transactionType !== "transfer" && (
+                <div className="space-y-2">
+                  <Label htmlFor="category">
+                    {translate("categoryOptional")}
+                  </Label>
+                  <Select
+                    value={categoryId}
+                    onValueChange={(v) => setCategoryId(v ?? "")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={translate("selectACategory")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">
+                        {translate("noCategory")}
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      {filteredCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="h-3 w-3 rounded-full"
+                              style={{
+                                backgroundColor: category.color || "#666",
+                              }}
+                            />
+                            {category.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Make recurring */}
+              {!isEditing && transactionType !== "transfer" && (
+                <div className="flex items-center justify-between gap-2">
+                  <div className="grid gap-0.5">
+                    <Label htmlFor="mark-as-recurring">
+                      {translate("makeThisRecurring")}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {translate(
+                        "setUpAsASubscriptionAfterSavingSoItSTrackedGoingForward",
+                      )}
+                    </p>
+                  </div>
+                  <Switch
+                    id="mark-as-recurring"
+                    checked={markAsRecurring}
+                    onCheckedChange={setMarkAsRecurring}
+                  />
+                </div>
               )}
             </div>
-
-            {transactionType === "transfer" && (
-              <div className="space-y-2">
-                <Label htmlFor="destination-account">
-                  {translate("toAccount")}
-                </Label>
-                <Select
-                  value={destinationAccountId}
-                  disabled={isLinkedTransfer}
-                  onValueChange={(value) =>
-                    value && setDestinationAccountId(value)
-                  }
-                >
-                  <SelectTrigger id="destination-account" className="w-full">
-                    <SelectValue
-                      placeholder={translate("selectADestinationAccount")}
-                    >
-                      {selectedDestinationAccount
-                        ? translate("message50844f", {
-                            value1: selectedDestinationAccount.name,
-                            value2: selectedDestinationAccount.currency
-                              ? ` (${selectedDestinationAccount.currency})`
-                              : "",
-                          })
-                        : translate("selectADestinationAccount")}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
-                    {eligibleDestinationAccounts.map((account) => (
-                      <SelectItem
-                        key={account.id}
-                        value={account.id}
-                        className="pr-10"
-                      >
-                        {account.name}
-                        {account.currency
-                          ? translate("messagecd176d", {
-                              value1: account.currency,
-                            })
-                          : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedAccount &&
-                  eligibleDestinationAccounts.length === 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      {translate("addAnother")}{" "}
-                      {selectedAccount.currency || translate("sameCurrency")}{" "}
-                      {translate("accountToMakeATransfer")}
-                    </p>
-                  )}
-              </div>
-            )}
-
-            {/* Amount */}
-            <div className="space-y-2">
-              <Label htmlFor="amount">{translate("amount")}</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={amount}
-                disabled={isLinkedTransfer}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </div>
-
-            {/* Date */}
-            <div className="space-y-2">
-              <Label>{translate("date")}</Label>
-              <Popover>
-                <PopoverTrigger
-                  render={
-                    <Button
-                      variant="outline"
-                      disabled={isLinkedTransfer}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !bookedAt && "text-muted-foreground",
-                      )}
-                    >
-                      {bookedAt
-                        ? format(bookedAt, "PPP")
-                        : translate("pickADate")}
-                    </Button>
-                  }
-                />
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={bookedAt}
-                    onSelect={(date) => date && setBookedAt(date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="description">
-                {translate("description55f8eb")}
-              </Label>
-              <Textarea
-                id="description"
-                placeholder={
-                  transactionType === "transfer"
-                    ? translate("eGMoveMoneyToSavings")
-                    : translate("enterADescription")
-                }
-                value={description}
-                disabled={isLinkedTransfer}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-              />
-            </div>
-
-            {/* Merchant (optional) */}
-            {transactionType !== "transfer" && (
-              <div className="space-y-2">
-                <Label htmlFor="merchant">
-                  {translate("merchantOptional")}
-                </Label>
-                <Input
-                  id="merchant"
-                  placeholder={translate("eGAmazonStarbucks")}
-                  value={merchant}
-                  onChange={(e) => setMerchant(e.target.value)}
-                />
-              </div>
-            )}
-
-            {/* Category */}
-            {transactionType !== "transfer" && (
-              <div className="space-y-2">
-                <Label htmlFor="category">
-                  {translate("categoryOptional")}
-                </Label>
-                <Select
-                  value={categoryId}
-                  onValueChange={(v) => setCategoryId(v ?? "")}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={translate("selectACategory")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">{translate("noCategory")}</SelectItem>
-                    {filteredCategories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="h-3 w-3 rounded-full"
-                            style={{
-                              backgroundColor: category.color || "#666",
-                            }}
-                          />
-                          {category.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            {isLinkedTransfer && (
-              <p className="mr-auto text-sm text-muted-foreground">
-                {translate("linkedTransfersCannotBeEditedIndependently")}
-              </p>
-            )}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isLoading}
-            >
-              {isLinkedTransfer ? translate("close") : translate("cancel")}
-            </Button>
-            {!isLinkedTransfer && (
+            <DialogFooter>
+              {isLinkedTransfer && (
+                <p className="mr-auto text-sm text-muted-foreground">
+                  {translate("linkedTransfersCannotBeEditedIndependently")}
+                </p>
+              )}
               <Button
-                type="submit"
-                disabled={
-                  isLoading ||
-                  accounts.length === 0 ||
-                  (transactionType === "transfer" &&
-                    eligibleDestinationAccounts.length === 0)
-                }
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isLoading}
               >
-                {isLoading
-                  ? isEditing
-                    ? translate("saving")
-                    : translate("adding")
-                  : transactionType === "transfer"
-                    ? isEditing
-                      ? translate("convertToTransfer")
-                      : translate("createTransfer")
-                    : isEditing
-                      ? translate("saveChangesfa2984")
-                      : translate("addTransaction")}
+                {isLinkedTransfer ? translate("close") : translate("cancel")}
               </Button>
-            )}
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+              {!isLinkedTransfer && (
+                <Button
+                  type="submit"
+                  disabled={
+                    isLoading ||
+                    accounts.length === 0 ||
+                    (transactionType === "transfer" &&
+                      eligibleDestinationAccounts.length === 0)
+                  }
+                >
+                  {isLoading
+                    ? isEditing
+                      ? translate("saving")
+                      : translate("adding")
+                    : transactionType === "transfer"
+                      ? isEditing
+                        ? translate("convertToTransfer")
+                        : translate("createTransfer")
+                      : isEditing
+                        ? translate("saveChangesfa2984")
+                        : translate("addTransaction")}
+                </Button>
+              )}
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {pendingRecurringTransaction && (
+        <SubscriptionDetectionDialog
+          transaction={pendingRecurringTransaction}
+          open={true}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) setPendingRecurringTransaction(null);
+          }}
+          onSuccess={() => {
+            setPendingRecurringTransaction(null);
+            router.refresh();
+          }}
+          categories={categories}
+        />
+      )}
+    </>
   );
 }

@@ -2,17 +2,17 @@
 import { t as translate } from "@/i18n/translate";
 
 import Link from "next/link";
-import { Progress as ProgressPrimitive } from "@base-ui/react/progress";
-import { ProgressIndicator, ProgressTrack } from "@/components/ui/progress";
+import { WeightBarVisualizer } from "@/components/assets/weight-bar-visualizer";
 import { RiArrowLeftLine } from "@remixicon/react";
 import { formatCurrency, cn } from "@/lib/utils";
 import type { BudgetDetailViewModel } from "@/features/budgets/public";
 import {
   statusClasses,
-  indicatorClasses,
+  statusHexColors,
   statusLabels,
   categoryStatusClasses,
   categoryStatusLabels,
+  categoryStatusHexColors,
 } from "./status-styles";
 
 interface BudgetDetailViewProps {
@@ -35,8 +35,15 @@ export function BudgetDetailView({ budget }: BudgetDetailViewProps) {
       <div className="flex flex-col gap-3 border border-border rounded-sm p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold">{translate("overallProgress")}</h2>
-            <span className={cn("text-xs font-medium", statusClasses[budget.status])}>
+            <h2 className="text-lg font-semibold">
+              {translate("overallProgress")}
+            </h2>
+            <span
+              className={cn(
+                "text-xs font-medium",
+                statusClasses[budget.status],
+              )}
+            >
               {statusLabels[budget.status]}
             </span>
           </div>
@@ -45,7 +52,7 @@ export function BudgetDetailView({ budget }: BudgetDetailViewProps) {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}{" "}
-            / {" "}
+            /{" "}
             {formatCurrency(budget.amount, budget.currency, {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
@@ -53,11 +60,10 @@ export function BudgetDetailView({ budget }: BudgetDetailViewProps) {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <ProgressPrimitive.Root value={clampedOverall} className="flex-1">
-            <ProgressTrack>
-              <ProgressIndicator className={indicatorClasses[budget.status]} />
-            </ProgressTrack>
-          </ProgressPrimitive.Root>
+          <WeightBarVisualizer
+            percentage={clampedOverall}
+            color={statusHexColors[budget.status]}
+          />
           <span
             className={cn(
               "w-12 shrink-0 text-right font-mono text-xs",
@@ -70,14 +76,19 @@ export function BudgetDetailView({ budget }: BudgetDetailViewProps) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">{translate("categoryBreakdown")}</h2>
+        <h2 className="text-lg font-semibold">
+          {translate("categoryBreakdown")}
+        </h2>
 
         {budget.categories.length > 0 ? (
           <div className="divide-y border border-border rounded-sm overflow-hidden">
             {budget.categories.map((category) => {
               const clamped = Math.min(category.percentage, 100);
               return (
-                <div key={category.id} className="flex flex-col gap-3 px-4 py-3">
+                <div
+                  key={category.id}
+                  className="flex flex-col gap-3 px-4 py-3"
+                >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <span
@@ -104,21 +115,22 @@ export function BudgetDetailView({ budget }: BudgetDetailViewProps) {
                         : `${formatCurrency(category.spent, budget.currency, {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
-                          })} / ${formatCurrency(category.subLimit, budget.currency, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}`}
+                          })} / ${formatCurrency(
+                            category.subLimit,
+                            budget.currency,
+                            {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            },
+                          )}`}
                     </span>
                   </div>
                   {category.subLimit != null && (
                     <div className="flex items-center gap-3">
-                      <ProgressPrimitive.Root value={clamped} className="flex-1">
-                        <ProgressTrack>
-                          <ProgressIndicator
-                            className={indicatorClasses[category.status as "on_track" | "near_limit" | "over_budget"]}
-                          />
-                        </ProgressTrack>
-                      </ProgressPrimitive.Root>
+                      <WeightBarVisualizer
+                        percentage={clamped}
+                        color={categoryStatusHexColors[category.status]}
+                      />
                       <span
                         className={cn(
                           "w-12 shrink-0 text-right font-mono text-xs",

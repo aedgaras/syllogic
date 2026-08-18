@@ -2,8 +2,7 @@
 import { t as translate } from "@/i18n/translate";
 
 import { useRouter } from "next/navigation";
-import { Progress as ProgressPrimitive } from "@base-ui/react/progress";
-import { ProgressIndicator, ProgressTrack } from "@/components/ui/progress";
+import { WeightBarVisualizer } from "@/components/assets/weight-bar-visualizer";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,7 +20,7 @@ import {
   RiPlayLine,
 } from "@remixicon/react";
 import type { BudgetViewModel } from "@/features/budgets/public";
-import { statusClasses, indicatorClasses, statusLabels } from "./status-styles";
+import { statusClasses, statusHexColors, statusLabels } from "./status-styles";
 
 interface BudgetProgressRowProps {
   budget: BudgetViewModel;
@@ -56,7 +55,12 @@ export function BudgetProgressRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate font-medium">{budget.name}</span>
-            <span className={cn("text-xs font-medium", statusClasses[budget.status])}>
+            <span
+              className={cn(
+                "text-xs font-medium",
+                statusClasses[budget.status],
+              )}
+            >
               {statusLabels[budget.status]}
             </span>
           </div>
@@ -79,7 +83,7 @@ export function BudgetProgressRow({
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}{" "}
-            / {" "}
+            /{" "}
             {formatCurrency(budget.amount, budget.currency, {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
@@ -95,7 +99,10 @@ export function BudgetProgressRow({
                 <RiMoreLine className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuContent
+              align="end"
+              onClick={(e) => e.stopPropagation()}
+            >
               <DropdownMenuItem onClick={() => onEdit(budget)}>
                 <RiEditLine className="mr-2 h-4 w-4" />
                 {translate("edit")}
@@ -127,11 +134,10 @@ export function BudgetProgressRow({
       </div>
 
       <div className="flex items-center gap-3">
-        <ProgressPrimitive.Root value={clampedValue} className="flex-1">
-          <ProgressTrack>
-            <ProgressIndicator className={indicatorClasses[budget.status]} />
-          </ProgressTrack>
-        </ProgressPrimitive.Root>
+        <WeightBarVisualizer
+          percentage={clampedValue}
+          color={statusHexColors[budget.status]}
+        />
         <span
           className={cn(
             "w-12 shrink-0 text-right font-mono text-xs",

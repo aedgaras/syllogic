@@ -22,7 +22,7 @@ from app.services.app_settings import (
     get_llm_model,
     get_openai_api_key,
 )
-from app.services.llm_client import create_llm_client
+from app.services.llm_client import create_llm_clients, is_fallback_worthy_error
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -141,7 +141,7 @@ class CategoryMatcher:
         self.user_id = user_id if user_id else get_user_id(user_id)
         self._category_cache: Optional[Dict[str, Category]] = None
         self._keyword_rules: Optional[Dict[str, List[str]]] = None
-        self._openai_client = None
+        self._llm_providers: Optional[List[Tuple[object, str, str]]] = None
         self._openai_api_key: Optional[str] = None
         self._category_instructions_cache: Optional[List[str]] = None
         self._account_cache: Optional[list] = None
@@ -638,35 +638,97 @@ class CategoryMatcher:
             }
         return self._keyword_rules
 
-    def _get_openai_client(self) -> Optional[object]:
+    def _get_llm_providers(self) -> List[Tuple[object, str, str]]:
         """
-        Get or create an OpenAI-compatible client instance (cached).
+        Get or create the ordered list of configured LLM providers (cached).
 
-        Returns:
-            OpenAI-compatible client instance if available, None otherwise.
-            Returns None if no API configuration is set or the library is not installed.
+        Returns (client, model, label) tuples: the primary (user/env-configured)
+        provider first, followed by the deployment's fallback provider
+        (LLM_FALLBACK_BASE_URL) if one is configured. Empty list if neither
+        is available.
         """
-        if self._openai_client is None:
+        if self._llm_providers is None:
             try:
-                api_key = self._get_openai_api_key()
-                if not api_key:
-                    logger.warning(
-                        "LLM API configuration not found, LLM categorization will be unavailable"
+                self._llm_providers = create_llm_clients(self.db)
+                if self._llm_providers:
+                    logger.info(
+                        "LLM providers available: %s",
+                        ", ".join(f"{label}({model})" for _, model, label in self._llm_providers),
                     )
-                    return None
-                base_url = get_llm_base_url()
-                self._openai_client = create_llm_client(self.db)
-                if self._openai_client is None:
-                    return None
-                logger.info(
-                    "LLM client initialized successfully (model=%s, custom_endpoint=%s)",
-                    self.LLM_MODEL,
-                    bool(base_url),
-                )
+                else:
+                    logger.warning(
+                        "No LLM provider configured, LLM categorization will be unavailable"
+                    )
             except Exception as e:
-                logger.error(f"Failed to initialize LLM client: {str(e)}")
-                return None
-        return self._openai_client
+                logger.error(f"Failed to initialize LLM providers: {str(e)}")
+                self._llm_providers = []
+        return self._llm_providers
+
+    def _call_llm_with_fallback(
+        self,
+        *,
+        messages: list,
+        max_tokens: int,
+        timeout: Optional[float] = None,
+        retries: Optional[int] = None,
+    ):
+        """
+        Call chat completions against the configured providers in order.
+
+        Retries the same provider on transient errors (timeout, network) up
+        to `retries` attempts with backoff. Switches immediately to the next
+        provider on quota/auth errors (see `is_fallback_worthy_error`)
+        instead of burning retries against a provider that's out of tokens
+        or holding an invalid key.
+
+        Returns (response, model_used). Raises the last error if every
+        configured provider is exhausted.
+        """
+        providers = self._get_llm_providers()
+        max_retries = retries if retries is not None else self.LLM_MAX_RETRIES
+        last_error: Optional[Exception] = None
+
+        for client, model, label in providers:
+            for attempt in range(max_retries):
+                try:
+                    kwargs = {"timeout": timeout} if timeout is not None else {}
+                    response = client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        temperature=self.LLM_TEMPERATURE,
+                        max_tokens=max_tokens,
+                        **kwargs,
+                    )
+                    if label != "primary":
+                        logger.info("LLM request served by '%s' provider (model=%s)", label, model)
+                    return response, model
+                except Exception as e:
+                    last_error = e
+                    error_type = type(e).__name__
+                    error_msg = str(e)
+                    logger.warning(
+                        "LLM call via '%s' provider attempt %d/%d failed: %s: %s",
+                        label,
+                        attempt + 1,
+                        max_retries,
+                        error_type,
+                        error_msg,
+                    )
+                    if is_fallback_worthy_error(e):
+                        logger.info(
+                            "LLM error on '%s' provider looks quota/auth-related; "
+                            "moving to next provider instead of retrying",
+                            label,
+                        )
+                        break
+                    if attempt < max_retries - 1:
+                        delay = self.LLM_RETRY_DELAY * (attempt + 1)
+                        time.sleep(delay)
+                        continue
+
+        if last_error:
+            raise last_error
+        return None, None
 
     def _check_user_override(
         self, description: Optional[str], merchant: Optional[str], amount: Decimal
@@ -1038,9 +1100,8 @@ class CategoryMatcher:
         Returns:
             Suggested Category or None if LLM call fails
         """
-        # Get OpenAI client (returns None if not available)
-        client = self._get_openai_client()
-        if not client:
+        # Bail out early if no provider (primary or fallback) is configured
+        if not self._get_llm_providers():
             return None
 
         # Determine transaction type - use provided transaction_type if available, otherwise infer from amount
@@ -1151,83 +1212,43 @@ Instructions:
 
 Category name:"""
 
-        # Retry logic for API calls
-        last_error = None
-        for attempt in range(self.LLM_MAX_RETRIES):
-            try:
-                logger.debug(f"LLM categorization attempt {attempt + 1}/{self.LLM_MAX_RETRIES}")
+        try:
+            response, _model = self._call_llm_with_fallback(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a financial transaction categorization expert. Always respond with only the category name, nothing else.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=self.LLM_MAX_TOKENS,
+            )
+        except Exception as e:
+            logger.error(
+                f"LLM categorization failed on every configured provider: {type(e).__name__}: {e}"
+            )
+            return None
 
-                response = client.chat.completions.create(
-                    model=self.LLM_MODEL,
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a financial transaction categorization expert. Always respond with only the category name, nothing else.",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    temperature=self.LLM_TEMPERATURE,
-                    max_tokens=self.LLM_MAX_TOKENS,
-                )
+        if response is None:
+            return None
 
-                suggested_name = response.choices[0].message.content.strip()
-                logger.debug(f"LLM suggested category: '{suggested_name}'")
+        suggested_name = response.choices[0].message.content.strip()
+        logger.debug(f"LLM suggested category: '{suggested_name}'")
 
-                # Handle UNKNOWN response
-                if suggested_name.upper() == "UNKNOWN":
-                    logger.info("LLM could not confidently categorize transaction")
-                    return None
+        # Handle UNKNOWN response
+        if suggested_name.upper() == "UNKNOWN":
+            logger.info("LLM could not confidently categorize transaction")
+            return None
 
-                # Find matching category (case-insensitive)
-                for cat in relevant_categories:
-                    if cat.name.lower() == suggested_name.lower():
-                        logger.info(f"LLM matched transaction to category '{cat.name}'")
-                        return cat
+        # Find matching category (case-insensitive)
+        for cat in relevant_categories:
+            if cat.name.lower() == suggested_name.lower():
+                logger.info(f"LLM matched transaction to category '{cat.name}'")
+                return cat
 
-                logger.warning(
-                    f"LLM suggested '{suggested_name}' but it doesn't match any available category"
-                )
-                return None
-
-            except Exception as e:
-                last_error = e
-                error_type = type(e).__name__
-                error_msg = str(e)
-                logger.warning(
-                    f"LLM categorization attempt {attempt + 1} failed: {error_type}: {error_msg}"
-                )
-
-                # Provide diagnostics for common error types
-                error_lower = error_msg.lower()
-                if (
-                    "401" in error_msg
-                    or "authentication" in error_lower
-                    or "api key" in error_lower
-                ):
-                    logger.error(
-                        "[LLM] DIAGNOSIS: Authentication error - API key may be invalid or expired"
-                    )
-                elif "429" in error_msg or "rate limit" in error_lower:
-                    logger.error("[LLM] DIAGNOSIS: Rate limit exceeded - wait before retrying")
-                elif "timeout" in error_lower:
-                    logger.error("[LLM] DIAGNOSIS: Request timeout")
-                elif "network" in error_lower or "connection" in error_lower:
-                    logger.error("[LLM] DIAGNOSIS: Network connectivity issue")
-
-                if attempt < self.LLM_MAX_RETRIES - 1:
-                    delay = self.LLM_RETRY_DELAY * (attempt + 1)
-                    logger.debug(f"[LLM] Retrying in {delay} seconds...")
-                    time.sleep(delay)  # Exponential backoff
-                    continue
-                else:
-                    logger.error(
-                        f"LLM categorization failed after {self.LLM_MAX_RETRIES} attempts: {error_type}: {error_msg}"
-                    )
-                    import traceback
-
-                    logger.debug(f"[LLM] Final error traceback:\n{traceback.format_exc()}")
-                    return None
-
+        logger.warning(
+            f"LLM suggested '{suggested_name}' but it doesn't match any available category"
+        )
         return None
 
     def _match_category_llm_with_details(
@@ -1250,9 +1271,8 @@ Category name:"""
         Returns:
             Tuple of (Category or None, total_tokens_used, cost_in_usd)
         """
-        # Get OpenAI client (returns None if not available)
-        client = self._get_openai_client()
-        if not client:
+        # Bail out early if no provider (primary or fallback) is configured
+        if not self._get_llm_providers():
             return None, 0, 0.0
 
         # Determine transaction type - use provided transaction_type if available, otherwise infer from amount
@@ -1363,96 +1383,56 @@ Instructions:
 
 Category name:"""
 
-        # Retry logic for API calls
-        last_error = None
-        for attempt in range(self.LLM_MAX_RETRIES):
-            try:
-                logger.debug(f"LLM categorization attempt {attempt + 1}/{self.LLM_MAX_RETRIES}")
+        try:
+            response, model_used = self._call_llm_with_fallback(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a financial transaction categorization expert. Always respond with only the category name, nothing else.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=self.LLM_MAX_TOKENS,
+            )
+        except Exception as e:
+            logger.error(
+                f"LLM categorization failed on every configured provider: {type(e).__name__}: {e}"
+            )
+            return None, 0, 0.0
 
-                response = client.chat.completions.create(
-                    model=self.LLM_MODEL,
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a financial transaction categorization expert. Always respond with only the category name, nothing else.",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    temperature=self.LLM_TEMPERATURE,
-                    max_tokens=self.LLM_MAX_TOKENS,
-                )
+        if response is None:
+            return None, 0, 0.0
 
-                # Extract token usage
-                input_tokens, output_tokens, total_tokens = self._extract_token_usage(response)
+        # Extract token usage
+        input_tokens, output_tokens, total_tokens = self._extract_token_usage(response)
 
-                # Calculate cost
-                cost = self._calculate_llm_cost(input_tokens, output_tokens, self.LLM_MODEL)
+        # Calculate cost (fallback/local models not in PRICING are treated as free)
+        cost = self._calculate_llm_cost(input_tokens, output_tokens, model_used)
 
-                suggested_name = response.choices[0].message.content.strip()
-                logger.debug(
-                    f"LLM suggested category: '{suggested_name}' "
+        suggested_name = response.choices[0].message.content.strip()
+        logger.debug(
+            f"LLM suggested category: '{suggested_name}' "
+            f"(tokens: {total_tokens}, cost: ${cost:.6f})"
+        )
+
+        # Handle UNKNOWN response
+        if suggested_name.upper() == "UNKNOWN":
+            logger.info("LLM could not confidently categorize transaction")
+            return None, total_tokens, cost
+
+        # Find matching category (case-insensitive)
+        for cat in relevant_categories:
+            if cat.name.lower() == suggested_name.lower():
+                logger.info(
+                    f"LLM matched transaction to category '{cat.name}' "
                     f"(tokens: {total_tokens}, cost: ${cost:.6f})"
                 )
+                return cat, total_tokens, cost
 
-                # Handle UNKNOWN response
-                if suggested_name.upper() == "UNKNOWN":
-                    logger.info("LLM could not confidently categorize transaction")
-                    return None, total_tokens, cost
-
-                # Find matching category (case-insensitive)
-                for cat in relevant_categories:
-                    if cat.name.lower() == suggested_name.lower():
-                        logger.info(
-                            f"LLM matched transaction to category '{cat.name}' "
-                            f"(tokens: {total_tokens}, cost: ${cost:.6f})"
-                        )
-                        return cat, total_tokens, cost
-
-                logger.warning(
-                    f"LLM suggested '{suggested_name}' but it doesn't match any available category"
-                )
-                return None, total_tokens, cost
-
-            except Exception as e:
-                last_error = e
-                error_type = type(e).__name__
-                error_msg = str(e)
-                logger.warning(
-                    f"LLM categorization attempt {attempt + 1} failed: {error_type}: {error_msg}"
-                )
-
-                # Provide diagnostics for common error types
-                error_lower = error_msg.lower()
-                if (
-                    "401" in error_msg
-                    or "authentication" in error_lower
-                    or "api key" in error_lower
-                ):
-                    logger.error(
-                        "[LLM] DIAGNOSIS: Authentication error - API key may be invalid or expired"
-                    )
-                elif "429" in error_msg or "rate limit" in error_lower:
-                    logger.error("[LLM] DIAGNOSIS: Rate limit exceeded - wait before retrying")
-                elif "timeout" in error_lower:
-                    logger.error("[LLM] DIAGNOSIS: Request timeout")
-                elif "network" in error_lower or "connection" in error_lower:
-                    logger.error("[LLM] DIAGNOSIS: Network connectivity issue")
-
-                if attempt < self.LLM_MAX_RETRIES - 1:
-                    delay = self.LLM_RETRY_DELAY * (attempt + 1)
-                    logger.debug(f"[LLM] Retrying in {delay} seconds...")
-                    time.sleep(delay)  # Exponential backoff
-                    continue
-                else:
-                    logger.error(
-                        f"LLM categorization failed after {self.LLM_MAX_RETRIES} attempts: {error_type}: {error_msg}"
-                    )
-                    import traceback
-
-                    logger.debug(f"[LLM] Final error traceback:\n{traceback.format_exc()}")
-                    return None, 0, 0.0
-
-        return None, 0, 0.0
+        logger.warning(
+            f"LLM suggested '{suggested_name}' but it doesn't match any available category"
+        )
+        return None, total_tokens, cost
 
     def match_category(
         self,
@@ -1682,9 +1662,8 @@ Category name:"""
             f"[BATCH LLM] Starting batch categorization for {len(transactions)} transactions"
         )
 
-        client = self._get_openai_client()
-        if not client:
-            logger.warning("[BATCH LLM] LLM client not available")
+        if not self._get_llm_providers():
+            logger.warning("[BATCH LLM] No LLM provider configured")
             return {}, 0, 0.0
 
         if not transactions:
@@ -1853,8 +1832,7 @@ Response:"""
             logger.info(f"[BATCH LLM] Sending request to LLM API (model: {self.LLM_MODEL})...")
 
             try:
-                response = client.chat.completions.create(
-                    model=self.LLM_MODEL,
+                response, model_used = self._call_llm_with_fallback(
                     messages=[
                         {
                             "role": "system",
@@ -1862,18 +1840,21 @@ Response:"""
                         },
                         {"role": "user", "content": prompt},
                     ],
-                    temperature=self.LLM_TEMPERATURE,
                     max_tokens=max(
                         150, len(batch) * 25
                     ),  # ~25 tokens per response line (includes confidence)
-                    timeout=30.0,  # 30 second timeout
+                    timeout=30.0,  # 30 second timeout per attempt
+                    retries=1,  # batches are large; don't multiply cost of a bad batch, just fall over
                 )
+                if response is None:
+                    logger.warning("[BATCH LLM] No LLM provider configured")
+                    continue
 
                 logger.info("[BATCH LLM] Received response from LLM API")
 
-                # Track tokens and cost
+                # Track tokens and cost (fallback/local models not in PRICING are free)
                 input_tokens, output_tokens, batch_tokens = self._extract_token_usage(response)
-                batch_cost = self._calculate_llm_cost(input_tokens, output_tokens, self.LLM_MODEL)
+                batch_cost = self._calculate_llm_cost(input_tokens, output_tokens, model_used)
 
                 logger.info(
                     f"[BATCH LLM] Tokens used - input: {input_tokens}, output: {output_tokens}, total: {batch_tokens}, cost: ${batch_cost:.6f}"

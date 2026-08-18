@@ -15,6 +15,14 @@ export const indicatorClasses: Record<BudgetStatus, string> = {
   over_budget: "bg-red-600 dark:bg-red-500",
 };
 
+// Flat hex equivalents of indicatorClasses, for components that take a raw
+// CSS color (e.g. WeightBarVisualizer) rather than a Tailwind class.
+export const statusHexColors: Record<BudgetStatus, string> = {
+  on_track: "#10b981",
+  near_limit: "#f59e0b",
+  over_budget: "#ef4444",
+};
+
 export const statusLabels: Record<BudgetStatus, string> = {
   on_track: translate("onTrack"),
   near_limit: translate("nearLimit"),
@@ -29,4 +37,9 @@ export const categoryStatusClasses: Record<CategoryBudgetStatus, string> = {
 export const categoryStatusLabels: Record<CategoryBudgetStatus, string> = {
   ...statusLabels,
   no_limit: translate("noSubBudgetSet"),
+};
+
+export const categoryStatusHexColors: Record<CategoryBudgetStatus, string> = {
+  ...statusHexColors,
+  no_limit: "#9ca3af",
 };

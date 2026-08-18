@@ -58,7 +58,7 @@ def test_prompt_includes_category_descriptions(monkeypatch, db_session):
                     return R()
 
     m = cm_module.CategoryMatcher(db=db_session, user_id="prompt-user")
-    monkeypatch.setattr(m, "_get_openai_client", lambda: StubClient())
+    monkeypatch.setattr(m, "_get_llm_providers", lambda: [(StubClient(), "test-model", "primary")])
     # Also monkeypatch _load_categories so we don't depend on DB having categories
     monkeypatch.setattr(m, "_load_categories", lambda: {})
 
@@ -118,7 +118,7 @@ def test_prompt_includes_account_context_and_transfer_rule(monkeypatch, db_sessi
                     return _stub_response
 
     m = cm_module.CategoryMatcher(db=db_session, user_id="tr-user")
-    monkeypatch.setattr(m, "_get_openai_client", lambda: StubClient())
+    monkeypatch.setattr(m, "_get_llm_providers", lambda: [(StubClient(), "test-model", "primary")])
     monkeypatch.setattr(m, "_load_categories", lambda: {})
     m._account_cache = [FakeAccount("Revolut Pro", alias_patterns=["Apple Pay Top-Up by *1234"])]
     cats = [FakeCategory("Transfers", "Internal transfers", category_type="transfer")]
@@ -157,7 +157,7 @@ def test_prompt_instructions_numbered_correctly_without_accounts(monkeypatch, db
                     return _stub_response
 
     m = cm_module.CategoryMatcher(db=db_session, user_id="no-acct-user")
-    monkeypatch.setattr(m, "_get_openai_client", lambda: StubClient())
+    monkeypatch.setattr(m, "_get_llm_providers", lambda: [(StubClient(), "test-model", "primary")])
     monkeypatch.setattr(m, "_load_categories", lambda: {})
     # Explicitly set no accounts so transfer_rule is empty
     m._account_cache = []
@@ -249,7 +249,7 @@ def test_feature_flag_disabled_falls_back_to_names_only(monkeypatch, db_session)
                     return _stub_response
 
     m = cm_module.CategoryMatcher(db=db_session, user_id="ff-user")
-    monkeypatch.setattr(m, "_get_openai_client", lambda: StubClient())
+    monkeypatch.setattr(m, "_get_llm_providers", lambda: [(StubClient(), "test-model", "primary")])
     monkeypatch.setattr(m, "_load_categories", lambda: {})
     m._account_cache = [FakeAccount("Acc", alias_patterns=["p"])]
     cats = [FakeCategory("Food", "Description here")]

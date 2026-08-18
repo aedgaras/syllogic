@@ -9,6 +9,7 @@ import {
   categories,
   transactions,
   users,
+  exchangeRates,
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth-helpers";
 import { computeBudgetStatus } from "@/features/budgets/domain/status";
@@ -59,6 +60,41 @@ async function getUserCurrency(userId: string): Promise<string> {
     .limit(1);
 
   return result[0]?.functionalCurrency || "EUR";
+}
+
+// Transaction spend is always summed in the user's functional currency
+// (transactions.functionalAmount), but a budget's `amount`/`subLimit` are
+// entered in the budget's own chosen currency. Without converting one side,
+// percentage/status comparisons silently mix currencies whenever a budget's
+// currency differs from the user's functional currency.
+async function convertCurrency(
+  amount: number,
+  fromCurrency: string,
+  toCurrency: string,
+): Promise<number> {
+  if (amount === 0 || fromCurrency === toCurrency) return amount;
+
+  const rate = await db.query.exchangeRates.findFirst({
+    where: and(
+      eq(exchangeRates.baseCurrency, fromCurrency),
+      eq(exchangeRates.targetCurrency, toCurrency),
+    ),
+    orderBy: [desc(exchangeRates.date)],
+  });
+  if (rate) return amount * parseFloat(rate.rate);
+
+  const inverseRate = await db.query.exchangeRates.findFirst({
+    where: and(
+      eq(exchangeRates.baseCurrency, toCurrency),
+      eq(exchangeRates.targetCurrency, fromCurrency),
+    ),
+    orderBy: [desc(exchangeRates.date)],
+  });
+  if (inverseRate) return amount / parseFloat(inverseRate.rate);
+
+  // No exchange rate on record — fall back to unconverted rather than
+  // throwing, matching the prior (unconverted) behavior for this edge case.
+  return amount;
 }
 
 type BudgetWithCategories = typeof budgets.$inferSelect & {
@@ -175,13 +211,20 @@ async function fetchBudgetViewModels(
     orderBy: [desc(budgets.createdAt)],
   });
 
-  const spentByBudgetId = await computeSpentByBudgetId(
-    userId,
-    budgetsWithCategories,
-  );
+  const [spentByBudgetId, functionalCurrency] = await Promise.all([
+    computeSpentByBudgetId(userId, budgetsWithCategories),
+    getUserCurrency(userId),
+  ]);
 
-  return budgetsWithCategories.map((budget) =>
-    toBudgetViewModel(budget, spentByBudgetId.get(budget.id) ?? 0),
+  return Promise.all(
+    budgetsWithCategories.map(async (budget) => {
+      const spent = await convertCurrency(
+        spentByBudgetId.get(budget.id) ?? 0,
+        functionalCurrency,
+        budget.currency || "EUR",
+      );
+      return toBudgetViewModel(budget, spent);
+    }),
   );
 }
 
@@ -199,17 +242,23 @@ async function fetchBudgetViewModelById(
   });
   if (!budget) return undefined;
 
-  const spentByBudgetId = await computeSpentByBudgetId(userId, [budget]);
-  return toBudgetViewModel(budget, spentByBudgetId.get(budget.id) ?? 0);
+  const [spentByBudgetId, functionalCurrency] = await Promise.all([
+    computeSpentByBudgetId(userId, [budget]),
+    getUserCurrency(userId),
+  ]);
+  const spent = await convertCurrency(
+    spentByBudgetId.get(budget.id) ?? 0,
+    functionalCurrency,
+    budget.currency || "EUR",
+  );
+  return toBudgetViewModel(budget, spent);
 }
 
 // ============================================================================
 // CRUD Operations
 // ============================================================================
 
-export async function createBudget(
-  input: BudgetCreateInput,
-): Promise<{
+export async function createBudget(input: BudgetCreateInput): Promise<{
   success: boolean;
   error?: string;
   budgetId?: string;
@@ -500,28 +549,45 @@ export async function getBudgetDetail(
     });
     if (!budget) return null;
 
-    const [spentByBudgetId, spentByCategoryId] = await Promise.all([
-      computeSpentByBudgetId(userId, [budget]),
-      computeSpentByCategoryForBudget(userId, budget),
-    ]);
+    const [spentByBudgetId, spentByCategoryId, functionalCurrency] =
+      await Promise.all([
+        computeSpentByBudgetId(userId, [budget]),
+        computeSpentByCategoryForBudget(userId, budget),
+        getUserCurrency(userId),
+      ]);
 
-    const base = toBudgetViewModel(budget, spentByBudgetId.get(budget.id) ?? 0);
+    const budgetCurrency = budget.currency || "EUR";
+    const overallSpent = await convertCurrency(
+      spentByBudgetId.get(budget.id) ?? 0,
+      functionalCurrency,
+      budgetCurrency,
+    );
+    const base = toBudgetViewModel(budget, overallSpent);
 
     return {
       ...base,
-      categories: base.categories.map((ref) => {
-        const spent = spentByCategoryId.get(ref.id) ?? 0;
-        const percentage = ref.subLimit ? (spent / ref.subLimit) * 100 : 0;
-        return {
-          ...ref,
-          spent,
-          status:
-            ref.subLimit == null
-              ? ("no_limit" as const)
-              : computeBudgetStatus(spent, ref.subLimit),
-          percentage,
-        };
-      }),
+      categories: await Promise.all(
+        base.categories.map(async (ref) => {
+          const spent = await convertCurrency(
+            spentByCategoryId.get(ref.id) ?? 0,
+            functionalCurrency,
+            budgetCurrency,
+          );
+          const percentage =
+            ref.subLimit != null && ref.subLimit > 0
+              ? (spent / ref.subLimit) * 100
+              : 0;
+          return {
+            ...ref,
+            spent,
+            status:
+              ref.subLimit == null
+                ? ("no_limit" as const)
+                : computeBudgetStatus(spent, ref.subLimit),
+            percentage,
+          };
+        }),
+      ),
     };
   } catch (error) {
     console.error("Failed to get budget detail:", error);
@@ -547,12 +613,28 @@ export async function getBudgetKpis(): Promise<BudgetKpis> {
       getUserCurrency(userId),
     ]);
 
+    // Budgets can each be in their own currency, but the KPI totals are a
+    // single aggregate figure — convert every budget's amount/spent into
+    // the user's functional currency before summing so budgets in different
+    // currencies don't get added together as if they were the same unit.
+    const [totalBudgeted, totalSpent] = await Promise.all([
+      Promise.all(
+        activeBudgets.map((b) =>
+          convertCurrency(b.amount, b.currency, currency),
+        ),
+      ).then((amounts) => amounts.reduce((sum, a) => sum + a, 0)),
+      Promise.all(
+        activeBudgets.map((b) =>
+          convertCurrency(b.spent, b.currency, currency),
+        ),
+      ).then((amounts) => amounts.reduce((sum, a) => sum + a, 0)),
+    ]);
+
     return {
-      totalBudgeted: activeBudgets.reduce((sum, b) => sum + b.amount, 0),
-      totalSpent: activeBudgets.reduce((sum, b) => sum + b.spent, 0),
-      overBudgetCount: activeBudgets.filter(
-        (b) => b.status === "over_budget",
-      ).length,
+      totalBudgeted,
+      totalSpent,
+      overBudgetCount: activeBudgets.filter((b) => b.status === "over_budget")
+        .length,
       activeCount: activeBudgets.length,
       currency,
     };

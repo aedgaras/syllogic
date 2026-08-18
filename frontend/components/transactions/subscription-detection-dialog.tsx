@@ -42,7 +42,7 @@ import type {
 } from "@/features/subscriptions/public";
 
 interface SubscriptionDetectionDialogProps {
-  transaction: TransactionWithRelations;
+  transaction: Pick<TransactionWithRelations, "id" | "categoryId">;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
