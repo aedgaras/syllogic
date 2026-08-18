@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { getOnboardingRedirectPath } from "@/lib/actions/onboarding";
 import { getCachedSession, getCachedOnboardingStatus } from "@/lib/data/cached";
 import { ImportStatusNotifier } from "@/components/import-status-notifier";
+import { MobileAddTransactionFab } from "@/components/transactions/mobile-add-transaction-fab";
 import { WalkthroughProvider } from "@/components/walkthrough/walkthrough-provider";
 import { getRegistrationStatus } from "@/lib/registration-settings";
 
@@ -51,6 +52,7 @@ export default async function DashboardLayout({
         <AppSidebar initialUser={session.user} />
         <SidebarInset className={jbMono.variable}>{children}</SidebarInset>
         <ImportStatusNotifier />
+        <MobileAddTransactionFab />
       </WalkthroughProvider>
     </SidebarProvider>
   );
