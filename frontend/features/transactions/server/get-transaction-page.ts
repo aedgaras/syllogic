@@ -4,9 +4,17 @@ import { getTransactionPage as runGetTransactionPage } from "../application/get-
 import { transactionListRepository } from "./transaction-list.repository";
 
 export async function getTransactionPage(query: TransactionsQueryState) {
-  return runGetTransactionPage(
-    await requireAuth(),
-    query,
-    transactionListRepository,
-  );
+  try {
+    return await runGetTransactionPage(
+      await requireAuth(),
+      query,
+      transactionListRepository,
+    );
+  } catch (error) {
+    console.error("[getTransactionPage] Failed to load transaction page:", {
+      query,
+      error,
+    });
+    throw error;
+  }
 }

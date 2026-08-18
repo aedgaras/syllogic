@@ -137,10 +137,15 @@ export async function getVehicles() {
     return [];
   }
 
-  return db.query.vehicles.findMany({
-    where: and(eq(vehicles.userId, userId), eq(vehicles.isActive, true)),
-    orderBy: (vehicles, { asc }) => [asc(vehicles.name)],
-  });
+  try {
+    return await db.query.vehicles.findMany({
+      where: and(eq(vehicles.userId, userId), eq(vehicles.isActive, true)),
+      orderBy: (vehicles, { asc }) => [asc(vehicles.name)],
+    });
+  } catch (error) {
+    console.error("Failed to get vehicles:", error);
+    return [];
+  }
 }
 
 export async function getVehicle(vehicleId: string) {

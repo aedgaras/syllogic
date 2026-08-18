@@ -131,10 +131,15 @@ export async function getProperties() {
     return [];
   }
 
-  return db.query.properties.findMany({
-    where: and(eq(properties.userId, userId), eq(properties.isActive, true)),
-    orderBy: (properties, { asc }) => [asc(properties.name)],
-  });
+  try {
+    return await db.query.properties.findMany({
+      where: and(eq(properties.userId, userId), eq(properties.isActive, true)),
+      orderBy: (properties, { asc }) => [asc(properties.name)],
+    });
+  } catch (error) {
+    console.error("Failed to get properties:", error);
+    return [];
+  }
 }
 
 export async function getProperty(propertyId: string) {

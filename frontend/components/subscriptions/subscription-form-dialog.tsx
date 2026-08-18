@@ -267,6 +267,9 @@ export function SubscriptionFormDialog({
           toast.success(translate("subscriptionUpdated"));
           onOpenChange(false);
           // Pass the updated subscription data for immediate UI update
+          const selectedCategory = categoryId
+            ? categories.find((category) => category.id === categoryId)
+            : null;
           const updatedSubscription = {
             ...subscription,
             accountId,
@@ -274,6 +277,13 @@ export function SubscriptionFormDialog({
             merchant: merchant.trim() || null,
             amount: amountNum.toFixed(2),
             categoryId: categoryId || null,
+            category: selectedCategory
+              ? {
+                  id: selectedCategory.id,
+                  name: selectedCategory.name,
+                  color: selectedCategory.color,
+                }
+              : null,
             logoId: logoId || null,
             importance,
             frequency,

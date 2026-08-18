@@ -19,8 +19,13 @@ import {
 } from "./accounts.repository";
 
 export async function getAccounts() {
-  const rows = await getCachedFullUserAccounts();
-  return rows.map(toAccountViewModel);
+  try {
+    const rows = await getCachedFullUserAccounts();
+    return rows.map(toAccountViewModel);
+  } catch (error) {
+    console.error("Failed to get accounts:", error);
+    return [];
+  }
 }
 
 export async function getAccountById(accountId: string) {

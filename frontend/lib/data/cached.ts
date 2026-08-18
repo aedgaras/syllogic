@@ -44,7 +44,12 @@ export const getCachedUserCategories = cache(async () => {
   const session = await getCachedSession();
   const userId = session?.user?.id;
   if (!userId) return [];
-  return getCachedCategoriesByUser(userId);
+  try {
+    return await getCachedCategoriesByUser(userId);
+  } catch (error) {
+    console.error("Failed to get cached user categories:", error);
+    return [];
+  }
 });
 
 // ---------- Accounts (slim, for filter dropdowns) ----------
@@ -72,7 +77,12 @@ export const getCachedUserAccounts = cache(async () => {
   const session = await getCachedSession();
   const userId = session?.user?.id;
   if (!userId) return [];
-  return getCachedAccountsByUser(userId);
+  try {
+    return await getCachedAccountsByUser(userId);
+  } catch (error) {
+    console.error("Failed to get cached user accounts:", error);
+    return [];
+  }
 });
 
 // ---------- Accounts (full, with logos — superset for getAccounts) ----------
@@ -105,7 +115,12 @@ export const getCachedFullUserAccounts = cache(async () => {
   const session = await getCachedSession();
   const userId = session?.user?.id;
   if (!userId) return [];
-  return getCachedFullAccountsByUser(userId);
+  try {
+    return await getCachedFullAccountsByUser(userId);
+  } catch (error) {
+    console.error("Failed to get cached full user accounts:", error);
+    return [];
+  }
 });
 
 // ---------- Onboarding status ----------

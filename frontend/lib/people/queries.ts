@@ -11,11 +11,16 @@ import { eq, and, inArray } from "drizzle-orm";
 export type EntityType = "account" | "property" | "vehicle";
 
 export async function getPeople(userId: string) {
-  return db
-    .select()
-    .from(people)
-    .where(eq(people.userId, userId))
-    .orderBy(people.kind, people.createdAt);
+  try {
+    return await db
+      .select()
+      .from(people)
+      .where(eq(people.userId, userId))
+      .orderBy(people.kind, people.createdAt);
+  } catch (error) {
+    console.error("Failed to get people:", error);
+    return [];
+  }
 }
 
 export async function getSelfPersonId(userId: string): Promise<string> {
@@ -93,24 +98,28 @@ export async function getOwnersForEntities(
     out.set(eid, list);
   };
 
-  if (entityType === "account") {
-    const rows = await db
-      .select()
-      .from(accountOwners)
-      .where(inArray(accountOwners.accountId, entityIds));
-    for (const r of rows) push(r.accountId, r.personId, r.share);
-  } else if (entityType === "property") {
-    const rows = await db
-      .select()
-      .from(propertyOwners)
-      .where(inArray(propertyOwners.propertyId, entityIds));
-    for (const r of rows) push(r.propertyId, r.personId, r.share);
-  } else {
-    const rows = await db
-      .select()
-      .from(vehicleOwners)
-      .where(inArray(vehicleOwners.vehicleId, entityIds));
-    for (const r of rows) push(r.vehicleId, r.personId, r.share);
+  try {
+    if (entityType === "account") {
+      const rows = await db
+        .select()
+        .from(accountOwners)
+        .where(inArray(accountOwners.accountId, entityIds));
+      for (const r of rows) push(r.accountId, r.personId, r.share);
+    } else if (entityType === "property") {
+      const rows = await db
+        .select()
+        .from(propertyOwners)
+        .where(inArray(propertyOwners.propertyId, entityIds));
+      for (const r of rows) push(r.propertyId, r.personId, r.share);
+    } else {
+      const rows = await db
+        .select()
+        .from(vehicleOwners)
+        .where(inArray(vehicleOwners.vehicleId, entityIds));
+      for (const r of rows) push(r.vehicleId, r.personId, r.share);
+    }
+  } catch (error) {
+    console.error(`Failed to get owners for entity type ${entityType}:`, error);
   }
   return out;
 }
