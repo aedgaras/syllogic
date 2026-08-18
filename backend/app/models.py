@@ -181,6 +181,7 @@ class Category(Base):
     subscription_suggestions = relationship(
         "SubscriptionSuggestion", back_populates="suggested_category"
     )
+    budget_categories = relationship("BudgetCategory", back_populates="category")
 
     # Indexes and constraints
     __table_args__ = (
@@ -425,6 +426,57 @@ class RecurringTransaction(Base):
         Index("idx_recurring_transactions_category", "category_id"),
         Index("idx_recurring_transactions_active", "is_active"),
     )
+
+
+class Budget(Base):
+    """
+    Budget model matching Drizzle schema.
+    Stores a user-defined spending limit across one or more categories.
+    """
+
+    __tablename__ = "budgets"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    amount = Column(Numeric(15, 2), nullable=False)
+    currency = Column(String(3), default="EUR")
+    period = Column(String(20), nullable=False, default="monthly")  # monthly, weekly, yearly
+    start_date = Column(Date, nullable=True)  # anchor for weekly/yearly period boundary math
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="budgets")
+    budget_categories = relationship(
+        "BudgetCategory", back_populates="budget", cascade="all, delete-orphan"
+    )
+
+    # Indexes and constraints
+    __table_args__ = (
+        Index("idx_budgets_user", "user_id"),
+        Index("idx_budgets_user_active", "user_id", "is_active"),
+    )
+
+
+class BudgetCategory(Base):
+    __tablename__ = "budget_categories"
+
+    budget_id = Column(
+        UUID(as_uuid=True), ForeignKey("budgets.id", ondelete="CASCADE"), primary_key=True
+    )
+    category_id = Column(
+        UUID(as_uuid=True), ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    budget = relationship("Budget", back_populates="budget_categories")
+    category = relationship("Category", back_populates="budget_categories")
+
+    # Indexes and constraints
+    __table_args__ = (Index("idx_budget_categories_category", "category_id"),)
 
 
 class CategorizationRule(Base):
@@ -854,6 +906,7 @@ class User(Base):
     bank_connections = relationship(
         "BankConnection", back_populates="user", cascade="all, delete-orphan"
     )
+    budgets = relationship("Budget", back_populates="user", cascade="all, delete-orphan")
 
 
 class ApiKey(Base):

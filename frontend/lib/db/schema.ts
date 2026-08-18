@@ -513,6 +513,45 @@ export const recurringTransactions = pgTable(
   ],
 );
 
+export const budgets = pgTable(
+  "budgets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
+    currency: char("currency", { length: 3 }).default("EUR"),
+    period: varchar("period", { length: 20 }).notNull().default("monthly"), // monthly, weekly, yearly
+    startDate: date("start_date"), // anchor for weekly/yearly period boundary math
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("idx_budgets_user").on(table.userId),
+    index("idx_budgets_user_active").on(table.userId, table.isActive),
+  ],
+);
+
+export const budgetCategories = pgTable(
+  "budget_categories",
+  {
+    budgetId: uuid("budget_id")
+      .references(() => budgets.id, { onDelete: "cascade" })
+      .notNull(),
+    categoryId: uuid("category_id")
+      .references(() => categories.id, { onDelete: "cascade" })
+      .notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.budgetId, table.categoryId] }),
+    index("idx_budget_categories_category").on(table.categoryId),
+  ],
+);
+
 export const categorizationRules = pgTable("categorization_rules", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id")
@@ -928,6 +967,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   transactionLinks: many(transactionLinks),
   bankConnections: many(bankConnections),
   people: many(people),
+  budgets: many(budgets),
 }));
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
@@ -1005,6 +1045,7 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
   children: many(categories, { relationName: "categoryHierarchy" }),
   transactions: many(transactions),
   categorizationRules: many(categorizationRules),
+  budgetCategories: many(budgetCategories),
 }));
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
@@ -1095,6 +1136,28 @@ export const recurringTransactionsRelations = relations(
       references: [companyLogos.id],
     }),
     linkedTransactions: many(transactions),
+  }),
+);
+
+export const budgetsRelations = relations(budgets, ({ one, many }) => ({
+  user: one(users, {
+    fields: [budgets.userId],
+    references: [users.id],
+  }),
+  budgetCategories: many(budgetCategories),
+}));
+
+export const budgetCategoriesRelations = relations(
+  budgetCategories,
+  ({ one }) => ({
+    budget: one(budgets, {
+      fields: [budgetCategories.budgetId],
+      references: [budgets.id],
+    }),
+    category: one(categories, {
+      fields: [budgetCategories.categoryId],
+      references: [categories.id],
+    }),
   }),
 );
 
@@ -1305,6 +1368,12 @@ export type NewTransaction = typeof transactions.$inferInsert;
 
 export type RecurringTransaction = typeof recurringTransactions.$inferSelect;
 export type NewRecurringTransaction = typeof recurringTransactions.$inferInsert;
+
+export type Budget = typeof budgets.$inferSelect;
+export type NewBudget = typeof budgets.$inferInsert;
+
+export type BudgetCategory = typeof budgetCategories.$inferSelect;
+export type NewBudgetCategory = typeof budgetCategories.$inferInsert;
 
 export type CategorizationRule = typeof categorizationRules.$inferSelect;
 export type NewCategorizationRule = typeof categorizationRules.$inferInsert;

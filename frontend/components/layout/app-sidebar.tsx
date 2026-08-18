@@ -14,6 +14,7 @@ import {
   RiWallet3Line,
   RiArrowUpDownLine,
   RiLoopRightLine,
+  RiPieChart2Line,
   RiLineChartLine,
   RiFileTextLine,
   RiArrowRightSLine,
@@ -88,6 +89,11 @@ const navItems = [
     title: translate("subscriptions"),
     href: "/subscriptions",
     icon: RiLoopRightLine,
+  },
+  {
+    title: translate("budgets"),
+    href: "/budgets",
+    icon: RiPieChart2Line,
   },
   {
     title: translate("investments"),
