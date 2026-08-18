@@ -333,11 +333,13 @@ export const categories = pgTable(
     categorizationInstructions: text("categorization_instructions"),
     isSystem: boolean("is_system").default(false),
     hideFromSelection: boolean("hide_from_selection").default(false),
+    systemKey: varchar("system_key", { length: 50 }), // stable, non-translated identifier for system categories
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => [
     index("idx_categories_user").on(table.userId),
     index("idx_categories_user_type").on(table.userId, table.categoryType),
+    index("idx_categories_user_system_key").on(table.userId, table.systemKey),
     unique("categories_user_name_parent").on(
       table.userId,
       table.name,
@@ -544,6 +546,7 @@ export const budgetCategories = pgTable(
     categoryId: uuid("category_id")
       .references(() => categories.id, { onDelete: "cascade" })
       .notNull(),
+    subLimit: decimal("sub_limit", { precision: 15, scale: 2 }), // per-category cap within this budget, independent of the budget's total amount
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [

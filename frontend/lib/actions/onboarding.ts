@@ -183,6 +183,7 @@ export async function saveOnboardingCategories(
       categorizationInstructions: cat.categorizationInstructions || null,
       isSystem: cat.isSystem || false,
       hideFromSelection: cat.hideFromSelection || false,
+      systemKey: cat.systemKey || null,
     }));
 
     if (newCategories.length > 0) {

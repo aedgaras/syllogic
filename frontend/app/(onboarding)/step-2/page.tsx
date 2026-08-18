@@ -75,6 +75,7 @@ export default function OnboardingStep2Page() {
             description: cat.description,
             isSystem: cat.isSystem,
             hideFromSelection: cat.hideFromSelection,
+            systemKey: cat.key,
           })),
         );
       } catch (error) {
@@ -89,6 +90,7 @@ export default function OnboardingStep2Page() {
             description: cat.description,
             isSystem: cat.isSystem,
             hideFromSelection: cat.hideFromSelection,
+            systemKey: cat.key,
           })),
         );
       } finally {
@@ -108,6 +110,7 @@ export default function OnboardingStep2Page() {
         description: cat.description,
         isSystem: cat.isSystem,
         hideFromSelection: cat.hideFromSelection,
+        systemKey: cat.key,
       })),
     );
     toast.success(translate("categoriesResetToDefaults"));

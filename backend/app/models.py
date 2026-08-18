@@ -164,6 +164,7 @@ class Category(Base):
     )  # User instructions for AI categorization
     is_system = Column(Boolean, default=False)
     hide_from_selection = Column(Boolean, default=False)
+    system_key = Column(String(50), nullable=True, index=True)  # stable, non-translated identifier for system categories
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -469,6 +470,7 @@ class BudgetCategory(Base):
     category_id = Column(
         UUID(as_uuid=True), ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True
     )
+    sub_limit = Column(Numeric(15, 2), nullable=True)  # per-category cap within this budget
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships

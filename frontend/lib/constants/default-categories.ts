@@ -11,6 +11,7 @@ export interface DefaultCategory {
   description?: string;
   isSystem?: boolean;
   hideFromSelection?: boolean;
+  key?: string;
 }
 
 export const DEFAULT_EXPENSE_CATEGORIES: DefaultCategory[] = [
@@ -148,6 +149,7 @@ export const DEFAULT_TRANSFER_CATEGORIES: DefaultCategory[] = [
       "transfersBetweenYourOwnAccountsToMoveMoneyInternally",
     ),
     isSystem: true,
+    key: "internal_transfer",
   },
   {
     name: translate("externalTransfer"),
@@ -156,6 +158,7 @@ export const DEFAULT_TRANSFER_CATEGORIES: DefaultCategory[] = [
     icon: "RiArrowLeftRightLine",
     description: translate("moneyMovedToOrFromExternalAccountsNotTracked"),
     isSystem: true,
+    key: "external_transfer",
   },
   {
     name: translate("balancingTransfer"),
@@ -165,6 +168,25 @@ export const DEFAULT_TRANSFER_CATEGORIES: DefaultCategory[] = [
     description: translate("balanceAdjustmentsForAccountReconciliation"),
     isSystem: true,
     hideFromSelection: true,
+    key: "balancing_transfer",
+  },
+  {
+    name: translate("savingsTransfer"),
+    categoryType: "transfer",
+    color: CATEGORY_COLORS[2].value, // Green
+    icon: "RiSafe2Line",
+    description: translate("transfersMovedIntoYourSavingsAccounts"),
+    isSystem: true,
+    key: "savings_transfer",
+  },
+  {
+    name: translate("investmentTransfer"),
+    categoryType: "transfer",
+    color: CATEGORY_COLORS[1].value, // Blue
+    icon: "RiLineChartLine",
+    description: translate("transfersMovedIntoYourInvestmentAccounts"),
+    isSystem: true,
+    key: "investment_transfer",
   },
 ];
 

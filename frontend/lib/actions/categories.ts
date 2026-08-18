@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth-helpers";
 import { getCachedUserCategories, CACHE_TAGS } from "@/lib/data/cached";
+import { DEFAULT_TRANSFER_CATEGORIES } from "@/lib/constants/default-categories";
 
 export interface CategoryCreateInput {
   name: string;
@@ -30,6 +31,7 @@ export interface CategoryInput {
   categorizationInstructions?: string;
   isSystem?: boolean;
   hideFromSelection?: boolean;
+  systemKey?: string;
 }
 
 export interface CategoryUpdateInput {
@@ -293,6 +295,53 @@ export async function getCategoryByName(
   });
 
   return category || null;
+}
+
+/**
+ * Additive, idempotent backfill: inserts any of the default system transfer
+ * categories the user doesn't already have (matched by systemKey), without
+ * touching any of their existing categories. Safe to call on every transfer
+ * creation - a no-op after the first call for a given user.
+ */
+export async function ensureSystemTransferCategories(
+  userId: string,
+): Promise<void> {
+  const existing = await db
+    .select({ name: categories.name, systemKey: categories.systemKey })
+    .from(categories)
+    .where(eq(categories.userId, userId));
+
+  const existingKeys = new Set(
+    existing.map((row) => row.systemKey).filter(Boolean),
+  );
+  const existingNames = new Set(existing.map((row) => row.name));
+
+  // Pre-migration users already have "Internal/External/Balancing Transfer"
+  // categories by name but with a null systemKey (backfilled from an older
+  // schema) - never re-insert those, only categories genuinely absent by
+  // both key and name.
+  const missing = DEFAULT_TRANSFER_CATEGORIES.filter(
+    (category) =>
+      category.key &&
+      !existingKeys.has(category.key) &&
+      !existingNames.has(category.name),
+  );
+
+  if (missing.length === 0) return;
+
+  const newCategories: NewCategory[] = missing.map((category) => ({
+    userId,
+    name: category.name,
+    categoryType: category.categoryType,
+    color: category.color,
+    icon: category.icon,
+    description: category.description || null,
+    isSystem: category.isSystem || false,
+    hideFromSelection: category.hideFromSelection || false,
+    systemKey: category.key,
+  }));
+
+  await db.insert(categories).values(newCategories);
 }
 
 /**

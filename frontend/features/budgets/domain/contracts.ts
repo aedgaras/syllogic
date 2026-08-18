@@ -7,6 +7,7 @@ export interface BudgetCategoryRef {
   id: string;
   name: string;
   color: string | null;
+  subLimit: number | null;
 }
 
 export interface BudgetViewModel {
@@ -22,12 +23,17 @@ export interface BudgetViewModel {
   percentage: number;
 }
 
+export interface BudgetCategoryInput {
+  categoryId: string;
+  subLimit: number | null;
+}
+
 export interface BudgetCreateInput {
   name: string;
   amount: number;
   currency: string;
   period: BudgetPeriod;
-  categoryIds: string[];
+  categories: BudgetCategoryInput[];
 }
 
 export interface BudgetUpdateInput {
@@ -35,8 +41,18 @@ export interface BudgetUpdateInput {
   amount?: number;
   currency?: string;
   period?: BudgetPeriod;
-  categoryIds?: string[];
+  categories?: BudgetCategoryInput[];
   isActive?: boolean;
+}
+
+export interface BudgetCategoryDetail extends BudgetCategoryRef {
+  spent: number;
+  status: BudgetStatus | "no_limit";
+  percentage: number;
+}
+
+export interface BudgetDetailViewModel extends Omit<BudgetViewModel, "categories"> {
+  categories: BudgetCategoryDetail[];
 }
 
 export interface BudgetKpis {

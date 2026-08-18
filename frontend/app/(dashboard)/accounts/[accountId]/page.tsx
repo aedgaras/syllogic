@@ -9,11 +9,7 @@ import { getTransactionsForAccount } from "@/lib/actions/transactions";
 import { getUserCategories } from "@/lib/actions/categories";
 import { listHoldings, type Holding } from "@/lib/api/investments";
 import { HoldingsTable } from "@/components/investments/HoldingsTable";
-
-const INVESTMENT_ACCOUNT_TYPES = new Set([
-  "investment_brokerage",
-  "investment_manual",
-]);
+import { INVESTMENT_ACCOUNT_TYPES } from "@/lib/constants/account-types";
 
 interface AccountPageProps {
   params: Promise<{ accountId: string }>;

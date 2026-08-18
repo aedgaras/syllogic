@@ -43,6 +43,31 @@ import {
   hydrateResolvedAccountLogos as hydrateTransactionRowsWithResolvedAccountLogos,
   mapTransactionRowsForUi,
 } from "@/features/transactions/server";
+import { ensureSystemTransferCategories } from "@/lib/actions/categories";
+import { INVESTMENT_ACCOUNT_TYPES } from "@/lib/constants/account-types";
+
+function resolveTransferSystemKey(destinationAccountType: string): string {
+  if (destinationAccountType === "savings") return "savings_transfer";
+  if (INVESTMENT_ACCOUNT_TYPES.has(destinationAccountType))
+    return "investment_transfer";
+  return "internal_transfer";
+}
+
+async function findTransferCategory(userId: string, destinationAccountType: string) {
+  await ensureSystemTransferCategories(userId);
+  const targetKey = resolveTransferSystemKey(destinationAccountType);
+
+  const bySystemKey = await db.query.categories.findFirst({
+    where: and(eq(categories.userId, userId), eq(categories.systemKey, targetKey)),
+  });
+  if (bySystemKey) return bySystemKey;
+
+  // Defensive fallback for pre-migration categories that predate systemKey.
+  return db.query.categories.findFirst({
+    where: and(eq(categories.userId, userId), eq(categories.categoryType, "transfer")),
+    orderBy: [desc(categories.isSystem), asc(categories.createdAt)],
+  });
+}
 
 export type {
   ConvertTransactionToTransferInput,
@@ -365,13 +390,10 @@ export async function createTransferTransaction(
       };
     }
 
-    const transferCategory = await db.query.categories.findFirst({
-      where: and(
-        eq(categories.userId, userId),
-        eq(categories.categoryType, "transfer"),
-      ),
-      orderBy: [desc(categories.isSystem), asc(categories.createdAt)],
-    });
+    const transferCategory = await findTransferCategory(
+      userId,
+      destinationAccount.accountType,
+    );
 
     const [user] = await db
       .select({ functionalCurrency: users.functionalCurrency })
@@ -620,13 +642,10 @@ export async function convertTransactionToTransfer(
       };
     }
 
-    const transferCategory = await db.query.categories.findFirst({
-      where: and(
-        eq(categories.userId, userId),
-        eq(categories.categoryType, "transfer"),
-      ),
-      orderBy: [desc(categories.isSystem), asc(categories.createdAt)],
-    });
+    const transferCategory = await findTransferCategory(
+      userId,
+      destinationAccount.accountType,
+    );
     const [user] = await db
       .select({ functionalCurrency: users.functionalCurrency })
       .from(users)

@@ -9,3 +9,10 @@ export const ACCOUNT_TYPES = [
 ] as const;
 
 export type AccountTypeValue = (typeof ACCOUNT_TYPES)[number]["value"];
+
+export const INVESTMENT_ACCOUNT_TYPES = new Set([
+  "investment",
+  "investment_brokerage",
+  "investment_manual",
+  "brokerage",
+]);

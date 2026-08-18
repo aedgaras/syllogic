@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, and, inArray, gte, lt, sql, desc } from "drizzle-orm";
+import { eq, and, inArray, gte, lt, sql, desc, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   budgets,
@@ -16,6 +16,7 @@ import { getCurrentPeriodRange } from "@/features/budgets/domain/period";
 import { validateBudgetInput } from "@/features/budgets/domain/validation";
 import type {
   BudgetCreateInput,
+  BudgetDetailViewModel,
   BudgetKpis,
   BudgetPeriod,
   BudgetUpdateInput,
@@ -23,13 +24,32 @@ import type {
 } from "@/features/budgets/domain/contracts";
 
 export type {
+  BudgetCategoryDetail,
+  BudgetCategoryInput,
+  BudgetCategoryRef,
   BudgetCreateInput,
+  BudgetDetailViewModel,
   BudgetKpis,
   BudgetPeriod,
   BudgetStatus,
   BudgetUpdateInput,
   BudgetViewModel,
 } from "@/features/budgets/domain/contracts";
+
+// Transfer transactions are normally excluded from spend via includeInAnalytics=false
+// (they're money moving between the user's own accounts, not spend). Savings/Investment
+// Transfer categories are the exception: a budget built on them is explicitly meant to
+// track outgoing transfers, so those two categories bypass the includeInAnalytics gate.
+// Scoped narrowly to these two systemKeys so generic Internal/External Transfer budgets
+// are unaffected, and so this doesn't change spend totals anywhere else in the app.
+const TRANSFER_SPEND_BYPASS_KEYS = ["savings_transfer", "investment_transfer"];
+
+function spendEligibilityCondition() {
+  return or(
+    eq(transactions.includeInAnalytics, true),
+    inArray(categories.systemKey, TRANSFER_SPEND_BYPASS_KEYS),
+  );
+}
 
 async function getUserCurrency(userId: string): Promise<string> {
   const result = await db
@@ -43,6 +63,7 @@ async function getUserCurrency(userId: string): Promise<string> {
 
 type BudgetWithCategories = typeof budgets.$inferSelect & {
   budgetCategories: Array<{
+    subLimit: string | null;
     category: { id: string; name: string; color: string | null };
   }>;
 };
@@ -89,12 +110,13 @@ async function computeSpentByBudgetId(
           transactions,
           sql`COALESCE(${transactions.categoryId}, ${transactions.categorySystemId}) = ${budgetCategories.categoryId}`,
         )
+        .innerJoin(categories, eq(categories.id, budgetCategories.categoryId))
         .where(
           and(
             inArray(budgetCategories.budgetId, group.budgetIds),
             eq(transactions.userId, userId),
             eq(transactions.transactionType, "debit"),
-            eq(transactions.includeInAnalytics, true),
+            spendEligibilityCondition(),
             gte(transactions.bookedAt, group.start),
             lt(transactions.bookedAt, group.end),
           ),
@@ -127,6 +149,7 @@ function toBudgetViewModel(
       id: bc.category.id,
       name: bc.category.name,
       color: bc.category.color,
+      subLimit: bc.subLimit === null ? null : parseFloat(bc.subLimit),
     })),
     spent,
     status: computeBudgetStatus(spent, amount),
@@ -199,14 +222,17 @@ export async function createBudget(
     const validationError = validateBudgetInput(input);
     if (validationError) return { success: false, error: validationError };
 
-    const ownedCategories = await db.query.categories.findMany({
-      where: and(
-        inArray(categories.id, input.categoryIds),
-        eq(categories.userId, userId),
-      ),
-    });
-    if (ownedCategories.length !== input.categoryIds.length) {
-      return { success: false, error: "Invalid category" };
+    const categoryIds = input.categories.map((c) => c.categoryId);
+    if (categoryIds.length > 0) {
+      const ownedCategories = await db.query.categories.findMany({
+        where: and(
+          inArray(categories.id, categoryIds),
+          eq(categories.userId, userId),
+        ),
+      });
+      if (ownedCategories.length !== categoryIds.length) {
+        return { success: false, error: "Invalid category" };
+      }
     }
 
     let budgetId = "";
@@ -224,12 +250,15 @@ export async function createBudget(
 
       budgetId = created.id;
 
-      await tx.insert(budgetCategories).values(
-        input.categoryIds.map((categoryId) => ({
-          budgetId: created.id,
-          categoryId,
-        })),
-      );
+      if (input.categories.length > 0) {
+        await tx.insert(budgetCategories).values(
+          input.categories.map(({ categoryId, subLimit }) => ({
+            budgetId: created.id,
+            categoryId,
+            subLimit: subLimit == null ? null : subLimit.toFixed(2),
+          })),
+        );
+      }
     });
 
     revalidatePath("/budgets");
@@ -257,20 +286,20 @@ export async function updateBudget(
     const validationError = validateBudgetInput({
       name: input.name ?? existing.name,
       amount: input.amount ?? parseFloat(existing.amount),
-      categoryIds: input.categoryIds,
     });
-    if (input.categoryIds !== undefined && validationError) {
+    if (validationError) {
       return { success: false, error: validationError };
     }
 
-    if (input.categoryIds !== undefined) {
+    const categoryIds = input.categories?.map((c) => c.categoryId);
+    if (categoryIds !== undefined && categoryIds.length > 0) {
       const ownedCategories = await db.query.categories.findMany({
         where: and(
-          inArray(categories.id, input.categoryIds),
+          inArray(categories.id, categoryIds),
           eq(categories.userId, userId),
         ),
       });
-      if (ownedCategories.length !== input.categoryIds.length) {
+      if (ownedCategories.length !== categoryIds.length) {
         return { success: false, error: "Invalid category" };
       }
     }
@@ -286,16 +315,19 @@ export async function updateBudget(
 
       await tx.update(budgets).set(updateData).where(eq(budgets.id, id));
 
-      if (input.categoryIds !== undefined) {
+      if (input.categories !== undefined) {
         await tx
           .delete(budgetCategories)
           .where(eq(budgetCategories.budgetId, id));
-        await tx.insert(budgetCategories).values(
-          input.categoryIds.map((categoryId) => ({
-            budgetId: id,
-            categoryId,
-          })),
-        );
+        if (input.categories.length > 0) {
+          await tx.insert(budgetCategories).values(
+            input.categories.map(({ categoryId, subLimit }) => ({
+              budgetId: id,
+              categoryId,
+              subLimit: subLimit == null ? null : subLimit.toFixed(2),
+            })),
+          );
+        }
       }
     });
 
@@ -379,7 +411,7 @@ export async function getBudgetById(id: string): Promise<{
   currency: string;
   period: BudgetPeriod;
   isActive: boolean;
-  categoryIds: string[];
+  categories: Array<{ categoryId: string; subLimit: number | null }>;
 } | null> {
   const userId = await requireAuth();
   if (!userId) return null;
@@ -398,10 +430,101 @@ export async function getBudgetById(id: string): Promise<{
       currency: budget.currency || "EUR",
       period: budget.period as BudgetPeriod,
       isActive: budget.isActive ?? true,
-      categoryIds: budget.budgetCategories.map((bc) => bc.categoryId),
+      categories: budget.budgetCategories.map((bc) => ({
+        categoryId: bc.categoryId,
+        subLimit: bc.subLimit === null ? null : parseFloat(bc.subLimit),
+      })),
     };
   } catch (error) {
     console.error("Failed to get budget:", error);
+    return null;
+  }
+}
+
+async function computeSpentByCategoryForBudget(
+  userId: string,
+  budget: BudgetWithCategories,
+): Promise<Map<string, number>> {
+  const spentByCategoryId = new Map<string, number>();
+  if (budget.budgetCategories.length === 0) return spentByCategoryId;
+
+  const range = getCurrentPeriodRange(
+    budget.period as BudgetPeriod,
+    budget.startDate ? new Date(budget.startDate) : null,
+    new Date(),
+  );
+
+  const rows = await db
+    .select({
+      categoryId: budgetCategories.categoryId,
+      spent: sql<string>`COALESCE(SUM(${transactions.functionalAmount}), 0)`,
+    })
+    .from(budgetCategories)
+    .innerJoin(
+      transactions,
+      sql`COALESCE(${transactions.categoryId}, ${transactions.categorySystemId}) = ${budgetCategories.categoryId}`,
+    )
+    .innerJoin(categories, eq(categories.id, budgetCategories.categoryId))
+    .where(
+      and(
+        eq(budgetCategories.budgetId, budget.id),
+        eq(transactions.userId, userId),
+        eq(transactions.transactionType, "debit"),
+        spendEligibilityCondition(),
+        gte(transactions.bookedAt, range.start),
+        lt(transactions.bookedAt, range.end),
+      ),
+    )
+    .groupBy(budgetCategories.categoryId);
+
+  for (const row of rows) {
+    spentByCategoryId.set(row.categoryId, parseFloat(row.spent));
+  }
+  return spentByCategoryId;
+}
+
+export async function getBudgetDetail(
+  id: string,
+): Promise<BudgetDetailViewModel | null> {
+  const userId = await requireAuth();
+  if (!userId) return null;
+
+  try {
+    const budget = await db.query.budgets.findFirst({
+      where: and(eq(budgets.id, id), eq(budgets.userId, userId)),
+      with: {
+        budgetCategories: {
+          with: { category: true },
+        },
+      },
+    });
+    if (!budget) return null;
+
+    const [spentByBudgetId, spentByCategoryId] = await Promise.all([
+      computeSpentByBudgetId(userId, [budget]),
+      computeSpentByCategoryForBudget(userId, budget),
+    ]);
+
+    const base = toBudgetViewModel(budget, spentByBudgetId.get(budget.id) ?? 0);
+
+    return {
+      ...base,
+      categories: base.categories.map((ref) => {
+        const spent = spentByCategoryId.get(ref.id) ?? 0;
+        const percentage = ref.subLimit ? (spent / ref.subLimit) * 100 : 0;
+        return {
+          ...ref,
+          spent,
+          status:
+            ref.subLimit == null
+              ? ("no_limit" as const)
+              : computeBudgetStatus(spent, ref.subLimit),
+          percentage,
+        };
+      }),
+    };
+  } catch (error) {
+    console.error("Failed to get budget detail:", error);
     return null;
   }
 }

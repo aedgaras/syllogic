@@ -1241,6 +1241,7 @@
   "budgetAmount": "Budget amount",
   "budgetPeriod": "Period",
   "budgetCategories": "Categories",
+  "budgetCategoriesOptional": "Categories (optional)",
   "selectCategories": "Select categories",
   "onTrack": "On track",
   "nearLimit": "Near limit",
@@ -1259,5 +1260,16 @@
   "budgetUpdated": "Budget updated",
   "pauseBudget": "Pause budget",
   "resumeBudget": "Resume budget",
-  "noCategoriesSelected": "No categories selected"
+  "noCategoriesSelected": "No categories selected",
+  "savingsTransfer": "Savings Transfer",
+  "transfersMovedIntoYourSavingsAccounts": "Transfers moved into your savings accounts",
+  "investmentTransfer": "Investment Transfer",
+  "transfersMovedIntoYourInvestmentAccounts": "Transfers moved into your investment accounts",
+  "subBudget": "Sub-budget",
+  "subBudgetOptional": "Sub-budget (optional)",
+  "noSubBudgetSet": "No sub-budget set",
+  "categoryBreakdown": "Category breakdown",
+  "noCategoriesAssignedToBudget": "No categories assigned to this budget",
+  "backToBudgets": "Back to budgets",
+  "overallProgress": "Overall progress"
 }

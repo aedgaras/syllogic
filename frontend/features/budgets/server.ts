@@ -1,5 +1,6 @@
 export {
   getBudgetById,
+  getBudgetDetail,
   getBudgetKpis,
   getBudgets,
   getCategoryBudgetUsage,

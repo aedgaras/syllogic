@@ -25,6 +25,8 @@ interface CategoryMultiSelectProps {
   usage?: Record<string, Array<{ budgetId: string; budgetName: string }>>;
   label?: string;
   error?: string;
+  subLimits?: Record<string, string>;
+  onSubLimitChange?: (categoryId: string, value: string) => void;
 }
 
 export function CategoryMultiSelect({
@@ -34,6 +36,8 @@ export function CategoryMultiSelect({
   usage,
   label,
   error,
+  subLimits,
+  onSubLimitChange,
 }: CategoryMultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -113,7 +117,7 @@ export function CategoryMultiSelect({
       </Popover>
 
       {selectedOptions.length > 0 && (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           {selectedOptions.map((option) => {
             const otherBudgets = usage?.[option.id];
             return (
@@ -130,6 +134,19 @@ export function CategoryMultiSelect({
                       value1: otherBudgets.map((b) => b.budgetName).join(", "),
                     })}
                   </span>
+                )}
+                {onSubLimitChange && (
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder={translate("subBudgetOptional")}
+                    value={subLimits?.[option.id] ?? ""}
+                    onChange={(event) =>
+                      onSubLimitChange(option.id, event.target.value)
+                    }
+                    className="h-7 w-32 text-xs"
+                  />
                 )}
               </div>
             );

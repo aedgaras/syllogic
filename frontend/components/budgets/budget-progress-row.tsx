@@ -1,6 +1,7 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
 
+import { useRouter } from "next/navigation";
 import { Progress as ProgressPrimitive } from "@base-ui/react/progress";
 import { ProgressIndicator, ProgressTrack } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import {
   RiPlayLine,
 } from "@remixicon/react";
 import type { BudgetViewModel } from "@/features/budgets/public";
+import { statusClasses, indicatorClasses, statusLabels } from "./status-styles";
 
 interface BudgetProgressRowProps {
   budget: BudgetViewModel;
@@ -28,36 +30,25 @@ interface BudgetProgressRowProps {
   onToggleActive: (budget: BudgetViewModel) => void;
 }
 
-const statusClasses: Record<BudgetViewModel["status"], string> = {
-  on_track: "text-emerald-600 dark:text-emerald-500",
-  near_limit: "text-amber-600 dark:text-amber-500",
-  over_budget: "text-red-600 dark:text-red-500",
-};
-
-const indicatorClasses: Record<BudgetViewModel["status"], string> = {
-  on_track: "bg-emerald-600 dark:bg-emerald-500",
-  near_limit: "bg-amber-600 dark:bg-amber-500",
-  over_budget: "bg-red-600 dark:bg-red-500",
-};
-
-const statusLabels: Record<BudgetViewModel["status"], string> = {
-  on_track: translate("onTrack"),
-  near_limit: translate("nearLimit"),
-  over_budget: translate("overBudget"),
-};
-
 export function BudgetProgressRow({
   budget,
   onEdit,
   onDelete,
   onToggleActive,
 }: BudgetProgressRowProps) {
+  const router = useRouter();
   const clampedValue = Math.min(budget.percentage, 100);
 
   return (
     <div
+      role="link"
+      tabIndex={0}
+      onClick={() => router.push(`/budgets/${budget.id}`)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") router.push(`/budgets/${budget.id}`);
+      }}
       className={cn(
-        "flex flex-col gap-3 px-4 py-3 hover:bg-muted/40",
+        "flex cursor-pointer flex-col gap-3 px-4 py-3 hover:bg-muted/40",
         !budget.isActive && "opacity-60",
       )}
     >
@@ -96,11 +87,15 @@ export function BudgetProgressRow({
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
+              <Button
+                variant="ghost"
+                className="h-8 w-8 p-0"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <RiMoreLine className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem onClick={() => onEdit(budget)}>
                 <RiEditLine className="mr-2 h-4 w-4" />
                 {translate("edit")}

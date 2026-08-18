@@ -1,6 +1,9 @@
 export type {
+  BudgetCategoryDetail,
+  BudgetCategoryInput,
   BudgetCategoryRef,
   BudgetCreateInput,
+  BudgetDetailViewModel,
   BudgetKpis,
   BudgetPeriod,
   BudgetStatus,

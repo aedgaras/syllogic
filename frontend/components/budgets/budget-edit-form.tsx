@@ -56,7 +56,10 @@ function defaultValuesFor(
       amount: budget.amount,
       currency: budget.currency,
       period: budget.period,
-      categoryIds: budget.categories.map((c) => c.id),
+      categories: budget.categories.map((c) => ({
+        categoryId: c.id,
+        subLimit: c.subLimit,
+      })),
     };
   }
   return {
@@ -64,7 +67,7 @@ function defaultValuesFor(
     amount: 0,
     currency: defaultCurrency,
     period: "monthly",
-    categoryIds: [],
+    categories: [],
   };
 }
 
@@ -191,17 +194,45 @@ export function BudgetEditForm({
 
             <Controller
               control={control}
-              name="categoryIds"
-              render={({ field }) => (
-                <CategoryMultiSelect
-                  label={translate("budgetCategories")}
-                  options={categories}
-                  value={field.value}
-                  onChange={field.onChange}
-                  usage={usage}
-                  error={errors.categoryIds?.message}
-                />
-              )}
+              name="categories"
+              render={({ field }) => {
+                const selectedIds = field.value.map((c) => c.categoryId);
+                const subLimits = Object.fromEntries(
+                  field.value.map((c) => [
+                    c.categoryId,
+                    c.subLimit == null ? "" : String(c.subLimit),
+                  ]),
+                );
+                return (
+                  <CategoryMultiSelect
+                    label={translate("budgetCategoriesOptional")}
+                    options={categories}
+                    value={selectedIds}
+                    onChange={(ids) => {
+                      const bySubLimit = new Map(
+                        field.value.map((c) => [c.categoryId, c.subLimit]),
+                      );
+                      field.onChange(
+                        ids.map((categoryId) => ({
+                          categoryId,
+                          subLimit: bySubLimit.get(categoryId) ?? null,
+                        })),
+                      );
+                    }}
+                    usage={usage}
+                    subLimits={subLimits}
+                    onSubLimitChange={(categoryId, value) => {
+                      field.onChange(
+                        field.value.map((c) =>
+                          c.categoryId === categoryId
+                            ? { ...c, subLimit: value === "" ? null : Number(value) }
+                            : c,
+                        ),
+                      );
+                    }}
+                  />
+                );
+              }}
             />
           </div>
 
