@@ -504,6 +504,11 @@ export const recurringTransactions = pgTable(
     frequency: varchar("frequency", { length: 20 }).notNull(), // monthly, weekly, yearly, quarterly, biweekly
     isActive: boolean("is_active").default(true),
     description: text("description"),
+    // When autoGenerate is set, a Celery beat task materializes a real
+    // transaction on/after nextDueDate and advances it to the next occurrence.
+    nextDueDate: date("next_due_date"),
+    endDate: date("end_date"),
+    autoGenerate: boolean("auto_generate").notNull().default(false),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
@@ -512,6 +517,7 @@ export const recurringTransactions = pgTable(
     index("idx_recurring_transactions_account").on(table.accountId),
     index("idx_recurring_transactions_category").on(table.categoryId),
     index("idx_recurring_transactions_active").on(table.isActive),
+    index("idx_recurring_transactions_next_due").on(table.nextDueDate),
   ],
 );
 

@@ -21,6 +21,7 @@ celery_app = Celery(
         "tasks.post_import_pipeline",
         "tasks.investment_tasks",
         "tasks.report_tasks",
+        "tasks.recurring_transaction_tasks",
     ],
     set_as_current=True,
 )
@@ -97,6 +98,11 @@ def _build_beat_schedule() -> dict:
     schedule["check-due-reports"] = {
         "task": "tasks.report_tasks.check_due_reports",
         "schedule": crontab(minute="*/5"),
+    }
+
+    schedule["check-due-recurring-transactions"] = {
+        "task": "tasks.recurring_transaction_tasks.check_due_recurring_transactions",
+        "schedule": crontab(minute=0, hour=5),
     }
 
     return schedule

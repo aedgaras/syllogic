@@ -101,6 +101,15 @@ export function SubscriptionDetailSheet({
             {subscription.account && (
               <Badge variant="outline">{subscription.account.name}</Badge>
             )}
+            {subscription.autoGenerate && subscription.nextDueDate && (
+              <Badge
+                variant="secondary"
+                className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              >
+                {translate("nextDueDate")}:{" "}
+                {format(new Date(subscription.nextDueDate), "MMM d, yyyy")}
+              </Badge>
+            )}
           </div>
           <SheetTitle className="text-xl">{subscription.name}</SheetTitle>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

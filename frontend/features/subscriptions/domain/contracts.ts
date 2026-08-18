@@ -38,6 +38,9 @@ export interface SubscriptionViewModel {
   frequency: SubscriptionFrequency;
   isActive: boolean | null;
   description: string | null;
+  nextDueDate: string | null;
+  endDate: string | null;
+  autoGenerate: boolean;
   createdAt: Date | null;
   updatedAt: Date | null;
   account?: SubscriptionAccountRef | null;
@@ -82,6 +85,9 @@ export interface SubscriptionCreateInput {
   importance: number;
   frequency: SubscriptionFrequency;
   description?: string;
+  nextDueDate?: string | null;
+  endDate?: string | null;
+  autoGenerate?: boolean;
 }
 
 export interface SubscriptionUpdateInput {
@@ -96,6 +102,9 @@ export interface SubscriptionUpdateInput {
   frequency?: SubscriptionFrequency;
   description?: string;
   isActive?: boolean;
+  nextDueDate?: string | null;
+  endDate?: string | null;
+  autoGenerate?: boolean;
 }
 
 export interface MatchedTransaction {
@@ -165,4 +174,6 @@ export interface SubscriptionListRow {
   account?: SubscriptionAccountRef | null;
   category?: SubscriptionCategoryRef | null;
   logoUrl?: string | null;
+  nextDueDate?: string | null;
+  autoGenerate?: boolean;
 }

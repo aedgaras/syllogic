@@ -76,6 +76,9 @@ function toSubscriptionViewModel(row: SubscriptionRow): SubscriptionViewModel {
     frequency: row.frequency as SubscriptionFrequency,
     isActive: row.isActive,
     description: row.description,
+    nextDueDate: row.nextDueDate,
+    endDate: row.endDate,
+    autoGenerate: row.autoGenerate,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     account: row.account
@@ -122,6 +125,21 @@ export async function createSubscription(
   try {
     const validationError = validateSubscriptionInput(input);
     if (validationError) return { success: false, error: validationError };
+
+    if (input.autoGenerate && !input.nextDueDate) {
+      return {
+        success: false,
+        error: "Next due date is required to auto-generate transactions",
+      };
+    }
+
+    if (
+      input.endDate &&
+      input.nextDueDate &&
+      input.endDate < input.nextDueDate
+    ) {
+      return { success: false, error: "End date must be after next due date" };
+    }
 
     const account = await db.query.accounts.findFirst({
       where: and(eq(accounts.id, input.accountId), eq(accounts.userId, userId)),
@@ -176,6 +194,9 @@ export async function createSubscription(
         importance: input.importance,
         frequency: input.frequency,
         description: input.description?.trim() || null,
+        nextDueDate: input.nextDueDate || null,
+        endDate: input.endDate || null,
+        autoGenerate: input.autoGenerate ?? false,
       })
       .returning({ id: recurringTransactions.id });
 
@@ -241,6 +262,23 @@ export async function updateSubscription(
       (input.importance < 1 || input.importance > 3)
     ) {
       return { success: false, error: "Importance must be between 1 and 3" };
+    }
+
+    const targetAutoGenerate = input.autoGenerate ?? existing.autoGenerate;
+    const targetNextDueDate =
+      input.nextDueDate !== undefined ? input.nextDueDate : existing.nextDueDate;
+    const targetEndDate =
+      input.endDate !== undefined ? input.endDate : existing.endDate;
+
+    if (targetAutoGenerate && !targetNextDueDate) {
+      return {
+        success: false,
+        error: "Next due date is required to auto-generate transactions",
+      };
+    }
+
+    if (targetEndDate && targetNextDueDate && targetEndDate < targetNextDueDate) {
+      return { success: false, error: "End date must be after next due date" };
     }
 
     // Validate category if changing
@@ -317,6 +355,11 @@ export async function updateSubscription(
     if (input.description !== undefined)
       updateData.description = input.description?.trim() || null;
     if (input.isActive !== undefined) updateData.isActive = input.isActive;
+    if (input.nextDueDate !== undefined)
+      updateData.nextDueDate = input.nextDueDate || null;
+    if (input.endDate !== undefined) updateData.endDate = input.endDate || null;
+    if (input.autoGenerate !== undefined)
+      updateData.autoGenerate = input.autoGenerate;
 
     // Update
     await db

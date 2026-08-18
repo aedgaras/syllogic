@@ -410,6 +410,13 @@ class RecurringTransaction(Base):
     frequency = Column(String(20), nullable=False)  # monthly, weekly, yearly, quarterly, biweekly
     is_active = Column(Boolean, default=True)
     description = Column(Text, nullable=True)
+    # Schedule fields: when set, `check_due_recurring_transactions` (Celery beat)
+    # materializes a real Transaction on/after next_due_date and advances it.
+    # Rows created by subscription_detector.py leave these null (label-only,
+    # no auto-generation) to preserve pre-existing behavior.
+    next_due_date = Column(Date, nullable=True, index=True)
+    end_date = Column(Date, nullable=True)
+    auto_generate = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -426,6 +433,7 @@ class RecurringTransaction(Base):
         Index("idx_recurring_transactions_account", "account_id"),
         Index("idx_recurring_transactions_category", "category_id"),
         Index("idx_recurring_transactions_active", "is_active"),
+        Index("idx_recurring_transactions_next_due", "next_due_date"),
     )
 
 

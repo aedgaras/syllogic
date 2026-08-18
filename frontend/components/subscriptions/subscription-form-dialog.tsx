@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { CompanyLogo } from "@/components/ui/company-logo";
 import { RiSearchLine, RiCloseLine, RiLoader4Line } from "@remixicon/react";
 import { toast } from "sonner";
@@ -78,6 +79,9 @@ export function SubscriptionFormDialog({
   const [importance, setImportance] = useState(2);
   const [frequency, setFrequency] = useState<SubscriptionFrequency>("monthly");
   const [description, setDescription] = useState("");
+  const [autoGenerate, setAutoGenerate] = useState(false);
+  const [nextDueDate, setNextDueDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Logo state
@@ -110,6 +114,9 @@ export function SubscriptionFormDialog({
         setImportance(Math.min(subscription.importance, 3));
         setFrequency(subscription.frequency as SubscriptionFrequency);
         setDescription(subscription.description || "");
+        setAutoGenerate(subscription.autoGenerate ?? false);
+        setNextDueDate(subscription.nextDueDate || "");
+        setEndDate(subscription.endDate || "");
         // Set logo
         setLogoId(subscription.logoId || null);
         setLogoUrl(
@@ -130,6 +137,9 @@ export function SubscriptionFormDialog({
         setImportance(2);
         setFrequency(suggestion.detectedFrequency as SubscriptionFrequency);
         setDescription("");
+        setAutoGenerate(false);
+        setNextDueDate("");
+        setEndDate("");
         // Reset logo
         setLogoId(null);
         setLogoUrl(null);
@@ -145,6 +155,9 @@ export function SubscriptionFormDialog({
         setImportance(2);
         setFrequency("monthly");
         setDescription("");
+        setAutoGenerate(false);
+        setNextDueDate("");
+        setEndDate("");
         // Reset logo
         setLogoId(null);
         setLogoUrl(null);
@@ -244,6 +257,16 @@ export function SubscriptionFormDialog({
       return;
     }
 
+    if (autoGenerate && !nextDueDate) {
+      toast.error(translate("nextDueDateIsRequiredToAutoGenerateTransactions"));
+      return;
+    }
+
+    if (endDate && nextDueDate && endDate < nextDueDate) {
+      toast.error(translate("endDateMustBeAfterNextDueDate"));
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -259,6 +282,9 @@ export function SubscriptionFormDialog({
           importance,
           frequency,
           description: description.trim() || undefined,
+          autoGenerate,
+          nextDueDate: autoGenerate ? nextDueDate : null,
+          endDate: autoGenerate ? endDate || null : null,
         };
 
         const result = await updateSubscription(subscription.id, input);
@@ -288,6 +314,9 @@ export function SubscriptionFormDialog({
             importance,
             frequency,
             description: description.trim() || null,
+            autoGenerate,
+            nextDueDate: autoGenerate ? nextDueDate : null,
+            endDate: autoGenerate ? endDate || null : null,
             logo:
               logoId && logoUrl
                 ? { id: logoId, logoUrl, updatedAt: new Date() }
@@ -347,6 +376,9 @@ export function SubscriptionFormDialog({
           importance,
           frequency,
           description: description.trim() || undefined,
+          autoGenerate,
+          nextDueDate: autoGenerate ? nextDueDate : null,
+          endDate: autoGenerate ? endDate || null : null,
         };
 
         const result = await createSubscription(input);
@@ -583,6 +615,59 @@ export function SubscriptionFormDialog({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Auto-generate transactions on schedule */}
+            {!isVerifyMode && (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="grid gap-0.5">
+                    <Label htmlFor="autoGenerate">
+                      {translate("autoCreateTransactions")}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {translate(
+                        "automaticallyAddATransactionOnEachDueDate",
+                      )}
+                    </p>
+                  </div>
+                  <Switch
+                    id="autoGenerate"
+                    checked={autoGenerate}
+                    onCheckedChange={setAutoGenerate}
+                  />
+                </div>
+
+                {autoGenerate && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="nextDueDate">
+                        {translate("nextDueDate")}{" "}
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="nextDueDate"
+                        type="date"
+                        value={nextDueDate}
+                        onChange={(e) => setNextDueDate(e.target.value)}
+                        required={autoGenerate}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="endDate">
+                        {translate("endDateOptional")}
+                      </Label>
+                      <Input
+                        id="endDate"
+                        type="date"
+                        min={nextDueDate || undefined}
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* Importance - 3 blocks */}
             <div className="grid gap-2">
