@@ -15,6 +15,7 @@ from app.routes import (
     reports,
     app_settings,
     llm,
+    receipt_scan,
 )
 
 api_router = APIRouter()
@@ -34,3 +35,4 @@ api_router.include_router(investments.router, prefix="/investments", tags=["inve
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(app_settings.router, prefix="/app-settings", tags=["app-settings"])
 api_router.include_router(llm.router, prefix="/llm", tags=["llm"])
+api_router.include_router(receipt_scan.router, prefix="/receipt-scan", tags=["receipt-scan"])

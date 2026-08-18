@@ -11,3 +11,4 @@ export { CsvUploadDropzone } from "./csv-upload-dropzone";
 export { CsvMappingTable } from "./csv-mapping-table";
 export { CsvSamplePreview } from "./csv-sample-preview";
 export { CsvPreviewTable } from "./csv-preview-table";
+export { ReceiptUploadDropzone } from "./receipt-upload-dropzone";

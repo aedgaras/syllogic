@@ -117,6 +117,41 @@ class TransactionWithDetails(TransactionResponse):
     account_name: str
 
 
+# Receipt Scan Schemas
+class ReceiptScanExtractRequest(BaseModel):
+    account_id: UUID
+    file_base64: str
+    content_type: str = "image/jpeg"
+
+
+class ReceiptLineItemSchema(BaseModel):
+    description: str
+    amount: Decimal
+    category_id: Optional[UUID] = None
+    category_name: Optional[str] = None
+
+
+class ReceiptScanExtractResponse(BaseModel):
+    receipt_scan_id: UUID
+    status: str
+    merchant_name: Optional[str] = None
+    receipt_date: Optional[datetime] = None
+    receipt_total: Optional[Decimal] = None
+    items: List[ReceiptLineItemSchema] = Field(default_factory=list)
+
+
+class ReceiptConfirmItem(BaseModel):
+    description: str
+    amount: Decimal
+    category_id: Optional[UUID] = None
+    transaction_type: str = "debit"
+
+
+class ReceiptScanConfirmRequest(BaseModel):
+    items: List[ReceiptConfirmItem]
+    booked_at: datetime
+
+
 # Analytics Schemas
 class CategorySpending(BaseModel):
     category_id: Optional[UUID]

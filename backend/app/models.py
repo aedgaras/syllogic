@@ -82,6 +82,7 @@ class Account(Base):
         passive_deletes=True,
     )
     csv_imports = relationship("CsvImport", back_populates="account")
+    receipt_scans = relationship("ReceiptScan", back_populates="account")
     balances = relationship("AccountBalance", back_populates="account")
     recurring_transactions = relationship("RecurringTransaction", back_populates="account")
     subscription_suggestions = relationship("SubscriptionSuggestion", back_populates="account")
@@ -250,6 +251,12 @@ class Transaction(Base):
         nullable=True,
         index=True,
     )  # Source CSV import (null for manual/bank-synced)
+    receipt_scan_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("receipt_scans.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )  # Source receipt scan (null unless created by splitting a scanned receipt)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -265,6 +272,7 @@ class Transaction(Base):
     )
     transaction_link = relationship("TransactionLink", back_populates="transaction", uselist=False)
     csv_import = relationship("CsvImport", back_populates="transactions")
+    receipt_scan = relationship("ReceiptScan", back_populates="transactions")
 
     # Indexes and constraints
     __table_args__ = (
@@ -275,6 +283,7 @@ class Transaction(Base):
         Index("idx_transactions_category_system", "category_system_id"),
         Index("idx_transactions_recurring", "recurring_transaction_id"),
         Index("idx_transactions_csv_import", "csv_import_id"),
+        Index("idx_transactions_receipt_scan", "receipt_scan_id"),
         UniqueConstraint("account_id", "external_id", name="transactions_account_external_id"),
         Index("idx_transactions_user_counterparty_iban", "user_id", "counterparty_iban_hash"),
     )
@@ -554,6 +563,48 @@ class CsvImport(Base):
     __table_args__ = (
         Index("idx_csv_imports_user", "user_id"),
         Index("idx_csv_imports_account", "account_id"),
+    )
+
+
+class ReceiptScan(Base):
+    """
+    Receipt scan job: an uploaded receipt photo OCR'd and split into
+    one or more categorized Transaction rows. Processed synchronously
+    (no Celery/background fields, unlike CsvImport).
+    """
+
+    __tablename__ = "receipt_scans"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    account_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    file_path = Column(Text, nullable=True)
+    file_path_ciphertext = Column(Text, nullable=True)
+    status = Column(
+        String(20), default="pending"
+    )  # pending, processed, completed, failed
+    raw_ocr_text = Column(Text, nullable=True)
+    merchant_name = Column(String(255), nullable=True)
+    receipt_total = Column(Numeric(15, 2), nullable=True)
+    receipt_date = Column(DateTime, nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    user = relationship("User", back_populates="receipt_scans")
+    account = relationship("Account", back_populates="receipt_scans")
+    transactions = relationship("Transaction", back_populates="receipt_scan")
+
+    # Indexes and constraints
+    __table_args__ = (
+        Index("idx_receipt_scans_user", "user_id"),
+        Index("idx_receipt_scans_account", "account_id"),
     )
 
 
@@ -904,6 +955,7 @@ class User(Base):
         "CategorizationRule", back_populates="user", cascade="all, delete-orphan"
     )
     csv_imports = relationship("CsvImport", back_populates="user", cascade="all, delete-orphan")
+    receipt_scans = relationship("ReceiptScan", back_populates="user", cascade="all, delete-orphan")
     properties = relationship("Property", back_populates="user", cascade="all, delete-orphan")
     vehicles = relationship("Vehicle", back_populates="user", cascade="all, delete-orphan")
     subscription_suggestions = relationship(

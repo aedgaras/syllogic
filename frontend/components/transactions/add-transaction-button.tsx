@@ -2,7 +2,12 @@
 import { t as translate } from "@/i18n/translate";
 
 import { useRouter } from "next/navigation";
-import { RiAddLine, RiEditLine, RiUploadCloud2Line } from "@remixicon/react";
+import {
+  RiAddLine,
+  RiCameraLine,
+  RiEditLine,
+  RiUploadCloud2Line,
+} from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -24,6 +29,10 @@ export function AddTransactionButton({
 
   const handleCsvImport = () => {
     router.push("/transactions/import");
+  };
+
+  const handleScanReceipt = () => {
+    router.push("/transactions/scan-receipt");
   };
 
   // If CSV option is not available, show a simple button
@@ -52,6 +61,10 @@ export function AddTransactionButton({
         <DropdownMenuItem onClick={handleCsvImport}>
           <RiUploadCloud2Line className="mr-2 h-4 w-4" />
           {translate("importFromCsv")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleScanReceipt}>
+          <RiCameraLine className="mr-2 h-4 w-4" />
+          {translate("scanReceipt")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

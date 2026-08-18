@@ -85,6 +85,7 @@ ENV FRONTEND_EMAILS_DIR=/frontend/emails
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     nodejs \
+    tesseract-ocr \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/venv /opt/venv
