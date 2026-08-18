@@ -11,6 +11,7 @@ import {
   RiGroupLine,
   RiSettings4Line,
   RiLockLine,
+  RiDatabase2Line,
 } from "@remixicon/react";
 import { ProfileEditor } from "./profile-editor";
 import { CategoryManager } from "./category-manager";
@@ -19,6 +20,7 @@ import { ImportHistoryManager } from "./import-history-manager";
 import { BankConnectionsManager } from "./bank-connections-manager";
 import { HouseholdTab } from "./household-tab";
 import { PreferencesTab } from "./preferences-tab";
+import { DataManagementTab } from "./data-management-tab";
 import type {
   SettingsCategory,
   SettingsUser,
@@ -129,6 +131,10 @@ export function SettingsTabs({
           <RiSettings4Line className="mr-1.5 h-4 w-4" />
           {translate("preferences")}
         </TabsTrigger>
+        <TabsTrigger value="data">
+          <RiDatabase2Line className="mr-1.5 h-4 w-4" />
+          {translate("data")}
+        </TabsTrigger>
         {isAdmin && (
           <TabsTrigger value="authentication">
             <RiLockLine className="mr-1.5 h-4 w-4" />
@@ -172,6 +178,10 @@ export function SettingsTabs({
 
       <TabsContent value="preferences">
         <PreferencesTab initialOpenAiSettings={openAiSettings} />
+      </TabsContent>
+
+      <TabsContent value="data">
+        <DataManagementTab />
       </TabsContent>
 
       {isAdmin && oidcSettings && signupSettings && (

@@ -1219,5 +1219,18 @@
   "yourNameab4229": "Your name",
   "yourRealEstateHoldings": "Your real estate holdings.",
   "yourVehiclesAndTransportationAssets": "Your vehicles and transportation assets.",
-  "zinc": "Zinc"
+  "zinc": "Zinc",
+  "data": "Data",
+  "exportYourData": "Export your data",
+  "downloadEverythingSyllogicKnowsAboutYourFinancesAsA": "Download everything Syllogic knows about your finances as a single JSON file.",
+  "exportData": "Export data",
+  "exporting": "Exporting...",
+  "dataExportedSuccessfully": "Data exported successfully",
+  "failedToExportData": "Failed to export data",
+  "importData": "Import data",
+  "restoreOrMergeDataFromAPreviousSyllogicExportImportedRecords": "Restore or merge data from a previous Syllogic export. Imported records are added alongside your existing data with new IDs — nothing existing is deleted or overwritten.",
+  "chooseExportFile": "Choose export file",
+  "failedToImportData": "Failed to import data",
+  "importedRecordsSuccessfully": "Imported {count} records successfully",
+  "thisAddsTheRecordsFromFileNameToYourAccount": "This adds the records from {fileName} to your account. Nothing existing is deleted or overwritten."
 }
