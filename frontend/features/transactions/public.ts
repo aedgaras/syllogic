@@ -1,4 +1,5 @@
 export type {
+  AddInterestTransactionInput,
   ConvertTransactionToTransferInput,
   AccountDeleteImpact,
   CreateTransactionInput,

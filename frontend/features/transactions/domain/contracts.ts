@@ -189,6 +189,13 @@ export interface ConvertTransactionToTransferInput extends CreateTransferTransac
   transactionId: string;
 }
 
+export interface AddInterestTransactionInput {
+  accountId: string;
+  amount: number;
+  bookedAt: Date;
+  description?: string;
+}
+
 export type TransactionMutationErrorCode =
   | "NOT_AUTHENTICATED"
   | "FORBIDDEN"

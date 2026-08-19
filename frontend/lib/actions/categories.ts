@@ -13,7 +13,10 @@ import {
 } from "@/lib/actions/categories.gateway";
 import { requireAuth } from "@/lib/auth-helpers";
 import { getCachedUserCategories, CACHE_TAGS } from "@/lib/data/cached";
-import { DEFAULT_TRANSFER_CATEGORIES } from "@/lib/constants/default-categories";
+import {
+  DEFAULT_TRANSFER_CATEGORIES,
+  DEFAULT_INTEREST_CATEGORIES,
+} from "@/lib/constants/default-categories";
 
 export type Category = BackendCategory;
 
@@ -181,6 +184,26 @@ export async function ensureSystemTransferCategories(
 
   // The backend performs the same additive/idempotent check (by systemKey,
   // falling back to name for pre-migration categories) before inserting.
+  await ensureSystemTransferCategoriesViaBackend(userId, seeds);
+}
+
+/**
+ * Additive, idempotent backfill for the "Interest" system category, mirroring
+ * ensureSystemTransferCategories above. Safe to call on every interest entry.
+ */
+export async function ensureSystemInterestCategory(userId: string): Promise<void> {
+  const seeds = DEFAULT_INTEREST_CATEGORIES.filter(
+    (category): category is typeof category & { key: string } => !!category.key,
+  ).map((category) => ({
+    key: category.key,
+    name: category.name,
+    categoryType: category.categoryType,
+    color: category.color,
+    icon: category.icon,
+    description: category.description,
+    hideFromSelection: category.hideFromSelection,
+  }));
+
   await ensureSystemTransferCategoriesViaBackend(userId, seeds);
 }
 

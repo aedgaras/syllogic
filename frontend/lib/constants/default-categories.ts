@@ -139,6 +139,18 @@ export const DEFAULT_INCOME_CATEGORIES: DefaultCategory[] = [
   },
 ];
 
+export const DEFAULT_INTEREST_CATEGORIES: DefaultCategory[] = [
+  {
+    name: translate("interest"),
+    categoryType: "income",
+    color: CATEGORY_COLORS[2].value, // Green
+    icon: "RiPercentLine",
+    description: translate("interestEarnedOnSavingsAccounts"),
+    isSystem: true,
+    key: "savings_interest",
+  },
+];
+
 export const DEFAULT_TRANSFER_CATEGORIES: DefaultCategory[] = [
   {
     name: translate("internalTransfere06d01"),
@@ -194,6 +206,7 @@ export const DEFAULT_CATEGORIES: DefaultCategory[] = [
   ...DEFAULT_EXPENSE_CATEGORIES,
   ...DEFAULT_INCOME_CATEGORIES,
   ...DEFAULT_TRANSFER_CATEGORIES,
+  ...DEFAULT_INTEREST_CATEGORIES,
 ];
 
 export function getCategoriesByType(type: CategoryType): DefaultCategory[] {

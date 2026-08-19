@@ -24,6 +24,8 @@ import {
   exchangeRates,
   internalTransfers,
   users,
+  holdings,
+  holdingValuations,
 } from "@/lib/db/schema";
 import { requireAuth, getAuthenticatedSession } from "@/lib/auth-helpers";
 import {
@@ -35,6 +37,7 @@ import { createInternalAuthHeaders } from "@/lib/internal-auth";
 import { getFilteredTotals } from "@/features/transactions/server/transaction-list.repository";
 import type { TransactionsQueryState } from "@/features/transactions/public";
 import type {
+  AddInterestTransactionInput,
   ConvertTransactionToTransferInput,
   CreateTransactionInput,
   CreateTransferTransactionInput,
@@ -45,9 +48,19 @@ import {
   hydrateResolvedAccountLogos as hydrateTransactionRowsWithResolvedAccountLogos,
   mapTransactionRowsForUi,
 } from "@/features/transactions/server";
-import { ensureSystemTransferCategories } from "@/lib/actions/categories";
+import {
+  ensureSystemTransferCategories,
+  ensureSystemInterestCategory,
+} from "@/lib/actions/categories";
 import { INVESTMENT_ACCOUNT_TYPES } from "@/lib/constants/account-types";
 import { logger } from "@/lib/logger";
+
+// Only investment_manual gets an automatic cash holding synced from transfers.
+// investment_brokerage cash is reconciled nightly from the broker statement
+// (investment_sync_service.py::_upsert_cash), which overwrites quantity to the
+// broker-reported balance and only sweeps rows with source="ibkr_flex" - a
+// manually-added row there would never get cleaned up and would double-count.
+const CASH_HOLDING_SYNCED_ACCOUNT_TYPE = "investment_manual";
 
 function resolveTransferSystemKey(destinationAccountType: string): string {
   if (destinationAccountType === "savings") return "savings_transfer";
@@ -72,6 +85,81 @@ async function findTransferCategory(userId: string, destinationAccountType: stri
   });
 }
 
+async function findInterestCategory(userId: string) {
+  await ensureSystemInterestCategory(userId);
+  return db.query.categories.findFirst({
+    where: and(
+      eq(categories.userId, userId),
+      eq(categories.systemKey, "savings_interest"),
+    ),
+  });
+}
+
+type DrizzleTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Keeps an investment_manual account's cash holding (and today's valuation)
+ * in sync with money moving in/out via transfers, so deposited cash shows up
+ * in the Holdings/Portfolio view instead of only affecting the ledger balance.
+ */
+async function syncCashHolding(
+  tx: DrizzleTx,
+  params: {
+    userId: string;
+    account: { id: string; accountType: string; currency: string | null };
+    signedAmount: number;
+    functionalRate: number | null;
+  },
+): Promise<void> {
+  const { userId, account, signedAmount, functionalRate } = params;
+  if (account.accountType !== CASH_HOLDING_SYNCED_ACCOUNT_TYPE) return;
+
+  const currency = account.currency || "EUR";
+  const [holding] = await tx
+    .insert(holdings)
+    .values({
+      userId,
+      accountId: account.id,
+      symbol: currency,
+      name: `Cash (${currency})`,
+      currency,
+      instrumentType: "cash",
+      quantity: signedAmount.toFixed(8),
+      source: "manual",
+    })
+    .onConflictDoUpdate({
+      target: [holdings.accountId, holdings.symbol, holdings.instrumentType],
+      set: {
+        quantity: sql`${holdings.quantity} + ${signedAmount}`,
+        updatedAt: new Date(),
+      },
+    })
+    .returning({ id: holdings.id, quantity: holdings.quantity });
+  if (!holding) return;
+
+  const quantity = parseFloat(holding.quantity);
+  const valueUserCurrency = quantity * (functionalRate ?? 1);
+  const today = new Date().toISOString().slice(0, 10);
+
+  await tx
+    .insert(holdingValuations)
+    .values({
+      holdingId: holding.id,
+      date: today,
+      quantity: quantity.toFixed(8),
+      price: "1",
+      valueUserCurrency: valueUserCurrency.toFixed(2),
+    })
+    .onConflictDoUpdate({
+      target: [holdingValuations.holdingId, holdingValuations.date],
+      set: {
+        quantity: quantity.toFixed(8),
+        price: "1",
+        valueUserCurrency: valueUserCurrency.toFixed(2),
+      },
+    });
+}
+
 export type {
   ConvertTransactionToTransferInput,
   CreateTransactionInput,
@@ -93,7 +181,7 @@ export type {
  * @param startingBalance - The account's starting balance
  * @param excludeTransactionId - Optional transaction ID to exclude (when deleting)
  */
-async function recalculateAccountBalancesFromDate(
+export async function recalculateAccountBalancesFromDate(
   accountId: string,
   fromDate: Date,
   startingBalance: number,
@@ -518,6 +606,19 @@ export async function createTransferTransaction(
           .where(and(eq(accounts.id, account.id), eq(accounts.userId, userId)));
       }
 
+      await syncCashHolding(tx, {
+        userId,
+        account: sourceAccount,
+        signedAmount: -amount,
+        functionalRate,
+      });
+      await syncCashHolding(tx, {
+        userId,
+        account: destinationAccount,
+        signedAmount: amount,
+        functionalRate,
+      });
+
       return {
         sourceTransactionId: sourceTransaction.id,
         destinationTransactionId: destinationTransaction.id,
@@ -798,6 +899,19 @@ export async function convertTransactionToTransfer(
           .where(and(eq(accounts.id, accountId), eq(accounts.userId, userId)));
       }
 
+      await syncCashHolding(tx, {
+        userId,
+        account: sourceAccount,
+        signedAmount: -amount,
+        functionalRate,
+      });
+      await syncCashHolding(tx, {
+        userId,
+        account: destinationAccount,
+        signedAmount: amount,
+        functionalRate,
+      });
+
       return {
         sourceTransactionId: existing.id,
         destinationTransactionId: destinationTransaction.id,
@@ -838,6 +952,161 @@ export async function convertTransactionToTransfer(
       error: "Failed to convert transaction to transfer",
     };
   }
+}
+
+/**
+ * Records interest earned on a savings account as a single income transaction,
+ * tagged with the "Interest" system category so it can be summed separately
+ * from ordinary income (see getAccruedInterestForAccount).
+ */
+export async function addInterestTransaction(
+  input: AddInterestTransactionInput,
+): Promise<{ success: boolean; error?: string; transactionId?: string }> {
+  const session = await getAuthenticatedSession();
+  const userId = session?.user?.id ?? null;
+
+  if (!userId) return { success: false, error: "Not authenticated" };
+  if (isDemoRestrictedUserEmail(session?.user?.email)) {
+    return { success: false, error: DEMO_RESTRICTED_ACTION_ERROR };
+  }
+
+  if (!Number.isFinite(input.amount) || input.amount <= 0) {
+    return { success: false, error: "Amount must be greater than zero" };
+  }
+  if (
+    !(input.bookedAt instanceof Date) ||
+    Number.isNaN(input.bookedAt.getTime())
+  ) {
+    return { success: false, error: "A valid transaction date is required" };
+  }
+
+  try {
+    const account = await db.query.accounts.findFirst({
+      where: and(eq(accounts.id, input.accountId), eq(accounts.userId, userId)),
+    });
+    if (!account) return { success: false, error: "Account not found" };
+    if (account.accountType !== "savings") {
+      return {
+        success: false,
+        error: "Interest can only be added to savings accounts",
+      };
+    }
+
+    const interestCategory = await findInterestCategory(userId);
+    const amount = Math.abs(input.amount);
+    const currency = account.currency || "EUR";
+
+    const [user] = await db
+      .select({ functionalCurrency: users.functionalCurrency })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const functionalCurrency = user?.functionalCurrency || "EUR";
+    let functionalRate: number | null =
+      currency === functionalCurrency ? 1 : null;
+    if (functionalRate === null) {
+      const endOfBookedDay = new Date(input.bookedAt);
+      endOfBookedDay.setHours(23, 59, 59, 999);
+      const sevenDaysEarlier = new Date(input.bookedAt);
+      sevenDaysEarlier.setDate(sevenDaysEarlier.getDate() - 7);
+      sevenDaysEarlier.setHours(0, 0, 0, 0);
+      const rate = await db.query.exchangeRates.findFirst({
+        where: and(
+          eq(exchangeRates.baseCurrency, currency),
+          eq(exchangeRates.targetCurrency, functionalCurrency),
+          gte(exchangeRates.date, sevenDaysEarlier),
+          lte(exchangeRates.date, endOfBookedDay),
+        ),
+        orderBy: [desc(exchangeRates.date)],
+      });
+      if (rate) functionalRate = parseFloat(rate.rate);
+    }
+
+    const description = input.description?.trim() || "Interest earned";
+    const functionalAmount =
+      functionalRate === null ? null : (amount * functionalRate).toFixed(2);
+
+    const [transactionRow] = await db
+      .insert(transactions)
+      .values({
+        userId,
+        accountId: account.id,
+        transactionType: "credit",
+        amount: amount.toFixed(2),
+        currency,
+        functionalAmount,
+        description,
+        categorySystemId: interestCategory?.id || null,
+        bookedAt: input.bookedAt,
+        pending: false,
+        includeInAnalytics: true,
+      })
+      .returning({ id: transactions.id });
+
+    const [balanceResult] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .where(
+        and(eq(transactions.accountId, account.id), eq(transactions.userId, userId)),
+      );
+    const newBalance =
+      parseFloat(account.startingBalance || "0") +
+      parseFloat(balanceResult?.total || "0");
+    await db
+      .update(accounts)
+      .set({ functionalBalance: newBalance.toFixed(2), updatedAt: new Date() })
+      .where(and(eq(accounts.id, account.id), eq(accounts.userId, userId)));
+
+    try {
+      await recalculateAccountBalancesFromDate(
+        account.id,
+        input.bookedAt,
+        parseFloat(account.startingBalance || "0"),
+      );
+    } catch (snapshotError) {
+      logger.error("Interest added, but balance snapshot recalculation failed", {
+        error: snapshotError,
+      });
+    }
+
+    revalidatePath("/transactions");
+    revalidatePath("/");
+    revalidatePath(`/accounts/${account.id}`);
+
+    return { success: true, transactionId: transactionRow.id };
+  } catch (error) {
+    logger.error("Failed to add interest transaction", { error });
+    return { success: false, error: "Failed to add interest" };
+  }
+}
+
+/**
+ * Sums interest transactions (tagged with the "savings_interest" system
+ * category) recorded for an account, for display as "accrued interest".
+ */
+export async function getAccruedInterestForAccount(
+  accountId: string,
+): Promise<number> {
+  const userId = await requireAuth();
+  if (!userId) return 0;
+
+  const [result] = await db
+    .select({
+      total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+    })
+    .from(transactions)
+    .innerJoin(categories, eq(transactions.categorySystemId, categories.id))
+    .where(
+      and(
+        eq(transactions.accountId, accountId),
+        eq(transactions.userId, userId),
+        eq(categories.systemKey, "savings_interest"),
+      ),
+    );
+
+  return parseFloat(result?.total || "0");
 }
 
 export async function updateTransaction(
