@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { revalidatePath, updateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -47,7 +48,7 @@ export async function getOnboardingStatus(): Promise<OnboardingStatusResult | nu
     });
 
     if (!user) {
-      console.warn(`[Onboarding] User not found: ${userId}`);
+      logger.warn(`[Onboarding] User not found: ${userId}`);
       return null;
     }
 
@@ -59,7 +60,7 @@ export async function getOnboardingStatus(): Promise<OnboardingStatusResult | nu
     };
   } catch (error: any) {
     // Log detailed error information
-    console.error("[Onboarding] Failed to get onboarding status:", {
+    logger.error("[Onboarding] Failed to get onboarding status", {
       error: error?.message || String(error),
       stack: error?.stack,
       userId,
@@ -146,7 +147,7 @@ export async function updatePersonalDetails(
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
-    console.error("Failed to update personal details:", error);
+    logger.error("Failed to update personal details", { error });
     return { success: false, error: "Failed to update profile" };
   }
 }
@@ -204,7 +205,7 @@ export async function saveOnboardingCategories(
     revalidatePath("/");
     return { success: true };
   } catch (error) {
-    console.error("Failed to save onboarding categories:", error);
+    logger.error("Failed to save onboarding categories", { error });
     return { success: false, error: "Failed to save categories" };
   }
 }
@@ -237,7 +238,7 @@ export async function completeOnboarding(): Promise<{
     revalidatePath("/");
     return { success: true };
   } catch (error) {
-    console.error("Failed to complete onboarding:", error);
+    logger.error("Failed to complete onboarding", { error });
     return { success: false, error: "Failed to complete onboarding" };
   }
 }

@@ -9,6 +9,7 @@ import {
 } from "@/features/csv-import/client/pending-import-storage";
 import { useImportStatus } from "@/features/csv-import/hooks/use-import-status";
 import { presentImportStatusToast } from "@/features/csv-import/orchestration/import-status-toast-presenter";
+import { logger } from "@/lib/logger";
 
 export function ImportStatusNotifier() {
   const router = useRouter();
@@ -21,36 +22,35 @@ export function ImportStatusNotifier() {
   useEffect(() => {
     if (!session?.user?.id) return;
     const stored = getPendingImport();
-    console.log("[ImportStatusNotifier] Checking for pending import:", stored);
+    logger.debug("[ImportStatusNotifier] Checking for pending import", { stored });
     if (!stored) return;
     if (stored.userId !== session.user.id) {
       clearPendingImport();
       return;
     }
-    console.log("[ImportStatusNotifier] Setting pending import:", stored);
+    logger.debug("[ImportStatusNotifier] Setting pending import", { stored });
     setPendingImport(stored);
   }, [session?.user?.id]);
 
   useImportStatus(pendingImport?.userId, pendingImport?.importId, {
     onEvent: presentImportStatusToast,
     onStarted: (event) => {
-      console.log("[ImportStatusNotifier] import_started callback", event);
+      logger.debug("[ImportStatusNotifier] import_started callback", { event });
     },
     onCompleted: (event) => {
-      console.log("[ImportStatusNotifier] import_completed callback", event);
+      logger.debug("[ImportStatusNotifier] import_completed callback", { event });
       // Import completed, but keep pending until subscriptions finish
       router.refresh();
     },
     onFailed: () => {
-      console.log("[ImportStatusNotifier] import_failed callback");
+      logger.debug("[ImportStatusNotifier] import_failed callback");
       clearPendingImport();
       setPendingImport(null);
     },
     onSubscriptionsCompleted: (event) => {
-      console.log(
-        "[ImportStatusNotifier] subscriptions_completed callback",
+      logger.debug("[ImportStatusNotifier] subscriptions_completed callback", {
         event,
-      );
+      });
       // Full flow complete (import + subscriptions)
       clearPendingImport();
       setPendingImport(null);

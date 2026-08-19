@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -20,6 +21,14 @@ import {
   saveRegistrationSettings,
   type RegistrationStatus,
 } from "@/lib/registration-settings";
+import {
+  clearLogLevel,
+  getLogLevelStatus,
+  setLogLevel,
+  VALID_LOG_LEVELS,
+  type LogLevel,
+  type LogLevelStatus,
+} from "@/lib/log-level";
 
 async function requireAdminUserId(): Promise<string | null> {
   const userId = await requireAuth();
@@ -157,6 +166,72 @@ export async function updateSignupSettings(enabled: boolean): Promise<{
         error instanceof Error
           ? error.message
           : "Failed to save signup settings.",
+    };
+  }
+}
+
+export async function getAppLogLevel(): Promise<
+  LogLevelStatus & { error?: string }
+> {
+  const adminUserId = await requireAdminUserId();
+  if (!adminUserId) {
+    return { level: "info", source: "default", error: "Administrator access is required." };
+  }
+
+  try {
+    return await getLogLevelStatus();
+  } catch (error) {
+    return {
+      level: "info",
+      source: "default",
+      error: error instanceof Error ? error.message : "Failed to load log level.",
+    };
+  }
+}
+
+export async function updateAppLogLevel(level: string): Promise<{
+  success: boolean;
+  settings?: LogLevelStatus;
+  error?: string;
+}> {
+  const adminUserId = await requireAdminUserId();
+  if (!adminUserId)
+    return { success: false, error: "Administrator access is required." };
+
+  const normalized = level.trim().toLowerCase();
+  if (!(VALID_LOG_LEVELS as readonly string[]).includes(normalized)) {
+    return { success: false, error: "Invalid log level." };
+  }
+
+  try {
+    const settings = await setLogLevel(normalized as LogLevel, adminUserId);
+    revalidatePath("/settings");
+    return { success: true, settings };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to save log level.",
+    };
+  }
+}
+
+export async function resetAppLogLevel(): Promise<{
+  success: boolean;
+  settings?: LogLevelStatus;
+  error?: string;
+}> {
+  const adminUserId = await requireAdminUserId();
+  if (!adminUserId)
+    return { success: false, error: "Administrator access is required." };
+
+  try {
+    const settings = await clearLogLevel();
+    revalidatePath("/settings");
+    return { success: true, settings };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to reset log level.",
     };
   }
 }
@@ -426,7 +501,7 @@ export async function updateUserProfile(
     revalidatePath("/settings");
     return { success: true };
   } catch (error) {
-    console.error("Failed to update user profile:", error);
+    logger.error("Failed to update user profile", { error });
     return { success: false, error: "Failed to update profile" };
   }
 }
@@ -480,7 +555,7 @@ export async function deleteAllTransactionsAndResetBalances(): Promise<{
       accountsReset: userAccounts.length,
     };
   } catch (error) {
-    console.error("Failed to delete transactions and reset balances:", error);
+    logger.error("Failed to delete transactions and reset balances", { error });
     return {
       success: false,
       error: "Failed to delete transactions and reset balances",

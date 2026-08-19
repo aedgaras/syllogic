@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import "server-only";
 
 import { getCachedFullUserAccounts } from "@/lib/data/cached";
@@ -23,7 +24,7 @@ export async function getAccounts() {
     const rows = await getCachedFullUserAccounts();
     return rows.map(toAccountViewModel);
   } catch (error) {
-    console.error("Failed to get accounts:", error);
+    logger.error("Failed to get accounts", { error });
     return [];
   }
 }

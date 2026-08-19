@@ -9,23 +9,59 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  updateAppLogLevel,
   updateOidcSettings,
   updateSignupSettings,
 } from "@/lib/actions/settings";
+import type { LogLevel, LogLevelStatus } from "@/lib/log-level";
 import type { OidcAdminSettings } from "@/lib/oidc-settings";
 import type { RegistrationStatus } from "@/lib/registration-settings";
 
 type AuthenticationTabProps = {
   initialSettings: OidcAdminSettings & { error?: string };
   initialSignupSettings: RegistrationStatus & { error?: string };
+  initialLogLevel: LogLevelStatus & { error?: string };
   callbackUrl: string;
 };
+
+const LOG_LEVEL_OPTIONS: LogLevel[] = ["debug", "info", "warn", "error"];
 
 export function AuthenticationTab({
   initialSettings,
   initialSignupSettings,
+  initialLogLevel,
   callbackUrl,
 }: AuthenticationTabProps) {
+  const [logLevel, setLogLevel] = useState(initialLogLevel);
+  const [selectedLogLevel, setSelectedLogLevel] = useState<LogLevel>(
+    initialLogLevel.level,
+  );
+  const [savingLogLevel, setSavingLogLevel] = useState(false);
+
+  async function handleSaveLogLevel() {
+    setSavingLogLevel(true);
+    try {
+      const result = await updateAppLogLevel(selectedLogLevel);
+      if (!result.success || !result.settings) {
+        toast.error(result.error || translate("failedToSaveLogLevel"));
+        return;
+      }
+      setLogLevel(result.settings);
+      toast.success(translate("logLevelSaved"));
+    } catch {
+      toast.error(translate("failedToSaveLogLevel"));
+    } finally {
+      setSavingLogLevel(false);
+    }
+  }
+
   const [settings, setSettings] = useState(initialSettings);
   const [displayName, setDisplayName] = useState(initialSettings.displayName);
   const [discoveryUrl, setDiscoveryUrl] = useState(
@@ -260,6 +296,47 @@ export function AuthenticationTab({
           {saving
             ? translate("saving")
             : translate("saveAuthenticationSettings")}
+        </Button>
+      </div>
+
+      <div className="space-y-4 border border-border p-4">
+        <div className="space-y-1">
+          <Label htmlFor="log-level">{translate("logLevel")}</Label>
+          <p className="text-xs text-muted-foreground">
+            {translate("logLevelDescription")}
+          </p>
+        </div>
+
+        {logLevel.error && (
+          <p className="border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {logLevel.error}
+          </p>
+        )}
+
+        <Select
+          value={selectedLogLevel}
+          onValueChange={(value) => setSelectedLogLevel(value as LogLevel)}
+          disabled={savingLogLevel}
+        >
+          <SelectTrigger id="log-level" className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {LOG_LEVEL_OPTIONS.map((level) => (
+              <SelectItem key={level} value={level}>
+                {level}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <p className="text-xs text-muted-foreground">
+          {translate("logLevelSource")} {logLevel.source}
+        </p>
+
+        <Button onClick={handleSaveLogLevel} disabled={savingLogLevel}>
+          <RiSave3Line />
+          {savingLogLevel ? translate("saving") : translate("saveLogLevel")}
         </Button>
       </div>
     </div>

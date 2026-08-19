@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
 import { eq, and, desc, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -405,7 +406,7 @@ export async function getSuggestedMappings(
     });
 
     if (!resp.ok) {
-      console.warn(
+      logger.warn(
         `getSuggestedMappings: backend returned ${resp.status} for ${connectionId}`,
       );
       return [];

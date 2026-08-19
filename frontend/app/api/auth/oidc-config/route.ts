@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getOidcRuntimeConfig } from "@/lib/oidc-settings";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export async function GET() {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    console.error("Failed to load public OIDC configuration:", error);
+    logger.error("Failed to load public OIDC configuration", { error });
     return NextResponse.json(
       { enabled: false, displayName: "Single Sign-On" },
       { headers: { "Cache-Control": "no-store" } },

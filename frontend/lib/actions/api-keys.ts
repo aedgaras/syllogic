@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
@@ -82,7 +83,7 @@ export async function createApiKey(input: {
       },
     };
   } catch (error) {
-    console.error("Failed to create API key:", error);
+    logger.error("Failed to create API key", { error });
     return { success: false, error: "Failed to create API key" };
   }
 }
@@ -120,7 +121,7 @@ export async function listApiKeys(): Promise<{
 
     return { success: true, keys };
   } catch (error) {
-    console.error("Failed to list API keys:", error);
+    logger.error("Failed to list API keys", { error });
     return { success: false, error: "Failed to list API keys" };
   }
 }
@@ -147,7 +148,7 @@ export async function deleteApiKey(keyId: string): Promise<{
     revalidatePath("/settings");
     return { success: true };
   } catch (error) {
-    console.error("Failed to delete API key:", error);
+    logger.error("Failed to delete API key", { error });
     return { success: false, error: "Failed to delete API key" };
   }
 }

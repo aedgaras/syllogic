@@ -40,6 +40,7 @@ import type {
   SubscriptionDetectionResult,
   SubscriptionFrequency,
 } from "@/features/subscriptions/public";
+import { logger } from "@/lib/logger";
 
 interface SubscriptionDetectionDialogProps {
   transaction: Pick<TransactionWithRelations, "id" | "categoryId">;
@@ -112,7 +113,7 @@ export function SubscriptionDetectionDialog({
         );
       }
     } catch (error) {
-      console.error("Detection failed:", error);
+      logger.error("Detection failed", { error });
       toast.error(translate("failedToDetectSubscriptionPattern"));
     } finally {
       setIsLoading(false);

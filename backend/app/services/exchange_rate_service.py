@@ -316,8 +316,9 @@ class ExchangeRateService:
         # Process in batches to avoid rate limits
         current_batch_start = start_date
 
-        print(
-            f"  Fetching rates for {len(base_currencies)} base currencies -> EUR/USD in batches of {self.BATCH_SIZE_DAYS} days..."
+        logger.info(
+            f"Fetching rates for {len(base_currencies)} base currencies -> EUR/USD "
+            f"in batches of {self.BATCH_SIZE_DAYS} days"
         )
 
         # Process each base currency
@@ -360,8 +361,8 @@ class ExchangeRateService:
                     current_date += timedelta(days=1)
 
                 self.db.commit()
-                print(
-                    f"  {base_currency} -> {base_currency}: Stored {stored_self_conversion} rates (1.0)"
+                logger.debug(
+                    f"{base_currency} -> {base_currency}: stored {stored_self_conversion} rates (1.0)"
                 )
 
                 # Now fetch cross-conversion rates (EUR->USD or USD->EUR)
@@ -387,10 +388,9 @@ class ExchangeRateService:
                         ) * 100
 
                         try:
-                            print(
-                                f"  [{progress:.1f}%] {base_currency} -> {cross_target}: {current_batch_start} to {current_batch_end}...",
-                                end=" ",
-                                flush=True,
+                            logger.debug(
+                                f"[{progress:.1f}%] {base_currency} -> {cross_target}: "
+                                f"{current_batch_start} to {current_batch_end}"
                             )
 
                             # Fetch rates: base_currency -> cross_target
@@ -414,7 +414,7 @@ class ExchangeRateService:
                                     dates_processed += 1
 
                             total_stored += batch_stored
-                            print(f"✓ ({batch_stored} rates)")
+                            logger.debug(f"{base_currency} -> {cross_target}: {batch_stored} rates stored")
 
                             # Small delay between batches
                             if current_batch_start < date.today():
@@ -424,7 +424,6 @@ class ExchangeRateService:
                             failed_batches.append(
                                 (base_currency, current_batch_start, current_batch_end)
                             )
-                            print(f"✗ Error: {e}")
                             logger.error(
                                 f"Error fetching batch {base_currency} {current_batch_start} to {current_batch_end}: {e}"
                             )
@@ -446,10 +445,9 @@ class ExchangeRateService:
                 progress = ((total_days - (end_date - current_batch_start).days) / total_days) * 100
 
                 try:
-                    print(
-                        f"  [{progress:.1f}%] {base_currency} -> EUR/USD: {current_batch_start} to {current_batch_end}...",
-                        end=" ",
-                        flush=True,
+                    logger.debug(
+                        f"[{progress:.1f}%] {base_currency} -> EUR/USD: "
+                        f"{current_batch_start} to {current_batch_end}"
                     )
 
                     # Fetch rates: base_currency -> EUR/USD
@@ -477,7 +475,7 @@ class ExchangeRateService:
                         dates_processed += 1
 
                     total_stored += batch_stored
-                    print(f"✓ ({batch_stored} rates)")
+                    logger.debug(f"{base_currency} -> EUR/USD: {batch_stored} rates stored")
 
                     # Small delay between batches to avoid rate limiting
                     if current_batch_start < date.today():
@@ -485,7 +483,6 @@ class ExchangeRateService:
 
                 except Exception as e:
                     failed_batches.append((base_currency, current_batch_start, current_batch_end))
-                    print(f"✗ Error: {e}")
                     logger.error(
                         f"Error fetching batch {base_currency} {current_batch_start} to {current_batch_end}: {e}"
                     )
@@ -497,11 +494,10 @@ class ExchangeRateService:
             # Small delay between currencies
             time.sleep(0.2)
 
-        print(f"  ✓ Completed: {dates_processed} dates processed, {total_stored} rates stored")
+        logger.info(f"Completed: {dates_processed} dates processed, {total_stored} rates stored")
 
         if failed_batches:
-            print(f"  ⚠️  Failed batches: {len(failed_batches)}")
-            logger.warning(f"Failed batches: {failed_batches}")
+            logger.warning(f"Failed batches ({len(failed_batches)}): {failed_batches}")
 
         result = {
             "dates_processed": dates_processed,

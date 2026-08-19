@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import {
+  getAppLogLevel,
   getCurrentUserProfile,
   getOidcSettings,
   getOpenAiSettings,
@@ -38,6 +39,7 @@ export default async function SettingsPage({
     resolvedSearchParams,
     oidcSettings,
     signupSettings,
+    logLevelSettings,
   ] = await Promise.all([
     getCategories(),
     listApiKeys(),
@@ -48,6 +50,7 @@ export default async function SettingsPage({
     searchParams,
     user.role === "admin" ? getOidcSettings() : Promise.resolve(undefined),
     user.role === "admin" ? getSignupSettings() : Promise.resolve(undefined),
+    user.role === "admin" ? getAppLogLevel() : Promise.resolve(undefined),
   ]);
 
   const people = peopleRows.map((p) => ({
@@ -96,6 +99,7 @@ export default async function SettingsPage({
           isAdmin={user.role === "admin"}
           oidcSettings={oidcSettings}
           signupSettings={signupSettings}
+          logLevelSettings={logLevelSettings}
           oidcCallbackUrl={`${appBaseUrl}/api/auth/oauth2/callback/oidc`}
         />
       </div>

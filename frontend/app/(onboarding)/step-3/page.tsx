@@ -31,6 +31,7 @@ import { AccountForm } from "@/components/accounts/account-form";
 import { completeOnboarding } from "@/lib/actions/onboarding";
 import { getAccounts } from "@/features/accounts/client/actions";
 import type { AccountViewModel } from "@/features/accounts/public";
+import { logger } from "@/lib/logger";
 
 export default function OnboardingStep3Page() {
   const router = useRouter();
@@ -44,7 +45,7 @@ export default function OnboardingStep3Page() {
       const accountList = await getAccounts();
       setAccounts(accountList);
     } catch (error) {
-      console.error("Failed to load accounts:", error);
+      logger.error("Failed to load accounts", { error });
     } finally {
       setIsLoading(false);
     }

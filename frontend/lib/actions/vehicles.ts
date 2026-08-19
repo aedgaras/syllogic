@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -47,7 +48,7 @@ export async function createVehicle(
     revalidatePath("/settings");
     return { success: true, vehicleId: result.id };
   } catch (error) {
-    console.error("Failed to create vehicle:", error);
+    logger.error("Failed to create vehicle", { error });
     return { success: false, error: "Failed to create vehicle" };
   }
 }
@@ -89,7 +90,7 @@ export async function updateVehicle(
     revalidatePath("/settings");
     return { success: true };
   } catch (error) {
-    console.error("Failed to update vehicle:", error);
+    logger.error("Failed to update vehicle", { error });
     return { success: false, error: "Failed to update vehicle" };
   }
 }
@@ -125,7 +126,7 @@ export async function deleteVehicle(
     revalidatePath("/settings");
     return { success: true };
   } catch (error) {
-    console.error("Failed to delete vehicle:", error);
+    logger.error("Failed to delete vehicle", { error });
     return { success: false, error: "Failed to delete vehicle" };
   }
 }
@@ -143,7 +144,7 @@ export async function getVehicles() {
       orderBy: (vehicles, { asc }) => [asc(vehicles.name)],
     });
   } catch (error) {
-    console.error("Failed to get vehicles:", error);
+    logger.error("Failed to get vehicles", { error });
     return [];
   }
 }

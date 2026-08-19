@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import type { TransactionListItem } from "../domain/contracts";
 
 export interface TransactionListRow {
@@ -121,7 +122,7 @@ export function mapTransactionRowsForUi(
   contextLabel: string,
 ): TransactionListItem[] {
   return mapTransactionListRows(rows, (row) =>
-    console.warn(`[${contextLabel}] Transaction missing account relation`, {
+    logger.warn(`[${contextLabel}] Transaction missing account relation`, {
       transactionId: row.id,
       accountId: row.accountId,
     }),

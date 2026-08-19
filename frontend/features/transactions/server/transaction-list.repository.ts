@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import {
   and,
   asc,
@@ -264,7 +265,7 @@ export const transactionListRepository: TransactionListRepository = {
     );
     return {
       rows: mapTransactionListRows(rows, (row) =>
-        console.warn(
+        logger.warn(
           "[getTransactionPage] Transaction missing account relation",
           { transactionId: row.id, accountId: row.accountId },
         ),

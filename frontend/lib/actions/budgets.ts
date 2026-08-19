@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
 import { eq, and, inArray, gte, lt, sql, desc, or } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -335,7 +336,7 @@ export async function createBudget(input: BudgetCreateInput): Promise<{
     const budget = await fetchBudgetViewModelById(userId, budgetId);
     return { success: true, budgetId, budget };
   } catch (error) {
-    console.error("Failed to create budget:", error);
+    logger.error("Failed to create budget", { error });
     return { success: false, error: "Failed to create budget" };
   }
 }
@@ -405,7 +406,7 @@ export async function updateBudget(
     const budget = await fetchBudgetViewModelById(userId, id);
     return { success: true, budget };
   } catch (error) {
-    console.error("Failed to update budget:", error);
+    logger.error("Failed to update budget", { error });
     return { success: false, error: "Failed to update budget" };
   }
 }
@@ -427,7 +428,7 @@ export async function deleteBudget(
     revalidatePath("/budgets");
     return { success: true };
   } catch (error) {
-    console.error("Failed to delete budget:", error);
+    logger.error("Failed to delete budget", { error });
     return { success: false, error: "Failed to delete budget" };
   }
 }
@@ -453,7 +454,7 @@ export async function toggleBudgetActive(
     revalidatePath("/budgets");
     return { success: true };
   } catch (error) {
-    console.error("Failed to toggle budget active status:", error);
+    logger.error("Failed to toggle budget active status", { error });
     return { success: false, error: "Failed to update status" };
   }
 }
@@ -469,7 +470,7 @@ export async function getBudgets(): Promise<BudgetViewModel[]> {
   try {
     return await fetchBudgetViewModels(userId, true);
   } catch (error) {
-    console.error("Failed to get budgets:", error);
+    logger.error("Failed to get budgets", { error });
     return [];
   }
 }
@@ -506,7 +507,7 @@ export async function getBudgetById(id: string): Promise<{
       })),
     };
   } catch (error) {
-    console.error("Failed to get budget:", error);
+    logger.error("Failed to get budget", { error });
     return null;
   }
 }
@@ -616,7 +617,7 @@ export async function getBudgetDetail(
       ),
     };
   } catch (error) {
-    console.error("Failed to get budget detail:", error);
+    logger.error("Failed to get budget detail", { error });
     return null;
   }
 }
@@ -665,7 +666,7 @@ export async function getBudgetKpis(): Promise<BudgetKpis> {
       currency,
     };
   } catch (error) {
-    console.error("Failed to get budget KPIs:", error);
+    logger.error("Failed to get budget KPIs", { error });
     return {
       totalBudgeted: 0,
       totalSpent: 0,
@@ -704,7 +705,7 @@ export async function getCategoryBudgetUsage(): Promise<
     }
     return usage;
   } catch (error) {
-    console.error("Failed to get category budget usage:", error);
+    logger.error("Failed to get category budget usage", { error });
     return {};
   }
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import {
   endOfDay,
   endOfMonth,
@@ -429,7 +430,7 @@ function mapCategorySpendingTransactionRowsForUi(
 ): TransactionWithRelations[] {
   return rows.flatMap((tx) => {
     if (!tx.account) {
-      console.warn(
+      logger.warn(
         "[getCategorySpendingTransactionsPage] Transaction missing account relation",
         {
           transactionId: tx.id,

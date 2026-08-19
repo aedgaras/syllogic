@@ -4,10 +4,9 @@ from fastapi.responses import JSONResponse
 import logging
 import os
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+from app.logging_config import configure_logging, refresh_log_level_from_db
+
+configure_logging()
 
 # Import celery_app FIRST so its broker/backend config (REDIS_URL) is registered
 # as the current Celery app BEFORE any module imports tasks via @shared_task —
@@ -15,7 +14,7 @@ logging.basicConfig(
 # fail with "Connection refused".
 from celery_app import celery_app  # noqa: F401, E402
 
-from app.database import engine, Base
+from app.database import SessionLocal, engine, Base
 from app.db_helpers import (
     authenticate_internal_request_with_body,
     clear_request_user_id,
@@ -70,8 +69,18 @@ app = FastAPI(
 UNPROTECTED_API_PATHS = {"/api/health"}
 
 
+@app.on_event("startup")
+def _apply_configured_log_level() -> None:
+    refresh_log_level_from_db(SessionLocal)
+
+
 @app.middleware("http")
 async def internal_auth_middleware(request: Request, call_next):
+    # Throttled internally (see logging_config.REFRESH_INTERVAL_SECONDS), so this
+    # is a no-op most requests; it exists so a log level saved in the Settings UI
+    # propagates to every gunicorn worker without a restart.
+    refresh_log_level_from_db(SessionLocal)
+
     path = request.url.path
     if request.method == "OPTIONS" or not path.startswith("/api/") or path in UNPROTECTED_API_PATHS:
         return await call_next(request)

@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import {
   accounts,
@@ -323,7 +324,7 @@ export async function getPeriodSpending(
     };
   } catch (error: unknown) {
     const normalizedError = errorToLogContext(error);
-    console.error("[getPeriodSpending] Query failed:", {
+    logger.error("[getPeriodSpending] Query failed", {
       error: normalizedError.message,
       cause: normalizedError.cause,
       stack: normalizedError.stack,
@@ -404,7 +405,7 @@ export async function getPeriodIncome(
     };
   } catch (error: unknown) {
     const normalizedError = errorToLogContext(error);
-    console.error("[getPeriodIncome] Query failed:", {
+    logger.error("[getPeriodIncome] Query failed", {
       error: normalizedError.message,
       cause: normalizedError.cause,
       stack: normalizedError.stack,
@@ -608,7 +609,7 @@ export async function getIncomeExpenseData(
     });
   } catch (error: unknown) {
     const normalizedError = errorToLogContext(error);
-    console.error("[getIncomeExpenseData] Query failed:", {
+    logger.error("[getIncomeExpenseData] Query failed", {
       error: normalizedError.message,
       cause: normalizedError.cause,
       stack: normalizedError.stack,
@@ -792,7 +793,7 @@ export async function getSpendingByCategory(
     };
   } catch (error: unknown) {
     const normalizedError = errorToLogContext(error);
-    console.error("[getSpendingByCategory] Query failed:", {
+    logger.error("[getSpendingByCategory] Query failed", {
       error: normalizedError.message,
       cause: normalizedError.cause,
       stack: normalizedError.stack,

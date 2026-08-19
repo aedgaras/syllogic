@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
 import {
   eq,
@@ -221,7 +222,7 @@ export async function createSubscription(
         : undefined,
     };
   } catch (error) {
-    console.error("Failed to create subscription:", error);
+    logger.error("Failed to create subscription", { error });
     return { success: false, error: "Failed to create subscription" };
   }
 }
@@ -371,7 +372,7 @@ export async function updateSubscription(
     revalidatePath("/transactions");
     return { success: true };
   } catch (error) {
-    console.error("Failed to update subscription:", error);
+    logger.error("Failed to update subscription", { error });
     return { success: false, error: "Failed to update subscription" };
   }
 }
@@ -410,7 +411,7 @@ export async function deleteSubscription(
     revalidatePath("/transactions");
     return { success: true };
   } catch (error) {
-    console.error("Failed to delete subscription:", error);
+    logger.error("Failed to delete subscription", { error });
     return { success: false, error: "Failed to delete subscription" };
   }
 }
@@ -453,7 +454,7 @@ export async function toggleSubscriptionActive(
     revalidatePath("/subscriptions");
     return { success: true };
   } catch (error) {
-    console.error("Failed to toggle subscription active status:", error);
+    logger.error("Failed to toggle subscription active status", { error });
     return { success: false, error: "Failed to update status" };
   }
 }
@@ -493,7 +494,7 @@ export async function getSubscriptions(
 
     return results.map(toSubscriptionViewModel);
   } catch (error) {
-    console.error("Failed to get subscriptions:", error);
+    logger.error("Failed to get subscriptions", { error });
     return [];
   }
 }
@@ -560,7 +561,7 @@ export async function getSubscriptionKpis(): Promise<SubscriptionKpis> {
       currency,
     };
   } catch (error) {
-    console.error("Failed to get subscription KPIs:", error);
+    logger.error("Failed to get subscription KPIs", { error });
     return {
       activeCount: 0,
       monthlyTotal: 0,
@@ -597,7 +598,7 @@ export async function getSubscription(
 
     return result ? toSubscriptionViewModel(result) : null;
   } catch (error) {
-    console.error("Failed to get subscription:", error);
+    logger.error("Failed to get subscription", { error });
     return null;
   }
 }
@@ -697,7 +698,7 @@ export async function findPotentialMatches(): Promise<PotentialMatch[]> {
     // Return top 50 matches
     return matches.slice(0, 50);
   } catch (error) {
-    console.error("Failed to find potential matches:", error);
+    logger.error("Failed to find potential matches", { error });
     return [];
   }
 }
@@ -763,7 +764,7 @@ export async function linkTransactionToSubscription(
     revalidatePath("/subscriptions");
     return { success: true };
   } catch (error) {
-    console.error("Failed to link transaction:", error);
+    logger.error("Failed to link transaction", { error });
     return { success: false, error: "Failed to link transaction" };
   }
 }
@@ -806,7 +807,7 @@ export async function unlinkTransactionFromSubscription(
     revalidatePath("/subscriptions");
     return { success: true };
   } catch (error) {
-    console.error("Failed to unlink transaction:", error);
+    logger.error("Failed to unlink transaction", { error });
     return { success: false, error: "Failed to unlink transaction" };
   }
 }
@@ -899,7 +900,7 @@ export async function bulkLinkTransactions(
     revalidatePath("/subscriptions");
     return { success: true, linkedCount };
   } catch (error) {
-    console.error("Failed to bulk link transactions:", error);
+    logger.error("Failed to bulk link transactions", { error });
     return { success: false, error: "Failed to link transactions" };
   }
 }
@@ -1028,7 +1029,7 @@ export async function matchTransactionsToSubscription(
       transactionIds: matchedTransactionIds,
     };
   } catch (error) {
-    console.error("Failed to match transactions:", error);
+    logger.error("Failed to match transactions", { error });
     return { success: false, error: "Failed to match transactions" };
   }
 }
@@ -1087,7 +1088,7 @@ export async function getSubscriptionCostAggregations(
 
     return { thisYear, allTime };
   } catch (error) {
-    console.error("Failed to get subscription cost aggregations:", error);
+    logger.error("Failed to get subscription cost aggregations", { error });
     return { thisYear: 0, allTime: 0 };
   }
 }
@@ -1146,7 +1147,7 @@ export async function getLinkedTransactions(
         : null,
     }));
   } catch (error) {
-    console.error("Failed to get linked transactions:", error);
+    logger.error("Failed to get linked transactions", { error });
     return [];
   }
 }
@@ -1477,7 +1478,7 @@ export async function detectSubscriptionFromTransaction(
       suggestedMerchant,
     };
   } catch (error) {
-    console.error("Failed to detect subscription:", error);
+    logger.error("Failed to detect subscription", { error });
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     return {
@@ -1628,7 +1629,7 @@ export async function createSubscriptionFromTransaction(
       linkedCount,
     };
   } catch (error) {
-    console.error("Failed to create subscription from transaction:", error);
+    logger.error("Failed to create subscription from transaction", { error });
     return { success: false, error: "Failed to create subscription" };
   }
 }

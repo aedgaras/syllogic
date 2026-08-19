@@ -27,6 +27,7 @@ import { format } from "date-fns";
 import { cn, formatAmount } from "@/lib/utils";
 import type { TransactionLinkGroup } from "@/features/transactions/public";
 import { useLinkTransactionsController } from "@/features/transactions/hooks/use-link-transactions-controller";
+import { logger } from "@/lib/logger";
 
 interface LinkedTransactionsSectionProps {
   transactionId: string;
@@ -53,7 +54,7 @@ export function LinkedTransactionsSection({
       const group = await controller.loadGroup(transactionId);
       setLinkGroup(group);
     } catch (error) {
-      console.error("Failed to load link group:", error);
+      logger.error("Failed to load link group", { error });
     } finally {
       setIsLoading(false);
     }

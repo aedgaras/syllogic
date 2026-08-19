@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { createOrUpdateBalancingTransaction } from "@/lib/actions/transactions";
 import { getCategoryByName } from "@/lib/actions/categories";
 import { getAccountBalanceOnDate } from "@/features/accounts/client/actions";
+import { logger } from "@/lib/logger";
 
 interface UpdateBalanceDialogProps {
   account: {
@@ -67,7 +68,7 @@ export function UpdateBalanceDialog({
         const result = await getAccountBalanceOnDate(account.id, date);
         setBalanceOnDate(result.balance);
       } catch (error) {
-        console.error("Failed to fetch balance:", error);
+        logger.error("Failed to fetch balance", { error });
         // Fallback to current balance
         setBalanceOnDate(parseFloat(account.functionalBalance || "0"));
       } finally {

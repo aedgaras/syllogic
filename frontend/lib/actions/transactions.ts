@@ -45,6 +45,7 @@ import {
 } from "@/features/transactions/server";
 import { ensureSystemTransferCategories } from "@/lib/actions/categories";
 import { INVESTMENT_ACCOUNT_TYPES } from "@/lib/constants/account-types";
+import { logger } from "@/lib/logger";
 
 function resolveTransferSystemKey(destinationAccountType: string): string {
   if (destinationAccountType === "savings") return "savings_transfer";
@@ -106,7 +107,7 @@ async function recalculateAccountBalancesFromDate(
   });
 
   if (!account) {
-    console.error("Account not found for balance recalculation");
+    logger.error("Account not found for balance recalculation");
     return;
   }
 
@@ -293,7 +294,10 @@ export async function createTransaction(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Backend import failed:", response.status, errorText);
+      logger.error("Backend import failed", {
+        status: response.status,
+        body: errorText,
+      });
       return {
         success: false,
         error: `Failed to create transaction: ${response.status}`,
@@ -316,7 +320,7 @@ export async function createTransaction(
       transactionId: backendResponse.transaction_ids?.[0] || undefined,
     };
   } catch (error) {
-    console.error("Failed to create transaction:", error);
+    logger.error("Failed to create transaction", { error });
     return { success: false, error: "Failed to create transaction" };
   }
 }
@@ -533,10 +537,9 @@ export async function createTransferTransaction(
         parseFloat(destinationAccount.startingBalance || "0"),
       );
     } catch (snapshotError) {
-      console.error(
-        "Transfer created, but balance snapshot recalculation failed:",
-        snapshotError,
-      );
+      logger.error("Transfer created, but balance snapshot recalculation failed", {
+        error: snapshotError,
+      });
     }
 
     revalidatePath("/transactions");
@@ -548,7 +551,7 @@ export async function createTransferTransaction(
 
     return { success: true, ...result };
   } catch (error) {
-    console.error("Failed to create transfer transaction:", error);
+    logger.error("Failed to create transfer transaction", { error });
     return { success: false, error: "Failed to create transfer" };
   }
 }
@@ -811,9 +814,9 @@ export async function convertTransactionToTransfer(
         );
       }
     } catch (snapshotError) {
-      console.error(
-        "Transaction converted, but balance snapshot recalculation failed:",
-        snapshotError,
+      logger.error(
+        "Transaction converted, but balance snapshot recalculation failed",
+        { error: snapshotError },
       );
     }
 
@@ -827,7 +830,7 @@ export async function convertTransactionToTransfer(
 
     return { success: true, ...result };
   } catch (error) {
-    console.error("Failed to convert transaction to transfer:", error);
+    logger.error("Failed to convert transaction to transfer", { error });
     return {
       success: false,
       error: "Failed to convert transaction to transfer",
@@ -1022,7 +1025,7 @@ export async function updateTransaction(
 
     return { success: true };
   } catch (error) {
-    console.error("Failed to update transaction:", error);
+    logger.error("Failed to update transaction", { error });
     return { success: false, error: "Failed to update transaction" };
   }
 }
@@ -1075,7 +1078,7 @@ export async function updateTransactionCategory(
     revalidatePath("/transactions");
     return { success: true };
   } catch (error) {
-    console.error("Failed to update transaction category:", error);
+    logger.error("Failed to update transaction category", { error });
     return { success: false, error: "Failed to update transaction category" };
   }
 }
@@ -1149,7 +1152,7 @@ export async function getTransactions(): Promise<TransactionWithRelations[]> {
             stack: error.stack,
           }
         : { message: String(error), cause: undefined, stack: undefined };
-    console.error("[getTransactions] Query failed:", {
+    logger.error("[getTransactions] Query failed", {
       error: normalizedError.message,
       cause: normalizedError.cause,
       stack: normalizedError.stack,
@@ -1234,7 +1237,7 @@ export async function getTransactionsForAccount(
             stack: error.stack,
           }
         : { message: String(error), cause: undefined, stack: undefined };
-    console.error("[getTransactionsForAccount] Query failed:", {
+    logger.error("[getTransactionsForAccount] Query failed", {
       error: normalizedError.message,
       cause: normalizedError.cause,
       stack: normalizedError.stack,
@@ -1292,7 +1295,7 @@ export async function bulkUpdateTransactionCategory(
     revalidatePath("/transactions");
     return { success: true, updatedCount: transactionIds.length };
   } catch (error) {
-    console.error("Failed to bulk update transaction categories:", error);
+    logger.error("Failed to bulk update transaction categories", { error });
     return { success: false, error: "Failed to update transactions" };
   }
 }
@@ -1332,7 +1335,7 @@ export async function updateTransactionIncludeInAnalytics(
     revalidatePath("/");
     return { success: true };
   } catch (error) {
-    console.error("Failed to update transaction include_in_analytics:", error);
+    logger.error("Failed to update transaction include_in_analytics", { error });
     return { success: false, error: "Failed to update transaction" };
   }
 }
@@ -1370,10 +1373,9 @@ export async function bulkUpdateTransactionIncludeInAnalytics(
     revalidatePath("/");
     return { success: true, updatedCount: transactionIds.length };
   } catch (error) {
-    console.error(
-      "Failed to bulk update transaction include_in_analytics:",
+    logger.error("Failed to bulk update transaction include_in_analytics", {
       error,
-    );
+    });
     return { success: false, error: "Failed to update transactions" };
   }
 }
@@ -1468,7 +1470,7 @@ export async function deleteBalancingTransaction(
 
     return { success: true };
   } catch (error) {
-    console.error("Failed to delete balancing transaction:", error);
+    logger.error("Failed to delete balancing transaction", { error });
     return { success: false, error: "Failed to revert balancing transfer" };
   }
 }
@@ -1687,7 +1689,7 @@ export async function createOrUpdateBalancingTransaction(
 
     return { success: true, transactionId, isUpdate };
   } catch (error) {
-    console.error("Failed to create/update balancing transaction:", error);
+    logger.error("Failed to create/update balancing transaction", { error });
     return { success: false, error: "Failed to update balance" };
   }
 }
@@ -1847,7 +1849,7 @@ export async function getDeleteImpact(
       },
     };
   } catch (error) {
-    console.error("Failed to compute delete impact:", error);
+    logger.error("Failed to compute delete impact", { error });
     return { success: false, error: "Failed to compute impact" };
   }
 }
@@ -1965,7 +1967,7 @@ export async function deleteTransactions(transactionIds: string[]): Promise<{
 
     return { success: true, affectedAccountIds, deletedCount: txRows.length };
   } catch (error) {
-    console.error("Failed to delete transactions:", error);
+    logger.error("Failed to delete transactions", { error });
     return { success: false, error: "Failed to delete transactions" };
   }
 }

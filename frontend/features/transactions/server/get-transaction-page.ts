@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { requireAuth } from "@/lib/auth-helpers";
 import type { TransactionsQueryState } from "../domain/contracts";
 import { getTransactionPage as runGetTransactionPage } from "../application/get-transaction-page";
@@ -11,7 +12,7 @@ export async function getTransactionPage(query: TransactionsQueryState) {
       transactionListRepository,
     );
   } catch (error) {
-    console.error("[getTransactionPage] Failed to load transaction page:", {
+    logger.error("[getTransactionPage] Failed to load transaction page", {
       query,
       error,
     });

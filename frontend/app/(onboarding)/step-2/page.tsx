@@ -28,6 +28,7 @@ import {
 } from "@/lib/actions/onboarding";
 import { DEFAULT_CATEGORIES } from "@/lib/constants/default-categories";
 import { type CategoryType } from "@/lib/utils/category-utils";
+import { logger } from "@/lib/logger";
 
 export default function OnboardingStep2Page() {
   const router = useRouter();
@@ -79,7 +80,7 @@ export default function OnboardingStep2Page() {
           })),
         );
       } catch (error) {
-        console.error("Failed to load categories:", error);
+        logger.error("Failed to load categories", { error });
         // Fall back to local constants
         setCategories(
           DEFAULT_CATEGORIES.map((cat) => ({

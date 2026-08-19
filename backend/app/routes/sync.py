@@ -2,6 +2,8 @@
 Sync routes for bank integrations.
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -16,6 +18,7 @@ from app.services.sync_service import SyncService
 from app.security.data_encryption import decrypt_with_fallback
 import os
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -60,9 +63,9 @@ async def sync_revolut_csv(
     try:
         # First, let's test parsing to see if we get any transactions
         test_transactions = adapter.fetch_transactions("default")
-        print(f"DEBUG: Parsed {len(test_transactions)} transactions from CSV")
+        logger.debug("Parsed %d transactions from CSV", len(test_transactions))
         if len(test_transactions) > 0:
-            print(f"DEBUG: First transaction: {test_transactions[0]}")
+            logger.debug("First transaction: %s", test_transactions[0])
 
         result = sync_service.sync_all(
             adapter,
@@ -92,7 +95,7 @@ async def sync_revolut_csv(
         import traceback
 
         error_detail = f"Error syncing transactions: {str(e)}\n{traceback.format_exc()}"
-        print(f"ERROR: {error_detail}")
+        logger.error(error_detail)
         raise HTTPException(status_code=500, detail=f"Error syncing transactions: {str(e)}")
 
 
@@ -167,7 +170,7 @@ def sync_plaid(
         import traceback
 
         error_detail = f"Error syncing Plaid transactions: {str(e)}\n{traceback.format_exc()}"
-        print(f"ERROR: {error_detail}")
+        logger.error(error_detail)
         raise HTTPException(status_code=500, detail=f"Error syncing transactions: {str(e)}")
 
 

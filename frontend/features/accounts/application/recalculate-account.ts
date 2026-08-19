@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import {
   calculateBalance,
   calculateStartingBalance,
@@ -48,7 +49,7 @@ export async function recalculateStartingBalanceUseCase(
   try {
     await dependencies.recalculateTimeseries(input.accountId, input.userId);
   } catch (error) {
-    console.warn("Failed to trigger backend timeseries recalculation:", error);
+    logger.warn("Failed to trigger backend timeseries recalculation", { error });
   }
   return { success: true, newStartingBalance };
 }

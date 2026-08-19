@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { logger } from "@/lib/logger";
 
 export function ServiceWorkerRegistration() {
   useEffect(() => {
@@ -18,10 +19,9 @@ export function ServiceWorkerRegistration() {
           updateViaCache: "none",
         })
         .catch((error: unknown) => {
-          console.error(
-            "Unable to register the Syllogic service worker",
+          logger.error("Unable to register the Syllogic service worker", {
             error,
-          );
+          });
         });
     };
 

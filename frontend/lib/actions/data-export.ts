@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { and, eq, isNull } from "drizzle-orm";
@@ -371,7 +372,7 @@ export async function exportUserData(): Promise<{
       fileName: `syllogic-export-${stamp}.json`,
     };
   } catch (error) {
-    console.error("Failed to export data:", error);
+    logger.error("Failed to export data", { error });
     return { success: false, error: "Failed to export data." };
   }
 }
@@ -937,7 +938,7 @@ export async function importUserData(jsonText: string): Promise<{
     revalidatePath("/", "layout");
     return { success: true, summary };
   } catch (error) {
-    console.error("Failed to import data:", error);
+    logger.error("Failed to import data", { error });
     return {
       success: false,
       error:

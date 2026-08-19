@@ -9,6 +9,7 @@ import {
 } from "@/lib/db/schema";
 import { storage } from "@/lib/storage";
 import { requireAuth } from "@/lib/auth-helpers";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // Constants
@@ -188,7 +189,7 @@ async function fetchAndStoreLogo(
 ): Promise<{ success: boolean; logoUrl?: string }> {
   const logoDevApiKey = getLogoDevApiKey();
   if (!logoDevApiKey) {
-    console.error("LOGO_DEV_API_KEY is not configured");
+    logger.error("LOGO_DEV_API_KEY is not configured");
     return { success: false };
   }
 
@@ -198,7 +199,7 @@ async function fetchAndStoreLogo(
     const response = await fetch(apiUrl);
 
     if (!response.ok) {
-      console.log(`Logo not found for domain: ${domain}`);
+      logger.debug(`Logo not found for domain: ${domain}`);
       return { success: false };
     }
 
@@ -224,7 +225,7 @@ async function fetchAndStoreLogo(
 
     return { success: true, logoUrl: uploadedFile.url };
   } catch (error) {
-    console.error(`Failed to fetch logo for ${domain}:`, error);
+    logger.error(`Failed to fetch logo for ${domain}`, { error });
     return { success: false };
   }
 }
@@ -321,7 +322,7 @@ export async function searchLogo(query: string): Promise<{
       return { success: true, logo: undefined };
     }
   } catch (error) {
-    console.error("Failed to search logo:", error);
+    logger.error("Failed to search logo", { error });
     return { success: false, error: "Failed to search for logo" };
   }
 }
@@ -342,7 +343,7 @@ export async function getLogoById(id: string): Promise<CompanyLogo | null> {
 
     return logo || null;
   } catch (error) {
-    console.error("Failed to get logo by ID:", error);
+    logger.error("Failed to get logo by ID", { error });
     return null;
   }
 }
@@ -370,7 +371,7 @@ export async function getLogoByDomain(
 
     return null;
   } catch (error) {
-    console.error("Failed to get logo by domain:", error);
+    logger.error("Failed to get logo by domain", { error });
     return null;
   }
 }
@@ -399,7 +400,7 @@ export async function searchLogosInCache(
     // Only return logos with status "found"
     return logos.filter((l) => l.status === "found");
   } catch (error) {
-    console.error("Failed to search logos in cache:", error);
+    logger.error("Failed to search logos in cache", { error });
     return [];
   }
 }

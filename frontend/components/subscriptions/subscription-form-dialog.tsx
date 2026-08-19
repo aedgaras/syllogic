@@ -40,6 +40,7 @@ import type {
   SubscriptionViewModel,
 } from "@/features/subscriptions/public";
 import { withAssetVersion } from "@/lib/utils/asset-url";
+import { logger } from "@/lib/logger";
 
 interface SubscriptionFormDialogProps {
   open: boolean;
@@ -396,7 +397,7 @@ export function SubscriptionFormDialog({
         }
       }
     } catch (error) {
-      console.error("Submit error:", error);
+      logger.error("Submit error", { error });
       toast.error(translate("anErrorOccurred"));
     } finally {
       setIsSubmitting(false);

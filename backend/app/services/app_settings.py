@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime
 from typing import Optional
@@ -10,6 +11,10 @@ from app.security.data_encryption import decrypt_value, encrypt_value
 
 OPENAI_API_KEY_SETTING = "openai_api_key"
 DEFAULT_LLM_MODEL = "gpt-4o-mini"
+
+LOG_LEVEL_SETTING = "log_level"
+VALID_LOG_LEVELS = {"debug", "info", "warn", "error"}
+DEFAULT_LOG_LEVEL = "info"
 OPENAI_DEFAULT_BASE_URLS = {
     "https://api.openai.com",
     "https://api.openai.com/",
@@ -167,3 +172,86 @@ def set_openai_api_key(db: Session, api_key: str, updated_by_user_id: Optional[s
 def clear_openai_api_key(db: Session) -> None:
     db.query(AppSetting).filter(AppSetting.key == OPENAI_API_KEY_SETTING).delete()
     db.commit()
+
+
+def _env_log_level() -> Optional[str]:
+    value = (os.getenv("LOG_LEVEL") or "").strip().lower()
+    return value if value in VALID_LOG_LEVELS else None
+
+
+def get_log_level_override(db: Session) -> Optional[str]:
+    """Return the database-stored log level, if any.
+
+    Stored the same way as other non-secret app_settings rows (see
+    frontend's registration-settings.ts): encrypted when a data encryption
+    key is configured, plaintext JSON otherwise. Shares the "log_level" key
+    with the frontend's own app_settings row, so a change made in either
+    app's Settings UI is visible to both (they read the same Postgres table).
+    """
+    setting = db.query(AppSetting).filter(AppSetting.key == LOG_LEVEL_SETTING).first()
+    if not setting or not setting.value_encrypted:
+        return None
+
+    try:
+        raw = decrypt_value(setting.value_encrypted)
+    except ValueError:
+        return None
+    if not raw:
+        return None
+
+    try:
+        level = json.loads(raw).get("level")
+    except (ValueError, AttributeError):
+        return None
+
+    return level if level in VALID_LOG_LEVELS else None
+
+
+def get_log_level_status(db: Session) -> dict:
+    override = get_log_level_override(db)
+    if override:
+        return {"level": override, "source": "database"}
+
+    env_level = _env_log_level()
+    if env_level:
+        return {"level": env_level, "source": "environment"}
+
+    return {"level": DEFAULT_LOG_LEVEL, "source": "default"}
+
+
+def get_effective_log_level(db: Session) -> str:
+    return get_log_level_status(db)["level"]
+
+
+def set_log_level(db: Session, level: str, updated_by_user_id: Optional[str]) -> dict:
+    normalized = (level or "").strip().lower()
+    if normalized not in VALID_LOG_LEVELS:
+        raise ValueError(f"Log level must be one of {sorted(VALID_LOG_LEVELS)}.")
+
+    serialized = json.dumps({"level": normalized})
+    value_encrypted = encrypt_value(serialized) or serialized
+
+    setting = db.query(AppSetting).filter(AppSetting.key == LOG_LEVEL_SETTING).first()
+    now = datetime.utcnow()
+    if setting is None:
+        setting = AppSetting(
+            key=LOG_LEVEL_SETTING,
+            value_encrypted=value_encrypted,
+            updated_by_user_id=updated_by_user_id,
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(setting)
+    else:
+        setting.value_encrypted = value_encrypted
+        setting.updated_by_user_id = updated_by_user_id
+        setting.updated_at = now
+
+    db.commit()
+    return {"level": normalized, "source": "database"}
+
+
+def clear_log_level(db: Session) -> dict:
+    db.query(AppSetting).filter(AppSetting.key == LOG_LEVEL_SETTING).delete()
+    db.commit()
+    return get_log_level_status(db)

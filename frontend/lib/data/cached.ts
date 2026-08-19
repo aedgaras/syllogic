@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 // Cached read layer. NOT a "use server" module.
 // Two cache layers:
 // - React.cache: per-request dedup (no TTL, scoped to a single render).
@@ -47,7 +48,7 @@ export const getCachedUserCategories = cache(async () => {
   try {
     return await getCachedCategoriesByUser(userId);
   } catch (error) {
-    console.error("Failed to get cached user categories:", error);
+    logger.error("Failed to get cached user categories", { error });
     return [];
   }
 });
@@ -80,7 +81,7 @@ export const getCachedUserAccounts = cache(async () => {
   try {
     return await getCachedAccountsByUser(userId);
   } catch (error) {
-    console.error("Failed to get cached user accounts:", error);
+    logger.error("Failed to get cached user accounts", { error });
     return [];
   }
 });
@@ -118,7 +119,7 @@ export const getCachedFullUserAccounts = cache(async () => {
   try {
     return await getCachedFullAccountsByUser(userId);
   } catch (error) {
-    console.error("Failed to get cached full user accounts:", error);
+    logger.error("Failed to get cached full user accounts", { error });
     return [];
   }
 });
@@ -137,7 +138,7 @@ async function fetchOnboardingStatusForUser(
     });
 
     if (!user) {
-      console.warn(`[Onboarding] User not found: ${userId}`);
+      logger.warn(`[Onboarding] User not found: ${userId}`);
       return null;
     }
 
@@ -148,7 +149,7 @@ async function fetchOnboardingStatusForUser(
       isCompleted: status === "completed",
     };
   } catch (error: any) {
-    console.error("[Onboarding] Failed to get onboarding status:", {
+    logger.error("[Onboarding] Failed to get onboarding status", {
       error: error?.message || String(error),
       stack: error?.stack,
       userId,

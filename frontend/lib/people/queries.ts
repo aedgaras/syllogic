@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import {
   people,
@@ -18,7 +19,7 @@ export async function getPeople(userId: string) {
       .where(eq(people.userId, userId))
       .orderBy(people.kind, people.createdAt);
   } catch (error) {
-    console.error("Failed to get people:", error);
+    logger.error("Failed to get people", { error });
     return [];
   }
 }
@@ -119,7 +120,7 @@ export async function getOwnersForEntities(
       for (const r of rows) push(r.vehicleId, r.personId, r.share);
     }
   } catch (error) {
-    console.error(`Failed to get owners for entity type ${entityType}:`, error);
+    logger.error(`Failed to get owners for entity type ${entityType}`, { error });
   }
   return out;
 }

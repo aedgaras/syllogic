@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, genericOAuth, jwt } from "better-auth/plugins";
@@ -183,10 +184,9 @@ export async function getRequestAuth() {
     return requestAuthCache;
   } catch (error) {
     // Optional OIDC must never make password/session authentication unavailable.
-    console.error(
-      "Failed to load OIDC configuration; continuing without OIDC:",
+    logger.error("Failed to load OIDC configuration; continuing without OIDC", {
       error,
-    );
+    });
     return auth;
   }
 }

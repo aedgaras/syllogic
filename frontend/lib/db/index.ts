@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
@@ -40,7 +41,7 @@ const client = postgres(connectionString, {
   onnotice: (notice) => {
     // Log PostgreSQL notices (warnings, info) in development
     if (process.env.NODE_ENV === "development") {
-      console.log("[PostgreSQL Notice]", notice);
+      logger.debug("[PostgreSQL Notice]", { notice });
     }
   },
 

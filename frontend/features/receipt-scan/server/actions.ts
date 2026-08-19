@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { accounts } from "@/lib/db/schema";
@@ -115,7 +116,7 @@ export async function uploadAndExtractReceipt(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Receipt scan extract failed:", response.status, errorText);
+      logger.error("Receipt scan extract failed", { status: response.status, body: errorText });
       return { success: false, error: "Failed to process receipt" };
     }
 
@@ -135,7 +136,7 @@ export async function uploadAndExtractReceipt(
       },
     };
   } catch (error) {
-    console.error("Failed to extract receipt:", error);
+    logger.error("Failed to extract receipt", { error });
     return { success: false, error: "Failed to process receipt" };
   }
 }
@@ -184,14 +185,14 @@ export async function confirmReceiptScan(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Receipt scan confirm failed:", response.status, errorText);
+      logger.error("Receipt scan confirm failed", { status: response.status, body: errorText });
       return { success: false, error: "Failed to save transactions" };
     }
 
     const created: unknown[] = await response.json();
     return { success: true, transactionCount: created.length };
   } catch (error) {
-    console.error("Failed to confirm receipt scan:", error);
+    logger.error("Failed to confirm receipt scan", { error });
     return { success: false, error: "Failed to save transactions" };
   }
 }

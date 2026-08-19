@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -73,7 +74,7 @@ export async function getPendingSuggestions(): Promise<
       } satisfies SubscriptionSuggestionViewModel;
     });
   } catch (error) {
-    console.error("Failed to get pending suggestions:", error);
+    logger.error("Failed to get pending suggestions", { error });
     return [];
   }
 }
@@ -99,7 +100,7 @@ export async function getPendingSuggestionCount(): Promise<number> {
 
     return suggestions.length;
   } catch (error) {
-    console.error("Failed to get suggestion count:", error);
+    logger.error("Failed to get suggestion count", { error });
     return 0;
   }
 }
@@ -369,7 +370,7 @@ export async function verifySuggestion(
       skippedCountDifferentAccount,
     };
   } catch (error) {
-    console.error("Failed to verify suggestion:", error);
+    logger.error("Failed to verify suggestion", { error });
     return { success: false, error: "Failed to create subscription" };
   }
 }
@@ -413,7 +414,7 @@ export async function dismissSuggestion(suggestionId: string): Promise<{
 
     return { success: true };
   } catch (error) {
-    console.error("Failed to dismiss suggestion:", error);
+    logger.error("Failed to dismiss suggestion", { error });
     return { success: false, error: "Failed to dismiss suggestion" };
   }
 }

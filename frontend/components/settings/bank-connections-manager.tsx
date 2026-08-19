@@ -34,6 +34,7 @@ import {
   initiateAuth,
 } from "@/lib/actions/bank-connections";
 import { fetchBankConnectionStatus } from "@/lib/bank-connections/client";
+import { logger } from "@/lib/logger";
 type BankConnectionItem = {
   id: string;
   aspspName: string;
@@ -216,7 +217,7 @@ export function BankConnectionsManager({
     try {
       const result = await triggerSync(connectionId);
       if (!result.success) {
-        console.error("Sync failed:", result.error);
+        logger.error("Sync failed", { error: result.error });
         setSyncingIds((prev) => {
           const next = new Set(prev);
           next.delete(connectionId);
@@ -239,7 +240,7 @@ export function BankConnectionsManager({
     try {
       const result = await triggerRecategorize(connectionId);
       if (!result.success) {
-        console.error("Re-categorization failed:", result.error);
+        logger.error("Re-categorization failed", { error: result.error });
       }
     } finally {
       setRecategorizingIds((prev) => {
@@ -255,7 +256,7 @@ export function BankConnectionsManager({
     try {
       const result = await disconnectBank(connectionId);
       if (!result.success) {
-        console.error("Disconnect failed:", result.error);
+        logger.error("Disconnect failed", { error: result.error });
       }
       router.refresh();
     } finally {

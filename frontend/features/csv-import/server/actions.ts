@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -196,7 +197,7 @@ export async function initializeCsvImport(
 
     return { success: true, importId: result.id };
   } catch (error) {
-    console.error("Failed to initialize CSV import:", error);
+    logger.error("Failed to initialize CSV import", { error });
     return { success: false, error: "Failed to initialize CSV import" };
   }
 }
@@ -241,7 +242,7 @@ export async function parseCsvHeaders(
       },
     };
   } catch (error) {
-    console.error("Failed to parse CSV headers:", error);
+    logger.error("Failed to parse CSV headers", { error });
     return { success: false, error: "Failed to parse CSV file" };
   }
 }
@@ -302,7 +303,7 @@ export async function getAiColumnMapping(
 
     return { success: true, mapping };
   } catch (error) {
-    console.error("Failed to get AI column mapping:", error);
+    logger.error("Failed to get AI column mapping", { error });
     return { success: false, error: "Failed to analyze CSV columns" };
   }
 }
@@ -328,7 +329,7 @@ export async function saveColumnMapping(
 
     return { success: true };
   } catch (error) {
-    console.error("Failed to save column mapping:", error);
+    logger.error("Failed to save column mapping", { error });
     return { success: false, error: "Failed to save column mapping" };
   }
 }
@@ -769,7 +770,7 @@ export async function previewImportedTransactions(importId: string): Promise<{
       dailyBalances,
     };
   } catch (error) {
-    console.error("Failed to preview transactions:", error);
+    logger.error("Failed to preview transactions", { error });
     return {
       success: false,
       error:
@@ -1034,10 +1035,9 @@ export async function finalizeImport(
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(
-            `Backend import failed for batch ${batchIndex + 1}/${batches.length}:`,
-            response.status,
-            errorText,
+          logger.error(
+            `Backend import failed for batch ${batchIndex + 1}/${batches.length}`,
+            { status: response.status, body: errorText },
           );
           return {
             success: false,
@@ -1107,7 +1107,7 @@ export async function finalizeImport(
       };
     } catch (fetchError) {
       if (fetchError instanceof Error && fetchError.name === "AbortError") {
-        console.error("Import timeout during batch processing");
+        logger.error("Import timeout during batch processing");
         return {
           success: false,
           error: `Import timeout: The operation took too long. ${totalImported} transactions were imported before the timeout.`,
@@ -1116,7 +1116,7 @@ export async function finalizeImport(
       throw fetchError; // Re-throw to outer catch
     }
   } catch (error) {
-    console.error("Failed to finalize import:", error);
+    logger.error("Failed to finalize import", { error });
     return {
       success: false,
       error:
@@ -1260,7 +1260,7 @@ export async function enqueueBackgroundImport(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Backend enqueue failed:", response.status, errorText);
+      logger.error("Backend enqueue failed", { status: response.status, body: errorText });
       return {
         success: false,
         error: `Failed to start import: ${response.status} - ${errorText}`,
@@ -1285,7 +1285,7 @@ export async function enqueueBackgroundImport(
       totalTransactions: transactions.length,
     };
   } catch (error) {
-    console.error("Failed to enqueue background import:", error);
+    logger.error("Failed to enqueue background import", { error });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to start import",

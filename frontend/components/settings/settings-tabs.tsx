@@ -27,6 +27,7 @@ import type {
 } from "@/features/settings/public";
 import type { CsvImportWithStats } from "@/features/csv-import/public";
 import type { OpenAiSettings } from "@/lib/actions/settings";
+import type { LogLevelStatus } from "@/lib/log-level";
 import type { OidcAdminSettings } from "@/lib/oidc-settings";
 import type { RegistrationStatus } from "@/lib/registration-settings";
 import { AuthenticationTab } from "./authentication-tab";
@@ -71,6 +72,7 @@ interface SettingsTabsProps {
   isAdmin?: boolean;
   oidcSettings?: OidcAdminSettings & { error?: string };
   signupSettings?: RegistrationStatus & { error?: string };
+  logLevelSettings?: LogLevelStatus & { error?: string };
   oidcCallbackUrl?: string;
 }
 
@@ -90,6 +92,7 @@ export function SettingsTabs({
   isAdmin = false,
   oidcSettings,
   signupSettings,
+  logLevelSettings,
   oidcCallbackUrl = "/api/auth/oauth2/callback/oidc",
 }: SettingsTabsProps) {
   return (
@@ -184,11 +187,12 @@ export function SettingsTabs({
         <DataManagementTab />
       </TabsContent>
 
-      {isAdmin && oidcSettings && signupSettings && (
+      {isAdmin && oidcSettings && signupSettings && logLevelSettings && (
         <TabsContent value="authentication">
           <AuthenticationTab
             initialSettings={oidcSettings}
             initialSignupSettings={signupSettings}
+            initialLogLevel={logLevelSettings}
             callbackUrl={oidcCallbackUrl}
           />
         </TabsContent>

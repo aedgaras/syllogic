@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { revalidatePath, updateTag } from "next/cache";
 import { getAuthenticatedSession, requireAuth } from "@/lib/auth-helpers";
 import { CACHE_TAGS } from "@/lib/data/cached";
@@ -69,7 +70,7 @@ export async function createAccount(
     ]);
     return { success: true, accountId: account.id };
   } catch (error) {
-    console.error("Failed to create account:", error);
+    logger.error("Failed to create account", { error });
     return { success: false, error: "Failed to create account" };
   }
 }
@@ -95,7 +96,7 @@ export async function updateAccount(
     ]);
     return { success: true };
   } catch (error) {
-    console.error("Failed to update account:", error);
+    logger.error("Failed to update account", { error });
     return { success: false, error: "Failed to update account" };
   }
 }
@@ -111,7 +112,7 @@ export async function deleteAccount(accountId: string) {
     invalidateAccounts(userId, ["/settings", "/assets", "/"]);
     return { success: true };
   } catch (error) {
-    console.error("Failed to delete account:", error);
+    logger.error("Failed to delete account", { error });
     return { success: false, error: "Failed to delete account" };
   }
 }
@@ -129,7 +130,7 @@ export async function hardDeleteAccount(
     invalidateAccounts(userId, ["/settings", "/", "/transactions", "/assets"]);
     return { success: true, ...counts };
   } catch (error) {
-    console.error("Failed to hard delete account:", error);
+    logger.error("Failed to hard delete account", { error });
     return {
       success: false,
       error: "Failed to delete account and associated data",
@@ -156,7 +157,7 @@ export async function recalculateStartingBalance(
     invalidateAccounts(userId, ["/settings", "/transactions", "/", "/assets"]);
     return result;
   } catch (error) {
-    console.error("Failed to recalculate starting balance:", error);
+    logger.error("Failed to recalculate starting balance", { error });
     return { success: false, error: "Failed to recalculate starting balance" };
   }
 }
@@ -204,7 +205,7 @@ export async function recalculateAccountTimeseries(
     invalidateAccounts(userId, ["/settings", "/", "/transactions", "/assets"]);
     return result;
   } catch (error) {
-    console.error("Failed to recalculate timeseries:", error);
+    logger.error("Failed to recalculate timeseries", { error });
     return {
       success: false,
       error:

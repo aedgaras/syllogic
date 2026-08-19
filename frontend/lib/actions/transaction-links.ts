@@ -17,6 +17,7 @@ import {
 import { db } from "@/lib/db";
 import { transactions, transactionLinks, accounts } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth-helpers";
+import { logger } from "@/lib/logger";
 import crypto from "crypto";
 
 export type LinkRole = "primary" | "reimbursement" | "expense";
@@ -106,7 +107,7 @@ export async function getUserAccountsForLinking(): Promise<AccountOption[]> {
       name: acc.name,
     }));
   } catch (error) {
-    console.error("Failed to get user accounts:", error);
+    logger.error("Failed to get user accounts", { error });
     return [];
   }
 }
@@ -186,7 +187,7 @@ export async function createTransactionLinkGroup(
     revalidatePath("/");
     return { success: true, groupId };
   } catch (error) {
-    console.error("Failed to create transaction link group:", error);
+    logger.error("Failed to create transaction link group", { error });
     return { success: false, error: "Failed to create link group" };
   }
 }
@@ -254,7 +255,7 @@ export async function addTransactionToLinkGroup(
     revalidatePath("/");
     return { success: true };
   } catch (error) {
-    console.error("Failed to add transaction to link group:", error);
+    logger.error("Failed to add transaction to link group", { error });
     return { success: false, error: "Failed to add transaction to group" };
   }
 }
@@ -315,7 +316,7 @@ export async function removeTransactionFromLinkGroup(
     revalidatePath("/");
     return { success: true, groupDeleted: false };
   } catch (error) {
-    console.error("Failed to remove transaction from link group:", error);
+    logger.error("Failed to remove transaction from link group", { error });
     return { success: false, error: "Failed to remove transaction from group" };
   }
 }
@@ -354,7 +355,7 @@ export async function deleteLinkGroup(
     revalidatePath("/");
     return { success: true };
   } catch (error) {
-    console.error("Failed to delete link group:", error);
+    logger.error("Failed to delete link group", { error });
     return { success: false, error: "Failed to delete link group" };
   }
 }
@@ -439,7 +440,7 @@ export async function getTransactionLinkGroup(
       currency,
     };
   } catch (error) {
-    console.error("Failed to get transaction link group:", error);
+    logger.error("Failed to get transaction link group", { error });
     return null;
   }
 }
@@ -529,7 +530,7 @@ export async function getUserLinkGroups(): Promise<TransactionLinkGroup[]> {
 
     return groups;
   } catch (error) {
-    console.error("Failed to get user link groups:", error);
+    logger.error("Failed to get user link groups", { error });
     return [];
   }
 }
@@ -672,7 +673,7 @@ export async function findPotentialReimbursements(
       hasMore: offset + suggestions.length < totalCount,
     };
   } catch (error) {
-    console.error("Failed to find potential reimbursements:", error);
+    logger.error("Failed to find potential reimbursements", { error });
     return { transactions: [], totalCount: 0, hasMore: false };
   }
 }
@@ -815,7 +816,7 @@ export async function findPotentialExpenses(
       hasMore: offset + suggestions.length < totalCount,
     };
   } catch (error) {
-    console.error("Failed to find potential expenses:", error);
+    logger.error("Failed to find potential expenses", { error });
     return { transactions: [], totalCount: 0, hasMore: false };
   }
 }
@@ -852,7 +853,7 @@ export async function getTransactionLinkInfo(
       createdAt: link.createdAt,
     };
   } catch (error) {
-    console.error("Failed to get transaction link info:", error);
+    logger.error("Failed to get transaction link info", { error });
     return null;
   }
 }
@@ -934,7 +935,7 @@ export async function createLinkGroupFromSelection(
     revalidatePath("/");
     return { success: true, groupId };
   } catch (error) {
-    console.error("Failed to create link group from selection:", error);
+    logger.error("Failed to create link group from selection", { error });
     return { success: false, error: "Failed to create link group" };
   }
 }

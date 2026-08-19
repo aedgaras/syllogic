@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -43,7 +44,7 @@ export async function createProperty(
     revalidatePath("/settings");
     return { success: true, propertyId: result.id };
   } catch (error) {
-    console.error("Failed to create property:", error);
+    logger.error("Failed to create property", { error });
     return { success: false, error: "Failed to create property" };
   }
 }
@@ -83,7 +84,7 @@ export async function updateProperty(
     revalidatePath("/settings");
     return { success: true };
   } catch (error) {
-    console.error("Failed to update property:", error);
+    logger.error("Failed to update property", { error });
     return { success: false, error: "Failed to update property" };
   }
 }
@@ -119,7 +120,7 @@ export async function deleteProperty(
     revalidatePath("/settings");
     return { success: true };
   } catch (error) {
-    console.error("Failed to delete property:", error);
+    logger.error("Failed to delete property", { error });
     return { success: false, error: "Failed to delete property" };
   }
 }
@@ -137,7 +138,7 @@ export async function getProperties() {
       orderBy: (properties, { asc }) => [asc(properties.name)],
     });
   } catch (error) {
-    console.error("Failed to get properties:", error);
+    logger.error("Failed to get properties", { error });
     return [];
   }
 }

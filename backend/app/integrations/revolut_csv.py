@@ -5,6 +5,7 @@ Parses CSV files exported from Revolut app/web interface.
 
 import csv
 import io
+import logging
 import re
 import hashlib
 from typing import List, Optional
@@ -12,6 +13,8 @@ from decimal import Decimal
 from datetime import datetime
 from app.integrations.base import BankAdapter, AccountData, TransactionData
 from app.integrations.number_parsing import infer_amount_format, parse_localized_decimal
+
+logger = logging.getLogger(__name__)
 
 
 class RevolutCSVAdapter(BankAdapter):
@@ -133,25 +136,27 @@ class RevolutCSVAdapter(BankAdapter):
 
         # Debug: Check if headers are parsed correctly
         if reader.fieldnames and len(reader.fieldnames) > 1:
-            print(f"DEBUG: CSV headers detected with delimiter '{delimiter}': {reader.fieldnames}")
+            logger.debug("CSV headers detected with delimiter %r: %s", delimiter, reader.fieldnames)
         else:
-            print(f"DEBUG: WARNING - Headers not parsed correctly. Fieldnames: {reader.fieldnames}")
+            logger.warning("Headers not parsed correctly. Fieldnames: %s", reader.fieldnames)
             first_line = (
                 csv_content_normalized.split("\n")[0]
                 if "\n" in csv_content_normalized
                 else csv_content_normalized
             )
-            print(f"DEBUG: First line of CSV (first 200 chars): {first_line[:200]}")
-            print(
-                f"DEBUG: Tab count: {first_line.count(chr(9))}, Comma count: {first_line.count(',')}"
+            logger.debug("First line of CSV (first 200 chars): %s", first_line[:200])
+            logger.debug(
+                "Tab count: %d, Comma count: %d",
+                first_line.count(chr(9)),
+                first_line.count(","),
             )
 
             # Try the other delimiter as fallback
             alt_delimiter = "," if delimiter == "\t" else "\t"
-            print(f"DEBUG: Trying alternative delimiter '{alt_delimiter}'...")
+            logger.debug("Trying alternative delimiter %r...", alt_delimiter)
             reader = csv.DictReader(io.StringIO(csv_content_normalized), delimiter=alt_delimiter)
             if reader.fieldnames and len(reader.fieldnames) > 1:
-                print(f"DEBUG: Success with alternative delimiter! Headers: {reader.fieldnames}")
+                logger.debug("Success with alternative delimiter! Headers: %s", reader.fieldnames)
                 delimiter = alt_delimiter
 
         rows = list(reader)
@@ -187,19 +192,28 @@ class RevolutCSVAdapter(BankAdapter):
                     skipped_count += 1
                     # Log why transaction was skipped (first few only)
                     if skipped_count <= 3:
-                        print(
-                            f"DEBUG: Skipped row {row_count}: Missing required fields. Row keys: {list(row.keys())}, sample values: {list(row.values())[:3] if row else []}"
+                        logger.debug(
+                            "Skipped row %d: Missing required fields. Row keys: %s, sample values: %s",
+                            row_count,
+                            list(row.keys()),
+                            list(row.values())[:3] if row else [],
                         )
             except Exception as e:
                 # Skip malformed rows but log the error
                 skipped_count += 1
-                print(
-                    f"Error parsing transaction row {row_count}: {e}, row keys: {list(row.keys())}"
+                logger.warning(
+                    "Error parsing transaction row %d: %s, row keys: %s",
+                    row_count,
+                    e,
+                    list(row.keys()),
                 )
                 continue
 
-        print(
-            f"DEBUG: Processed {row_count} rows, parsed {parsed_count} transactions, skipped {skipped_count}"
+        logger.debug(
+            "Processed %d rows, parsed %d transactions, skipped %d",
+            row_count,
+            parsed_count,
+            skipped_count,
         )
 
         return transactions
@@ -219,10 +233,11 @@ class RevolutCSVAdapter(BankAdapter):
 
         # Debug: Check row structure - if only 1 key, CSV parsing failed
         if len(row.keys()) == 1:
-            print(
-                f"DEBUG: WARNING - Row has only 1 key, CSV may not be parsed correctly. Keys: {list(row.keys())}"
+            logger.warning(
+                "Row has only 1 key, CSV may not be parsed correctly. Keys: %s",
+                list(row.keys()),
             )
-            print(f"DEBUG: First key value (first 200 chars): {str(list(row.values())[0])[:200]}")
+            logger.debug("First key value (first 200 chars): %s", str(list(row.values())[0])[:200])
             return None
 
         # Try to find date field (various names - check case-insensitive)
@@ -494,7 +509,7 @@ class RevolutCSVAdapter(BankAdapter):
                 continue
 
         # If all formats fail, log it for debugging
-        print(f"DEBUG: Could not parse date: '{date_str}'")
+        logger.debug("Could not parse date: %r", date_str)
         return None
 
     def normalize_transaction(self, raw: dict) -> TransactionData:

@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { revalidatePath, updateTag } from "next/cache";
 import { eq, and, count } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -90,7 +91,7 @@ export async function createCategory(
     updateTag(CACHE_TAGS.categories(userId));
     return { success: true, categoryId: inserted.id };
   } catch (error) {
-    console.error("Failed to create category:", error);
+    logger.error("Failed to create category", { error });
     return { success: false, error: "Failed to create category" };
   }
 }
@@ -193,7 +194,7 @@ export async function updateCategory(
     updateTag(CACHE_TAGS.categories(userId));
     return { success: true };
   } catch (error) {
-    console.error("Failed to update category:", error);
+    logger.error("Failed to update category", { error });
     return { success: false, error: "Failed to update category" };
   }
 }
@@ -251,7 +252,7 @@ export async function deleteCategory(
     updateTag(CACHE_TAGS.categories(userId));
     return { success: true };
   } catch (error) {
-    console.error("Failed to delete category:", error);
+    logger.error("Failed to delete category", { error });
     return { success: false, error: "Failed to delete category" };
   }
 }
@@ -369,7 +370,7 @@ export async function getCategoryTransactionCount(
 
     return { count: result[0]?.count ?? 0 };
   } catch (error) {
-    console.error("Failed to count category transactions:", error);
+    logger.error("Failed to count category transactions", { error });
     return { count: 0, error: "Failed to count transactions" };
   }
 }
@@ -469,7 +470,7 @@ export async function deleteCategoryWithReassignment(
 
     return { success: true, reassignedCount };
   } catch (error) {
-    console.error("Failed to delete category:", error);
+    logger.error("Failed to delete category", { error });
     return { success: false, error: "Failed to delete category" };
   }
 }
