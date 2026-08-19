@@ -46,7 +46,7 @@ function AccountCell({
   return (
     <button
       onClick={handleClick}
-      className="mx-auto flex items-center justify-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground hover:underline"
+      className="flex items-center justify-start gap-1.5 text-muted-foreground transition-colors hover:text-foreground hover:underline md:mx-auto md:justify-center"
       style={{ maxWidth: `${maxWidth}px` }}
       title={accountName}
     >
@@ -57,7 +57,7 @@ function AccountCell({
         size="sm"
         className="!size-4"
       />
-      <span className="truncate text-center">{accountName}</span>
+      <span className="truncate md:text-center">{accountName}</span>
     </button>
   );
 }
@@ -75,14 +75,14 @@ function CategoryCell({
 
   if (!displayCategory) {
     return (
-      <div className="text-center text-muted-foreground">
+      <div className="text-muted-foreground md:text-center">
         {translate("uncategorized")}
       </div>
     );
   }
 
   return (
-    <div className="flex justify-center">
+    <div className="flex justify-start md:justify-center">
       <button
         type="button"
         className="inline-flex items-center px-2 py-0.5 text-xs text-white truncate transition-opacity hover:opacity-90"
@@ -352,13 +352,13 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       const account = row.original.account;
       if (!account) {
         return (
-          <div className="text-center text-muted-foreground">
+          <div className="text-muted-foreground md:text-center">
             {translate("unknown")}
           </div>
         );
       }
       return (
-        <div className="flex justify-center">
+        <div className="flex justify-start md:justify-center">
           <AccountCell
             accountId={account.id}
             accountName={account.name}

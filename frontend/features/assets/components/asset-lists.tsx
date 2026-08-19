@@ -91,18 +91,18 @@ export function AccountAssetList({
             {accounts.map((account) => (
               <div
                 key={account.id}
-                className="flex items-center justify-between py-4 first:pt-0 last:pb-0"
+                className="flex flex-col items-start gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <AccountLogo
                     name={account.name}
                     logoUrl={account.logo?.logoUrl}
                     updatedAt={account.logo?.updatedAt}
-                    className="!size-10"
+                    className="!size-10 shrink-0"
                   />
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium">{account.name}</p>
+                      <p className="truncate font-medium">{account.name}</p>
                       <OwnerBadges
                         entityType="account"
                         entityId={account.id}
@@ -111,7 +111,7 @@ export function AccountAssetList({
                         ownerIds={account.ownerIds}
                       />
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="truncate text-sm text-muted-foreground">
                       {labelFor(ACCOUNT_TYPES, account.accountType)}
                       {account.institution &&
                         translate("message2d7039", {
@@ -120,7 +120,7 @@ export function AccountAssetList({
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end sm:gap-4">
                   <div className="text-right">
                     <p className="font-medium">
                       {formatCurrency(account.balance, account.currency)}
@@ -199,13 +199,13 @@ export function PropertyAssetList({
                 key={property.id}
                 className="flex items-center justify-between py-4 first:pt-0 last:pb-0"
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded bg-muted">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-muted">
                     <RiHome4Line className="h-5 w-5 text-muted-foreground" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium">{property.name}</p>
+                      <p className="truncate font-medium">{property.name}</p>
                       <OwnerBadges
                         entityType="property"
                         entityId={property.id}
@@ -214,7 +214,7 @@ export function PropertyAssetList({
                         ownerIds={property.ownerIds}
                       />
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="truncate text-sm text-muted-foreground">
                       {labelFor(PROPERTY_TYPES, property.propertyType)}
                       {property.address &&
                         translate("message2d7039", {
@@ -267,13 +267,13 @@ export function VehicleAssetList({
                 key={vehicle.id}
                 className="flex items-center justify-between py-4 first:pt-0 last:pb-0"
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded bg-muted">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-muted">
                     <RiCarLine className="h-5 w-5 text-muted-foreground" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium">{vehicle.name}</p>
+                      <p className="truncate font-medium">{vehicle.name}</p>
                       <OwnerBadges
                         entityType="vehicle"
                         entityId={vehicle.id}
@@ -282,7 +282,7 @@ export function VehicleAssetList({
                         ownerIds={vehicle.ownerIds}
                       />
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="truncate text-sm text-muted-foreground">
                       {labelFor(VEHICLE_TYPES, vehicle.vehicleType)}
                       {vehicle.make &&
                         translate("message2d7039", { value1: vehicle.make })}

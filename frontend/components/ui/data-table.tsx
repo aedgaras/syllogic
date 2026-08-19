@@ -235,6 +235,18 @@ export function DataTable<TData, TValue>({
                     <dl className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
                       {secondaryCells.map((cell) => {
                         const meta = cell.column.columnDef.meta;
+                        const cellDef = cell.column.columnDef.cell;
+                        const cellContent =
+                          typeof cellDef === "function"
+                            ? cellDef(cell.getContext())
+                            : flexRender(cellDef, cell.getContext());
+                        if (
+                          cellContent === null ||
+                          cellContent === undefined ||
+                          cellContent === ""
+                        ) {
+                          return null;
+                        }
                         const label =
                           meta?.mobileLabel ??
                           (typeof cell.column.columnDef.header === "string"
@@ -252,10 +264,7 @@ export function DataTable<TData, TValue>({
                                 meta?.mobileClassName,
                               )}
                             >
-                              {flexRender(
-                                cell.column.columnDef.cell,
-                                cell.getContext(),
-                              )}
+                              {cellContent}
                             </dd>
                           </div>
                         );

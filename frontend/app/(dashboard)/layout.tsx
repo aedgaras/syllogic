@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { JetBrains_Mono } from "next/font/google";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { getOnboardingRedirectPath } from "@/lib/actions/onboarding";
 import { getCachedSession, getCachedOnboardingStatus } from "@/lib/data/cached";
@@ -50,7 +51,9 @@ export default async function DashboardLayout({
     <SidebarProvider defaultOpen={defaultSidebarOpen}>
       <WalkthroughProvider>
         <AppSidebar initialUser={session.user} />
-        <SidebarInset className={jbMono.variable}>{children}</SidebarInset>
+        <SidebarInset className={cn(jbMono.variable, "pb-24 md:pb-0")}>
+          {children}
+        </SidebarInset>
         <ImportStatusNotifier />
         <MobileAddTransactionFab />
       </WalkthroughProvider>

@@ -85,3 +85,5 @@ deploy/railway/V1_TO_V2_MIGRATION.md
 .claude/scheduled_tasks.lock
 
 */.venv/*
+
+frontend/test-results

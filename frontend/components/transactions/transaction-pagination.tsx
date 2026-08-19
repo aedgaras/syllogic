@@ -77,7 +77,7 @@ export function TransactionPagination({
   };
 
   return (
-    <div className="flex items-center justify-between py-4">
+    <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-4">
         <p className="text-xs text-muted-foreground">
           {selectedRows > 0 ? (
@@ -95,7 +95,7 @@ export function TransactionPagination({
         </p>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-3 sm:justify-end">
         <div className="flex items-center gap-2">
           <p className="text-xs text-muted-foreground">
             {translate("rowsPerPage")}
@@ -127,7 +127,7 @@ export function TransactionPagination({
           <Button
             variant="outline"
             size="icon"
-            className="h-7 w-7"
+            className="hidden h-7 w-7 sm:inline-flex"
             onClick={() => goToPage(1)}
             disabled={!canPrevious}
           >
@@ -154,7 +154,7 @@ export function TransactionPagination({
           <Button
             variant="outline"
             size="icon"
-            className="h-7 w-7"
+            className="hidden h-7 w-7 sm:inline-flex"
             onClick={() => goToPage(pageCount)}
             disabled={!canNext}
           >
