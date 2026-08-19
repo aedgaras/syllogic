@@ -21,6 +21,8 @@ export interface BudgetViewModel {
   spent: number;
   status: BudgetStatus;
   percentage: number;
+  projectedSpend: number;
+  projectedStatus: BudgetStatus;
 }
 
 export interface BudgetCategoryInput {
@@ -54,7 +56,10 @@ export interface BudgetCategoryDetail extends BudgetCategoryRef {
   weight: number | null;
 }
 
-export interface BudgetDetailViewModel extends Omit<BudgetViewModel, "categories"> {
+export interface BudgetDetailViewModel extends Omit<
+  BudgetViewModel,
+  "categories"
+> {
   categories: BudgetCategoryDetail[];
 }
 

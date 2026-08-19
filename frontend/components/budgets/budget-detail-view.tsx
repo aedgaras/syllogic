@@ -73,6 +73,16 @@ export function BudgetDetailView({ budget }: BudgetDetailViewProps) {
             {Math.round(budget.percentage)}%
           </span>
         </div>
+        {budget.isActive && budget.projectedStatus !== budget.status && (
+          <div className={cn("text-xs", statusClasses[budget.projectedStatus])}>
+            {translate("projectedByPeriodEnd", {
+              value1: formatCurrency(budget.projectedSpend, budget.currency, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              }),
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">

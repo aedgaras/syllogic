@@ -5,6 +5,8 @@ import { KpiSparkCard } from "@/components/charts/kpi-spark-card";
 import { ProfitLossChart } from "@/components/charts/profit-loss-chart";
 import { SpendingByCategoryChart } from "@/components/charts/spending-by-category-chart";
 import { SankeyFlowChart } from "@/components/charts/sankey-flow-chart";
+import { ForecastChart } from "@/components/charts/forecast-chart";
+import { ProjectedBalanceKpiCard } from "@/components/charts/projected-balance-kpi-card";
 import { AssetsOverviewCard } from "@/components/assets";
 import { PortfolioSummaryCard } from "@/components/investments/PortfolioSummaryCard";
 import { DashboardFilters } from "@/components/dashboard/dashboard-filters";
@@ -94,7 +96,7 @@ async function DashboardContent({
       </div>
 
       {/* Row 1: KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <div data-walkthrough="walkthrough-balance">
           <KpiSparkCard
             title={translate("totalBalance")}
@@ -140,6 +142,12 @@ async function DashboardContent({
             }
           />
         </div>
+        <div>
+          <ProjectedBalanceKpiCard
+            currency={data.balance.currency}
+            accountIds={accountIds}
+          />
+        </div>
       </div>
 
       {/* Row 2: Charts */}
@@ -169,6 +177,14 @@ async function DashboardContent({
             horizon={effectiveHorizon}
           />
         </div>
+      </div>
+
+      {/* Row 2.5: Cash Flow Forecast */}
+      <div className="grid gap-4">
+        <ForecastChart
+          currency={data.balance.currency}
+          accountIds={accountIds}
+        />
       </div>
 
       {/* Row 3: Cash Flow Sankey */}

@@ -147,6 +147,20 @@ export function BudgetProgressRow({
           {Math.round(budget.percentage)}%
         </span>
       </div>
+
+      {/* Only worth a line when the pace forecast disagrees with today's
+          status — e.g. still on_track now but projected to bust by period
+          end. If they agree, the percentage above already says it all. */}
+      {budget.isActive && budget.projectedStatus !== budget.status && (
+        <div className={cn("text-xs", statusClasses[budget.projectedStatus])}>
+          {translate("projectedByPeriodEnd", {
+            value1: formatCurrency(budget.projectedSpend, budget.currency, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            }),
+          })}
+        </div>
+      )}
     </div>
   );
 }

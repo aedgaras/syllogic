@@ -13,7 +13,12 @@ import {
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth-helpers";
 import { computeBudgetStatus } from "@/features/budgets/domain/status";
-import { getCurrentPeriodRange } from "@/features/budgets/domain/period";
+import { projectBudgetPace } from "@/features/budgets/domain/pace";
+import {
+  daysElapsedInRange,
+  daysInRange,
+  getCurrentPeriodRange,
+} from "@/features/budgets/domain/period";
 import { validateBudgetInput } from "@/features/budgets/domain/validation";
 import type {
   BudgetCreateInput,
@@ -171,9 +176,23 @@ async function computeSpentByBudgetId(
 function toBudgetViewModel(
   budget: BudgetWithCategories,
   spent: number,
+  now: Date = new Date(),
 ): BudgetViewModel {
   const amount = parseFloat(budget.amount);
   const percentage = amount > 0 ? (spent / amount) * 100 : 0;
+
+  const range = getCurrentPeriodRange(
+    budget.period as BudgetPeriod,
+    budget.startDate ? new Date(budget.startDate) : null,
+    now,
+  );
+  const pace = projectBudgetPace(
+    spent,
+    daysElapsedInRange(range, now),
+    daysInRange(range),
+    amount,
+  );
+
   return {
     id: budget.id,
     name: budget.name,
@@ -190,6 +209,8 @@ function toBudgetViewModel(
     spent,
     status: computeBudgetStatus(spent, amount),
     percentage,
+    projectedSpend: pace.projectedSpend,
+    projectedStatus: pace.projectedStatus,
   };
 }
 

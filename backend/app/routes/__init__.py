@@ -16,6 +16,7 @@ from app.routes import (
     app_settings,
     llm,
     receipt_scan,
+    forecast,
 )
 
 api_router = APIRouter()
@@ -36,3 +37,4 @@ api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(app_settings.router, prefix="/app-settings", tags=["app-settings"])
 api_router.include_router(llm.router, prefix="/llm", tags=["llm"])
 api_router.include_router(receipt_scan.router, prefix="/receipt-scan", tags=["receipt-scan"])
+api_router.include_router(forecast.router, prefix="/forecast", tags=["forecast"])

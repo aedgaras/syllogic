@@ -2,6 +2,7 @@ import {
   addMonths,
   addWeeks,
   addYears,
+  differenceInCalendarDays,
   getDay,
   startOfMonth,
   startOfWeek,
@@ -38,4 +39,17 @@ export function getCurrentPeriodRange(
       return { start, end: addMonths(start, 1) };
     }
   }
+}
+
+/** Total number of days in a half-open [start, end) period range. */
+export function daysInRange(range: PeriodRange): number {
+  return differenceInCalendarDays(range.end, range.start);
+}
+
+/** Days elapsed so far, inclusive of today, clamped to the period's length. */
+export function daysElapsedInRange(range: PeriodRange, now: Date): number {
+  return Math.min(
+    differenceInCalendarDays(now, range.start) + 1,
+    daysInRange(range),
+  );
 }
