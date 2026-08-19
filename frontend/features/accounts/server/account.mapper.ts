@@ -9,12 +9,18 @@ interface AccountRow {
   provider: string | null;
   startingBalance: string | null;
   functionalBalance: string | null;
-  lastSyncedAt: Date | null;
+  lastSyncedAt: Date | string | null;
   logo?: {
     id: string;
     logoUrl: string | null;
-    updatedAt?: Date | null;
+    updatedAt?: Date | string | null;
   } | null;
+}
+
+// unstable_cache round-trips cached rows through JSON, so Date fields come
+// back as ISO strings on a cache hit even though a fresh DB read gives Date.
+function toISOStringSafe(value: Date | string | null | undefined) {
+  return value ? new Date(value).toISOString() : null;
 }
 
 export function toAccountViewModel(row: AccountRow): AccountViewModel {
@@ -27,12 +33,12 @@ export function toAccountViewModel(row: AccountRow): AccountViewModel {
     provider: row.provider,
     startingBalance: row.startingBalance ?? "0",
     functionalBalance: row.functionalBalance ?? "0",
-    lastSyncedAt: row.lastSyncedAt?.toISOString() ?? null,
+    lastSyncedAt: toISOStringSafe(row.lastSyncedAt),
     logo: row.logo
       ? {
           id: row.logo.id,
           logoUrl: row.logo.logoUrl,
-          updatedAt: row.logo.updatedAt?.toISOString() ?? null,
+          updatedAt: toISOStringSafe(row.logo.updatedAt),
         }
       : null,
   };
