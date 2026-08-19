@@ -1,9 +1,8 @@
 "use server";
 
-import { and, eq, isNull } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { accounts } from "@/lib/db/schema";
+import { requireAuth } from "@/lib/auth-helpers";
 import { searchLogo } from "@/lib/actions/logos";
+import { setAccountLogoIfMissingViaBackend } from "./account-logos.gateway";
 
 function hasLogoDevApiKey(): boolean {
   // Use bracket access to avoid build-time env inlining in Next.js server bundles.
@@ -39,34 +38,9 @@ function toLogoData(
   };
 }
 
-async function getPersistedAccountLogo(accountId: string): Promise<{
-  logoId: string | null;
-  logo: AccountLogoData | null;
-}> {
-  const persisted = await db.query.accounts.findFirst({
-    where: eq(accounts.id, accountId),
-    columns: {
-      logoId: true,
-    },
-    with: {
-      logo: {
-        columns: {
-          id: true,
-          logoUrl: true,
-          updatedAt: true,
-        },
-      },
-    },
-  });
-
-  return {
-    logoId: persisted?.logoId ?? null,
-    logo: toLogoData(persisted?.logo),
-  };
-}
-
 async function resolveSingleAccountLogo<T extends AccountLogoCandidate>(
   account: T,
+  userId: string | null,
   logoSearches?: Map<string, Promise<LogoSearchResult>>,
 ): Promise<T & { logoId: string | null; logo: AccountLogoData | null }> {
   if (account.logoId) {
@@ -77,7 +51,7 @@ async function resolveSingleAccountLogo<T extends AccountLogoCandidate>(
     };
   }
 
-  if (!hasLogoDevApiKey() || !account.institution?.trim()) {
+  if (!userId || !hasLogoDevApiKey() || !account.institution?.trim()) {
     return {
       ...account,
       logoId: null,
@@ -102,31 +76,11 @@ async function resolveSingleAccountLogo<T extends AccountLogoCandidate>(
     };
   }
 
-  const now = new Date();
-  const [updated] = await db
-    .update(accounts)
-    .set({
-      logoId: result.logo.id,
-      updatedAt: now,
-    })
-    .where(and(eq(accounts.id, account.id), isNull(accounts.logoId)))
-    .returning({
-      id: accounts.id,
-    });
-
-  if (updated) {
-    return {
-      ...account,
-      logoId: result.logo.id,
-      logo: toLogoData({
-        id: result.logo.id,
-        logoUrl: result.logo.logoUrl ?? null,
-        updatedAt: result.logo.updatedAt ?? now,
-      }),
-    };
-  }
-
-  const persisted = await getPersistedAccountLogo(account.id);
+  const persisted = await setAccountLogoIfMissingViaBackend(
+    userId,
+    account.id,
+    result.logo.id,
+  );
   return {
     ...account,
     logoId: persisted.logoId,
@@ -139,10 +93,11 @@ export async function resolveMissingAccountLogos<
 >(
   accountsToResolve: T[],
 ): Promise<Array<T & { logoId: string | null; logo: AccountLogoData | null }>> {
+  const userId = await requireAuth();
   const logoSearches = new Map<string, Promise<LogoSearchResult>>();
   return Promise.all(
     accountsToResolve.map((account) =>
-      resolveSingleAccountLogo(account, logoSearches),
+      resolveSingleAccountLogo(account, userId, logoSearches),
     ),
   );
 }
@@ -150,5 +105,6 @@ export async function resolveMissingAccountLogos<
 export async function resolveMissingAccountLogo<T extends AccountLogoCandidate>(
   account: T,
 ): Promise<T & { logoId: string | null; logo: AccountLogoData | null }> {
-  return resolveSingleAccountLogo(account);
+  const userId = await requireAuth();
+  return resolveSingleAccountLogo(account, userId);
 }

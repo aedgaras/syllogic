@@ -20,8 +20,9 @@ export interface AccountRecalculationDependencies {
     userId: string,
     accountId: string,
   ): Promise<AccountBalanceRecord | undefined>;
-  transactionSum(accountId: string): Promise<number>;
+  transactionSum(userId: string, accountId: string): Promise<number>;
   updateBalances(
+    userId: string,
     accountId: string,
     values: { startingBalance?: number; functionalBalance: number },
   ): Promise<void>;
@@ -40,9 +41,9 @@ export async function recalculateStartingBalanceUseCase(
   }
   const newStartingBalance = calculateStartingBalance(
     input.knownCurrentBalance,
-    await dependencies.transactionSum(input.accountId),
+    await dependencies.transactionSum(input.userId, input.accountId),
   );
-  await dependencies.updateBalances(input.accountId, {
+  await dependencies.updateBalances(input.userId, input.accountId, {
     startingBalance: newStartingBalance,
     functionalBalance: input.knownCurrentBalance,
   });
@@ -64,10 +65,10 @@ export async function recalculateAccountTimeseriesUseCase(
     input.accountId,
     input.userId,
   );
-  await dependencies.updateBalances(input.accountId, {
+  await dependencies.updateBalances(input.userId, input.accountId, {
     functionalBalance: calculateBalance(
       Number.parseFloat(account.startingBalance ?? "0"),
-      await dependencies.transactionSum(input.accountId),
+      await dependencies.transactionSum(input.userId, input.accountId),
     ),
   });
   return {

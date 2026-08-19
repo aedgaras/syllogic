@@ -425,7 +425,7 @@ def get_account_balances(
             balance = float(balance)
         else:
             # No date or category filters, use current balance
-            balance = float(account.balance_current)
+            balance = float(account.functional_balance or 0)
 
         result.append(
             {

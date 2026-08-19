@@ -7,12 +7,13 @@ import { logger } from "@/lib/logger";
 
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { accounts, users } from "@/lib/db/schema";
+import { users } from "@/lib/db/schema";
 import { getAuthenticatedSession } from "@/lib/auth-helpers";
 import { resolveMissingAccountLogos } from "@/lib/actions/account-logos";
 import { fetchCategoriesViaBackend } from "@/lib/actions/categories.gateway";
+import { listAccountsViaBackend } from "@/features/accounts/server/accounts-repository.gateway";
 import type {
   OnboardingStatus,
   OnboardingStatusResult,
@@ -55,17 +56,16 @@ export const getCachedUserCategories = cache(async () => {
 // ---------- Accounts (slim, for filter dropdowns) ----------
 
 async function fetchAccountsForUser(userId: string) {
-  return db
-    .select({
-      id: accounts.id,
-      name: accounts.name,
-      institution: accounts.institution,
-      accountType: accounts.accountType,
-      currency: accounts.currency,
-    })
-    .from(accounts)
-    .where(and(eq(accounts.userId, userId), eq(accounts.isActive, true)))
-    .orderBy(accounts.name);
+  const rows = await listAccountsViaBackend(userId, { includeInactive: false });
+  return rows
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      institution: row.institution,
+      accountType: row.accountType,
+      currency: row.currency,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 const getCachedAccountsByUser = (userId: string) =>
@@ -88,19 +88,8 @@ export const getCachedUserAccounts = cache(async () => {
 // ---------- Accounts (full, with logos — superset for getAccounts) ----------
 
 async function fetchFullAccountsForUser(userId: string) {
-  const accountRows = await db.query.accounts.findMany({
-    where: and(eq(accounts.userId, userId), eq(accounts.isActive, true)),
-    orderBy: (accounts, { asc }) => [asc(accounts.name)],
-    with: {
-      logo: {
-        columns: {
-          id: true,
-          logoUrl: true,
-          updatedAt: true,
-        },
-      },
-    },
-  });
+  const accountRows = await listAccountsViaBackend(userId, { includeInactive: false });
+  accountRows.sort((a, b) => a.name.localeCompare(b.name));
   return resolveMissingAccountLogos(accountRows);
 }
 

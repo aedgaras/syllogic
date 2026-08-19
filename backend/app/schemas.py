@@ -17,15 +17,28 @@ class AccountBase(BaseModel):
 
 
 class AccountCreate(AccountBase):
-    pass
+    provider: Optional[str] = None
+    starting_balance: Optional[Decimal] = None
 
 
 class AccountUpdate(BaseModel):
     name: Optional[str] = None
+    account_type: Optional[str] = None
     institution: Optional[str] = None
-    balance_current: Optional[Decimal] = None
+    currency: Optional[str] = None
+    starting_balance: Optional[Decimal] = None
+    functional_balance: Optional[Decimal] = None
+    logo_id: Optional[UUID] = None
     is_active: Optional[bool] = None
     alias_patterns: list[str] = Field(default_factory=list)
+
+
+class AccountLogoSchema(BaseModel):
+    id: UUID
+    logo_url: Optional[str] = None
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AccountResponse(AccountBase):
@@ -34,10 +47,59 @@ class AccountResponse(AccountBase):
     alias_patterns: list[str] = Field(default_factory=list)
     provider: Optional[str] = None
     external_id: Optional[str] = None
+    logo_id: Optional[UUID] = None
+    logo: Optional[AccountLogoSchema] = None
+    starting_balance: Decimal = Decimal("0")
+    functional_balance: Optional[Decimal] = None
+    balance_is_anchored: bool = False
+    last_synced_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class RecalculateBalancesFromDateRequest(BaseModel):
+    from_date: datetime
+    starting_balance: Decimal
+    exclude_transaction_id: Optional[UUID] = None
+
+
+class AccountLogoSetRequest(BaseModel):
+    logo_id: UUID
+
+
+class AccountLogoResponse(BaseModel):
+    logo_id: Optional[UUID] = None
+    logo: Optional[AccountLogoSchema] = None
+
+
+class AccountLogoSetResponse(AccountLogoResponse):
+    applied: bool
+
+
+class AccountHardDeleteResponse(BaseModel):
+    deleted_balances: int
+    deleted_transactions: int
+
+
+class AccountBalancePointResponse(BaseModel):
+    date: datetime
+    balance_in_account_currency: Decimal
+    balance_in_functional_currency: Decimal
+
+
+class DailyTransactionChangeResponse(BaseModel):
+    date: str
+    amount: Decimal
+
+
+class TransactionSumResponse(BaseModel):
+    total: Decimal
+
+
+class EarliestTransactionDateResponse(BaseModel):
+    date: Optional[datetime] = None
 
 
 # Category Schemas

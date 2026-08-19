@@ -52,11 +52,11 @@ export async function getAccountBalanceHistory(
     startDate.setDate(startDate.getDate() - days);
     startDate.setHours(0, 0, 0, 0);
   } else {
-    startDate = await getEarliestTransactionDate(accountId);
+    startDate = await getEarliestTransactionDate(userId, accountId);
     startDate?.setHours(0, 0, 0, 0);
   }
 
-  const stored = await getStoredBalanceHistory(accountId, startDate);
+  const stored = await getStoredBalanceHistory(userId, accountId, startDate);
   if (stored.length > 0) {
     return stored.reverse().map((point) => ({
       date: point.date.toISOString().slice(0, 10),
@@ -67,8 +67,8 @@ export async function getAccountBalanceHistory(
   const effectiveStart = startDate ?? new Date();
   effectiveStart.setHours(0, 0, 0, 0);
   const [priorSum, changes] = await Promise.all([
-    getTransactionSumBefore(accountId, effectiveStart),
-    getDailyTransactionChanges(accountId, effectiveStart),
+    getTransactionSumBefore(userId, accountId, effectiveStart),
+    getDailyTransactionChanges(userId, accountId, effectiveStart),
   ]);
   return buildBalanceHistory(
     effectiveStart,

@@ -9,12 +9,13 @@ Handles:
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 from typing import Dict, Optional, List, Set
+from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 import logging
 import traceback
 
-from app.models import Account, Transaction, User, ExchangeRate, AccountBalance
+from app.models import Account, Category, Transaction, User, ExchangeRate, AccountBalance
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,118 @@ class AccountBalanceService:
 
     def __init__(self, db: Session):
         self.db = db
+
+    def recalculate_from_date(
+        self,
+        account_id: UUID,
+        from_date: datetime,
+        starting_balance: Decimal,
+        exclude_transaction_id: Optional[UUID] = None,
+    ) -> None:
+        """
+        Recompute daily account_balances snapshots from from_date onward.
+
+        Stops at the earlier of:
+        - The day before the next "Balancing Transfer" transaction after from_date
+          (exclusive - a balancing transfer defines a new known-good anchor, so
+          recalculation must not overwrite balances on/after it)
+        - The most recent date already in account_balances (if no balancing
+          transfer is ahead), or today if that date is before from_date
+
+        Port of the frontend's recalculateAccountBalancesFromDate — this is the
+        shared primitive every mutation that changes an account's transaction
+        history (transfer, interest, edit, delete, balancing entry) calls
+        afterward to keep the daily snapshot table consistent. Caller is
+        responsible for committing.
+        """
+        start_date = datetime(from_date.year, from_date.month, from_date.day)
+
+        account = self.db.query(Account).filter(Account.id == account_id).first()
+        if not account:
+            logger.error("Account not found for balance recalculation: %s", account_id)
+            return
+
+        balancing_category = (
+            self.db.query(Category)
+            .filter(Category.user_id == account.user_id, Category.name == "Balancing Transfer")
+            .first()
+        )
+
+        next_balancing_transfer_date: Optional[datetime] = None
+        if balancing_category:
+            query = self.db.query(Transaction).filter(
+                Transaction.account_id == account_id,
+                Transaction.category_id == balancing_category.id,
+                Transaction.booked_at > from_date,
+            )
+            if exclude_transaction_id:
+                query = query.filter(Transaction.id != exclude_transaction_id)
+            next_balancing_transfer = query.order_by(Transaction.booked_at.asc()).first()
+            if next_balancing_transfer:
+                next_balancing_transfer_date = next_balancing_transfer.booked_at
+
+        most_recent_balance = (
+            self.db.query(AccountBalance)
+            .filter(AccountBalance.account_id == account_id)
+            .order_by(desc(AccountBalance.date))
+            .first()
+        )
+
+        today = datetime.utcnow().replace(hour=23, minute=59, second=59, microsecond=999000)
+
+        if next_balancing_transfer_date:
+            end_date = (next_balancing_transfer_date - timedelta(days=1)).replace(
+                hour=23, minute=59, second=59, microsecond=999000
+            )
+        elif most_recent_balance:
+            most_recent_date = most_recent_balance.date.replace(
+                hour=23, minute=59, second=59, microsecond=999000
+            )
+            end_date = most_recent_date if most_recent_date >= start_date else today
+        else:
+            end_date = today
+
+        if end_date > today:
+            end_date = today
+
+        current_date = start_date
+        while current_date <= end_date:
+            end_of_day = current_date.replace(hour=23, minute=59, second=59, microsecond=999000)
+
+            balance_query = self.db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
+                Transaction.account_id == account_id,
+                Transaction.booked_at <= end_of_day,
+            )
+            if exclude_transaction_id:
+                balance_query = balance_query.filter(Transaction.id != exclude_transaction_id)
+            transaction_sum = balance_query.scalar() or Decimal("0")
+            balance_on_date = (starting_balance + transaction_sum).quantize(Decimal("0.01"))
+
+            date_for_storage = current_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+            existing = (
+                self.db.query(AccountBalance)
+                .filter(
+                    AccountBalance.account_id == account_id,
+                    AccountBalance.date == date_for_storage,
+                )
+                .first()
+            )
+            if existing:
+                existing.balance_in_account_currency = balance_on_date
+                existing.balance_in_functional_currency = balance_on_date
+                existing.updated_at = datetime.utcnow()
+            else:
+                self.db.add(
+                    AccountBalance(
+                        account_id=account_id,
+                        date=date_for_storage,
+                        balance_in_account_currency=balance_on_date,
+                        balance_in_functional_currency=balance_on_date,
+                    )
+                )
+
+            current_date += timedelta(days=1)
 
     def calculate_account_balances(self, user_id: str, account_ids: Optional[list] = None) -> Dict:
         """

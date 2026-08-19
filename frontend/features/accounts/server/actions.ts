@@ -85,7 +85,7 @@ export async function updateAccount(
     if (!(await findOwnedAccount(userId, accountId))) {
       return { success: false, error: "Account not found" };
     }
-    await updateOwnedAccount(accountId, input);
+    await updateOwnedAccount(userId, accountId, input);
     invalidateAccounts(userId, [
       "/assets",
       "/accounts",
@@ -108,7 +108,7 @@ export async function deleteAccount(accountId: string) {
     if (!(await findOwnedAccount(userId, accountId))) {
       return { success: false, error: "Account not found" };
     }
-    await deactivateAccount(accountId);
+    await deactivateAccount(userId, accountId);
     invalidateAccounts(userId, ["/settings", "/assets", "/"]);
     return { success: true };
   } catch (error) {
@@ -170,7 +170,7 @@ export async function getAccountBalanceOnDate(
   if (!userId) return { balance: 0, found: false };
   const account = await findOwnedAccount(userId, accountId);
   if (!account) return { balance: 0, found: false };
-  const stored = await getLatestStoredBalance(accountId, date);
+  const stored = await getLatestStoredBalance(userId, accountId, date);
   if (stored) {
     return {
       balance: Number.parseFloat(stored.balanceInAccountCurrency),
@@ -182,7 +182,7 @@ export async function getAccountBalanceOnDate(
   return {
     balance: calculateBalance(
       Number.parseFloat(account.startingBalance ?? "0"),
-      await getTransactionSum(accountId, endOfDay),
+      await getTransactionSum(userId, accountId, endOfDay),
     ),
     found: true,
   };

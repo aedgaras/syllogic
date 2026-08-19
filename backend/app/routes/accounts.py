@@ -1,23 +1,40 @@
 import re
+from datetime import datetime
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import desc, func, or_, update as sa_update
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 from uuid import UUID
 
 from app.database import get_db
-from app.models import Account, Transaction
+from app.models import (
+    Account,
+    AccountBalance,
+    RecurringTransaction,
+    SubscriptionSuggestion,
+    Transaction,
+)
 from app.db_helpers import get_user_id
-from app.schemas import AccountCreate, AccountResponse, AccountUpdate
+from app.schemas import (
+    AccountCreate,
+    AccountHardDeleteResponse,
+    AccountLogoResponse,
+    AccountLogoSetRequest,
+    AccountLogoSetResponse,
+    AccountResponse,
+    AccountUpdate,
+    RecalculateBalancesFromDateRequest,
+)
 from app.security.data_encryption import (
     blind_index,
     blind_index_candidates,
     decrypt_with_fallback,
     encrypt_value,
 )
+from app.services.account_balance_service import AccountBalanceService
 from app.services.internal_transfer_service import InternalTransferService
 
 router = APIRouter()
@@ -180,6 +197,12 @@ def _serialize_account(account: Account) -> AccountResponse:
         alias_patterns=account.alias_patterns or [],
         provider=account.provider,
         external_id=decrypt_with_fallback(account.external_id_ciphertext, account.external_id),
+        logo_id=account.logo_id,
+        logo=account.logo,
+        starting_balance=account.starting_balance or Decimal("0"),
+        functional_balance=account.functional_balance,
+        balance_is_anchored=bool(account.balance_is_anchored),
+        last_synced_at=account.last_synced_at,
         created_at=account.created_at,
         updated_at=account.updated_at,
     )
@@ -239,6 +262,50 @@ def get_account(account_id: UUID, user_id: Optional[str] = None, db: Session = D
     return _serialize_account(account)
 
 
+@router.get("/{account_id}/logo", response_model=AccountLogoResponse)
+def get_account_logo(
+    account_id: UUID,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    """Read an account's currently persisted company logo, if any."""
+    account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return AccountLogoResponse(logo_id=account.logo_id, logo=account.logo)
+
+
+@router.patch("/{account_id}/logo", response_model=AccountLogoSetResponse)
+def set_account_logo_if_missing(
+    account_id: UUID,
+    payload: AccountLogoSetRequest,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    """Persist a resolved company logo onto an account without ever
+    overwriting one that's already set.
+
+    Uses a conditional `UPDATE ... WHERE logo_id IS NULL` so the guard is
+    enforced atomically at the DB layer (matches the frontend's prior
+    Drizzle `isNull(accounts.logoId)` guard) rather than a read-then-write
+    race in application code. Always returns the final persisted state,
+    whether this call applied it or a concurrent request already had.
+    """
+    account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    result = db.execute(
+        sa_update(Account)
+        .where(Account.id == account_id, Account.logo_id.is_(None))
+        .values(logo_id=payload.logo_id)
+    )
+    applied = result.rowcount > 0
+    db.commit()
+    db.refresh(account)
+    return AccountLogoSetResponse(applied=applied, logo_id=account.logo_id, logo=account.logo)
+
+
 @router.post("/", response_model=AccountResponse, status_code=201)
 def create_account(
     account: AccountCreate, user_id: Optional[str] = None, db: Session = Depends(get_db)
@@ -247,6 +314,11 @@ def create_account(
     user_id = get_user_id(user_id)
     account_data = account.model_dump()
     account_data["user_id"] = user_id
+    # A manual account's functional_balance starts equal to its starting
+    # balance (no transactions yet) — mirrors the frontend's prior
+    # insertManualAccount, which set both to the same value.
+    if account_data.get("starting_balance") is not None:
+        account_data["functional_balance"] = account_data["starting_balance"]
     db_account = Account(**account_data)
     db.add(db_account)
     db.commit()
@@ -310,6 +382,56 @@ def delete_account(
     return None
 
 
+@router.post("/{account_id}/hard-delete", response_model=AccountHardDeleteResponse)
+def hard_delete_account(
+    account_id: UUID,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    """Permanently delete an account and everything scoped to it.
+
+    Separate from the plain ``DELETE /{account_id}`` above (which stays at
+    204/no-body — existing callers depend on that exact contract) because
+    this also hard-deletes ``RecurringTransaction`` and
+    ``SubscriptionSuggestion`` rows for the account: their FKs are
+    ``ON DELETE SET NULL``, not CASCADE, so left alone they'd survive as
+    orphaned rows instead of being removed the way the frontend's prior
+    Drizzle ``permanentlyDeleteAccount`` did. Returns counts so the caller
+    can surface how much was removed.
+    """
+    account = (
+        db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).one_or_none()
+    )
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    InternalTransferService(db, user_id=user_id).unlink_all_for_pocket(account_id)
+
+    db.query(RecurringTransaction).filter(
+        RecurringTransaction.account_id == account_id, RecurringTransaction.user_id == user_id
+    ).delete(synchronize_session=False)
+    db.query(SubscriptionSuggestion).filter(
+        SubscriptionSuggestion.account_id == account_id, SubscriptionSuggestion.user_id == user_id
+    ).delete(synchronize_session=False)
+
+    deleted_balances = (
+        db.query(AccountBalance)
+        .filter(AccountBalance.account_id == account_id)
+        .delete(synchronize_session=False)
+    )
+    deleted_transactions = (
+        db.query(Transaction)
+        .filter(Transaction.account_id == account_id, Transaction.user_id == user_id)
+        .delete(synchronize_session=False)
+    )
+
+    db.delete(account)
+    db.commit()
+    return AccountHardDeleteResponse(
+        deleted_balances=deleted_balances, deleted_transactions=deleted_transactions
+    )
+
+
 @router.delete("/cleanup/revolut-default", status_code=200)
 def delete_revolut_default_accounts(user_id: Optional[str] = None, db: Session = Depends(get_db)):
     """
@@ -368,7 +490,7 @@ def recalculate_account_balance(
         or 0
     )
 
-    account.balance_current = balance_sum
+    account.functional_balance = balance_sum
     db.commit()
     db.refresh(account)
 
@@ -376,7 +498,7 @@ def recalculate_account_balance(
         "message": f"Recalculated balance for '{account.name}'",
         "account_id": str(account.id),
         "account_name": account.name,
-        "new_balance": float(account.balance_current),
+        "new_balance": float(account.functional_balance),
         "currency": account.currency,
     }
 
@@ -450,8 +572,6 @@ def recalculate_account_timeseries(
     - Converts to functional currency using date-specific exchange rates
     - Updates existing records or creates new ones
     """
-    from app.services.account_balance_service import AccountBalanceService
-
     user_id = get_user_id(user_id)
 
     # Verify account exists and belongs to user
@@ -474,6 +594,159 @@ def recalculate_account_timeseries(
         "records_stored": result.get("total_records_stored", 0),
         "currency": account.currency,
     }
+
+
+@router.post("/{account_id}/recalculate-balances-from-date", status_code=200)
+def recalculate_balances_from_date(
+    account_id: UUID,
+    payload: RecalculateBalancesFromDateRequest,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    """Recompute daily account_balances snapshots from a given date onward.
+
+    Shared primitive called after any mutation that changes an account's
+    transaction history (transfer, interest, edit, delete, balancing entry).
+    See ``AccountBalanceService.recalculate_from_date`` for the boundary
+    logic (stops before the next balancing transfer, or at the latest
+    existing snapshot / today).
+    """
+    account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    AccountBalanceService(db).recalculate_from_date(
+        account_id,
+        payload.from_date,
+        payload.starting_balance,
+        payload.exclude_transaction_id,
+    )
+    db.commit()
+    return {"message": "Balances recalculated"}
+
+
+@router.get("/{account_id}/transaction-sum")
+def get_transaction_sum(
+    account_id: UUID,
+    through: Optional[datetime] = None,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    query = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
+        Transaction.account_id == account_id
+    )
+    if through:
+        query = query.filter(Transaction.booked_at <= through)
+    total = query.scalar() or Decimal("0")
+    return {"total": float(total)}
+
+
+@router.get("/{account_id}/transaction-sum-before")
+def get_transaction_sum_before(
+    account_id: UUID,
+    date: datetime,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    total = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
+        Transaction.account_id == account_id, Transaction.booked_at < date
+    ).scalar() or Decimal("0")
+    return {"total": float(total)}
+
+
+@router.get("/{account_id}/earliest-transaction-date")
+def get_earliest_transaction_date(
+    account_id: UUID,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    earliest = (
+        db.query(func.min(Transaction.booked_at))
+        .filter(Transaction.account_id == account_id)
+        .scalar()
+    )
+    return {"date": earliest.isoformat() if earliest else None}
+
+
+@router.get("/{account_id}/balance-history")
+def get_balance_history(
+    account_id: UUID,
+    since: Optional[datetime] = None,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    query = db.query(AccountBalance).filter(AccountBalance.account_id == account_id)
+    if since:
+        query = query.filter(AccountBalance.date >= since)
+    rows = query.order_by(desc(AccountBalance.date)).all()
+    return [
+        {
+            "date": row.date.isoformat(),
+            "balance_in_account_currency": float(row.balance_in_account_currency),
+            "balance_in_functional_currency": float(row.balance_in_functional_currency),
+        }
+        for row in rows
+    ]
+
+
+@router.get("/{account_id}/latest-stored-balance")
+def get_latest_stored_balance(
+    account_id: UUID,
+    date: datetime,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    row = (
+        db.query(AccountBalance)
+        .filter(AccountBalance.account_id == account_id, AccountBalance.date <= date)
+        .order_by(desc(AccountBalance.date))
+        .first()
+    )
+    if not row:
+        return None
+    return {
+        "date": row.date.isoformat(),
+        "balance_in_account_currency": float(row.balance_in_account_currency),
+        "balance_in_functional_currency": float(row.balance_in_functional_currency),
+    }
+
+
+@router.get("/{account_id}/daily-transaction-changes")
+def get_daily_transaction_changes(
+    account_id: UUID,
+    since: datetime,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    rows = (
+        db.query(
+            func.date(Transaction.booked_at).label("day"),
+            func.sum(Transaction.amount).label("amount"),
+        )
+        .filter(Transaction.account_id == account_id, Transaction.booked_at >= since)
+        .group_by(func.date(Transaction.booked_at))
+        .order_by(func.date(Transaction.booked_at))
+        .all()
+    )
+    return [{"date": str(row.day), "amount": float(row.amount)} for row in rows]
 
 
 @router.delete("/cleanup/empty-accounts", status_code=200)
@@ -531,7 +804,8 @@ def restore_seed_accounts(user_id: Optional[str] = None, db: Session = Depends(g
             "account_type": "checking",
             "institution": "Revolut",
             "currency": "EUR",
-            "balance_current": Decimal("3245.67"),
+            "starting_balance": Decimal("3245.67"),
+            "functional_balance": Decimal("3245.67"),
         },
         {
             "name": "Savings",
