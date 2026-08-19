@@ -11,11 +11,13 @@ import { AssetsOverviewCard } from "@/components/assets";
 import { PortfolioSummaryCard } from "@/components/investments/PortfolioSummaryCard";
 import { DashboardFilters } from "@/components/dashboard/dashboard-filters";
 import { SearchButton } from "@/components/dashboard/search-button";
+import { AiSummaryCard } from "@/components/dashboard/ai-summary-card";
 import {
   getDashboardData,
   getUserAccounts,
   type DashboardFilters as DashboardFiltersType,
 } from "@/lib/actions/dashboard";
+import { isAiSummaryEnabled } from "@/lib/actions/settings";
 import { parseDashboardSearchParams } from "@/lib/dashboard/query-params";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 
@@ -71,9 +73,10 @@ async function DashboardContent({
   filters.horizon = horizonValue;
 
   // Fetch data in parallel
-  const [data, accounts] = await Promise.all([
+  const [data, accounts, aiSummaryEnabled] = await Promise.all([
     getDashboardData(filters),
     getUserAccounts(),
+    isAiSummaryEnabled(),
   ]);
 
   const accountSubtitle = !accountIds?.length
@@ -94,6 +97,8 @@ async function DashboardContent({
         </Suspense>
         <SearchButton />
       </div>
+
+      {aiSummaryEnabled && <AiSummaryCard filters={filters} />}
 
       {/* Row 1: KPI Cards */}
       <div className="grid gap-4 md:grid-cols-5">

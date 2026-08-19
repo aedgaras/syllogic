@@ -616,7 +616,12 @@ export function AddTransactionDialog({
                     onValueChange={(v) => setCategoryId(v ?? "")}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={translate("selectACategory")} />
+                      <SelectValue placeholder={translate("selectACategory")}>
+                        {categoryId
+                          ? (filteredCategories.find((c) => c.id === categoryId)
+                              ?.name ?? translate("noCategory"))
+                          : translate("noCategory")}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">

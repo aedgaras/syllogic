@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.services.app_settings import get_ai_summary_enabled_status
 from app.services.llm_client import create_llm_clients, is_fallback_worthy_error
 
 
@@ -136,3 +137,95 @@ be AUTO, DOT_DECIMAL, or COMMA_DECIMAL. Default dateFormat to DD-MM-YYYY when un
         "LLM column mapping failed on every configured provider", exc_info=last_error
     )
     raise HTTPException(status_code=502, detail="LLM column mapping failed.") from last_error
+
+
+def _require_ai_summary_enabled(db: Session) -> None:
+    if not get_ai_summary_enabled_status(db)["enabled"]:
+        raise HTTPException(status_code=403, detail="AI summaries are disabled.")
+
+
+def _generate_narrative(prompt: str, db: Session, log_label: str) -> str:
+    """Send `prompt` to the configured LLM providers (primary then fallback)
+    and return the plain-text narrative response. Shared by the dashboard and
+    transactions summary endpoints — same provider-loop/fallback pattern as
+    map_csv_columns above, just returning text instead of parsed JSON."""
+    providers = create_llm_clients(db)
+    if not providers:
+        raise HTTPException(status_code=503, detail="LLM API is not configured.")
+
+    last_error: Exception | None = None
+    for client, model, label in providers:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0,
+            )
+            content = (response.choices[0].message.content or "").strip()
+            if not content:
+                raise ValueError("LLM response was empty")
+            if label != "primary":
+                logger.info("%s served by '%s' provider (model=%s)", log_label, label, model)
+            return content
+        except Exception as exc:
+            last_error = exc
+            logger.warning(
+                "%s via '%s' provider failed: %s: %s", log_label, label, type(exc).__name__, exc
+            )
+            if is_fallback_worthy_error(exc):
+                continue
+            break
+
+    logger.error("%s failed on every configured provider", log_label, exc_info=last_error)
+    raise HTTPException(status_code=502, detail=f"{log_label} failed.") from last_error
+
+
+class DashboardSummaryRequest(BaseModel):
+    currency: str = Field(..., min_length=1, max_length=10)
+    period_label: str = Field(..., min_length=1, max_length=100)
+    balance: float
+    period_income: float
+    period_spending: float
+
+
+class TransactionsSummaryRequest(BaseModel):
+    currency: str = Field(..., min_length=1, max_length=10)
+    date_from: str = Field(..., min_length=1, max_length=40)
+    date_to: str = Field(..., min_length=1, max_length=40)
+    total_in: float
+    total_out: float
+
+
+class SummaryResponse(BaseModel):
+    summary: str
+
+
+@router.post("/dashboard-summary", response_model=SummaryResponse)
+def generate_dashboard_summary(payload: DashboardSummaryRequest, db: Session = Depends(get_db)):
+    _require_ai_summary_enabled(db)
+    prompt = f"""You are a personal finance assistant. Write a short (2-3 sentence),
+plain-language narrative summary of this user's finances for "{payload.period_label}".
+Be direct and factual, do not invent numbers not given below, and do not use markdown.
+
+Total balance: {payload.balance:.2f} {payload.currency}
+Income this period: {payload.period_income:.2f} {payload.currency}
+Spending this period: {payload.period_spending:.2f} {payload.currency}"""
+    summary = _generate_narrative(prompt, db, "Dashboard AI summary")
+    return {"summary": summary}
+
+
+@router.post("/transactions-summary", response_model=SummaryResponse)
+def generate_transactions_summary(
+    payload: TransactionsSummaryRequest, db: Session = Depends(get_db)
+):
+    _require_ai_summary_enabled(db)
+    prompt = f"""You are a personal finance assistant. Write a short (2-3 sentence),
+plain-language narrative summary of the user's transactions between {payload.date_from}
+and {payload.date_to}. Be direct and factual, do not invent numbers not given below,
+and do not use markdown.
+
+Money in: {payload.total_in:.2f} {payload.currency}
+Money out: {payload.total_out:.2f} {payload.currency}
+Net: {(payload.total_in - payload.total_out):.2f} {payload.currency}"""
+    summary = _generate_narrative(prompt, db, "Transactions AI summary")
+    return {"summary": summary}

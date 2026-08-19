@@ -325,7 +325,14 @@ export function AccountMappingWizard({
                 }
               >
                 <SelectTrigger id="existing-account">
-                  <SelectValue placeholder={translate("chooseAnAccount")} />
+                  <SelectValue placeholder={translate("chooseAnAccount")}>
+                    {(() => {
+                      const linked = availableLinkableAccounts.find(
+                        (account) => account.id === currentMapping.existing_account_id,
+                      );
+                      return linked ? linked.name : undefined;
+                    })()}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {availableLinkableAccounts.map((account) => (

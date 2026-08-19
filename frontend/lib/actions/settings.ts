@@ -29,6 +29,11 @@ import {
   type LogLevel,
   type LogLevelStatus,
 } from "@/lib/log-level";
+import {
+  getAiSummaryEnabledStatus,
+  setAiSummaryEnabled,
+  type AiSummaryEnabledStatus,
+} from "@/lib/ai-summary-settings";
 
 async function requireAdminUserId(): Promise<string | null> {
   const userId = await requireAuth();
@@ -236,6 +241,75 @@ export async function resetAppLogLevel(): Promise<{
   }
 }
 
+/**
+ * Read-only check for any authenticated user (not admin-gated), used to
+ * decide whether to show AI summary buttons on the dashboard/transactions
+ * pages. Admin control of the setting itself lives in getAiSummaryEnabled/
+ * updateAiSummaryEnabled below.
+ */
+export async function isAiSummaryEnabled(): Promise<boolean> {
+  const userId = await requireAuth();
+  if (!userId) return false;
+
+  try {
+    return (await getAiSummaryEnabledStatus()).enabled;
+  } catch {
+    return false;
+  }
+}
+
+export async function getAiSummaryEnabled(): Promise<
+  AiSummaryEnabledStatus & { error?: string }
+> {
+  const adminUserId = await requireAdminUserId();
+  if (!adminUserId) {
+    return {
+      enabled: false,
+      source: "default",
+      error: "Administrator access is required.",
+    };
+  }
+
+  try {
+    return await getAiSummaryEnabledStatus();
+  } catch (error) {
+    return {
+      enabled: false,
+      source: "default",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to load AI summary setting.",
+    };
+  }
+}
+
+export async function updateAiSummaryEnabled(enabled: boolean): Promise<{
+  success: boolean;
+  settings?: AiSummaryEnabledStatus;
+  error?: string;
+}> {
+  const adminUserId = await requireAdminUserId();
+  if (!adminUserId)
+    return { success: false, error: "Administrator access is required." };
+
+  try {
+    const settings = await setAiSummaryEnabled(enabled, adminUserId);
+    revalidatePath("/settings");
+    revalidatePath("/");
+    revalidatePath("/transactions");
+    return { success: true, settings };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to save AI summary setting.",
+    };
+  }
+}
+
 export type OpenAiSettings = {
   configured: boolean;
   source: "database" | "environment" | "none";
@@ -283,7 +357,7 @@ function extractBackendError(payload: unknown, fallback: string): string {
 async function requestOpenAiSettings(
   method: "GET" | "PUT" | "DELETE",
   userId: string,
-  body?: { api_key: string },
+  body?: { api_key?: string; model?: string },
 ): Promise<
   | { success: true; settings: OpenAiSettings }
   | { success: false; error: string }
@@ -411,6 +485,24 @@ export async function updateOpenAiApiKey(
 
   const result = await requestOpenAiSettings("PUT", userId, {
     api_key: normalized,
+  });
+  if (!result.success) return result;
+
+  revalidatePath("/settings");
+  return { success: true, settings: result.settings };
+}
+
+export async function updateLlmModel(
+  model: string,
+): Promise<{ success: boolean; settings?: OpenAiSettings; error?: string }> {
+  const userId = await requireAuth();
+  if (!userId) return { success: false, error: "Not authenticated" };
+
+  const normalized = model.trim();
+  if (!normalized) return { success: false, error: "Model is required" };
+
+  const result = await requestOpenAiSettings("PUT", userId, {
+    model: normalized,
   });
   if (!result.success) return result;
 

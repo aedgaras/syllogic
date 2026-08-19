@@ -217,6 +217,42 @@ async function buildWhereClause(userId: string, input: TransactionsQueryState) {
   };
 }
 
+/**
+ * Totals for the current filter/date-range, computed unconditionally (unlike
+ * getPage's filteredTotals, which is gated behind hasActiveTransactionFilters
+ * to skip the extra query on the common unfiltered list render). Used by the
+ * AI transactions summary, which needs a total even when no filters are
+ * active.
+ */
+export async function getFilteredTotals(
+  userId: string,
+  input: TransactionsQueryState,
+): Promise<{
+  totalIn: number;
+  totalOut: number;
+  resolvedFrom?: string;
+  resolvedTo?: string;
+}> {
+  const { whereClause, resolvedFrom, resolvedTo } = await buildWhereClause(
+    userId,
+    input,
+  );
+  const [totalsRow] = await db
+    .select({
+      totalIn: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} = 'credit' THEN ABS(${transactions.amount}) WHEN ${transactions.transactionType} IS NULL AND ${transactions.amount} > 0 THEN ${transactions.amount} ELSE 0 END), 0)`,
+      totalOut: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} = 'debit' THEN ABS(${transactions.amount}) WHEN ${transactions.transactionType} IS NULL AND ${transactions.amount} < 0 THEN ABS(${transactions.amount}) ELSE 0 END), 0)`,
+    })
+    .from(transactions)
+    .where(whereClause);
+
+  return {
+    totalIn: Number.parseFloat(totalsRow?.totalIn ?? "0"),
+    totalOut: Number.parseFloat(totalsRow?.totalOut ?? "0"),
+    resolvedFrom: resolvedFrom?.toISOString().slice(0, 10),
+    resolvedTo: resolvedTo?.toISOString().slice(0, 10),
+  };
+}
+
 export const transactionListRepository: TransactionListRepository = {
   async getPage(userId, input) {
     const { whereClause, resolvedFrom, resolvedTo, effectiveHorizon } =

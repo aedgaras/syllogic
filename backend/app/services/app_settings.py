@@ -12,6 +12,11 @@ from app.security.data_encryption import decrypt_value, encrypt_value
 OPENAI_API_KEY_SETTING = "openai_api_key"
 DEFAULT_LLM_MODEL = "gpt-4o-mini"
 
+LLM_MODEL_SETTING = "llm_model"
+
+AI_SUMMARY_ENABLED_SETTING = "ai_summary_enabled"
+DEFAULT_AI_SUMMARY_ENABLED = False
+
 LOG_LEVEL_SETTING = "log_level"
 VALID_LOG_LEVELS = {"debug", "info", "warn", "error"}
 DEFAULT_LOG_LEVEL = "info"
@@ -86,6 +91,69 @@ def get_llm_model() -> str:
     )
 
 
+def get_llm_model_override(db: Session) -> Optional[str]:
+    """Return the database-stored model override, if any.
+
+    Stored the same way as log_level (see get_log_level_override): plaintext
+    or encrypted JSON in the shared app_settings table.
+    """
+    setting = db.query(AppSetting).filter(AppSetting.key == LLM_MODEL_SETTING).first()
+    if not setting or not setting.value_encrypted:
+        return None
+
+    try:
+        raw = decrypt_value(setting.value_encrypted)
+    except ValueError:
+        return None
+    if not raw:
+        return None
+
+    try:
+        model = json.loads(raw).get("model")
+    except (ValueError, AttributeError):
+        return None
+
+    return _normalize_api_key(model)
+
+
+def get_effective_llm_model(db: Session) -> str:
+    """Return the model to use: database override, then env, then default."""
+    return get_llm_model_override(db) or get_llm_model()
+
+
+def set_llm_model(db: Session, model: str, updated_by_user_id: Optional[str]) -> str:
+    normalized = _normalize_api_key(model)
+    if normalized is None:
+        raise ValueError("Model is required.")
+
+    serialized = json.dumps({"model": normalized})
+    value_encrypted = encrypt_value(serialized) or serialized
+
+    setting = db.query(AppSetting).filter(AppSetting.key == LLM_MODEL_SETTING).first()
+    now = datetime.utcnow()
+    if setting is None:
+        setting = AppSetting(
+            key=LLM_MODEL_SETTING,
+            value_encrypted=value_encrypted,
+            updated_by_user_id=updated_by_user_id,
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(setting)
+    else:
+        setting.value_encrypted = value_encrypted
+        setting.updated_by_user_id = updated_by_user_id
+        setting.updated_at = now
+
+    db.commit()
+    return normalized
+
+
+def clear_llm_model(db: Session) -> None:
+    db.query(AppSetting).filter(AppSetting.key == LLM_MODEL_SETTING).delete()
+    db.commit()
+
+
 def get_llm_fallback_base_url() -> Optional[str]:
     """Return an optional OpenAI-compatible base URL used when the primary
     provider is unavailable (out of quota, invalid key). Deployment-only —
@@ -134,7 +202,7 @@ def get_openai_api_key_status(db: Session) -> dict:
         "database_configured": has_database_key,
         "environment_configured": has_environment_config,
         "base_url": base_url,
-        "model": get_llm_model(),
+        "model": get_effective_llm_model(db),
         "provider": "custom" if _is_custom_llm_endpoint(base_url) else "openai",
     }
 
@@ -255,3 +323,62 @@ def clear_log_level(db: Session) -> dict:
     db.query(AppSetting).filter(AppSetting.key == LOG_LEVEL_SETTING).delete()
     db.commit()
     return get_log_level_status(db)
+
+
+def _get_ai_summary_enabled_override(db: Session) -> Optional[bool]:
+    setting = db.query(AppSetting).filter(AppSetting.key == AI_SUMMARY_ENABLED_SETTING).first()
+    if not setting or not setting.value_encrypted:
+        return None
+
+    try:
+        raw = decrypt_value(setting.value_encrypted)
+    except ValueError:
+        return None
+    if not raw:
+        return None
+
+    try:
+        return bool(json.loads(raw).get("enabled"))
+    except (ValueError, AttributeError):
+        return None
+
+
+def get_ai_summary_enabled_status(db: Session) -> dict:
+    override = _get_ai_summary_enabled_override(db)
+    if override is not None:
+        return {"enabled": override, "source": "database"}
+    return {"enabled": DEFAULT_AI_SUMMARY_ENABLED, "source": "default"}
+
+
+def get_ai_summary_enabled(db: Session) -> bool:
+    return get_ai_summary_enabled_status(db)["enabled"]
+
+
+def set_ai_summary_enabled(db: Session, enabled: bool, updated_by_user_id: Optional[str]) -> dict:
+    serialized = json.dumps({"enabled": bool(enabled)})
+    value_encrypted = encrypt_value(serialized) or serialized
+
+    setting = db.query(AppSetting).filter(AppSetting.key == AI_SUMMARY_ENABLED_SETTING).first()
+    now = datetime.utcnow()
+    if setting is None:
+        setting = AppSetting(
+            key=AI_SUMMARY_ENABLED_SETTING,
+            value_encrypted=value_encrypted,
+            updated_by_user_id=updated_by_user_id,
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(setting)
+    else:
+        setting.value_encrypted = value_encrypted
+        setting.updated_by_user_id = updated_by_user_id
+        setting.updated_at = now
+
+    db.commit()
+    return get_ai_summary_enabled_status(db)
+
+
+def clear_ai_summary_enabled(db: Session) -> dict:
+    db.query(AppSetting).filter(AppSetting.key == AI_SUMMARY_ENABLED_SETTING).delete()
+    db.commit()
+    return get_ai_summary_enabled_status(db)

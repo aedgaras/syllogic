@@ -85,14 +85,19 @@ def _build_beat_schedule() -> dict:
         "schedule": crontab(minute=0, hour=9),
     }
 
+    valid_investment_intervals = {1, 2, 3, 4, 6, 8, 12, 24}
     try:
-        investment_hour = int(os.getenv("SYLLOGIC_INVESTMENT_SYNC_HOUR_UTC", "2"))
+        investment_interval_hours = int(os.getenv("SYLLOGIC_INVESTMENT_SYNC_INTERVAL_HOURS", "6"))
     except ValueError:
-        investment_hour = 2
-    investment_hour = max(0, min(23, investment_hour))
+        investment_interval_hours = 6
+    if investment_interval_hours not in valid_investment_intervals:
+        investment_interval_hours = 6
     schedule["daily-investment-sync-all"] = {
         "task": "tasks.investment_tasks.daily_investment_sync_all",
-        "schedule": crontab(minute=0, hour=investment_hour),
+        # Prices are EOD-only (see YahooPriceProvider), so running more often
+        # than once a day gets each sync closer to whichever exchange just
+        # closed rather than fetching fresher intraday data.
+        "schedule": crontab(minute=0, hour=f"*/{investment_interval_hours}"),
     }
 
     schedule["check-due-reports"] = {

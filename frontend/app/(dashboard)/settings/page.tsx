@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import {
+  getAiSummaryEnabled,
   getAppLogLevel,
   getCurrentUserProfile,
   getOidcSettings,
@@ -40,6 +41,7 @@ export default async function SettingsPage({
     oidcSettings,
     signupSettings,
     logLevelSettings,
+    aiSummarySettings,
   ] = await Promise.all([
     getCategories(),
     listApiKeys(),
@@ -51,6 +53,7 @@ export default async function SettingsPage({
     user.role === "admin" ? getOidcSettings() : Promise.resolve(undefined),
     user.role === "admin" ? getSignupSettings() : Promise.resolve(undefined),
     user.role === "admin" ? getAppLogLevel() : Promise.resolve(undefined),
+    user.role === "admin" ? getAiSummaryEnabled() : Promise.resolve(undefined),
   ]);
 
   const people = peopleRows.map((p) => ({
@@ -100,6 +103,7 @@ export default async function SettingsPage({
           oidcSettings={oidcSettings}
           signupSettings={signupSettings}
           logLevelSettings={logLevelSettings}
+          aiSummarySettings={aiSummarySettings}
           oidcCallbackUrl={`${appBaseUrl}/api/auth/oauth2/callback/oidc`}
         />
       </div>

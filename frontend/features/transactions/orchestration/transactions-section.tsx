@@ -1,6 +1,7 @@
 import { getUserCategories } from "@/lib/actions/categories";
 import { getUserAccounts } from "@/lib/actions/transactions";
 import { getAuthenticatedSession } from "@/lib/auth-helpers";
+import { isAiSummaryEnabled } from "@/lib/actions/settings";
 import { isDemoRestrictedUserEmail } from "@/lib/demo-access";
 import type { TransactionsQueryState } from "../public";
 import { getTransactionPage } from "../server";
@@ -11,12 +12,14 @@ export async function TransactionsSection({
 }: {
   queryState: TransactionsQueryState;
 }) {
-  const [session, pageData, categories, accounts] = await Promise.all([
-    getAuthenticatedSession(),
-    getTransactionPage(queryState),
-    getUserCategories(),
-    getUserAccounts(),
-  ]);
+  const [session, pageData, categories, accounts, aiSummaryEnabled] =
+    await Promise.all([
+      getAuthenticatedSession(),
+      getTransactionPage(queryState),
+      getUserCategories(),
+      getUserAccounts(),
+      isAiSummaryEnabled(),
+    ]);
   const allowed = !isDemoRestrictedUserEmail(session?.user.email);
 
   return (
@@ -29,6 +32,7 @@ export async function TransactionsSection({
       accounts={accounts}
       canImportCsv={allowed}
       canDelete={allowed}
+      aiSummaryEnabled={aiSummaryEnabled}
     />
   );
 }

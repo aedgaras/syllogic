@@ -158,7 +158,13 @@ export function ManualForm({
                 onValueChange={(v) => v && setAccountId(v)}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>
+                    {accountId === NEW
+                      ? translate("createNewAccount")
+                      : (accounts.find((a) => a.id === accountId)
+                          ? `${accounts.find((a) => a.id === accountId)!.name} · ${accounts.find((a) => a.id === accountId)!.base_currency}`
+                          : "")}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {accounts.map((a) => (

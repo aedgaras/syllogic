@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AddTransactionButton } from "@/components/transactions/add-transaction-button";
 import { AddTransactionDialog } from "@/components/transactions/add-transaction-dialog";
 import { TransactionTable } from "@/components/transactions/transaction-table";
+import { TransactionsAiSummaryButton } from "@/components/transactions/ai-summary-button";
 import { useRegisterCommandPaletteCallbacks } from "@/components/command-palette-context";
 import { exportTransactionsToCSV } from "@/lib/utils/csv-export";
 import type {
@@ -30,6 +31,7 @@ interface TransactionsScreenProps {
   accounts: AccountForFilter[];
   canImportCsv: boolean;
   canDelete?: boolean;
+  aiSummaryEnabled?: boolean;
 }
 
 export function TransactionsScreen({
@@ -41,6 +43,7 @@ export function TransactionsScreen({
   accounts,
   canImportCsv,
   canDelete = true,
+  aiSummaryEnabled = false,
 }: TransactionsScreenProps) {
   const router = useRouter();
   const [transactions, dispatch] = React.useReducer(
@@ -77,6 +80,11 @@ export function TransactionsScreen({
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col">
+        {aiSummaryEnabled && (
+          <div className="mb-2">
+            <TransactionsAiSummaryButton queryState={initialQueryState} />
+          </div>
+        )}
         <TransactionTable
           transactions={transactions}
           totalCount={totalCount}

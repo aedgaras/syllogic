@@ -13,6 +13,8 @@ import {
   transactionLinks,
 } from "@/lib/db/schema";
 import { getAuthenticatedSession } from "@/lib/auth-helpers";
+import { getBackendBaseUrl } from "@/lib/backend-url";
+import { createInternalAuthHeaders } from "@/lib/internal-auth";
 import { getCachedUserAccounts } from "@/lib/data/cached";
 import { eq, sql, gte, lte, and, desc, inArray, isNull } from "drizzle-orm";
 import { buildConservativeSankey } from "@/lib/dashboard/sankey";
@@ -1429,4 +1431,51 @@ export async function getDashboardData(filters: DashboardFilters = {}) {
       label: `${monthNames[endDate.getMonth()]} ${endDate.getFullYear()}`,
     },
   };
+}
+
+/**
+ * Generates an AI narrative summary from already-fetched dashboard KPIs
+ * (no new DB query) via backend /api/llm/dashboard-summary. User-triggered
+ * only — never called on page load.
+ */
+export async function getDashboardAiSummary(
+  filters: DashboardFilters = {},
+): Promise<{ success: boolean; summary?: string; error?: string }> {
+  const session = await getAuthenticatedSession();
+  if (!session?.user?.id) return { success: false, error: "Not authenticated" };
+
+  const data = await getDashboardData(filters);
+
+  try {
+    const pathWithQuery = "/api/llm/dashboard-summary";
+    const requestBody = JSON.stringify({
+      currency: data.balance.currency,
+      period_label: data.periodLabel.title,
+      balance: data.balance.total,
+      period_income: data.periodIncome.total,
+      period_spending: data.periodSpending.total,
+    });
+    const response = await fetch(`${getBackendBaseUrl()}${pathWithQuery}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...createInternalAuthHeaders({
+          method: "POST",
+          pathWithQuery,
+          userId: session.user.id,
+          body: requestBody,
+        }),
+      },
+      body: requestBody,
+      cache: "no-store",
+    });
+    const payload = (await response.json()) as { summary?: string; detail?: string };
+    if (!response.ok || !payload.summary) {
+      return { success: false, error: payload.detail || "Failed to generate summary" };
+    }
+    return { success: true, summary: payload.summary };
+  } catch (error) {
+    logger.error("Failed to generate dashboard AI summary", { error });
+    return { success: false, error: "Failed to generate summary" };
+  }
 }

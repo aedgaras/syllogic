@@ -9,11 +9,15 @@ from app.services.app_settings import (
     VALID_LOG_LEVELS,
     AppSettingDecryptError,
     AppSettingEncryptionMissing,
+    clear_ai_summary_enabled,
     clear_log_level,
     clear_openai_api_key,
+    get_ai_summary_enabled_status,
     get_log_level_status,
     get_openai_api_key_status,
+    set_ai_summary_enabled,
     set_log_level,
+    set_llm_model,
     set_openai_api_key,
 )
 
@@ -32,14 +36,27 @@ class LlmSettingsResponse(BaseModel):
 
 
 class UpdateLlmSettingsRequest(BaseModel):
-    api_key: str = Field(..., min_length=1, max_length=500)
+    api_key: str | None = Field(default=None, min_length=1, max_length=500)
+    model: str | None = Field(default=None, min_length=1, max_length=200)
 
     @field_validator("api_key")
     @classmethod
-    def normalize_api_key(cls, value: str) -> str:
+    def normalize_api_key(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         normalized = value.strip()
         if not normalized:
             raise ValueError("LLM API key is required.")
+        return normalized
+
+    @field_validator("model")
+    @classmethod
+    def normalize_model(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Model is required.")
         return normalized
 
 
@@ -71,8 +88,13 @@ def update_llm_settings(
     user_id: str = Depends(get_user_id),
     db: Session = Depends(get_db),
 ):
+    if payload.api_key is None and payload.model is None:
+        raise HTTPException(status_code=400, detail="api_key or model is required.")
     try:
-        set_openai_api_key(db, payload.api_key, updated_by_user_id=user_id)
+        if payload.api_key is not None:
+            set_openai_api_key(db, payload.api_key, updated_by_user_id=user_id)
+        if payload.model is not None:
+            set_llm_model(db, payload.model, updated_by_user_id=user_id)
         return get_openai_api_key_status(db)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -132,3 +154,31 @@ def delete_log_level(db: Session = Depends(get_db)):
     status = clear_log_level(db)
     apply_log_level(status["level"])
     return status
+
+
+class AiSummaryEnabledResponse(BaseModel):
+    enabled: bool
+    source: str
+
+
+class UpdateAiSummaryEnabledRequest(BaseModel):
+    enabled: bool
+
+
+@router.get("/ai-summary", response_model=AiSummaryEnabledResponse)
+def get_ai_summary_enabled(db: Session = Depends(get_db)):
+    return get_ai_summary_enabled_status(db)
+
+
+@router.put("/ai-summary", response_model=AiSummaryEnabledResponse)
+def update_ai_summary_enabled(
+    payload: UpdateAiSummaryEnabledRequest,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    return set_ai_summary_enabled(db, payload.enabled, updated_by_user_id=user_id)
+
+
+@router.delete("/ai-summary", response_model=AiSummaryEnabledResponse)
+def delete_ai_summary_enabled(db: Session = Depends(get_db)):
+    return clear_ai_summary_enabled(db)

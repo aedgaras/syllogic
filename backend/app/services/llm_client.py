@@ -4,11 +4,11 @@ from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
 
 from app.services.app_settings import (
+    get_effective_llm_model,
     get_llm_base_url,
     get_llm_fallback_api_key,
     get_llm_fallback_base_url,
     get_llm_fallback_model,
-    get_llm_model,
     get_openai_api_key,
 )
 
@@ -66,7 +66,7 @@ def create_llm_clients(db: Session) -> List[Tuple[object, str, str]]:
 
     primary = create_llm_client(db)
     if primary is not None:
-        providers.append((primary, get_llm_model(), "primary"))
+        providers.append((primary, get_effective_llm_model(db), "primary"))
 
     fallback = create_llm_fallback_client()
     if fallback is not None:

@@ -186,7 +186,12 @@ export default function ReceiptScanScreen() {
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={translate("selectACategory")} />
+                      <SelectValue placeholder={translate("selectACategory")}>
+                        {item.categoryId
+                          ? (categories.find((c) => c.id === item.categoryId)
+                              ?.name ?? translate("noCategory"))
+                          : translate("noCategory")}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">

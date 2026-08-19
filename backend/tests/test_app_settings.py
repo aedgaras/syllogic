@@ -1,16 +1,23 @@
 import base64
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.models import AppSetting, User
 from app.security.data_encryption import reset_encryption_config_cache
 from app.services.app_settings import (
+    clear_ai_summary_enabled,
+    clear_llm_model,
     clear_openai_api_key,
+    get_ai_summary_enabled_status,
+    get_effective_llm_model,
     get_llm_base_url,
     get_llm_model,
     get_openai_api_key,
     get_openai_api_key_status,
+    set_ai_summary_enabled,
+    set_llm_model,
     set_openai_api_key,
 )
 
@@ -109,3 +116,38 @@ def test_clear_openai_api_key_restores_environment_fallback(monkeypatch):
 
     assert get_openai_api_key(db) == "sk-env"
     assert get_openai_api_key_status(db)["source"] == "environment"
+
+
+def test_llm_model_override_takes_precedence_over_env(monkeypatch):
+    db = _session()
+    _set_encryption_key(monkeypatch)
+    monkeypatch.setenv("LLM_MODEL", "gpt-4o-mini")
+
+    assert get_effective_llm_model(db) == "gpt-4o-mini"
+
+    set_llm_model(db, "gpt-4o", updated_by_user_id=None)
+    assert get_effective_llm_model(db) == "gpt-4o"
+
+    clear_llm_model(db)
+    assert get_effective_llm_model(db) == "gpt-4o-mini"
+
+
+def test_set_llm_model_rejects_blank_value(monkeypatch):
+    db = _session()
+    _set_encryption_key(monkeypatch)
+
+    with pytest.raises(ValueError):
+        set_llm_model(db, "   ", updated_by_user_id=None)
+
+
+def test_ai_summary_enabled_defaults_off_then_toggles(monkeypatch):
+    db = _session()
+    _set_encryption_key(monkeypatch)
+
+    assert get_ai_summary_enabled_status(db) == {"enabled": False, "source": "default"}
+
+    set_ai_summary_enabled(db, True, updated_by_user_id=None)
+    assert get_ai_summary_enabled_status(db) == {"enabled": True, "source": "database"}
+
+    clear_ai_summary_enabled(db)
+    assert get_ai_summary_enabled_status(db) == {"enabled": False, "source": "default"}

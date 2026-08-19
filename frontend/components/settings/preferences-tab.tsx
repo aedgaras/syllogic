@@ -8,13 +8,29 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ThemeSelector } from "@/components/theme-selector";
 import { useWalkthroughStore } from "@/components/walkthrough/walkthrough-store";
 import {
   clearOpenAiApiKey,
+  updateLlmModel,
   updateOpenAiApiKey,
   type OpenAiSettings,
 } from "@/lib/actions/settings";
+
+const LLM_MODEL_PRESETS = [
+  "gpt-4o-mini",
+  "gpt-4o",
+  "gpt-4.1-mini",
+  "gpt-4.1",
+];
+const CUSTOM_MODEL_VALUE = "__custom__";
 
 type PreferencesTabProps = {
   initialOpenAiSettings: OpenAiSettings & { error?: string };
@@ -32,6 +48,31 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [modelInput, setModelInput] = useState(initialOpenAiSettings.model);
+  const [savingModel, setSavingModel] = useState(false);
+
+  async function handleSaveModel() {
+    const normalized = modelInput.trim();
+    if (!normalized) {
+      toast.error(translate("modelIsRequired"));
+      return;
+    }
+
+    setSavingModel(true);
+    try {
+      const result = await updateLlmModel(normalized);
+      if (!result.success || !result.settings) {
+        toast.error(result.error || translate("failedToSaveModel"));
+        return;
+      }
+      setOpenAiSettings(result.settings);
+      toast.success(translate("modelSaved"));
+    } catch {
+      toast.error(translate("failedToSaveModel"));
+    } finally {
+      setSavingModel(false);
+    }
+  }
 
   async function handleSave() {
     const normalized = apiKey.trim();
@@ -144,14 +185,59 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
               ? translate("customEndpoint")
               : translate("openai")}
           </p>
-          <p>
-            {translate("model")} {openAiSettings.model}
-          </p>
           {openAiSettings.baseUrl && (
             <p className="break-all sm:col-span-2">
               {translate("endpoint")} {openAiSettings.baseUrl}
             </p>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="llm-model-preset" className="text-xs">
+            {translate("model")}
+          </Label>
+          <Select
+            value={
+              LLM_MODEL_PRESETS.includes(modelInput)
+                ? modelInput
+                : CUSTOM_MODEL_VALUE
+            }
+            onValueChange={(value) => {
+              if (value && value !== CUSTOM_MODEL_VALUE) setModelInput(value);
+            }}
+            disabled={savingModel}
+          >
+            <SelectTrigger id="llm-model-preset" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LLM_MODEL_PRESETS.map((preset) => (
+                <SelectItem key={preset} value={preset}>
+                  {preset}
+                </SelectItem>
+              ))}
+              <SelectItem value={CUSTOM_MODEL_VALUE}>
+                {translate("customModel")}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            id="llm-model"
+            aria-label={translate("model")}
+            placeholder={translate("egQwen38bOrAnyOpenaiCompatibleModelId")}
+            value={modelInput}
+            onChange={(event) => setModelInput(event.target.value)}
+            disabled={savingModel}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleSaveModel}
+            disabled={savingModel || !modelInput.trim()}
+          >
+            <RiSave3Line />
+            {savingModel ? translate("saving") : translate("saveModel")}
+          </Button>
         </div>
 
         <div className="space-y-2">

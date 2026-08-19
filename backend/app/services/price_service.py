@@ -20,17 +20,30 @@ class PriceService:
     def get_or_fetch(self, symbols: list[str], on: date) -> dict[str, PriceQuote]:
         if not symbols:
             return {}
-        cached_rows = (
-            self.db.query(PriceSnapshot)
-            .filter(PriceSnapshot.symbol.in_(symbols), PriceSnapshot.date == on)
-            .all()
-        )
-        cached = {
-            r.symbol: PriceQuote(
-                symbol=r.symbol, currency=r.currency, date=on, close=Decimal(r.close)
+
+        # A past trading day's close is immutable once recorded, so it's
+        # safe to treat as a permanent cache. Today's "close" isn't final
+        # until the market shuts — a run before that only gets the provider's
+        # last-available price (commonly yesterday's), so today is never
+        # served from cache: every call re-fetches and overwrites, letting a
+        # later same-day run replace an earlier placeholder once the real
+        # close publishes.
+        is_current_day = on >= date.today()
+
+        cached: dict[str, PriceQuote] = {}
+        if not is_current_day:
+            cached_rows = (
+                self.db.query(PriceSnapshot)
+                .filter(PriceSnapshot.symbol.in_(symbols), PriceSnapshot.date == on)
+                .all()
             )
-            for r in cached_rows
-        }
+            cached = {
+                r.symbol: PriceQuote(
+                    symbol=r.symbol, currency=r.currency, date=on, close=Decimal(r.close)
+                )
+                for r in cached_rows
+            }
+
         missing = [s for s in symbols if s not in cached]
         if missing:
             try:
@@ -41,19 +54,33 @@ class PriceService:
                 )
                 fetched = {}
             for sym, quote in fetched.items():
+                # Key the cache row on the requested date (`on`), not the
+                # provider's returned quote.date — the two commonly differ
+                # before `on`'s own market close (or over a weekend), and
+                # storing under quote.date would make `on` a permanent
+                # cache-miss, forcing a re-fetch on every call for that day.
                 stmt = (
                     pg_insert(PriceSnapshot)
                     .values(
                         symbol=quote.symbol,
                         currency=quote.currency,
-                        date=quote.date,
+                        date=on,
                         close=quote.close,
                         provider=self.provider.name,
                     )
-                    .on_conflict_do_nothing(index_elements=["symbol", "date"])
+                )
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["symbol", "date"],
+                    set_={
+                        "close": stmt.excluded.close,
+                        "currency": stmt.excluded.currency,
+                        "provider": stmt.excluded.provider,
+                    },
                 )
                 self.db.execute(stmt)
-                cached[sym] = quote
+                cached[sym] = PriceQuote(
+                    symbol=quote.symbol, currency=quote.currency, date=on, close=quote.close
+                )
             self.db.commit()
         return cached
 

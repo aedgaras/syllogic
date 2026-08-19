@@ -22,6 +22,9 @@ function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   );
 }
 
+// If `value` is bound to an id/GUID rather than a self-describing string
+// (e.g. an account or category id), pass a children render function that
+// looks up the label — otherwise the trigger renders the raw id.
 function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
   return (
     <SelectPrimitive.Value

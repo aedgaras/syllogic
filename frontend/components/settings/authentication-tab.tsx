@@ -16,11 +16,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  updateAiSummaryEnabled,
   updateAppLogLevel,
   updateOidcSettings,
   updateSignupSettings,
 } from "@/lib/actions/settings";
 import type { LogLevel, LogLevelStatus } from "@/lib/log-level";
+import type { AiSummaryEnabledStatus } from "@/lib/ai-summary-settings";
 import type { OidcAdminSettings } from "@/lib/oidc-settings";
 import type { RegistrationStatus } from "@/lib/registration-settings";
 
@@ -28,6 +30,7 @@ type AuthenticationTabProps = {
   initialSettings: OidcAdminSettings & { error?: string };
   initialSignupSettings: RegistrationStatus & { error?: string };
   initialLogLevel: LogLevelStatus & { error?: string };
+  initialAiSummary: AiSummaryEnabledStatus & { error?: string };
   callbackUrl: string;
 };
 
@@ -37,8 +40,33 @@ export function AuthenticationTab({
   initialSettings,
   initialSignupSettings,
   initialLogLevel,
+  initialAiSummary,
   callbackUrl,
 }: AuthenticationTabProps) {
+  const [aiSummary, setAiSummary] = useState(initialAiSummary);
+  const [savingAiSummary, setSavingAiSummary] = useState(false);
+
+  async function handleToggleAiSummary(enabled: boolean) {
+    setSavingAiSummary(true);
+    try {
+      const result = await updateAiSummaryEnabled(enabled);
+      if (!result.success || !result.settings) {
+        toast.error(result.error || translate("failedToSaveAiSummarySetting"));
+        return;
+      }
+      setAiSummary(result.settings);
+      toast.success(
+        enabled
+          ? translate("aiSummaryEnabled")
+          : translate("aiSummaryDisabled"),
+      );
+    } catch {
+      toast.error(translate("failedToSaveAiSummarySetting"));
+    } finally {
+      setSavingAiSummary(false);
+    }
+  }
+
   const [logLevel, setLogLevel] = useState(initialLogLevel);
   const [selectedLogLevel, setSelectedLogLevel] = useState<LogLevel>(
     initialLogLevel.level,
@@ -297,6 +325,31 @@ export function AuthenticationTab({
             ? translate("saving")
             : translate("saveAuthenticationSettings")}
         </Button>
+      </div>
+
+      <div className="border border-border p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="ai-summary-enabled">
+              {translate("aiSummaries")}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {translate("aiSummariesDescription")}
+            </p>
+          </div>
+          <Switch
+            id="ai-summary-enabled"
+            checked={aiSummary.enabled}
+            onCheckedChange={handleToggleAiSummary}
+            disabled={savingAiSummary}
+            aria-label={translate("enableAiSummaries")}
+          />
+        </div>
+        {aiSummary.error && (
+          <p className="mt-3 border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {aiSummary.error}
+          </p>
+        )}
       </div>
 
       <div className="space-y-4 border border-border p-4">
