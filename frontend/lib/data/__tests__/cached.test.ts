@@ -7,6 +7,10 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+vi.mock("@/lib/actions/categories.gateway", () => ({
+  fetchCategoriesViaBackend: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock("@/lib/auth-helpers", () => ({
   getAuthenticatedSession: vi.fn(),
 }));

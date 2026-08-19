@@ -9,9 +9,10 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { accounts, categories, users } from "@/lib/db/schema";
+import { accounts, users } from "@/lib/db/schema";
 import { getAuthenticatedSession } from "@/lib/auth-helpers";
 import { resolveMissingAccountLogos } from "@/lib/actions/account-logos";
+import { fetchCategoriesViaBackend } from "@/lib/actions/categories.gateway";
 import type {
   OnboardingStatus,
   OnboardingStatusResult,
@@ -30,10 +31,8 @@ export const getCachedSession = cache(async () => {
 // ---------- Categories ----------
 
 async function fetchCategoriesForUser(userId: string) {
-  return db.query.categories.findMany({
-    where: eq(categories.userId, userId),
-    orderBy: (c, { asc }) => [asc(c.name)],
-  });
+  const categories = await fetchCategoriesViaBackend(userId);
+  return categories.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 const getCachedCategoriesByUser = (userId: string) =>

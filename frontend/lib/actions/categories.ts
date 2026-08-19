@@ -2,17 +2,20 @@
 
 import { logger } from "@/lib/logger";
 import { revalidatePath, updateTag } from "next/cache";
-import { eq, and, count } from "drizzle-orm";
-import { db } from "@/lib/db";
 import {
-  categories,
-  transactions,
-  type Category,
-  type NewCategory,
-} from "@/lib/db/schema";
+  createCategoryViaBackend,
+  updateCategoryViaBackend,
+  deleteCategoryViaBackend,
+  fetchCategoriesViaBackend,
+  getCategoryStatsViaBackend,
+  ensureSystemTransferCategoriesViaBackend,
+  type BackendCategory,
+} from "@/lib/actions/categories.gateway";
 import { requireAuth } from "@/lib/auth-helpers";
 import { getCachedUserCategories, CACHE_TAGS } from "@/lib/data/cached";
 import { DEFAULT_TRANSFER_CATEGORIES } from "@/lib/constants/default-categories";
+
+export type Category = BackendCategory;
 
 export interface CategoryCreateInput {
   name: string;
@@ -53,46 +56,18 @@ export async function createCategory(
   }
 
   try {
-    // Check for duplicate name in the same category type
-    const existing = await db.query.categories.findFirst({
-      where: and(
-        eq(categories.userId, userId),
-        eq(categories.name, input.name.trim()),
-        eq(categories.categoryType, input.categoryType),
-      ),
-    });
-
-    if (existing) {
-      return {
-        success: false,
-        error: "A category with this name already exists",
-      };
-    }
-
-    const newCategory: NewCategory = {
-      userId,
-      name: input.name.trim(),
-      categoryType: input.categoryType,
-      color: input.color,
-      icon: input.icon,
-      description: input.description?.trim() || null,
-      categorizationInstructions:
-        input.categorizationInstructions?.trim() || null,
-      isSystem: false,
-    };
-
-    const [inserted] = await db
-      .insert(categories)
-      .values(newCategory)
-      .returning({ id: categories.id });
+    const created = await createCategoryViaBackend(userId, input);
 
     revalidatePath("/");
     revalidatePath("/settings");
     updateTag(CACHE_TAGS.categories(userId));
-    return { success: true, categoryId: inserted.id };
+    return { success: true, categoryId: created.id };
   } catch (error) {
     logger.error("Failed to create category", { error });
-    return { success: false, error: "Failed to create category" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create category",
+    };
   }
 }
 
@@ -107,87 +82,7 @@ export async function updateCategory(
   }
 
   try {
-    // Get the existing category
-    const existing = await db.query.categories.findFirst({
-      where: and(eq(categories.id, categoryId), eq(categories.userId, userId)),
-    });
-
-    if (!existing) {
-      return { success: false, error: "Category not found" };
-    }
-
-    // System categories accept description/categorization_instructions updates
-    // (user-tailored context) but reject structural changes.
-    if (existing.isSystem) {
-      const attemptingStructuralChange =
-        (input.name !== undefined && input.name.trim() !== existing.name) ||
-        (input.color !== undefined && input.color !== existing.color) ||
-        (input.icon !== undefined && input.icon !== existing.icon);
-
-      if (attemptingStructuralChange) {
-        return {
-          success: false,
-          error:
-            "System categories only allow editing description and categorization instructions",
-        };
-      }
-
-      await db
-        .update(categories)
-        .set({
-          ...(input.description !== undefined && {
-            description: input.description?.trim() || null,
-          }),
-          ...(input.categorizationInstructions !== undefined && {
-            categorizationInstructions:
-              input.categorizationInstructions?.trim() || null,
-          }),
-        })
-        .where(eq(categories.id, categoryId));
-
-      revalidatePath("/");
-      revalidatePath("/settings");
-      updateTag(CACHE_TAGS.categories(userId));
-      return { success: true };
-    }
-
-    // Check for duplicate name if name is being changed
-    if (
-      input.name &&
-      input.name.trim() !== existing.name &&
-      existing.categoryType
-    ) {
-      const duplicate = await db.query.categories.findFirst({
-        where: and(
-          eq(categories.userId, userId),
-          eq(categories.name, input.name.trim()),
-          eq(categories.categoryType, existing.categoryType),
-        ),
-      });
-
-      if (duplicate) {
-        return {
-          success: false,
-          error: "A category with this name already exists",
-        };
-      }
-    }
-
-    await db
-      .update(categories)
-      .set({
-        ...(input.name && { name: input.name.trim() }),
-        ...(input.color && { color: input.color }),
-        ...(input.icon && { icon: input.icon }),
-        ...(input.description !== undefined && {
-          description: input.description?.trim() || null,
-        }),
-        ...(input.categorizationInstructions !== undefined && {
-          categorizationInstructions:
-            input.categorizationInstructions?.trim() || null,
-        }),
-      })
-      .where(eq(categories.id, categoryId));
+    await updateCategoryViaBackend(userId, categoryId, input);
 
     revalidatePath("/");
     revalidatePath("/settings");
@@ -195,7 +90,10 @@ export async function updateCategory(
     return { success: true };
   } catch (error) {
     logger.error("Failed to update category", { error });
-    return { success: false, error: "Failed to update category" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update category",
+    };
   }
 }
 
@@ -209,42 +107,7 @@ export async function deleteCategory(
   }
 
   try {
-    // Get the existing category
-    const existing = await db.query.categories.findFirst({
-      where: and(eq(categories.id, categoryId), eq(categories.userId, userId)),
-    });
-
-    if (!existing) {
-      return { success: false, error: "Category not found" };
-    }
-
-    if (existing.isSystem) {
-      return { success: false, error: "System categories cannot be deleted" };
-    }
-
-    // Clear categoryId references on transactions before deleting
-    await db
-      .update(transactions)
-      .set({ categoryId: null })
-      .where(
-        and(
-          eq(transactions.userId, userId),
-          eq(transactions.categoryId, categoryId),
-        ),
-      );
-
-    // Clear categorySystemId references on transactions as well
-    await db
-      .update(transactions)
-      .set({ categorySystemId: null })
-      .where(
-        and(
-          eq(transactions.userId, userId),
-          eq(transactions.categorySystemId, categoryId),
-        ),
-      );
-
-    await db.delete(categories).where(eq(categories.id, categoryId));
+    await deleteCategoryViaBackend(userId, categoryId);
 
     revalidatePath("/");
     revalidatePath("/settings");
@@ -253,7 +116,10 @@ export async function deleteCategory(
     return { success: true };
   } catch (error) {
     logger.error("Failed to delete category", { error });
-    return { success: false, error: "Failed to delete category" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete category",
+    };
   }
 }
 
@@ -273,13 +139,10 @@ export async function getCategoriesByType(
     return [];
   }
 
-  return db.query.categories.findMany({
-    where: and(
-      eq(categories.userId, userId),
-      eq(categories.categoryType, type),
-    ),
-    orderBy: (categories, { asc }) => [asc(categories.name)],
-  });
+  const all = await fetchCategoriesViaBackend(userId);
+  return all
+    .filter((category) => category.categoryType === type)
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function getCategoryByName(
@@ -291,11 +154,8 @@ export async function getCategoryByName(
     return null;
   }
 
-  const category = await db.query.categories.findFirst({
-    where: and(eq(categories.userId, userId), eq(categories.name, name)),
-  });
-
-  return category || null;
+  const all = await fetchCategoriesViaBackend(userId);
+  return all.find((category) => category.name === name) ?? null;
 }
 
 /**
@@ -307,42 +167,21 @@ export async function getCategoryByName(
 export async function ensureSystemTransferCategories(
   userId: string,
 ): Promise<void> {
-  const existing = await db
-    .select({ name: categories.name, systemKey: categories.systemKey })
-    .from(categories)
-    .where(eq(categories.userId, userId));
-
-  const existingKeys = new Set(
-    existing.map((row) => row.systemKey).filter(Boolean),
-  );
-  const existingNames = new Set(existing.map((row) => row.name));
-
-  // Pre-migration users already have "Internal/External/Balancing Transfer"
-  // categories by name but with a null systemKey (backfilled from an older
-  // schema) - never re-insert those, only categories genuinely absent by
-  // both key and name.
-  const missing = DEFAULT_TRANSFER_CATEGORIES.filter(
-    (category) =>
-      category.key &&
-      !existingKeys.has(category.key) &&
-      !existingNames.has(category.name),
-  );
-
-  if (missing.length === 0) return;
-
-  const newCategories: NewCategory[] = missing.map((category) => ({
-    userId,
+  const seeds = DEFAULT_TRANSFER_CATEGORIES.filter(
+    (category): category is typeof category & { key: string } => !!category.key,
+  ).map((category) => ({
+    key: category.key,
     name: category.name,
     categoryType: category.categoryType,
     color: category.color,
     icon: category.icon,
-    description: category.description || null,
-    isSystem: category.isSystem || false,
-    hideFromSelection: category.hideFromSelection || false,
-    systemKey: category.key,
+    description: category.description,
+    hideFromSelection: category.hideFromSelection,
   }));
 
-  await db.insert(categories).values(newCategories);
+  // The backend performs the same additive/idempotent check (by systemKey,
+  // falling back to name for pre-migration categories) before inserting.
+  await ensureSystemTransferCategoriesViaBackend(userId, seeds);
 }
 
 /**
@@ -358,17 +197,11 @@ export async function getCategoryTransactionCount(
   }
 
   try {
-    const result = await db
-      .select({ count: count() })
-      .from(transactions)
-      .where(
-        and(
-          eq(transactions.userId, userId),
-          eq(transactions.categoryId, categoryId),
-        ),
-      );
-
-    return { count: result[0]?.count ?? 0 };
+    const { transactionCount } = await getCategoryStatsViaBackend(
+      userId,
+      categoryId,
+    );
+    return { count: transactionCount };
   } catch (error) {
     logger.error("Failed to count category transactions", { error });
     return { count: 0, error: "Failed to count transactions" };
@@ -391,77 +224,11 @@ export async function deleteCategoryWithReassignment(
   }
 
   try {
-    // Get the category to delete
-    const categoryToDelete = await db.query.categories.findFirst({
-      where: and(eq(categories.id, categoryId), eq(categories.userId, userId)),
-    });
-
-    if (!categoryToDelete) {
-      return { success: false, error: "Category not found" };
-    }
-
-    if (categoryToDelete.isSystem) {
-      return { success: false, error: "System categories cannot be deleted" };
-    }
-
-    // If reassigning to another category, verify it exists and belongs to user
-    if (reassignToCategoryId) {
-      const targetCategory = await db.query.categories.findFirst({
-        where: and(
-          eq(categories.id, reassignToCategoryId),
-          eq(categories.userId, userId),
-        ),
-      });
-
-      if (!targetCategory) {
-        return { success: false, error: "Target category not found" };
-      }
-
-      // Verify same category type
-      if (targetCategory.categoryType !== categoryToDelete.categoryType) {
-        return {
-          success: false,
-          error: "Cannot reassign to a different category type",
-        };
-      }
-    }
-
-    // Count affected transactions before update
-    const countResult = await db
-      .select({ count: count() })
-      .from(transactions)
-      .where(
-        and(
-          eq(transactions.userId, userId),
-          eq(transactions.categoryId, categoryId),
-        ),
-      );
-    const reassignedCount = countResult[0]?.count ?? 0;
-
-    // Reassign transactions with user-assigned categoryId
-    await db
-      .update(transactions)
-      .set({ categoryId: reassignToCategoryId })
-      .where(
-        and(
-          eq(transactions.userId, userId),
-          eq(transactions.categoryId, categoryId),
-        ),
-      );
-
-    // Reassign transactions with system-assigned categorySystemId
-    await db
-      .update(transactions)
-      .set({ categorySystemId: reassignToCategoryId })
-      .where(
-        and(
-          eq(transactions.userId, userId),
-          eq(transactions.categorySystemId, categoryId),
-        ),
-      );
-
-    // Delete the category
-    await db.delete(categories).where(eq(categories.id, categoryId));
+    const { reassignedCount } = await deleteCategoryViaBackend(
+      userId,
+      categoryId,
+      reassignToCategoryId,
+    );
 
     revalidatePath("/");
     revalidatePath("/settings");
@@ -471,6 +238,9 @@ export async function deleteCategoryWithReassignment(
     return { success: true, reassignedCount };
   } catch (error) {
     logger.error("Failed to delete category", { error });
-    return { success: false, error: "Failed to delete category" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete category",
+    };
   }
 }

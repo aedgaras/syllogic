@@ -13,6 +13,8 @@ from app.schemas import (
     CategoryCreate,
     CategoryResponse,
     CategoryUpdate,
+    CategoryDeleteRequest,
+    CategoryDeleteResponse,
     TransactionInput,
     TransactionResult,
     CategorizeTransactionRequest,
@@ -20,6 +22,7 @@ from app.schemas import (
     BatchCategorizeRequest,
     BatchCategorizeResponse,
 )
+from pydantic import BaseModel
 from app.services.category_matcher import CategoryMatcher
 
 logger = logging.getLogger(__name__)
@@ -55,13 +58,32 @@ def create_category(
 ):
     """Create a new category."""
     user_id = get_user_id(user_id)
+
+    name = category.name.strip()
+    duplicate = (
+        db.query(Category)
+        .filter(
+            Category.user_id == user_id,
+            Category.name == name,
+            Category.category_type == category.category_type,
+        )
+        .first()
+    )
+    if duplicate:
+        raise HTTPException(status_code=409, detail="A category with this name already exists")
+
     category_data = category.model_dump()
+    category_data["name"] = name
     category_data["user_id"] = user_id
+    category_data["is_system"] = False
     db_category = Category(**category_data)
     db.add(db_category)
     db.commit()
     db.refresh(db_category)
     return db_category
+
+
+_STRUCTURAL_FIELDS = {"name", "color", "icon", "category_type", "parent_id"}
 
 
 @router.patch("/{category_id}", response_model=CategoryResponse)
@@ -80,6 +102,36 @@ def update_category(
         raise HTTPException(status_code=404, detail="Category not found")
 
     update_data = updates.model_dump(exclude_unset=True)
+    if "name" in update_data and update_data["name"] is not None:
+        update_data["name"] = update_data["name"].strip()
+
+    if category.is_system:
+        attempted_structural_change = any(
+            field in update_data and update_data[field] != getattr(category, field)
+            for field in _STRUCTURAL_FIELDS
+        )
+        if attempted_structural_change:
+            raise HTTPException(
+                status_code=400,
+                detail="System categories only allow editing description and categorization instructions",
+            )
+        update_data = {
+            field: value for field, value in update_data.items() if field not in _STRUCTURAL_FIELDS
+        }
+    elif "name" in update_data and update_data["name"] != category.name:
+        duplicate = (
+            db.query(Category)
+            .filter(
+                Category.user_id == user_id,
+                Category.name == update_data["name"],
+                Category.category_type == category.category_type,
+                Category.id != category_id,
+            )
+            .first()
+        )
+        if duplicate:
+            raise HTTPException(status_code=409, detail="A category with this name already exists")
+
     for field, value in update_data.items():
         setattr(category, field, value)
 
@@ -88,11 +140,14 @@ def update_category(
     return category
 
 
-@router.delete("/{category_id}", status_code=204)
+@router.delete("/{category_id}", response_model=CategoryDeleteResponse)
 def delete_category(
-    category_id: UUID, user_id: Optional[str] = None, db: Session = Depends(get_db)
+    category_id: UUID,
+    payload: CategoryDeleteRequest = CategoryDeleteRequest(),
+    user_id: Optional[str] = None,
+    db: Session = Depends(get_db),
 ):
-    """Delete a category."""
+    """Delete a category, optionally reassigning its transactions."""
     user_id = get_user_id(user_id)
     category = (
         db.query(Category).filter(Category.id == category_id, Category.user_id == user_id).first()
@@ -100,22 +155,103 @@ def delete_category(
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
-    # Set category_id and category_system_id to NULL for transactions using this category
-    # Update transactions where category_id matches
+    if category.is_system:
+        raise HTTPException(status_code=400, detail="System categories cannot be deleted")
+
+    reassign_to_id = payload.reassign_to_category_id
+    if reassign_to_id:
+        target = (
+            db.query(Category)
+            .filter(Category.id == reassign_to_id, Category.user_id == user_id)
+            .first()
+        )
+        if not target:
+            raise HTTPException(status_code=404, detail="Target category not found")
+        if target.category_type != category.category_type:
+            raise HTTPException(
+                status_code=400, detail="Cannot reassign to a different category type"
+            )
+
+    reassigned_count = (
+        db.query(Transaction)
+        .filter(
+            Transaction.user_id == user_id,
+            (Transaction.category_id == category_id)
+            | (Transaction.category_system_id == category_id),
+        )
+        .count()
+    )
+
     db.query(Transaction).filter(
         Transaction.user_id == user_id, Transaction.category_id == category_id
-    ).update({"category_id": None}, synchronize_session=False)
+    ).update({"category_id": reassign_to_id}, synchronize_session=False)
 
-    # Update transactions where category_system_id matches
     db.query(Transaction).filter(
         Transaction.user_id == user_id, Transaction.category_system_id == category_id
-    ).update({"category_system_id": None}, synchronize_session=False)
-
-    db.commit()
+    ).update({"category_system_id": reassign_to_id}, synchronize_session=False)
 
     db.delete(category)
     db.commit()
-    return None
+    return CategoryDeleteResponse(reassigned_count=reassigned_count)
+
+
+class SystemTransferCategoryInput(BaseModel):
+    key: str
+    name: str
+    category_type: str
+    color: str
+    icon: str
+    description: Optional[str] = None
+    hide_from_selection: bool = False
+
+
+class EnsureSystemTransferCategoriesRequest(BaseModel):
+    categories: List[SystemTransferCategoryInput]
+
+
+@router.post("/ensure-system-transfer-categories", response_model=List[CategoryResponse])
+def ensure_system_transfer_categories(
+    request: EnsureSystemTransferCategoriesRequest,
+    user_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Additive, idempotent backfill: inserts any of the given system transfer
+    categories the user doesn't already have (matched by system_key), without
+    touching existing categories. Safe to call repeatedly.
+    """
+    user_id = get_user_id(user_id)
+
+    existing = (
+        db.query(Category.name, Category.system_key).filter(Category.user_id == user_id).all()
+    )
+    existing_keys = {row.system_key for row in existing if row.system_key}
+    existing_names = {row.name for row in existing}
+
+    inserted: List[Category] = []
+    for item in request.categories:
+        if item.key in existing_keys or item.name in existing_names:
+            continue
+        db_category = Category(
+            user_id=user_id,
+            name=item.name,
+            category_type=item.category_type,
+            color=item.color,
+            icon=item.icon,
+            description=item.description,
+            is_system=True,
+            hide_from_selection=item.hide_from_selection,
+            system_key=item.key,
+        )
+        db.add(db_category)
+        inserted.append(db_category)
+
+    if inserted:
+        db.commit()
+        for category in inserted:
+            db.refresh(category)
+
+    return inserted
 
 
 @router.get("/{category_id}/stats")

@@ -47,6 +47,10 @@ class CategoryBase(BaseModel):
     category_type: str = "expense"
     color: Optional[str] = None
     icon: Optional[str] = None
+    description: Optional[str] = None
+    categorization_instructions: Optional[str] = None
+    hide_from_selection: bool = False
+    system_key: Optional[str] = None
 
 
 class CategoryCreate(CategoryBase):
@@ -56,8 +60,20 @@ class CategoryCreate(CategoryBase):
 class CategoryUpdate(BaseModel):
     name: Optional[str] = None
     parent_id: Optional[UUID] = None
+    category_type: Optional[str] = None
     color: Optional[str] = None
     icon: Optional[str] = None
+    description: Optional[str] = None
+    categorization_instructions: Optional[str] = None
+    hide_from_selection: Optional[bool] = None
+
+
+class CategoryDeleteRequest(BaseModel):
+    reassign_to_category_id: Optional[UUID] = None
+
+
+class CategoryDeleteResponse(BaseModel):
+    reassigned_count: int
 
 
 class CategoryResponse(CategoryBase):
