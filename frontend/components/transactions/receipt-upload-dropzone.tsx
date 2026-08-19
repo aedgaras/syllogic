@@ -14,13 +14,6 @@ interface ReceiptUploadDropzoneProps {
   isUploading?: boolean;
 }
 
-const VALID_TYPES = [
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/heic",
-  "image/webp",
-];
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 export function ReceiptUploadDropzone({
@@ -37,7 +30,8 @@ export function ReceiptUploadDropzone({
     (file: File) => {
       setError(null);
 
-      const isValidType = VALID_TYPES.includes(file.type) || file.type === "";
+      const isValidType =
+        file.type.startsWith("image/") || file.type === "";
       if (!isValidType) {
         setError(translate("pleaseUploadAPhotoOfYourReceipt"));
         return;
@@ -130,8 +124,7 @@ export function ReceiptUploadDropzone({
       <input
         id="receipt-file-input"
         type="file"
-        accept="image/jpeg,image/png,image/heic,image/webp"
-        capture="environment"
+        accept="image/*"
         className="hidden"
         onChange={handleFileInput}
       />

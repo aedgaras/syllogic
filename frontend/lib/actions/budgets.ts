@@ -139,7 +139,7 @@ async function computeSpentByBudgetId(
       const rows = await db
         .select({
           budgetId: budgetCategories.budgetId,
-          spent: sql<string>`COALESCE(SUM(${transactions.functionalAmount}), 0)`,
+          spent: sql<string>`COALESCE(SUM(ABS(${transactions.functionalAmount})), 0)`,
         })
         .from(budgetCategories)
         .innerJoin(
@@ -506,7 +506,7 @@ async function computeSpentByCategoryForBudget(
   const rows = await db
     .select({
       categoryId: budgetCategories.categoryId,
-      spent: sql<string>`COALESCE(SUM(${transactions.functionalAmount}), 0)`,
+      spent: sql<string>`COALESCE(SUM(ABS(${transactions.functionalAmount})), 0)`,
     })
     .from(budgetCategories)
     .innerJoin(
@@ -577,6 +577,10 @@ export async function getBudgetDetail(
             ref.subLimit != null && ref.subLimit > 0
               ? (spent / ref.subLimit) * 100
               : 0;
+          const weight =
+            ref.subLimit != null && base.amount > 0
+              ? (ref.subLimit / base.amount) * 100
+              : null;
           return {
             ...ref,
             spent,
@@ -585,6 +589,7 @@ export async function getBudgetDetail(
                 ? ("no_limit" as const)
                 : computeBudgetStatus(spent, ref.subLimit),
             percentage,
+            weight,
           };
         }),
       ),

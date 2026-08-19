@@ -10,7 +10,10 @@ export function WeightBarVisualizer({
   color,
 }: WeightBarVisualizerProps) {
   const totalBars = 10;
-  const filledBars = Math.round((percentage / 100) * totalBars);
+  const filledBars = Math.max(
+    0,
+    Math.round((percentage / 100) * totalBars),
+  );
 
   return (
     <div className="flex items-end gap-[2px]">

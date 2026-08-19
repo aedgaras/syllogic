@@ -49,6 +49,9 @@ export interface BudgetCategoryDetail extends BudgetCategoryRef {
   spent: number;
   status: BudgetStatus | "no_limit";
   percentage: number;
+  // Share of the overall budget amount this sub-budget's subLimit represents.
+  // Null when the category has no subLimit set.
+  weight: number | null;
 }
 
 export interface BudgetDetailViewModel extends Omit<BudgetViewModel, "categories"> {

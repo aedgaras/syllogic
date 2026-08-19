@@ -105,6 +105,11 @@ export function BudgetDetailView({ budget }: BudgetDetailViewProps) {
                       >
                         {categoryStatusLabels[category.status]}
                       </span>
+                      {category.weight != null && (
+                        <span className="text-xs text-muted-foreground">
+                          {translate("weight")}: {Math.round(category.weight)}%
+                        </span>
+                      )}
                     </div>
                     <span className="whitespace-nowrap font-mono text-sm">
                       {category.subLimit == null
