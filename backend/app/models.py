@@ -931,6 +931,7 @@ class User(Base):
     email = Column(Text, unique=True, nullable=False)
     email_verified = Column(Boolean, default=False)
     image = Column(Text, nullable=True)
+    role = Column(Text, nullable=True)  # better-auth admin plugin: "admin" or "user"
     onboarding_status = Column(
         String(20), default="pending"
     )  # pending, step_1, step_2, step_3, completed

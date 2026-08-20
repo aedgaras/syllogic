@@ -141,17 +141,17 @@ def enqueue_csv_import(request: EnqueueImportRequest, db: Session = Depends(get_
         if not csv_import:
             raise HTTPException(status_code=404, detail="CSV import not found")
 
-        # Validate account exists
-        # Get account_id from first transaction
+        # Validate every transaction's account belongs to the requesting user
         if request.transactions:
-            account_id = request.transactions[0].account_id
-            account = (
-                db.query(Account)
-                .filter(Account.id == account_id, Account.user_id == user_id)
-                .first()
-            )
+            account_ids = {txn.account_id for txn in request.transactions}
+            owned_account_ids = {
+                str(acc_id)
+                for (acc_id,) in db.query(Account.id)
+                .filter(Account.id.in_(account_ids), Account.user_id == user_id)
+                .all()
+            }
 
-            if not account:
+            if account_ids - owned_account_ids:
                 raise HTTPException(status_code=404, detail="Account not found")
 
         # Update CSV import status

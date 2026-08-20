@@ -8,7 +8,7 @@ import hmac
 import os
 import time
 from typing import Mapping, Optional
-from fastapi import HTTPException, status
+from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 try:
@@ -19,6 +19,7 @@ except ImportError:  # pragma: no cover - fallback when MCP SDK is unavailable
         return None
 
 
+from app.database import get_db
 from app.models import User
 from app.mcp.auth import validate_api_key
 
@@ -211,3 +212,11 @@ def get_user_id(user_id: Optional[str] = None, api_key: Optional[str] = None) ->
         )
 
     return request_user_id
+
+
+def require_admin(user_id: str = Depends(get_user_id), db: Session = Depends(get_db)) -> str:
+    """FastAPI dependency: resolves the caller and requires role == 'admin'."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
+    return user_id

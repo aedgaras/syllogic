@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.db_helpers import get_user_id
+from app.db_helpers import require_admin
 from app.logging_config import apply_log_level
 from app.services.app_settings import (
     VALID_LOG_LEVELS,
@@ -74,7 +74,7 @@ def _settings_error_response(exc: Exception) -> HTTPException:
 
 @router.get("/llm", response_model=LlmSettingsResponse)
 @router.get("/openai", response_model=LlmSettingsResponse, include_in_schema=False)
-def get_llm_settings(db: Session = Depends(get_db)):
+def get_llm_settings(admin_user_id: str = Depends(require_admin), db: Session = Depends(get_db)):
     try:
         return get_openai_api_key_status(db)
     except (AppSettingDecryptError, AppSettingEncryptionMissing) as exc:
@@ -85,7 +85,7 @@ def get_llm_settings(db: Session = Depends(get_db)):
 @router.put("/openai", response_model=LlmSettingsResponse, include_in_schema=False)
 def update_llm_settings(
     payload: UpdateLlmSettingsRequest,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     if payload.api_key is None and payload.model is None:
@@ -105,7 +105,7 @@ def update_llm_settings(
 @router.delete("/llm", response_model=LlmSettingsResponse)
 @router.delete("/openai", response_model=LlmSettingsResponse, include_in_schema=False)
 def delete_llm_settings(
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     del user_id
@@ -134,14 +134,14 @@ class UpdateLogLevelRequest(BaseModel):
 
 
 @router.get("/log-level", response_model=LogLevelResponse)
-def get_log_level(db: Session = Depends(get_db)):
+def get_log_level(admin_user_id: str = Depends(require_admin), db: Session = Depends(get_db)):
     return get_log_level_status(db)
 
 
 @router.put("/log-level", response_model=LogLevelResponse)
 def update_log_level(
     payload: UpdateLogLevelRequest,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     status = set_log_level(db, payload.level, updated_by_user_id=user_id)
@@ -150,7 +150,9 @@ def update_log_level(
 
 
 @router.delete("/log-level", response_model=LogLevelResponse)
-def delete_log_level(db: Session = Depends(get_db)):
+def delete_log_level(
+    admin_user_id: str = Depends(require_admin), db: Session = Depends(get_db)
+):
     status = clear_log_level(db)
     apply_log_level(status["level"])
     return status
@@ -166,19 +168,23 @@ class UpdateAiSummaryEnabledRequest(BaseModel):
 
 
 @router.get("/ai-summary", response_model=AiSummaryEnabledResponse)
-def get_ai_summary_enabled(db: Session = Depends(get_db)):
+def get_ai_summary_enabled(
+    admin_user_id: str = Depends(require_admin), db: Session = Depends(get_db)
+):
     return get_ai_summary_enabled_status(db)
 
 
 @router.put("/ai-summary", response_model=AiSummaryEnabledResponse)
 def update_ai_summary_enabled(
     payload: UpdateAiSummaryEnabledRequest,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     return set_ai_summary_enabled(db, payload.enabled, updated_by_user_id=user_id)
 
 
 @router.delete("/ai-summary", response_model=AiSummaryEnabledResponse)
-def delete_ai_summary_enabled(db: Session = Depends(get_db)):
+def delete_ai_summary_enabled(
+    admin_user_id: str = Depends(require_admin), db: Session = Depends(get_db)
+):
     return clear_ai_summary_enabled(db)

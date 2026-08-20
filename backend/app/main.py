@@ -21,6 +21,7 @@ from app.db_helpers import (
     set_request_user_id,
 )
 from app.routes import api_router
+from app.security.data_encryption import is_data_encryption_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,18 @@ UNPROTECTED_API_PATHS = {"/api/health"}
 @app.on_event("startup")
 def _apply_configured_log_level() -> None:
     refresh_log_level_from_db(SessionLocal)
+
+
+@app.on_event("startup")
+def _warn_if_encryption_disabled() -> None:
+    if not is_data_encryption_enabled():
+        logger.error(
+            "=" * 78 + "\n"
+            "DATA_ENCRYPTION_KEY_CURRENT is not set. Sensitive fields (e.g. IBANs, "
+            "account external IDs) will be stored in PLAINTEXT. This app hosts "
+            "financial data — set DATA_ENCRYPTION_KEY_CURRENT (see deploy/install/"
+            "install.sh or .env.example) before running in production.\n" + "=" * 78
+        )
 
 
 @app.middleware("http")
