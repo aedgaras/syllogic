@@ -3,7 +3,7 @@ import { t as translate } from "@/i18n/translate";
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Line, LineChart, XAxis, YAxis, CartesianGrid } from "recharts";
+import { Area, ComposedChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -33,6 +33,13 @@ const chartConfig = {
       dark: "oklch(0.985 0.001 106.423)",
     },
   },
+  band: {
+    label: translate("projectedRange"),
+    theme: {
+      light: "oklch(0.147 0.004 49.25)",
+      dark: "oklch(0.985 0.001 106.423)",
+    },
+  },
 } satisfies ChartConfig;
 
 function formatCompactNumber(value: number): string {
@@ -57,7 +64,7 @@ function ForecastChartSkeleton() {
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: Array<{ value: number; payload: { date: string } }>;
+  payload?: Array<{ value: number; payload: { date: string; low: number; high: number } }>;
   currency: string;
 }
 
@@ -75,6 +82,12 @@ function CustomTooltip({ active, payload, currency }: CustomTooltipProps) {
         </span>
         <span className="font-mono font-medium tabular-nums">
           {formatCurrency(point.value, currency)}
+        </span>
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-8">
+        <span className="text-muted-foreground">{translate("projectedRange")}</span>
+        <span className="font-mono text-muted-foreground tabular-nums">
+          {formatCurrency(point.payload.low, currency)} – {formatCurrency(point.payload.high, currency)}
         </span>
       </div>
     </div>
@@ -103,6 +116,12 @@ export function ForecastChart({ currency, accountIds }: ForecastChartProps) {
   }
 
   const netChange = data.projectedNetCashFlow;
+  const growthChange = data.growthProjectedChange;
+  const hasGrowthLeg = data.growthStartingBalance !== 0 || growthChange !== 0;
+  const chartData = data.series.map((p) => ({
+    ...p,
+    band: [p.low, p.high] as [number, number],
+  }));
 
   return (
     <Card className="min-w-0">
@@ -123,6 +142,19 @@ export function ForecastChart({ currency, accountIds }: ForecastChartProps) {
               {formatCurrency(netChange, currency)}
             </span>
           </p>
+          {hasGrowthLeg && (
+            <p className="text-xs text-muted-foreground">
+              {translate("cashVsGrowth")}:{" "}
+              <span className="font-mono tabular-nums">
+                {formatCurrency(netChange - growthChange, currency)}
+              </span>{" "}
+              {translate("cash")} / {" "}
+              <span className="font-mono tabular-nums">
+                {formatCurrency(growthChange, currency)}
+              </span>{" "}
+              {translate("growth")}
+            </p>
+          )}
         </div>
         <ToggleGroup
           multiple={false}
@@ -143,8 +175,8 @@ export function ForecastChart({ currency, accountIds }: ForecastChartProps) {
           config={chartConfig}
           className="h-[240px] min-w-0 w-full sm:h-[300px]"
         >
-          <LineChart
-            data={data.series}
+          <ComposedChart
+            data={chartData}
             margin={{ top: 20, right: 8, left: -8, bottom: 20 }}
           >
             <CartesianGrid
@@ -169,6 +201,13 @@ export function ForecastChart({ currency, accountIds }: ForecastChartProps) {
               width={42}
             />
             <ChartTooltip content={<CustomTooltip currency={currency} />} />
+            <Area
+              dataKey="band"
+              stroke="none"
+              fill="var(--color-band)"
+              fillOpacity={0.12}
+              isAnimationActive={false}
+            />
             <Line
               type="monotone"
               dataKey="projectedBalance"
@@ -178,7 +217,7 @@ export function ForecastChart({ currency, accountIds }: ForecastChartProps) {
               dot={false}
               isAnimationActive={false}
             />
-          </LineChart>
+          </ComposedChart>
         </ChartContainer>
       </CardContent>
     </Card>

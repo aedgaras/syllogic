@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.database import Base, get_db
 from app.main import app
-from app.models import Account, RecurringTransaction, Transaction, User
+from app.models import Account, AccountBalance, Category, RecurringTransaction, Transaction, User
 
 INTERNAL_AUTH_SECRET = "test-internal-secret"
 
@@ -178,3 +178,202 @@ def test_cashflow_forecast_excludes_recurring_linked_transactions_from_variable_
     # No non-recurring-linked transactions and horizon too short to hit the
     # recurring occurrence at day 60, so balance should stay flat at 0.
     assert body["projectedBalanceAtHorizon"] == 0.0
+
+
+def test_cashflow_forecast_recurring_income_is_an_inflow(client, db):
+    account = Account(
+        id=uuid4(),
+        user_id="u1",
+        name="Checking",
+        account_type="checking",
+        currency="EUR",
+        functional_balance=Decimal("1000"),
+        is_active=True,
+    )
+    income_category = Category(
+        id=uuid4(), user_id="u1", name="Salary", category_type="income"
+    )
+    db.add(account)
+    db.add(income_category)
+    db.add(
+        RecurringTransaction(
+            id=uuid4(),
+            user_id="u1",
+            account_id=account.id,
+            category_id=income_category.id,
+            name="Salary",
+            amount=Decimal("2000"),
+            frequency="monthly",
+            is_active=True,
+            next_due_date=date.today() + timedelta(days=5),
+        )
+    )
+    db.commit()
+
+    r = client.get("/api/forecast/cashflow?horizon_days=30")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["projectedBalanceAtHorizon"] == 3000.0
+    assert body["projectedIncome"] == 2000.0
+    assert body["projectedExpenses"] == 0.0
+
+
+def test_cashflow_forecast_excludes_growth_account_transactions_from_cash_leg(client, db):
+    # A stray transaction posted against an investment account must not
+    # leak into the cash leg's flat trailing average - it's the growth
+    # leg's job to account for that account's balance movement, not the
+    # transaction-based leg (double-counting otherwise).
+    cash_account = Account(
+        id=uuid4(),
+        user_id="u1",
+        name="Checking",
+        account_type="checking",
+        currency="EUR",
+        functional_balance=Decimal("0"),
+        is_active=True,
+    )
+    investment_account = Account(
+        id=uuid4(),
+        user_id="u1",
+        name="Brokerage",
+        account_type="investment_manual",
+        currency="EUR",
+        functional_balance=Decimal("0"),
+        is_active=True,
+    )
+    db.add(cash_account)
+    db.add(investment_account)
+    db.add(
+        Transaction(
+            id=uuid4(),
+            user_id="u1",
+            account_id=investment_account.id,
+            transaction_type="credit",
+            amount=Decimal("1000"),
+            functional_amount=Decimal("1000"),
+            include_in_analytics=True,
+            booked_at=datetime.utcnow() - timedelta(days=1),
+        )
+    )
+    db.commit()
+
+    r = client.get("/api/forecast/cashflow?horizon_days=10")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    # No AccountBalance history for the investment account either, so its
+    # growth leg falls back to flat (0%). Combined with the transaction
+    # being excluded from the cash leg, the whole forecast should stay flat.
+    assert body["startingBalance"] == 0.0
+    assert body["projectedBalanceAtHorizon"] == 0.0
+
+
+def test_cashflow_forecast_excludes_recurring_on_growth_account_from_cash_leg(client, db):
+    # A recurring contribution scheduled against an investment account must
+    # not subtract from the cash leg - the growth leg (driven by
+    # AccountBalance history, not recurring definitions) owns that account.
+    investment_account = Account(
+        id=uuid4(),
+        user_id="u1",
+        name="Brokerage",
+        account_type="investment_manual",
+        currency="EUR",
+        functional_balance=Decimal("500"),
+        is_active=True,
+    )
+    db.add(investment_account)
+    db.add(
+        RecurringTransaction(
+            id=uuid4(),
+            user_id="u1",
+            account_id=investment_account.id,
+            name="Monthly contribution",
+            amount=Decimal("100"),
+            frequency="monthly",
+            is_active=True,
+            next_due_date=date.today() + timedelta(days=5),
+        )
+    )
+    db.commit()
+
+    r = client.get("/api/forecast/cashflow?horizon_days=30")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["cashStartingBalance"] == 0.0
+    assert body["growthStartingBalance"] == 500.0
+    # No history to derive a growth rate from -> flat, and the recurring
+    # contribution must not have subtracted from anything.
+    assert body["projectedBalanceAtHorizon"] == 500.0
+
+
+def test_cashflow_forecast_growth_leg_compounds_from_balance_history(client, db):
+    investment_account = Account(
+        id=uuid4(),
+        user_id="u1",
+        name="Brokerage",
+        account_type="investment_manual",
+        currency="EUR",
+        functional_balance=Decimal("1000"),
+        is_active=True,
+    )
+    db.add(investment_account)
+    db.commit()
+
+    # 31 daily snapshots growing from 900 to 1000 over 30 days -> a clear
+    # positive historical daily rate, comfortably above the 30-row minimum.
+    for i in range(31):
+        snapshot_date = datetime.utcnow() - timedelta(days=30 - i)
+        balance = Decimal("900") + (Decimal("100") * i / 30)
+        db.add(
+            AccountBalance(
+                id=uuid4(),
+                account_id=investment_account.id,
+                date=snapshot_date,
+                balance_in_account_currency=balance,
+                balance_in_functional_currency=balance,
+            )
+        )
+    db.commit()
+
+    r = client.get("/api/forecast/cashflow?horizon_days=10")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["growthStartingBalance"] == 1000.0
+    # Positive historical growth -> projected balance must exceed the flat
+    # starting balance after 10 days of compounding.
+    assert body["projectedBalanceAtHorizon"] > 1000.0
+    assert body["growthProjectedChange"] > 0.0
+
+
+def test_cashflow_forecast_growth_leg_falls_back_to_flat_with_sparse_history(client, db):
+    investment_account = Account(
+        id=uuid4(),
+        user_id="u1",
+        name="Brokerage",
+        account_type="investment_manual",
+        currency="EUR",
+        functional_balance=Decimal("1000"),
+        is_active=True,
+    )
+    db.add(investment_account)
+    db.commit()
+
+    # Only 5 snapshots - below the 30-row minimum, so the rate must fall
+    # back to 0% rather than extrapolating from too little data.
+    for i in range(5):
+        snapshot_date = datetime.utcnow() - timedelta(days=5 - i)
+        db.add(
+            AccountBalance(
+                id=uuid4(),
+                account_id=investment_account.id,
+                date=snapshot_date,
+                balance_in_account_currency=Decimal("500"),
+                balance_in_functional_currency=Decimal("500"),
+            )
+        )
+    db.commit()
+
+    r = client.get("/api/forecast/cashflow?horizon_days=10")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["projectedBalanceAtHorizon"] == 1000.0
+    assert body["growthProjectedChange"] == 0.0

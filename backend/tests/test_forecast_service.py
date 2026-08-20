@@ -5,7 +5,11 @@ from decimal import Decimal
 
 import pytest
 
-from app.services.forecast_service import RecurringDefinition, project_cash_flow
+from app.services.forecast_service import (
+    RecurringDefinition,
+    project_cash_flow,
+    project_compounding_balance,
+)
 
 
 def test_project_cash_flow_no_data_holds_balance_flat():
@@ -41,10 +45,9 @@ def test_project_cash_flow_variable_leg_only():
     assert result.projected_income == Decimal("0")
 
 
-def test_project_cash_flow_recurring_leg_is_always_an_outflow():
-    # RecurringTransaction.amount is a positive magnitude; materialization
-    # always creates a debit, so recurring occurrences must be negative
-    # regardless of the sign supplied.
+def test_project_cash_flow_recurring_leg_defaults_to_outflow():
+    # RecurringTransaction.amount is a positive magnitude; is_income defaults
+    # to False (expense/transfer/no-category), so occurrences subtract.
     recurring = [
         RecurringDefinition(
             frequency="monthly",
@@ -63,6 +66,28 @@ def test_project_cash_flow_recurring_leg_is_always_an_outflow():
     assert result.projected_balance_at_horizon == Decimal("950")
     day_15 = next(p for p in result.series if p.day == date(2026, 1, 15))
     assert day_15.projected_balance == Decimal("950")
+
+
+def test_project_cash_flow_recurring_income_leg_is_an_inflow():
+    recurring = [
+        RecurringDefinition(
+            frequency="monthly",
+            amount=Decimal("2000"),
+            next_due_date=date(2026, 1, 15),
+            is_income=True,
+        )
+    ]
+    result = project_cash_flow(
+        starting_balance=Decimal("1000"),
+        recurring=recurring,
+        trailing_daily_net=Decimal("0"),
+        horizon_days=30,
+        as_of=date(2026, 1, 1),
+    )
+
+    assert result.projected_balance_at_horizon == Decimal("3000")
+    assert result.projected_income == Decimal("2000")
+    assert result.projected_expenses == Decimal("0")
 
 
 def test_project_cash_flow_recurring_respects_end_date():
@@ -128,5 +153,87 @@ def test_project_cash_flow_rejects_non_positive_horizon():
             starting_balance=Decimal("0"),
             recurring=[],
             trailing_daily_net=Decimal("0"),
+            horizon_days=0,
+        )
+
+
+def test_project_cash_flow_band_is_zero_width_without_stddev():
+    result = project_cash_flow(
+        starting_balance=Decimal("100"),
+        recurring=[],
+        trailing_daily_net=Decimal("0"),
+        horizon_days=10,
+        as_of=date(2026, 1, 1),
+    )
+
+    for point in result.series:
+        assert point.low == point.projected_balance == point.high
+
+
+def test_project_cash_flow_band_widens_with_horizon():
+    result = project_cash_flow(
+        starting_balance=Decimal("100"),
+        recurring=[],
+        trailing_daily_net=Decimal("0"),
+        trailing_daily_stddev=Decimal("10"),
+        horizon_days=10,
+        as_of=date(2026, 1, 1),
+    )
+
+    # Day 0 has no accumulated uncertainty yet.
+    assert result.series[0].low == result.series[0].high == Decimal("100")
+
+    widths = [p.high - p.low for p in result.series[1:]]
+    # Each day's band must be at least as wide as the previous day's
+    # (sqrt(t) is monotonically non-decreasing), and mid must always sit
+    # inside [low, high].
+    for prev, curr in zip(widths, widths[1:]):
+        assert curr >= prev
+    for point in result.series:
+        assert point.low <= point.projected_balance <= point.high
+
+
+def test_project_compounding_balance_grows_with_positive_rate():
+    result = project_compounding_balance(
+        starting_balance=Decimal("1000"),
+        daily_rate=Decimal("0.01"),
+        horizon_days=2,
+        as_of=date(2026, 1, 1),
+    )
+
+    assert result.starting_balance == Decimal("1000")
+    assert result.series[1].balance == Decimal("1000") * Decimal("1.01")
+    assert result.series[2].balance == Decimal("1000") * Decimal("1.01") * Decimal("1.01")
+    assert result.balance_at_horizon == result.series[-1].balance
+
+
+def test_project_compounding_balance_flat_at_zero_rate():
+    result = project_compounding_balance(
+        starting_balance=Decimal("500"),
+        daily_rate=Decimal("0"),
+        horizon_days=30,
+        as_of=date(2026, 1, 1),
+    )
+
+    assert result.balance_at_horizon == Decimal("500")
+    assert all(p.balance == Decimal("500") for p in result.series)
+
+
+def test_project_compounding_balance_shrinks_with_negative_rate():
+    result = project_compounding_balance(
+        starting_balance=Decimal("1000"),
+        daily_rate=Decimal("-0.1"),
+        horizon_days=1,
+        as_of=date(2026, 1, 1),
+    )
+
+    assert result.balance_at_horizon == Decimal("900")
+
+
+def test_project_compounding_balance_rejects_non_positive_horizon():
+    with pytest.raises(ValueError):
+        project_compounding_balance(
+            starting_balance=Decimal("0"),
+            daily_rate=Decimal("0"),
             horizon_days=0,
         )

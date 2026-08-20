@@ -9,7 +9,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from celery_app import celery_app
 
 from app.database import SessionLocal
-from app.models import RecurringTransaction, Transaction, User
+from app.models import Category, RecurringTransaction, Transaction, User
 from app.services.account_balance_service import AccountBalanceService
 from app.services.exchange_rate_service import ExchangeRateService
 from app.services.recurring_transaction_schedule_service import compute_next_due_date
@@ -48,11 +48,16 @@ def check_due_recurring_transactions() -> dict:
                 recurring.auto_generate = False
                 continue
 
+            is_income = False
+            if recurring.category_id:
+                category = db.query(Category).filter(Category.id == recurring.category_id).first()
+                is_income = bool(category and category.category_type == "income")
+
             txn = Transaction(
                 user_id=recurring.user_id,
                 account_id=recurring.account_id,
-                transaction_type="debit",
-                amount=_quantize(-abs(recurring.amount)),
+                transaction_type="credit" if is_income else "debit",
+                amount=_quantize(abs(recurring.amount)) if is_income else _quantize(-abs(recurring.amount)),
                 currency=recurring.currency or "EUR",
                 description=recurring.name,
                 merchant=recurring.merchant,

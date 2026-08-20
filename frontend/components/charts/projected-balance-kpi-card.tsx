@@ -4,6 +4,7 @@ import { t as translate } from "@/i18n/translate";
 import { useQuery } from "@tanstack/react-query";
 import { KpiSparkCard } from "@/components/charts/kpi-spark-card";
 import { getCashflowForecast } from "@/lib/forecast/api";
+import { formatCurrency } from "@/lib/utils";
 
 interface ProjectedBalanceKpiCardProps {
   currency: string;
@@ -21,12 +22,20 @@ export function ProjectedBalanceKpiCard({
     queryFn: () => getCashflowForecast({ horizonDays: 30, accountIds }),
   });
 
+  const subtitle =
+    data
+      ? `${formatCurrency(data.projectedBalanceLowAtHorizon, currency)} – ${formatCurrency(
+          data.projectedBalanceHighAtHorizon,
+          currency,
+        )}`
+      : translate("basedOnRecurringAndTrend", { value1: 30 });
+
   return (
     <KpiSparkCard
       title={translate("projectedBalanceIn30Days")}
       value={data?.projectedBalanceAtHorizon ?? 0}
       currency={currency}
-      subtitle={translate("basedOnRecurringAndTrend", { value1: 30 })}
+      subtitle={subtitle}
       sparkData={
         data
           ? data.series.map((p) => ({
