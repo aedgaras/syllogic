@@ -47,6 +47,11 @@ TEXT_SIMILARITY_THRESHOLD = 0.65  # 65% similarity to be considered same subscri
 # Amount can vary by up to 30% and still be considered the same subscription
 AMOUNT_TOLERANCE_PERCENT = 0.30
 
+# Coefficient of variation above which a pattern's amount is flagged as variable
+# rather than fixed (e.g. streaming price hikes are below this; usage-based
+# bills like utilities are typically well above it).
+VARIABLE_AMOUNT_CV_THRESHOLD = 0.05
+
 # Interval consistency threshold - how much variation in days between payments is allowed
 # E.g., 0.25 means intervals can vary by 25% from the average
 INTERVAL_CONSISTENCY_THRESHOLD = 0.35
@@ -87,6 +92,7 @@ class DetectedPattern:
     suggested_name: str
     suggested_merchant: Optional[str]
     suggested_amount: Decimal
+    is_variable_amount: bool
     currency: str
     detected_frequency: str
     confidence: int  # 0-100
@@ -725,6 +731,7 @@ class SubscriptionDetector:
             suggested_name=suggested_name[:255],
             suggested_merchant=suggested_merchant[:255] if suggested_merchant else None,
             suggested_amount=Decimal(str(round(avg_amount, 2))),
+            is_variable_amount=amount_cv >= VARIABLE_AMOUNT_CV_THRESHOLD,
             currency=first_txn.currency or "EUR",
             detected_frequency=frequency_label,
             confidence=confidence,
@@ -844,15 +851,17 @@ class SubscriptionDetector:
             if str(sub.account_id) != pattern.account_id:
                 continue
 
-            # Check amount match (within tolerance)
-            sub_amount = abs(float(sub.amount))
-            pattern_amount = abs(float(pattern.suggested_amount))
+            # Check amount match (within tolerance; skipped for variable-amount
+            # subscriptions/patterns since the amount is only an estimate)
+            if not sub.is_variable_amount and not pattern.is_variable_amount:
+                sub_amount = abs(float(sub.amount))
+                pattern_amount = abs(float(pattern.suggested_amount))
 
-            if sub_amount > 0 and pattern_amount > 0:
-                diff = abs(sub_amount - pattern_amount)
-                avg = (sub_amount + pattern_amount) / 2
-                if diff / avg > 0.20:  # More than 20% difference
-                    continue
+                if sub_amount > 0 and pattern_amount > 0:
+                    diff = abs(sub_amount - pattern_amount)
+                    avg = (sub_amount + pattern_amount) / 2
+                    if diff / avg > 0.20:  # More than 20% difference
+                        continue
 
             # Check text similarity
             score, _ = self.text_similarity.calculate_match_score(
@@ -885,15 +894,17 @@ class SubscriptionDetector:
             if suggestion_account_id != pattern.account_id:
                 continue
 
-            # Check amount similarity
-            sug_amount = abs(float(suggestion.suggested_amount))
-            pat_amount = abs(float(pattern.suggested_amount))
+            # Check amount similarity (skip for variable-amount patterns,
+            # where the amount is just an estimate and not a match signal)
+            if not suggestion.is_variable_amount and not pattern.is_variable_amount:
+                sug_amount = abs(float(suggestion.suggested_amount))
+                pat_amount = abs(float(pattern.suggested_amount))
 
-            if sug_amount > 0 and pat_amount > 0:
-                diff = abs(sug_amount - pat_amount)
-                avg = (sug_amount + pat_amount) / 2
-                if diff / avg > 0.20:
-                    continue
+                if sug_amount > 0 and pat_amount > 0:
+                    diff = abs(sug_amount - pat_amount)
+                    avg = (sug_amount + pat_amount) / 2
+                    if diff / avg > 0.20:
+                        continue
 
             # Check name similarity
             score = self.text_similarity.calculate(
@@ -1079,6 +1090,7 @@ class SubscriptionDetector:
                 suggested_name=pattern.suggested_name,
                 suggested_merchant=pattern.suggested_merchant,
                 suggested_amount=pattern.suggested_amount,
+                is_variable_amount=pattern.is_variable_amount,
                 currency=pattern.currency,
                 detected_frequency=pattern.detected_frequency,
                 confidence=pattern.confidence,
@@ -1136,13 +1148,14 @@ class SubscriptionDetector:
         best_score = 0.0
 
         for sub in candidates:
-            sub_amount = abs(float(sub.amount))
-            pattern_amount = abs(float(pattern.suggested_amount))
-            if sub_amount > 0 and pattern_amount > 0:
-                diff = abs(sub_amount - pattern_amount)
-                avg = (sub_amount + pattern_amount) / 2
-                if avg == 0 or (diff / avg) > 0.20:
-                    continue
+            if not sub.is_variable_amount and not pattern.is_variable_amount:
+                sub_amount = abs(float(sub.amount))
+                pattern_amount = abs(float(pattern.suggested_amount))
+                if sub_amount > 0 and pattern_amount > 0:
+                    diff = abs(sub_amount - pattern_amount)
+                    avg = (sub_amount + pattern_amount) / 2
+                    if avg == 0 or (diff / avg) > 0.20:
+                        continue
 
             score, _ = self.text_similarity.calculate_match_score(
                 subscription_name=sub.name,
@@ -1178,6 +1191,7 @@ class SubscriptionDetector:
         if existing:
             existing.account_id = pattern_account_uuid
             existing.amount = pattern.suggested_amount
+            existing.is_variable_amount = pattern.is_variable_amount
             existing.currency = pattern.currency
             existing.frequency = "monthly"
             existing.is_active = True
@@ -1195,6 +1209,7 @@ class SubscriptionDetector:
             name=pattern.suggested_name,
             merchant=pattern.suggested_merchant,
             amount=pattern.suggested_amount,
+            is_variable_amount=pattern.is_variable_amount,
             currency=pattern.currency,
             category_id=pattern_category_uuid,
             importance=2,

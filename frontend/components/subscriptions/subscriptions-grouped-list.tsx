@@ -305,6 +305,7 @@ export function SubscriptionsGroupedList({
 
         <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
           <span className="whitespace-nowrap font-mono text-sm">
+            {item.isVariable && "~"}
             {amount.toFixed(2)} {currency}
           </span>
           {!item.isSuggestion &&

@@ -66,6 +66,7 @@ export function SubscriptionsClient({
     id: s.id,
     name: s.suggestedName,
     amount: s.suggestedAmount,
+    isVariable: s.isVariableAmount,
     currency: s.currency,
     frequency: s.detectedFrequency,
     isActive: null, // Suggestions don't have active status

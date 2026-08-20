@@ -496,7 +496,8 @@ export const recurringTransactions = pgTable(
     }),
     name: varchar("name", { length: 255 }).notNull(),
     merchant: varchar("merchant", { length: 255 }),
-    amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
+    amount: decimal("amount", { precision: 15, scale: 2 }).notNull(), // estimated/typical amount when isVariable
+    isVariable: boolean("is_variable_amount").notNull().default(false),
     currency: char("currency", { length: 3 }).default("EUR"),
     categoryId: uuid("category_id").references(() => categories.id),
     logoId: uuid("logo_id").references(() => companyLogos.id, {
@@ -658,6 +659,7 @@ export const subscriptionSuggestions = pgTable(
       precision: 15,
       scale: 2,
     }).notNull(),
+    isVariableAmount: boolean("is_variable_amount").notNull().default(false),
     currency: char("currency", { length: 3 }).default("EUR").notNull(),
     detectedFrequency: varchar("detected_frequency", { length: 20 }).notNull(), // weekly, biweekly, monthly, quarterly, yearly
     confidence: integer("confidence").notNull(), // 0-100

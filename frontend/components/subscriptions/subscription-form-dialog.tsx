@@ -76,6 +76,7 @@ export function SubscriptionFormDialog({
   const [name, setName] = useState("");
   const [merchant, setMerchant] = useState("");
   const [amount, setAmount] = useState("");
+  const [isVariable, setIsVariable] = useState(false);
   const [categoryId, setCategoryId] = useState<string>("");
   const [importance, setImportance] = useState(2);
   const [frequency, setFrequency] = useState<SubscriptionFrequency>("monthly");
@@ -110,6 +111,7 @@ export function SubscriptionFormDialog({
         setName(subscription.name);
         setMerchant(subscription.merchant || "");
         setAmount(subscription.amount);
+        setIsVariable(subscription.isVariable ?? false);
         setCategoryId(subscription.categoryId || "");
         // Cap importance at 3 for existing subscriptions with higher values
         setImportance(Math.min(subscription.importance, 3));
@@ -134,6 +136,7 @@ export function SubscriptionFormDialog({
         setName(suggestion.suggestedName);
         setMerchant(suggestion.suggestedMerchant || "");
         setAmount(suggestion.suggestedAmount);
+        setIsVariable(suggestion.isVariableAmount ?? false);
         setCategoryId(suggestion.suggestedCategoryId || "");
         setImportance(2);
         setFrequency(suggestion.detectedFrequency as SubscriptionFrequency);
@@ -152,6 +155,7 @@ export function SubscriptionFormDialog({
         setName("");
         setMerchant("");
         setAmount("");
+        setIsVariable(false);
         setCategoryId("");
         setImportance(2);
         setFrequency("monthly");
@@ -278,6 +282,7 @@ export function SubscriptionFormDialog({
           name: name.trim(),
           merchant: merchant.trim() || undefined,
           amount: amountNum,
+          isVariable,
           categoryId: categoryId || undefined,
           logoId: logoId || null,
           importance,
@@ -303,6 +308,7 @@ export function SubscriptionFormDialog({
             name: name.trim(),
             merchant: merchant.trim() || null,
             amount: amountNum.toFixed(2),
+            isVariable,
             categoryId: categoryId || null,
             category: selectedCategory
               ? {
@@ -338,6 +344,7 @@ export function SubscriptionFormDialog({
           name: name.trim(),
           merchant: merchant.trim() || undefined,
           amount: amountNum,
+          isVariable,
           categoryId: categoryId || undefined,
           logoId: logoId || undefined,
           importance,
@@ -372,6 +379,7 @@ export function SubscriptionFormDialog({
           name: name.trim(),
           merchant: merchant.trim() || undefined,
           amount: amountNum,
+          isVariable,
           categoryId: categoryId || undefined,
           logoId: logoId || undefined,
           importance,
@@ -515,7 +523,9 @@ export function SubscriptionFormDialog({
             {/* Amount */}
             <div className="grid gap-2">
               <Label htmlFor="amount">
-                {translate("amount")}{" "}
+                {isVariable
+                  ? translate("estimatedAmount")
+                  : translate("amount")}{" "}
                 <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -528,6 +538,25 @@ export function SubscriptionFormDialog({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 required
+              />
+            </div>
+
+            {/* Variable amount */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="grid gap-0.5">
+                <Label htmlFor="isVariable">
+                  {translate("variableAmount")}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {translate(
+                    "thisSubscriptionSAmountChangesEachBillingCycleEG",
+                  )}
+                </p>
+              </div>
+              <Switch
+                id="isVariable"
+                checked={isVariable}
+                onCheckedChange={setIsVariable}
               />
             </div>
 

@@ -31,6 +31,7 @@ export interface SubscriptionViewModel {
   name: string;
   merchant: string | null;
   amount: string;
+  isVariable: boolean;
   currency: string | null;
   categoryId: string | null;
   logoId: string | null;
@@ -53,6 +54,7 @@ export interface SubscriptionSuggestionViewModel {
   suggestedName: string;
   suggestedMerchant: string | null;
   suggestedAmount: string;
+  isVariableAmount: boolean;
   currency: string;
   detectedFrequency: SubscriptionFrequency;
   confidence: number;
@@ -79,6 +81,7 @@ export interface SubscriptionCreateInput {
   name: string;
   merchant?: string;
   amount: number;
+  isVariable?: boolean;
   currency?: string;
   categoryId?: string;
   logoId?: string;
@@ -95,6 +98,7 @@ export interface SubscriptionUpdateInput {
   name?: string;
   merchant?: string;
   amount?: number;
+  isVariable?: boolean;
   currency?: string;
   categoryId?: string;
   logoId?: string | null;
@@ -161,6 +165,7 @@ export interface SubscriptionListRow {
   id: string;
   name: string;
   amount: string;
+  isVariable?: boolean;
   currency: string | null;
   frequency: string;
   isActive?: boolean | null;

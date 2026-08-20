@@ -415,7 +415,8 @@ class RecurringTransaction(Base):
     )
     name = Column(String(255), nullable=False)
     merchant = Column(String(255), nullable=True)
-    amount = Column(Numeric(15, 2), nullable=False)
+    amount = Column(Numeric(15, 2), nullable=False)  # estimated/typical amount when is_variable_amount
+    is_variable_amount = Column(Boolean, nullable=False, default=False, server_default="false")
     currency = Column(String(3), default="EUR")
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True, index=True)
     logo_id = Column(
@@ -748,6 +749,7 @@ class SubscriptionSuggestion(Base):
     suggested_name = Column(String(255), nullable=False)
     suggested_merchant = Column(String(255), nullable=True)
     suggested_amount = Column(Numeric(15, 2), nullable=False)
+    is_variable_amount = Column(Boolean, nullable=False, default=False, server_default="false")
     currency = Column(String(3), default="EUR", nullable=False)
     detected_frequency = Column(
         String(20), nullable=False

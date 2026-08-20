@@ -120,6 +120,7 @@ export async function verifySuggestion(
     name?: string;
     merchant?: string;
     amount?: number;
+    isVariable?: boolean;
     categoryId?: string;
     logoId?: string;
     importance?: number;
@@ -234,6 +235,8 @@ export async function verifySuggestion(
       overrides?.merchant?.trim() || suggestion.suggestedMerchant;
     const finalAmount =
       overrides?.amount?.toFixed(2) || suggestion.suggestedAmount;
+    const finalIsVariable =
+      overrides?.isVariable ?? suggestion.isVariableAmount;
     const finalFrequency =
       overrides?.frequency ||
       (suggestion.detectedFrequency as
@@ -292,6 +295,7 @@ export async function verifySuggestion(
         name: finalName,
         merchant: finalMerchant,
         amount: finalAmount,
+        isVariable: finalIsVariable,
         currency: suggestion.currency,
         frequency: finalFrequency,
         importance: finalImportance,

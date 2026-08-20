@@ -70,6 +70,7 @@ function toSubscriptionViewModel(row: SubscriptionRow): SubscriptionViewModel {
     name: row.name,
     merchant: row.merchant,
     amount: row.amount,
+    isVariable: row.isVariable,
     currency: row.currency,
     categoryId: row.categoryId,
     logoId: row.logoId,
@@ -189,6 +190,7 @@ export async function createSubscription(
         name: input.name.trim(),
         merchant: input.merchant?.trim() || null,
         amount: input.amount.toFixed(2),
+        isVariable: input.isVariable ?? false,
         currency: input.currency || "EUR",
         categoryId: input.categoryId || null,
         logoId: input.logoId || null,
@@ -344,6 +346,7 @@ export async function updateSubscription(
     if (input.merchant !== undefined)
       updateData.merchant = input.merchant.trim() || null;
     if (input.amount !== undefined) updateData.amount = input.amount.toFixed(2);
+    if (input.isVariable !== undefined) updateData.isVariable = input.isVariable;
     if (input.currency !== undefined) updateData.currency = input.currency;
     if (input.categoryId !== undefined)
       updateData.categoryId = input.categoryId || null;
@@ -965,12 +968,17 @@ export async function matchTransactionsToSubscription(
         continue;
       }
 
-      const diff = Math.abs(subscriptionAmount - txnAmount);
-      const avg = (subscriptionAmount + txnAmount) / 2;
-      const percentDiff = avg === 0 ? 1 : diff / avg;
+      // Variable-amount subscriptions have no fixed price to compare against
+      // (amount is just an estimate) — skip the tolerance check entirely and
+      // rely on description/merchant similarity instead.
+      if (!subscription.isVariable) {
+        const diff = Math.abs(subscriptionAmount - txnAmount);
+        const avg = (subscriptionAmount + txnAmount) / 2;
+        const percentDiff = avg === 0 ? 1 : diff / avg;
 
-      if (percentDiff > amountTolerancePercent) {
-        continue;
+        if (percentDiff > amountTolerancePercent) {
+          continue;
+        }
       }
 
       let bestScore = 0;

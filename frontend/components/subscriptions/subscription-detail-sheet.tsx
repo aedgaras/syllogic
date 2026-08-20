@@ -114,7 +114,13 @@ export function SubscriptionDetailSheet({
           <SheetTitle className="text-xl">{subscription.name}</SheetTitle>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <SheetDescription className="text-base font-mono">
+              {subscription.isVariable && "~"}
               {parseFloat(subscription.amount).toFixed(2)} {currency}
+              {subscription.isVariable && (
+                <span className="ml-2 font-sans text-xs text-muted-foreground">
+                  ({translate("estimatedAmount").toLowerCase()})
+                </span>
+              )}
             </SheetDescription>
             {/* Importance blocks */}
             <div
