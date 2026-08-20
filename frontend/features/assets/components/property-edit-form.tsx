@@ -144,7 +144,7 @@ export function PropertyEditForm({
               />
             )}
             {errors.owners?.message && (
-              <p className="text-sm text-destructive">
+              <p className="text-xs text-destructive">
                 {errors.owners.message}
               </p>
             )}
@@ -176,7 +176,7 @@ function Field({
     <div className="space-y-2">
       <Label>{label}</Label>
       {children}
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

@@ -181,7 +181,7 @@ export function BulkActionsDock({
                   placeholder={translate("search6d7a30")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-8 pl-8 text-sm"
+                  className="pl-8"
                 />
               </div>
             </div>

@@ -107,7 +107,7 @@ export function BankPicker() {
 
       {/* Error from callback */}
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="flex items-center gap-2 rounded-none border border-destructive bg-destructive/10 p-3 text-xs text-destructive">
           <RiAlertLine className="h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
@@ -116,7 +116,7 @@ export function BankPicker() {
       {/* Header */}
       <div>
         <h2 className="text-lg font-semibold">{translate("selectYourBank")}</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {translate("chooseYourBankToConnectViaOpenBankingYou")}
         </p>
       </div>
@@ -153,11 +153,11 @@ export function BankPicker() {
           <RiLoader4Line className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : loadError ? (
-        <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-center text-sm text-destructive">
+        <div className="rounded-none border border-destructive bg-destructive/10 p-4 text-center text-xs text-destructive">
           {loadError}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-none border border-dashed p-8 text-center text-xs text-muted-foreground">
           {translate("noBanksFound")}
           {search
             ? translate("matching", { search: search })

@@ -119,12 +119,12 @@ export function SymbolSearchInput({
         </span>
       )}
       {open && results.length > 0 && (
-        <ul className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-md">
+        <ul className="absolute z-50 mt-1 w-full overflow-hidden rounded-none border bg-popover shadow-md">
           {results.map((r, i) => (
             <li
               key={r.symbol}
               className={cn(
-                "flex cursor-pointer items-center gap-3 px-3 py-2 text-sm hover:bg-accent",
+                "flex cursor-pointer items-center gap-3 px-3 py-2 text-xs hover:bg-accent",
                 i === activeIndex && "bg-accent",
               )}
               onMouseDown={(e) => {

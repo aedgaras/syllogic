@@ -165,7 +165,7 @@ export function UpdateBalanceDialog({
               <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                 <PopoverTrigger
                   className={cn(
-                    "flex h-9 w-full items-center justify-start gap-2 border border-input bg-transparent px-3 text-sm hover:bg-muted transition-colors",
+                    "flex h-8 w-full items-center justify-start gap-2 border border-input bg-transparent px-2.5 text-xs hover:bg-muted transition-colors",
                     !adjustmentDate && "text-muted-foreground",
                   )}
                 >

@@ -186,7 +186,7 @@ export function CsvUploadDropzone({
             {translate("dragAndDropOrClickToBrowse")}
           </p>
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && <p className="text-xs text-destructive">{error}</p>}
         <p className="text-xs text-muted-foreground">
           {translate("csvOrExcelMax10mb")}
         </p>

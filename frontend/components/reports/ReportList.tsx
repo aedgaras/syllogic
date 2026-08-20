@@ -60,13 +60,13 @@ export function ReportList({ reports, onDelete }: ReportListProps) {
             <div className="flex shrink-0 items-center gap-3">
               <Link
                 href={`/reports/${report.id}/runs`}
-                className="text-sm text-muted-foreground hover:text-foreground"
+                className="text-xs text-muted-foreground hover:text-foreground"
               >
                 {translate("runsfcde5c")}
               </Link>
               <button
                 onClick={() => onDelete(report.id)}
-                className="text-sm text-destructive hover:underline"
+                className="text-xs text-destructive hover:underline"
               >
                 {translate("delete")}
               </button>

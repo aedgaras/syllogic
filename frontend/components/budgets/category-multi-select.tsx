@@ -66,7 +66,7 @@ export function CategoryMultiSelect({
     <div className="grid gap-2">
       {label && <Label>{label}</Label>}
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger className="flex h-10 w-full items-center justify-between border border-input bg-background px-3 text-sm hover:bg-accent hover:text-accent-foreground">
+        <PopoverTrigger className="flex h-8 w-full items-center justify-between border border-input bg-background px-2.5 text-xs hover:bg-accent hover:text-accent-foreground">
           <span className="truncate text-left">
             {value.length === 0
               ? translate("selectCategories")
@@ -80,7 +80,6 @@ export function CategoryMultiSelect({
               placeholder={translate("search", { value1: "categories" })}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="h-8 text-sm"
             />
           </div>
           <div className="max-h-56 overflow-y-auto p-1">
@@ -89,7 +88,7 @@ export function CategoryMultiSelect({
                 key={option.id}
                 type="button"
                 onClick={() => toggleOption(option.id)}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent"
               >
                 <Checkbox
                   checked={value.includes(option.id)}
@@ -108,7 +107,7 @@ export function CategoryMultiSelect({
               </button>
             ))}
             {filteredOptions.length === 0 && (
-              <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+              <div className="px-2 py-4 text-center text-xs text-muted-foreground">
                 {translate("noResultsFound")}
               </div>
             )}
@@ -155,7 +154,7 @@ export function CategoryMultiSelect({
         </div>
       )}
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

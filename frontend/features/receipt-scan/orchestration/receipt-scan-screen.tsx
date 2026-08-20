@@ -249,7 +249,7 @@ export default function ReceiptScanScreen() {
             </Button>
 
             <div
-              className={`rounded-lg border p-3 text-sm ${
+              className={`rounded-none border p-3 text-xs ${
                 totalMismatch
                   ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
                   : "border-muted bg-muted/40"

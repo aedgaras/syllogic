@@ -269,7 +269,7 @@ export function HoldingDetailView({
                       return (
                         <article
                           key={`${lot.open_date}-${lot.cost_per_share_native}-${idx}`}
-                          className="rounded border p-3 text-sm"
+                          className="rounded-none border p-3 text-xs"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
@@ -403,7 +403,7 @@ export function HoldingDetailView({
                       return (
                         <article
                           key={t.id}
-                          className="rounded border p-3 text-sm"
+                          className="rounded-none border p-3 text-xs"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>

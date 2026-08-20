@@ -200,7 +200,7 @@ function MultiSelectFilter({
                 })}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                className="h-7 text-xs"
+                className="h-7"
               />
             </div>
           )}
@@ -369,7 +369,7 @@ function AmountRangeFilter({
           placeholder={translate("min")}
           value={minAmount}
           onChange={(event) => onMinChange(event.target.value)}
-          className="h-8 text-xs"
+          className="h-8"
         />
         <span className="text-xs text-muted-foreground">{translate("to")}</span>
         <Input
@@ -378,7 +378,7 @@ function AmountRangeFilter({
           placeholder={translate("max")}
           value={maxAmount}
           onChange={(event) => onMaxChange(event.target.value)}
-          className="h-8 text-xs"
+          className="h-8"
         />
       </div>
     </div>

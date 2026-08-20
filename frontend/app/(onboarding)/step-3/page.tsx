@@ -104,14 +104,14 @@ export default function OnboardingStep3Page() {
           <div className="space-y-6">
             {accounts.length > 0 ? (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {translate("accountsCreated")}
                 </p>
                 <div className="space-y-2">
                   {accounts.map((account) => (
                     <div
                       key={account.id}
-                      className="flex flex-col gap-2 rounded-md border px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-2 rounded-none border px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"
                     >
                       <span className="font-medium">{account.name}</span>
                       <span className="text-muted-foreground">
@@ -128,7 +128,7 @@ export default function OnboardingStep3Page() {
                 </div>
                 <div className="space-y-2">
                   <h3 className="font-medium">{translate("noAccountsYet")}</h3>
-                  <p className="text-sm text-muted-foreground max-w-md">
+                  <p className="text-xs text-muted-foreground max-w-md">
                     {translate(
                       "createOneAccountToStartImportingYourTransactionsVia",
                     )}

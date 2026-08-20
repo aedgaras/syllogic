@@ -138,7 +138,7 @@ export function PersonForm(props: {
         </div>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
 
       <div>
         <Label>{translate("name")}</Label>

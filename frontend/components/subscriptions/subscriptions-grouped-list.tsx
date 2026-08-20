@@ -423,7 +423,7 @@ export function SubscriptionsGroupedList({
           ))}
         </div>
       ) : (
-        <div className="flex h-24 items-center justify-center text-sm text-muted-foreground border border-dashed rounded-sm">
+        <div className="flex h-24 items-center justify-center text-xs text-muted-foreground border border-dashed rounded-none">
           {translate("noActiveSubscriptions")}
         </div>
       )}

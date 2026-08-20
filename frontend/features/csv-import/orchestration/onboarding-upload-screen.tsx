@@ -56,7 +56,7 @@ export default function StepFourImportPage() {
           <div className="space-y-2">
             <Label>{translate("selectAccount")}</Label>
             {accounts.length === 0 ? (
-              <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-2">
+              <div className="rounded-none border border-dashed p-4 text-xs text-muted-foreground space-y-2">
                 <p>{translate("noAccountsFoundCreateOneFirstToContinue")}</p>
                 <Button
                   type="button"

@@ -46,13 +46,13 @@ export function AccountPicker({
 
   if (loading)
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         {translate("loadingAccounts")}
       </p>
     );
   if (error) {
     return (
-      <p className="text-sm text-destructive">
+      <p className="text-xs text-destructive">
         {translate("failedToLoadAccountsPleaseRefreshAndTryAgain")}
       </p>
     );
@@ -76,14 +76,14 @@ export function AccountPicker({
     <div className="space-y-3 border border-border rounded p-2 max-h-64 overflow-y-auto">
       {groups.map((group) => (
         <div key={group.key}>
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
             {group.label}
           </p>
           <div className="space-y-1">
             {group.accounts.map((a) => (
               <label
                 key={a.id}
-                className="flex items-start gap-2 text-sm text-foreground"
+                className="flex items-start gap-2 text-xs text-foreground"
               >
                 <input
                   type="checkbox"

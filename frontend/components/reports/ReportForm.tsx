@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createReport, sendTestReport, updateReport } from "@/lib/reports/api";
 import type { Report, ReportInput } from "@/lib/reports/types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { AccountPicker } from "./AccountPicker";
 import type { PickerAccount } from "@/lib/reports/account-groups";
 
@@ -144,20 +145,17 @@ export function ReportForm({
       className="max-w-2xl space-y-5 text-foreground"
     >
       <div>
-        <label className="block text-sm font-medium mb-1">
+        <label className="block text-xs font-medium mb-1">
           {translate("name")}
         </label>
-        <input
-          {...register("name")}
-          className="w-full border border-border bg-background text-foreground rounded px-3 py-2 text-sm placeholder:text-muted-foreground"
-        />
+        <Input {...register("name")} />
         {errors.name && (
           <p className="text-xs text-destructive mt-1">{errors.name.message}</p>
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">
+        <label className="block text-xs font-medium mb-1">
           {translate("accounts")}
         </label>
         <AccountPicker
@@ -173,25 +171,25 @@ export function ReportForm({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block text-xs font-medium mb-1">
             {translate("mode")}
           </label>
           <select
             {...register("transaction_mode")}
-            className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
+            className="w-full h-8 rounded-none border border-input bg-transparent text-foreground px-2.5 text-base md:text-xs outline-none focus-visible:border-ring"
           >
             <option value="RECENT">{translate("mostRecent")}</option>
             <option value="TOP_N">{translate("topNByAmount")}</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block text-xs font-medium mb-1">
             {translate("count")}
           </label>
-          <input
+          <Input
             type="number"
+            inputMode="numeric"
             {...register("transaction_count")}
-            className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
           />
           {errors.transaction_count && (
             <p className="text-xs text-destructive mt-1">
@@ -200,12 +198,12 @@ export function ReportForm({
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block text-xs font-medium mb-1">
             {translate("direction")}
           </label>
           <select
             {...register("transaction_direction")}
-            className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
+            className="w-full h-8 rounded-none border border-input bg-transparent text-foreground px-2.5 text-base md:text-xs outline-none focus-visible:border-ring"
           >
             <option value="ALL">{translate("all6a7208")}</option>
             <option value="EXPENSE">{translate("expenses")}</option>
@@ -218,12 +216,12 @@ export function ReportForm({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block text-xs font-medium mb-1">
             {translate("frequency")}
           </label>
           <select
             {...register("frequency")}
-            className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
+            className="w-full h-8 rounded-none border border-input bg-transparent text-foreground px-2.5 text-base md:text-xs outline-none focus-visible:border-ring"
           >
             <option value="DAILY">{translate("daily")}</option>
             <option value="WEEKLY">{translate("weekly")}</option>
@@ -232,26 +230,21 @@ export function ReportForm({
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block text-xs font-medium mb-1">
             {translate("time")}
           </label>
-          <input
-            type="time"
-            step={60}
-            {...register("send_time")}
-            className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
-          />
+          <Input type="time" step={60} {...register("send_time")} />
         </div>
       </div>
 
       {(frequency === "WEEKLY" || frequency === "BIWEEKLY") && (
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block text-xs font-medium mb-1">
             {translate("dayOfWeek")}
           </label>
           <select
             {...register("send_day_of_week")}
-            className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
+            className="w-full h-8 rounded-none border border-input bg-transparent text-foreground px-2.5 text-base md:text-xs outline-none focus-visible:border-ring"
           >
             {[
               "Monday",
@@ -277,15 +270,15 @@ export function ReportForm({
 
       {frequency === "MONTHLY" && (
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block text-xs font-medium mb-1">
             {translate("dayOfMonth")}
           </label>
-          <input
+          <Input
             type="number"
+            inputMode="numeric"
             min={1}
             max={28}
             {...register("send_day_of_month")}
-            className="w-full border border-border bg-background text-foreground rounded px-2 py-2 text-sm"
           />
           {errors.send_day_of_month && (
             <p className="text-xs text-destructive mt-1">
@@ -296,15 +289,16 @@ export function ReportForm({
       )}
 
       <div>
-        <label className="block text-sm font-medium mb-1">
+        <label className="block text-xs font-medium mb-1">
           {translate("recipients")}
         </label>
         <div className="mb-2 flex flex-col gap-2 sm:flex-row">
-          <input
+          <Input
+            type="email"
+            className="min-w-0 flex-1"
             value={recipientDraft}
             onChange={(e) => setRecipientDraft(e.target.value)}
             placeholder={translate("nameExampleCom")}
-            className="min-w-0 flex-1 border border-border bg-background text-foreground rounded px-3 py-2 text-sm placeholder:text-muted-foreground"
           />
           <Button
             type="button"
@@ -346,7 +340,7 @@ export function ReportForm({
       </div>
 
       <div>
-        <label className="flex items-center gap-2 text-sm font-medium">
+        <label className="flex items-center gap-2 text-xs font-medium">
           <input type="checkbox" {...register("is_active")} />
           {translate("active")}
         </label>

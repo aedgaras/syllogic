@@ -209,17 +209,17 @@ function LoginPageContent() {
         <form onSubmit={handleSubmit(onSubmit)}>
           <FieldGroup>
             {error && (
-              <div className="bg-destructive/10 text-destructive p-3 text-sm">
+              <div className="bg-destructive/10 text-destructive p-3 text-xs">
                 {error}
               </div>
             )}
             {searchParams.get("registration") === "disabled" && (
-              <div className="bg-muted p-3 text-sm text-muted-foreground">
+              <div className="bg-muted p-3 text-xs text-muted-foreground">
                 {translate("newAccountRegistrationIsCurrentlyDisabled")}
               </div>
             )}
             {demoModeRequested && demoEmail && demoPassword && (
-              <div className="bg-muted border border-border p-3 text-sm space-y-1">
+              <div className="bg-muted border border-border p-3 text-xs space-y-1">
                 <p className="font-medium text-foreground">
                   {translate("demoAccountCredentials")}
                 </p>
@@ -236,7 +236,7 @@ function LoginPageContent() {
               </div>
             )}
             {demoModeRequested && !demoPassword && (
-              <div className="bg-muted p-3 text-sm">
+              <div className="bg-muted p-3 text-xs">
                 {translate("demoModeLinkDetectedButDemoCredentialsAreNot")}
               </div>
             )}

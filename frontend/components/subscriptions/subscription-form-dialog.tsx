@@ -538,7 +538,7 @@ export function SubscriptionFormDialog({
                 <span className="text-destructive">*</span>
               </Label>
               {isVerifyMode && suggestion?.accountId ? (
-                <div className="flex h-10 items-center rounded-md border border-border px-3 text-sm">
+                <div className="flex h-8 items-center rounded-none border border-input px-2.5 text-xs">
                   {accounts.find((account) => account.id === accountId)?.name ||
                     suggestion.accountName ||
                     translate("detectedAccount")}

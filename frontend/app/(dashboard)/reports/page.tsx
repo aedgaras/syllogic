@@ -48,7 +48,7 @@ export default function ReportsPage() {
 
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0 text-foreground">
         {deleteError && (
-          <p className="text-sm text-destructive">{deleteError}</p>
+          <p className="text-xs text-destructive">{deleteError}</p>
         )}
 
         {isLoading ? (

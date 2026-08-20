@@ -252,7 +252,7 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
               disabled={isLoading}
             />
             {ownersError && (
-              <p className="text-sm text-destructive">{ownersError}</p>
+              <p className="text-xs text-destructive">{ownersError}</p>
             )}
           </div>
         )}

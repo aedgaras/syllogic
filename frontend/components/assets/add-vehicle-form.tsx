@@ -289,7 +289,7 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
               disabled={isLoading}
             />
             {ownersError && (
-              <p className="text-sm text-destructive">{ownersError}</p>
+              <p className="text-xs text-destructive">{ownersError}</p>
             )}
           </div>
         )}

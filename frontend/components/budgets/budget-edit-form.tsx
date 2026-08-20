@@ -122,7 +122,7 @@ export function BudgetEditForm({
               <Label htmlFor="budget-name">{translate("budgetName")}</Label>
               <Input id="budget-name" {...register("name")} />
               {errors.name?.message && (
-                <p className="text-sm text-destructive">
+                <p className="text-xs text-destructive">
                   {errors.name.message}
                 </p>
               )}
@@ -142,7 +142,7 @@ export function BudgetEditForm({
                   {...register("amount")}
                 />
                 {errors.amount?.message && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-xs text-destructive">
                     {errors.amount.message}
                   </p>
                 )}

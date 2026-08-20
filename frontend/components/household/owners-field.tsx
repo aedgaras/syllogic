@@ -133,12 +133,12 @@ export function OwnersField(props: {
       </div>
 
       {sumOff && (
-        <p className="text-sm text-destructive">
+        <p className="text-xs text-destructive">
           {translate("sharesMustSumTo100Currently")} {Math.round(sum * 100)}%).
         </p>
       )}
       {value.length === 0 && (
-        <p className="text-sm text-destructive">
+        <p className="text-xs text-destructive">
           {translate("selectAtLeastOneOwner")}
         </p>
       )}

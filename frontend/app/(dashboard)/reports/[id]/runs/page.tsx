@@ -46,7 +46,7 @@ export default function ReportRunsPage() {
           // back on — with refetchInterval polling, a single transient
           // background refetch failure would otherwise hide a previously
           // loaded, still-valid run history behind an error message.
-          <p className="text-sm text-destructive">
+          <p className="text-xs text-destructive">
             {translate("failedToLoadRunsPleaseTryAgain")}
           </p>
         ) : runs && runs.length > 0 ? (

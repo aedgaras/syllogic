@@ -470,7 +470,7 @@ export function LinkReimbursementsDialog({
                         placeholder={translate("min")}
                         value={minAmount}
                         onChange={(e) => setMinAmount(e.target.value)}
-                        className="h-8 text-xs"
+                        className="h-8"
                       />
                       <span className="text-muted-foreground text-xs">
                         {translate("to")}
@@ -481,7 +481,7 @@ export function LinkReimbursementsDialog({
                         placeholder={translate("max")}
                         value={maxAmount}
                         onChange={(e) => setMaxAmount(e.target.value)}
-                        className="h-8 text-xs"
+                        className="h-8"
                       />
                     </div>
                   </div>
@@ -519,7 +519,7 @@ export function LinkReimbursementsDialog({
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-8 gap-2">
                 <RiLoader4Line className="h-6 w-6 animate-spin text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {translate("loadingb04ba4")}
                 </p>
               </div>
@@ -561,7 +561,7 @@ export function LinkReimbursementsDialog({
                 )}
               </>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
+              <p className="text-xs text-muted-foreground text-center py-4">
                 {translate("noTransactionsFoundMatchingYourFilters")}
               </p>
             )}

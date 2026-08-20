@@ -344,7 +344,7 @@ export function BankConnectionsManager({
           <h2 className="text-lg font-semibold">
             {translate("bankConnections")}
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {translate("connectYourBankAccountsViaOpenBankingToAutomatically")}
           </p>
         </div>
@@ -358,23 +358,23 @@ export function BankConnectionsManager({
       </div>
 
       {relinkError && (
-        <div className="flex items-center gap-2 rounded-lg border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="flex items-center gap-2 rounded-none border border-destructive bg-destructive/10 p-3 text-xs text-destructive">
           <RiAlertLine className="h-4 w-4 shrink-0" />
           <span>{relinkError}</span>
         </div>
       )}
 
       {activeConnections.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
+        <div className="rounded-none border border-dashed p-8 text-center">
           <RiBankLine className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {translate("noBankConnectionsYetConnectABankToStart")}
           </p>
         </div>
       ) : (
         <div className="space-y-3">
           {activeConnections.map((connection) => (
-            <div key={connection.id} className="rounded-lg border p-4">
+            <div key={connection.id} className="rounded-none border p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">

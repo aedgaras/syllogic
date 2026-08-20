@@ -146,7 +146,7 @@ export function EditHoldingDialog({
               {translate("overrideTheTickerUsedForPriceLookupsUsefulFor")}
             </p>
           </div>
-          {err && <p className="text-sm text-destructive">{err}</p>}
+          {err && <p className="text-xs text-destructive">{err}</p>}
           <DialogFooter>
             <Button
               type="button"

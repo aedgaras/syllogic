@@ -358,7 +358,7 @@ export function AccountForm({
               disabled={isLoading}
             />
             {ownersError && (
-              <p className="text-sm text-destructive">{ownersError}</p>
+              <p className="text-xs text-destructive">{ownersError}</p>
             )}
           </div>
         )}
