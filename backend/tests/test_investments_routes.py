@@ -14,7 +14,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import get_db
 from app.main import app
-from app.models import User, Account, Holding, BrokerConnection, HoldingValuation, AccountBalance
+from app.models import User, Account, Holding, HoldingValuation, AccountBalance, Transaction
 
 
 INTERNAL_AUTH_SECRET = "test-internal-secret"
@@ -78,7 +78,7 @@ def db():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    for model in (User, Account, BrokerConnection, Holding, HoldingValuation, AccountBalance):
+    for model in (User, Account, Holding, HoldingValuation, AccountBalance, Transaction):
         model.__table__.create(bind=engine)
     with Session(engine) as session:
         yield session
@@ -99,6 +99,12 @@ def client(db, monkeypatch):
 
 
 def test_create_manual_account_and_holding(client, db):
+    cash = Account(
+        id=uuid4(), user_id="u1", name="Checking", account_type="checking", currency="USD"
+    )
+    db.add(cash)
+    db.commit()
+
     r = client.post(
         "/api/investments/manual-accounts", json={"name": "Etoro", "base_currency": "EUR"}
     )
@@ -114,15 +120,17 @@ def test_create_manual_account_and_holding(client, db):
                 {"symbol": "AAPL", "name": "Apple", "exchange": "NASDAQ", "currency": "USD"},
             )()
         ]
-        with patch("app.routes.investments.sync_investment_account"):
+        with patch("app.routes.investments._run_sync_in_process"):
             r = client.post(
                 f"/api/investments/manual-accounts/{account_id}/holdings",
                 json={
                     "symbol": "AAPL",
                     "quantity": "10",
+                    "avg_cost": "150",
                     "instrument_type": "equity",
                     "currency": "USD",
                     "as_of_date": "2026-04-01",
+                    "funding_account_id": str(cash.id),
                 },
             )
     assert r.status_code == 200, r.text
@@ -130,26 +138,29 @@ def test_create_manual_account_and_holding(client, db):
     assert holdings[0].symbol == "AAPL"
     assert holdings[0].source == "manual"
 
+    funding_txn = db.query(Transaction).filter_by(account_id=cash.id).one()
+    assert funding_txn.amount == Decimal("-1500")
 
-def test_create_broker_connection_encrypts_credentials(client, db):
-    with patch("app.routes.investments.sync_investment_account") as task:
-        r = client.post(
-            "/api/investments/broker-connections",
-            json={
-                "provider": "ibkr_flex",
-                "flex_token": "TOKEN_X",
-                "query_id_positions": "111",
-                "query_id_trades": "222",
-                "account_name": "IBKR",
-                "base_currency": "EUR",
-            },
-        )
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert "connection_id" in body and "account_id" in body
-    conn = db.query(BrokerConnection).one()
-    assert "TOKEN_X" not in conn.credentials_encrypted
-    task.delay.assert_called_once()
+
+def test_create_manual_holding_rejects_investment_funding_account(client, db):
+    r = client.post(
+        "/api/investments/manual-accounts", json={"name": "Etoro", "base_currency": "EUR"}
+    )
+    account_id = r.json()["account_id"]
+
+    r = client.post(
+        f"/api/investments/manual-accounts/{account_id}/holdings",
+        json={
+            "symbol": "AAPL",
+            "quantity": "10",
+            "avg_cost": "150",
+            "instrument_type": "equity",
+            "currency": "EUR",
+            "as_of_date": "2026-04-01",
+            "funding_account_id": account_id,
+        },
+    )
+    assert r.status_code == 400, r.text
 
 
 def test_delete_holding_only_for_manual(client, db):

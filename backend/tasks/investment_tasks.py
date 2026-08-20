@@ -6,10 +6,9 @@ from celery import shared_task
 from sqlalchemy import func
 
 from app.database import SessionLocal
-from app.models import Account, BrokerConnection, User
+from app.models import Account, User
 from app.services.investment_sync_service import InvestmentSyncService
 from app.services.exchange_rate_service import ExchangeRateService
-from app.integrations.ibkr_flex_adapter import FlexStatementNotReady
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +24,8 @@ def _resolve_demo_user_id(db) -> str | None:
     """Resolve the shared demo user's id when demo mode is enabled.
 
     The demo portfolio is seeded directly with deterministic valuations and
-    must NOT be touched by the real IBKR/price sync (no valid Flex token, and
-    live price fetches would make the data non-deterministic)."""
+    must NOT be touched by the real price sync (live price fetches would
+    make the data non-deterministic)."""
     if not _env_bool("DEMO_MODE", default=False):
         return None
     user_id = os.getenv("DEMO_SHARED_USER_ID")
@@ -68,7 +67,7 @@ def daily_investment_sync_all() -> dict:
         # the demo user. Raising (rather than returning a success-like result)
         # surfaces the deploy error in task monitoring, and aborting before the
         # sync still protects the seeded demo portfolio — its holdings have no
-        # valid Flex token and must keep their deterministic valuations.
+        # valid price-provider token and must keep their deterministic valuations.
         if _env_bool("DEMO_MODE", default=False) and not demo_user_id:
             raise RuntimeError(
                 "DEMO_MODE is enabled but the demo user identity "
@@ -76,24 +75,16 @@ def daily_investment_sync_all() -> dict:
                 "or resolvable; refusing to run investment sync."
             )
 
-        broker_q = (
-            db.query(Account)
-            .join(BrokerConnection, BrokerConnection.account_id == Account.id)
-            .filter(Account.is_active == True, Account.account_type == "investment_brokerage")
-        )
         manual_q = db.query(Account).filter(
             Account.is_active == True, Account.account_type == "investment_manual"
         )
         if demo_user_id:
-            broker_q = broker_q.filter(Account.user_id != demo_user_id)
             manual_q = manual_q.filter(Account.user_id != demo_user_id)
 
-        broker_account_ids = [a.id for a in broker_q.all()]
         manual_account_ids = [a.id for a in manual_q.all()]
-        all_ids = list(broker_account_ids) + list(manual_account_ids)
-        for aid in all_ids:
+        for aid in manual_account_ids:
             sync_investment_account.delay(str(aid))
-        return {"queued": len(all_ids), "demo_excluded": bool(demo_user_id)}
+        return {"queued": len(manual_account_ids), "demo_excluded": bool(demo_user_id)}
     finally:
         db.close()
 
@@ -101,11 +92,6 @@ def daily_investment_sync_all() -> dict:
 @shared_task(
     name="tasks.investment_tasks.sync_investment_account",
     bind=True,
-    autoretry_for=(FlexStatementNotReady,),
-    retry_backoff=True,
-    retry_backoff_max=1800,
-    retry_jitter=True,
-    max_retries=6,
 )
 def sync_investment_account(self, account_id: str) -> dict:
     db = SessionLocal()
@@ -113,8 +99,6 @@ def sync_investment_account(self, account_id: str) -> dict:
         svc = InvestmentSyncService(db=db, fx=_FxAdapter(db))
         svc.sync_account(UUID(account_id))
         return {"account_id": account_id, "status": "ok"}
-    except FlexStatementNotReady:
-        raise
     except Exception:
         logger.exception("Investment sync failed for %s", account_id)
         raise

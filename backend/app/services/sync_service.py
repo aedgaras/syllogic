@@ -106,7 +106,7 @@ class SyncService:
         # A blank external_id is not an identity. `Account.external_id == None`
         # renders as `IS NULL`, which would match the first account that also
         # has none recorded and silently merge unrelated accounts — providers
-        # that omit external_id (ibkr_flex, manual) have several such rows.
+        # that omit external_id (e.g. manual) have several such rows.
         # Skipping the lookup also lets an available IBAN reach the fallback.
         if external_id:
             hashed_candidates = blind_index_candidates(external_id)

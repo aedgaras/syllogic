@@ -20,8 +20,6 @@ from sqlalchemy import cast, func, Date
 from app.models import (
     Account,
     AccountBalance,
-    BrokerConnection,
-    BrokerTrade,
     CategorizationRule,
     Category,
     CsvImport,
@@ -377,7 +375,7 @@ SPIKE_TEMPLATES: tuple[TxTemplate, ...] = (
 #
 # The demo portfolio is seeded directly into holdings/valuations/account
 # balances with a deterministic price path. We deliberately DO NOT use the
-# shared `price_snapshots` cache or the IBKR sync service: prices there are
+# shared `price_snapshots` cache or the real price sync: prices there are
 # global (keyed by symbol/date) and would collide with real users holding
 # the same tickers. Keeping demo valuations self-contained makes the data
 # deterministic and fully isolated. The demo investment accounts are also
@@ -403,74 +401,15 @@ class HoldingSpec:
 @dataclass(frozen=True)
 class InvestmentAccountSpec:
     name: str
-    account_type: str  # "investment_brokerage" | "investment_manual"
+    account_type: str  # "investment_manual"
     institution: str
-    provider: str  # "ibkr_flex" | "manual"
+    provider: str  # "manual"
     currency: str  # account base currency
-    source: str  # holdings source tag: "ibkr_flex" | "manual"
-    has_broker_connection: bool
+    source: str  # holdings source tag: "manual"
     holdings: Tuple[HoldingSpec, ...]
 
 
 INVESTMENT_ACCOUNT_SPECS: Tuple[InvestmentAccountSpec, ...] = (
-    InvestmentAccountSpec(
-        name="Interactive Brokers",
-        account_type="investment_brokerage",
-        institution="Interactive Brokers",
-        provider="ibkr_flex",
-        currency="USD",
-        source="ibkr_flex",
-        has_broker_connection=True,
-        holdings=(
-            HoldingSpec(
-                "AAPL",
-                "Apple Inc.",
-                "equity",
-                "USD",
-                Decimal("40"),
-                Decimal("185.00"),
-                0.14,
-                0.012,
-                Decimal("164.20"),
-            ),
-            HoldingSpec(
-                "MSFT",
-                "Microsoft Corp.",
-                "equity",
-                "USD",
-                Decimal("22"),
-                Decimal("372.00"),
-                0.16,
-                0.011,
-                Decimal("328.50"),
-            ),
-            HoldingSpec(
-                "NVDA",
-                "NVIDIA Corp.",
-                "equity",
-                "USD",
-                Decimal("18"),
-                Decimal("48.00"),
-                0.55,
-                0.022,
-                Decimal("21.40"),
-            ),
-            HoldingSpec(
-                "VWRA",
-                "Vanguard FTSE All-World UCITS ETF",
-                "etf",
-                "USD",
-                Decimal("60"),
-                Decimal("108.00"),
-                0.10,
-                0.008,
-                Decimal("95.30"),
-            ),
-            HoldingSpec(
-                "USD", "Cash (USD)", "cash", "USD", Decimal("3150.00"), Decimal("1"), 0.0, 0.0, None
-            ),
-        ),
-    ),
     InvestmentAccountSpec(
         name="Personal Portfolio",
         account_type="investment_manual",
@@ -478,7 +417,6 @@ INVESTMENT_ACCOUNT_SPECS: Tuple[InvestmentAccountSpec, ...] = (
         provider="manual",
         currency="EUR",
         source="manual",
-        has_broker_connection=False,
         holdings=(
             HoldingSpec(
                 "IWDA",
@@ -1060,11 +998,11 @@ class DemoSeedService:
         start_date: date,
         end_date: date,
     ) -> Dict[str, object]:
-        """Create the demo investment portfolio (IBKR + standalone) plus a
-        deterministic daily valuation history across [start_date, end_date].
+        """Create the demo investment portfolio plus a deterministic daily
+        valuation history across [start_date, end_date].
 
         Valuations and account balances are written directly (no PriceSnapshot
-        cache, no IBKR/price sync) so the data is deterministic and isolated
+        cache, no price sync) so the data is deterministic and isolated
         from real users who may hold the same tickers.
         """
         self._clear_investment_data(user.id)
@@ -1095,22 +1033,6 @@ class DemoSeedService:
 
         holdings: List[Tuple[Holding, HoldingSpec, Account]] = []
         for account, acct_spec in accounts:
-            if acct_spec.has_broker_connection:
-                self.db.add(
-                    BrokerConnection(
-                        user_id=user.id,
-                        account_id=account.id,
-                        provider=acct_spec.provider,
-                        # Demo accounts are excluded from the real investment sync,
-                        # so these credentials are never decrypted. A sentinel keeps
-                        # the NOT NULL column populated without SYLLOGIC_SECRET_KEY.
-                        credentials_encrypted="demo-disabled",
-                        last_sync_status="ok",
-                        last_sync_at=now,
-                        created_at=now,
-                        updated_at=now,
-                    )
-                )
             for h_spec in acct_spec.holdings:
                 holding = Holding(
                     user_id=user.id,
@@ -1133,25 +1055,22 @@ class DemoSeedService:
         for holding, _, _ in holdings:
             self.db.refresh(holding)
 
-        trades_created = self._create_broker_trades(holdings, start_date)
         valuation_summary = self._seed_investment_valuations(
             holdings, accounts, start_date, end_date
         )
 
         logger.info(
             "[DEMO_SEED] Seeded investments for user=%s accounts=%s holdings=%s "
-            "trades=%s valuations=%s",
+            "valuations=%s",
             user.id,
             len(accounts),
             len(holdings),
-            trades_created,
             valuation_summary["valuations"],
         )
 
         return {
             "accounts_created": len(accounts),
             "holdings_created": len(holdings),
-            "broker_trades_created": trades_created,
             "valuations_created": valuation_summary["valuations"],
             "account_balances_created": valuation_summary["account_balances"],
             "date_range": {"start": start_date.isoformat(), "end": end_date.isoformat()},
@@ -1159,52 +1078,12 @@ class DemoSeedService:
 
     def _clear_investment_data(self, user_id: str) -> None:
         """Remove existing demo investment accounts (cascades to holdings,
-        valuations, broker connections/trades, and account balances)."""
+        valuations, and account balances)."""
         self.db.query(Account).filter(
             Account.user_id == user_id,
-            Account.account_type.in_(("investment_brokerage", "investment_manual")),
+            Account.account_type == "investment_manual",
         ).delete(synchronize_session=False)
         self.db.commit()
-
-    def _create_broker_trades(
-        self,
-        holdings: List[Tuple[Holding, HoldingSpec, Account]],
-        start_date: date,
-    ) -> int:
-        """Create a small buy-only trade history for brokerage positions so the
-        holding-detail trades/lots views populate. Lots sum to the held qty."""
-        created = 0
-        lots = (
-            (Decimal("0.6"), 0, Decimal("0.94")),
-            (Decimal("0.4"), 45, Decimal("1.07")),
-        )
-        for holding, h_spec, account in holdings:
-            if h_spec.instrument_type == "cash" or holding.source != "ibkr_flex":
-                continue
-            if h_spec.avg_cost is None:
-                continue
-            lot_n = 0
-            for frac, day_offset, price_mult in lots:
-                qty = (Decimal(h_spec.quantity) * frac).quantize(Decimal("0.00000001"))
-                if qty <= 0:
-                    continue
-                lot_n += 1
-                self.db.add(
-                    BrokerTrade(
-                        account_id=account.id,
-                        symbol=h_spec.symbol,
-                        trade_date=start_date + timedelta(days=day_offset),
-                        side="buy",
-                        quantity=qty,
-                        price=(Decimal(h_spec.avg_cost) * price_mult).quantize(Decimal("0.0001")),
-                        currency=h_spec.currency,
-                        fees=Decimal("1.00"),
-                        external_id=f"demo-trade-{h_spec.symbol}-{lot_n}",
-                    )
-                )
-                created += 1
-        self.db.commit()
-        return created
 
     def _seed_investment_valuations(
         self,
@@ -1288,7 +1167,7 @@ class DemoSeedService:
             .filter(
                 Account.user_id == user.id,
                 Account.is_active == True,
-                Account.account_type.in_(("investment_brokerage", "investment_manual")),
+                Account.account_type == "investment_manual",
             )
             .all()
         )

@@ -11,7 +11,6 @@ from app.models import (
     Account,
     Holding,
     HoldingValuation,
-    BrokerConnection,
     AccountBalance,
 )
 from app.mcp.tools import investments as inv_tools
@@ -20,7 +19,7 @@ from app.mcp.tools import investments as inv_tools
 @pytest.fixture
 def db():
     engine = create_engine("sqlite:///:memory:")
-    for model in (User, Account, BrokerConnection, Holding, HoldingValuation, AccountBalance):
+    for model in (User, Account, Holding, HoldingValuation, AccountBalance):
         model.__table__.create(bind=engine)
     with Session(engine) as session:
         yield session
@@ -73,7 +72,7 @@ def test_get_portfolio_summary_aggregates(db):
         id=uuid4(),
         user_id="u1",
         name="b",
-        account_type="investment_brokerage",
+        account_type="investment_manual",
         currency="EUR",
         is_active=True,
     )
@@ -95,7 +94,7 @@ def test_get_portfolio_summary_aggregates(db):
         currency="EUR",
         instrument_type="equity",
         quantity=Decimal("1"),
-        source="ibkr_flex",
+        source="manual",
     )
     db.add_all([user, a1, a2, h1, h2])
     db.add(

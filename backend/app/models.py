@@ -1015,25 +1015,6 @@ class AppSetting(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class BrokerConnection(Base):
-    __tablename__ = "broker_connections"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    account_id = Column(
-        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False
-    )
-    provider = Column(String(50), nullable=False)
-    credentials_encrypted = Column(Text, nullable=False)
-    last_sync_at = Column(DateTime, nullable=True)
-    last_sync_status = Column(String(20), default="pending")
-    last_sync_error = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    account = relationship("Account")
-
-
 class Holding(Base):
     __tablename__ = "holdings"
 
@@ -1064,27 +1045,6 @@ class Holding(Base):
             "account_id", "symbol", "instrument_type", name="holdings_account_symbol_type_uq"
         ),
         Index("idx_holdings_account", "account_id"),
-    )
-
-
-class BrokerTrade(Base):
-    __tablename__ = "broker_trades"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    account_id = Column(
-        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False
-    )
-    symbol = Column(String(64), nullable=False)
-    trade_date = Column(Date, nullable=False)
-    side = Column(String(10), nullable=False)
-    quantity = Column(Numeric(28, 8), nullable=False)
-    price = Column(Numeric(28, 8), nullable=False)
-    currency = Column(String(3), nullable=False)
-    fees = Column(Numeric(28, 8), nullable=False, default=0)
-    external_id = Column(String(128), nullable=False)
-
-    __table_args__ = (
-        UniqueConstraint("account_id", "external_id", name="broker_trades_account_external_uq"),
     )
 
 

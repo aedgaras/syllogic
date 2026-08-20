@@ -210,25 +210,6 @@ export async function searchSymbols(q: string): Promise<SymbolSearchResult[]> {
   return readJsonOrThrow<SymbolSearchResult[]>(resp);
 }
 
-export async function createBrokerConnection(payload: {
-  provider: "ibkr_flex";
-  flex_token: string;
-  query_id_positions: string;
-  query_id_trades: string;
-  account_name: string;
-  base_currency: string;
-}): Promise<{ connection_id: string; account_id: string }> {
-  await assertNotDemoRestricted();
-  const resp = await signedFetch(
-    "POST",
-    "/api/investments/broker-connections",
-    {
-      body: payload,
-    },
-  );
-  return readJsonOrThrow<{ connection_id: string; account_id: string }>(resp);
-}
-
 export async function createManualAccount(
   name: string,
   base_currency: string,
@@ -248,7 +229,8 @@ export async function addManualHolding(
     instrument_type: "equity" | "etf" | "cash";
     currency: string;
     as_of_date?: string;
-    avg_cost?: string;
+    avg_cost: string;
+    funding_account_id: string;
   },
 ): Promise<{ holding_id: string }> {
   await assertNotDemoRestricted();

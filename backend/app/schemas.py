@@ -371,24 +371,6 @@ from datetime import date as _date_date
 from typing import Literal
 
 
-class BrokerConnectionCreate(BaseModel):
-    provider: Literal["ibkr_flex"]
-    flex_token: str
-    query_id_positions: str
-    query_id_trades: str
-    account_name: str
-    base_currency: str = "EUR"
-
-
-class BrokerConnectionResponse(BaseModel):
-    id: UUID
-    account_id: UUID
-    provider: str
-    last_sync_at: Optional[datetime]
-    last_sync_status: Optional[str]
-    last_sync_error: Optional[str]
-
-
 class ManualAccountCreate(BaseModel):
     name: str
     base_currency: str = "EUR"
@@ -401,7 +383,8 @@ class HoldingCreate(BaseModel):
     instrument_type: Literal["equity", "etf", "cash"]
     currency: str
     as_of_date: Optional[_date_date] = None
-    avg_cost: Optional[Decimal] = None
+    avg_cost: Decimal
+    funding_account_id: UUID
 
 
 class HoldingUpdate(BaseModel):
@@ -445,7 +428,7 @@ class ValuationPoint(BaseModel):
 
 
 class HoldingTrade(BaseModel):
-    """One BrokerTrade row enriched with running quantity / cost."""
+    """One trade row enriched with running quantity / cost."""
 
     id: UUID
     trade_date: _date_date

@@ -1,15 +1,12 @@
 """
-Pre-compute idle cash + recent trade activity to ground the investment-plan
-agent before its loop starts.
+Pre-compute idle cash to ground the investment-plan agent before its loop
+starts.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import Any
-
 from app.database import SessionLocal
-from app.models import Account, BrokerTrade, Holding
+from app.models import Account, Holding
 from app.mcp.tools.investments import INVESTMENT_ACCOUNT_TYPES
 
 
@@ -18,11 +15,12 @@ def collect_grounding(user_id: str, days: int = 30) -> dict[str, list[dict]]:
     Returns:
         {
             "cashSnapshot": [{ accountId, accountName, idleCash, currency }, ...],
-            "recentActivity": [{ symbol, netBought, tradeCount, asOf }, ...]
+            "recentActivity": []
         }
 
     Idle cash = balance_available − Σ(holding qty × avg_cost), clamped to 0.
-    Recent activity sums signed quantity × price over `days`, grouped by symbol.
+    Manual holdings have no trade-import data source, so `recentActivity` is
+    always empty; the `days` parameter and key are kept for API stability.
     """
     db = SessionLocal()
     try:
@@ -56,32 +54,6 @@ def collect_grounding(user_id: str, days: int = 30) -> dict[str, list[dict]]:
                 }
             )
 
-        cutoff = (datetime.utcnow() - timedelta(days=days)).date()
-        trades = (
-            db.query(BrokerTrade)
-            .join(Account, Account.id == BrokerTrade.account_id)
-            .filter(Account.user_id == user_id, BrokerTrade.trade_date >= cutoff)
-            .all()
-        )
-        per_symbol: dict[str, dict[str, Any]] = {}
-        for t in trades:
-            entry = per_symbol.setdefault(t.symbol, {"net": 0.0, "count": 0, "as_of": t.trade_date})
-            sign = 1.0 if (t.side or "").lower() == "buy" else -1.0
-            entry["net"] += sign * float(t.quantity or 0) * float(t.price or 0)
-            entry["count"] += 1
-            if t.trade_date > entry["as_of"]:
-                entry["as_of"] = t.trade_date
-        recent_activity = [
-            {
-                "symbol": sym,
-                "netBought": round(v["net"], 2),
-                "tradeCount": v["count"],
-                "asOf": v["as_of"].isoformat(),
-            }
-            for sym, v in per_symbol.items()
-        ]
-        recent_activity.sort(key=lambda x: -abs(x["netBought"]))
-
-        return {"cashSnapshot": cash_snapshot, "recentActivity": recent_activity}
+        return {"cashSnapshot": cash_snapshot, "recentActivity": []}
     finally:
         db.close()

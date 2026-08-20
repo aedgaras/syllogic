@@ -51,20 +51,32 @@ function newRow(): Row {
   };
 }
 
+export type FundingAccount = {
+  id: string;
+  name: string;
+  currency: string;
+};
+
 export function ManualForm({
   accounts,
+  fundingAccounts,
   onCancel,
 }: {
   accounts: InvestmentAccount[];
-  onCancel: () => void;
+  fundingAccounts: FundingAccount[];
+  onCancel?: () => void;
 }) {
   const router = useRouter();
   const [accountId, setAccountId] = useState<string>(accounts[0]?.id ?? NEW);
-  const [newName, setNewName] = useState("My Brokerage");
+  const [newName, setNewName] = useState("My Investments");
   const [baseCcy, setBaseCcy] = useState("EUR");
+  const [fundingAccountId, setFundingAccountId] = useState<string>(
+    fundingAccounts[0]?.id ?? "",
+  );
   const [rows, setRows] = useState<Row[]>([newRow()]);
   const [busy, setBusy] = useState(false);
   const [topErr, setTopErr] = useState<string | null>(null);
+  const cancel = onCancel ?? (() => router.push("/investments"));
 
   const updateRow = (id: string, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -78,10 +90,19 @@ export function ManualForm({
     setTopErr(null);
     setRows((rs) => rs.map((r) => ({ ...r, error: null })));
 
-    // Validate at least one row has symbol + qty
-    const valid = rows.filter((r) => r.symbol.trim() && r.qty.trim());
+    // Validate at least one row has symbol + qty + avg cost, and a funding account is chosen
+    const valid = rows.filter(
+      (r) => r.symbol.trim() && r.qty.trim() && r.avgCost.trim(),
+    );
     if (valid.length === 0) {
-      setTopErr("Add at least one holding with a symbol and quantity.");
+      setTopErr(
+        "Add at least one holding with a symbol, quantity, and cost.",
+      );
+      setBusy(false);
+      return;
+    }
+    if (!fundingAccountId) {
+      setTopErr("Choose a cash account to fund the purchase from.");
       setBusy(false);
       return;
     }
@@ -99,7 +120,8 @@ export function ManualForm({
             quantity: r.qty,
             instrument_type: r.type,
             currency: r.currency,
-            ...(r.avgCost ? { avg_cost: r.avgCost } : {}),
+            avg_cost: r.avgCost,
+            funding_account_id: fundingAccountId,
           }),
         ),
       );
@@ -209,6 +231,30 @@ export function ManualForm({
             </div>
           )}
 
+          <div className="flex gap-3">
+            <Field label={translate("fundingAccount")} className="flex-1">
+              <Select
+                value={fundingAccountId}
+                onValueChange={(v) => v && setFundingAccountId(v)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {fundingAccounts.find((a) => a.id === fundingAccountId)
+                      ? `${fundingAccounts.find((a) => a.id === fundingAccountId)!.name} · ${fundingAccounts.find((a) => a.id === fundingAccountId)!.currency}`
+                      : translate("selectAccount")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {fundingAccounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name} · {a.currency}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+
           <div className="space-y-3">
             <div className="text-xs uppercase tracking-wider text-muted-foreground">
               {translate("holdings93ec09")}
@@ -239,7 +285,7 @@ export function ManualForm({
           {topErr && <div className="text-destructive text-xs">{topErr}</div>}
 
           <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button type="button" variant="outline" onClick={cancel}>
               {translate("cancel")}
             </Button>
             <Button type="submit" disabled={busy}>
@@ -360,20 +406,10 @@ function HoldingRow({
             </SelectContent>
           </Select>
         </Field>
-        <Field
-          label={
-            <>
-              {translate("avgCost")}{" "}
-              <span className="font-normal text-muted-foreground normal-case tracking-normal">
-                {translate("optional")}
-              </span>
-            </>
-          }
-          className="flex-1"
-        >
+        <Field label={translate("avgCost")} className="flex-1">
           <Input
             type="number"
-            placeholder="—"
+            placeholder="0.00"
             value={row.avgCost}
             onChange={(e) => onChange({ avgCost: e.target.value })}
           />

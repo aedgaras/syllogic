@@ -856,138 +856,19 @@ def search_symbol(query: str, user_id: str | None = None) -> list[dict]:
 
 
 @mcp.tool
-def import_broker_trades(
-    account_id: str,
-    trades: list[dict],
-    dry_run: bool = False,
-    user_id: str | None = None,
-) -> dict:
-    """
-    Import a batch of broker trades for an investment account.
-
-    Use this after you (the LLM) have parsed a broker statement (CSV/PDF/XLSX)
-    into a typed list of trades. The tool dedupes by stable external_id, so
-    re-uploading the same statement is a no-op.
-
-    Workflow:
-        1. Call list_accounts(account_type="investment_brokerage") or
-           list_accounts(account_type="investment_manual") to find the right account.
-        2. Parse the user's statement file into the `trades` shape below.
-        3. Call this with dry_run=True first to preview.
-        4. Call again with dry_run=False to commit.
-
-    Args:
-        account_id: UUID of an investment-type account owned by the authenticated user.
-        trades: List of trade dicts. Each dict must include:
-            - symbol (str): ticker, e.g. "AAPL"
-            - trade_date (str): ISO date "YYYY-MM-DD"
-            - side (str): "buy" or "sell"
-            - quantity (str|number): positive number of shares
-            - price (str|number): per-share price in native currency
-            - currency (str): 3-letter ISO code, e.g. "USD"
-            - fees (str|number, optional): broker fees/commission in native
-              currency; defaults to 0. On buys, fees increase cost basis;
-              on sells, fees reduce proceeds.
-            - external_id (str, optional): broker's confirmation/trade id; if
-              omitted, the server generates a deterministic hash so re-uploads
-              are idempotent.
-            - broker_ref (str, optional): broker confirmation reference for traceability.
-        dry_run: If True, runs the import in a transaction and rolls back; the
-            return shape is the same. Use this to preview before committing.
-        user_id: Optional, defaults to authenticated user.
-
-    Returns:
-        Dict with keys:
-            - inserted (int): rows newly inserted
-            - skipped_duplicate (int): rows skipped because external_id already existed
-            - errors (list): per-trade validation errors with {index, trade, reason}
-            - affected_symbols (list[str]): symbols touched (Holding rows recomputed)
-    """
-    return investments.import_broker_trades(get_mcp_user_id(user_id), account_id, trades, dry_run)
-
-
-@mcp.tool
-def get_realized_pnl(
-    account_id: str | None = None,
-    symbol: str | None = None,
-    start_date: str | None = None,
-    end_date: str | None = None,
-    user_id: str | None = None,
-    person_ids: list[str] | None = None,
-) -> list[dict]:
-    """
-    Compute FIFO realized P&L from imported broker trades.
-
-    Returns one row per symbol, with native-currency totals plus
-    base-currency totals (using FX on each lot's close date).
-
-    Args:
-        account_id: Filter to a single investment account (optional).
-        symbol: Filter to a single symbol (optional).
-        start_date: ISO YYYY-MM-DD; only count trades on/after this date.
-        end_date: ISO YYYY-MM-DD; only count trades on/before this date.
-        user_id: Optional, defaults to authenticated user.
-        person_ids: Optional list of person UUIDs. When provided, only includes
-            trades from accounts owned by any of those people.
-
-    Returns:
-        List of {symbol, currency, realized_native, realized_base, lots_closed[]}.
-    """
-    return investments.get_realized_pnl(
-        get_mcp_user_id(user_id), account_id, symbol, start_date, end_date, person_ids
-    )
-
-
-@mcp.tool
-def get_unrealized_pnl(
-    account_id: str | None = None,
-    symbol: str | None = None,
-    user_id: str | None = None,
-    person_ids: list[str] | None = None,
-) -> list[dict]:
-    """
-    Compute unrealized P&L for currently-open FIFO lots.
-
-    Uses the latest HoldingValuation price per symbol. Symbols without a
-    valuation are omitted (run a price refresh first if needed).
-
-    Args:
-        account_id: Filter to a single investment account (optional).
-        symbol: Filter to a single symbol (optional).
-        user_id: Optional, defaults to authenticated user.
-        person_ids: Optional list of person UUIDs. When provided, only includes
-            trades and holdings from accounts owned by any of those people.
-
-    Returns:
-        List of {symbol, currency, quantity, cost_basis_native, cost_basis_base,
-        market_value_native, market_value_base, unrealized_native, unrealized_base, fx_missing}.
-    """
-    return investments.get_unrealized_pnl(get_mcp_user_id(user_id), account_id, symbol, person_ids)
-
-
-@mcp.tool
 def get_holding_trades(
     holding_id: str,
     user_id: str | None = None,
 ) -> list[dict]:
     """
-    Return all broker trades behind a single holding, in chronological order.
+    Return trade-level history behind a single holding.
 
-    Useful for showing the user the trade-level transaction history for a
-    position (the dashboard's "Transactions" tab).
+    Manual holdings have no trade-import data source, so this always
+    returns an empty list once the holding's existence is confirmed.
 
     Args:
         holding_id: UUID of the holding (must belong to the authenticated user).
         user_id: Optional, defaults to authenticated user.
-
-    Returns:
-        List of trade dicts ordered by trade_date with keys:
-          {id, trade_date, symbol, side, quantity, price, currency, fees,
-           external_id, cost_native, proceeds_native, running_quantity}.
-        `cost_native` is set on buys (qty*price + fees); `proceeds_native`
-        is set on sells (qty*price - fees). `running_quantity` is the open
-        quantity after applying this trade. Returns [] if the holding is
-        not owned by the user or has no trades behind it.
     """
     return investments.get_holding_trades(get_mcp_user_id(user_id), holding_id)
 

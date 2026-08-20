@@ -18,14 +18,12 @@ from app.integrations.price_provider import get_price_provider
 from app.models import (
     Account,
     AccountBalance,
-    BrokerConnection,
-    BrokerTrade,
     Holding,
     HoldingValuation,
+    Transaction,
     User,
 )
 from app.schemas import (
-    BrokerConnectionCreate,
     HoldingCreate,
     HoldingLot,
     HoldingTrade,
@@ -36,8 +34,11 @@ from app.schemas import (
     SymbolSearchResult,
     ValuationPoint,
 )
-from app.services.pnl_service import Trade as _FifoTrade, compute_fifo
-from app.services import credentials_crypto
+from app.services.account_balance_service import AccountBalanceService
+
+# Account types that hold investments, not spendable cash — excluded as a
+# funding source for a purchase.
+_INVESTMENT_ACCOUNT_TYPES = {"investment", "investment_manual"}
 
 logger = __import__("logging").getLogger(__name__)
 
@@ -89,140 +90,28 @@ def _run_sync_in_process(account_id: UUID) -> None:
 router = APIRouter()
 
 
-# ---------------------------------------------------------------------------
-# Broker connections
-# ---------------------------------------------------------------------------
-
-
-@router.post("/broker-connections")
-def create_broker_connection(
-    payload: BrokerConnectionCreate,
-    background_tasks: BackgroundTasks,
-    user_id: Optional[str] = None,
-    db: Session = Depends(get_db),
-):
-    user_id = get_user_id(user_id)
-
-    # Create the underlying brokerage account.
-    account = Account(
-        user_id=user_id,
-        name=payload.account_name,
-        account_type="investment_brokerage",
-        currency=payload.base_currency,
-        provider=payload.provider,
-    )
-    db.add(account)
-    db.flush()
-
-    creds = {
-        "flex_token": payload.flex_token,
-        "query_id_positions": payload.query_id_positions,
-        "query_id_trades": payload.query_id_trades,
-    }
-    encrypted = credentials_crypto.encrypt(creds)
-
-    conn = BrokerConnection(
-        user_id=user_id,
-        account_id=account.id,
-        provider=payload.provider,
-        credentials_encrypted=encrypted,
-        last_sync_status="pending",
-    )
-    db.add(conn)
-    db.commit()
-    db.refresh(conn)
-
-    # Kick off background sync.
-    background_tasks.add_task(_run_sync_in_process, account.id)
-
-    return {
-        "connection_id": str(conn.id),
-        "account_id": str(account.id),
-        "provider": conn.provider,
-        "last_sync_status": conn.last_sync_status,
-    }
-
-
-@router.get("/broker-connections")
-def list_broker_connections(
-    user_id: Optional[str] = None,
-    db: Session = Depends(get_db),
-):
-    user_id = get_user_id(user_id)
-    conns = db.query(BrokerConnection).filter(BrokerConnection.user_id == user_id).all()
-    return [
-        {
-            "id": str(c.id),
-            "account_id": str(c.account_id),
-            "provider": c.provider,
-            "last_sync_at": c.last_sync_at.isoformat() if c.last_sync_at else None,
-            "last_sync_status": c.last_sync_status,
-            "last_sync_error": c.last_sync_error,
-        }
-        for c in conns
-    ]
-
-
-@router.post("/broker-connections/{connection_id}/sync")
-def trigger_sync(
-    connection_id: UUID,
-    background_tasks: BackgroundTasks,
-    user_id: Optional[str] = None,
-    db: Session = Depends(get_db),
-):
-    user_id = get_user_id(user_id)
-    conn = (
-        db.query(BrokerConnection)
-        .filter(BrokerConnection.id == connection_id, BrokerConnection.user_id == user_id)
-        .first()
-    )
-    if not conn:
-        raise HTTPException(status_code=404, detail="Broker connection not found")
-    background_tasks.add_task(_run_sync_in_process, conn.account_id)
-    return {"status": "queued", "account_id": str(conn.account_id)}
-
-
 @router.post("/sync-all")
 def trigger_sync_all(
     background_tasks: BackgroundTasks,
     user_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    """Queue a price-refresh sync for every active investment account belonging
-    to the user (manual + brokerage). Uses Celery when Redis is available,
-    otherwise falls back to FastAPI BackgroundTasks (in-process)."""
+    """Queue a price-refresh sync for every active manual investment account
+    belonging to the user. Uses Celery when Redis is available, otherwise
+    falls back to FastAPI BackgroundTasks (in-process)."""
     user_id = get_user_id(user_id)
     accounts = (
         db.query(Account)
         .filter(
             Account.user_id == user_id,
             Account.is_active.is_(True),
-            Account.account_type.in_(["investment_manual", "investment_brokerage"]),
+            Account.account_type == "investment_manual",
         )
         .all()
     )
     for account in accounts:
         background_tasks.add_task(_run_sync_in_process, account.id)
     return {"status": "queued", "count": len(accounts)}
-
-
-@router.delete("/broker-connections/{connection_id}", status_code=204)
-def delete_broker_connection(
-    connection_id: UUID,
-    user_id: Optional[str] = None,
-    db: Session = Depends(get_db),
-):
-    user_id = get_user_id(user_id)
-    conn = (
-        db.query(BrokerConnection)
-        .filter(BrokerConnection.id == connection_id, BrokerConnection.user_id == user_id)
-        .first()
-    )
-    if not conn:
-        raise HTTPException(status_code=404, detail="Broker connection not found")
-    db.delete(conn)
-    db.commit()
-    return None
 
 
 # ---------------------------------------------------------------------------
@@ -267,6 +156,28 @@ def create_manual_holding(
     if not account or account.account_type != "investment_manual":
         raise HTTPException(status_code=404, detail="Manual investment account not found")
 
+    funding_account = (
+        db.query(Account)
+        .filter(Account.id == payload.funding_account_id, Account.user_id == user_id)
+        .first()
+    )
+    if not funding_account:
+        raise HTTPException(status_code=404, detail="Funding account not found")
+    if funding_account.account_type in _INVESTMENT_ACCOUNT_TYPES:
+        raise HTTPException(
+            status_code=400, detail="Funding account must be a cash account, not an investment account"
+        )
+    if funding_account.currency != payload.currency:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Funding account currency ({funding_account.currency}) must match "
+                f"the holding currency ({payload.currency})"
+            ),
+        )
+
+    cost = payload.quantity * payload.avg_cost
+
     # Resolve symbol metadata via the price provider.
     name: Optional[str] = None
     try:
@@ -292,7 +203,19 @@ def create_manual_holding(
         as_of_date=payload.as_of_date,
         source="manual",
     )
+    funding_transaction = Transaction(
+        user_id=user_id,
+        account_id=funding_account.id,
+        transaction_type="debit",
+        amount=-cost,
+        currency=funding_account.currency,
+        description=f"Investment purchase: {payload.symbol}",
+        booked_at=datetime.utcnow(),
+        pending=False,
+        include_in_analytics=False,
+    )
     db.add(holding)
+    db.add(funding_transaction)
     try:
         db.commit()
     except IntegrityError:
@@ -305,6 +228,10 @@ def create_manual_holding(
             ),
         )
     db.refresh(holding)
+
+    AccountBalanceService(db).calculate_account_balances(
+        user_id, account_ids=[str(funding_account.id)]
+    )
 
     # Trigger an async revaluation so the new holding gets priced.
     background_tasks.add_task(_run_sync_in_process, account.id)
@@ -467,7 +394,7 @@ def portfolio_summary(
         db.query(Account)
         .filter(
             Account.user_id == user_id,
-            Account.account_type.in_(["investment_brokerage", "investment_manual"]),
+            Account.account_type == "investment_manual",
         )
         .all()
     )
@@ -585,7 +512,7 @@ def portfolio_history(
         db.query(Account.id)
         .filter(
             Account.user_id == user_id,
-            Account.account_type.in_(["investment_brokerage", "investment_manual"]),
+            Account.account_type == "investment_manual",
         )
         .all()
     )
@@ -617,54 +544,13 @@ def holding_trades(
     user_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    """Return all BrokerTrade rows behind this holding (account_id, symbol),
-    chronologically. Each row carries a running quantity (post-trade)."""
+    """Manual holdings have no trade-import data source, so this always
+    returns an empty list once the holding's existence is confirmed."""
     user_id = get_user_id(user_id)
     holding = db.query(Holding).filter(Holding.id == holding_id, Holding.user_id == user_id).first()
     if not holding:
         raise HTTPException(status_code=404, detail="Holding not found")
-
-    trades = (
-        db.query(BrokerTrade)
-        .filter(
-            BrokerTrade.account_id == holding.account_id,
-            BrokerTrade.symbol == holding.symbol,
-        )
-        .order_by(BrokerTrade.trade_date.asc(), BrokerTrade.id.asc())
-        .all()
-    )
-
-    out: list[HoldingTrade] = []
-    running = Decimal("0")
-    for t in trades:
-        qty = Decimal(t.quantity)
-        price = Decimal(t.price)
-        fees = Decimal(t.fees or 0)
-        if t.side == "buy":
-            running += qty
-            cost_native = qty * price + fees
-            proceeds_native = None
-        else:
-            running -= qty
-            cost_native = None
-            proceeds_native = qty * price - fees
-        out.append(
-            HoldingTrade(
-                id=t.id,
-                trade_date=t.trade_date,
-                symbol=t.symbol,
-                side=t.side,
-                quantity=qty,
-                price=price,
-                currency=t.currency,
-                fees=fees,
-                external_id=t.external_id,
-                cost_native=cost_native,
-                proceeds_native=proceeds_native,
-                running_quantity=running,
-            )
-        )
-    return out
+    return []
 
 
 @router.get("/holdings/{holding_id}/lots", response_model=list[HoldingLot])
@@ -673,74 +559,14 @@ def holding_lots(
     user_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    """Return the open FIFO lots for this holding."""
+    """Manual holdings have no trade-import data source, so there are no
+    FIFO lots to compute — always returns an empty list once the holding's
+    existence is confirmed."""
     user_id = get_user_id(user_id)
     holding = db.query(Holding).filter(Holding.id == holding_id, Holding.user_id == user_id).first()
     if not holding:
         raise HTTPException(status_code=404, detail="Holding not found")
-
-    trades = (
-        db.query(BrokerTrade)
-        .filter(
-            BrokerTrade.account_id == holding.account_id,
-            BrokerTrade.symbol == holding.symbol,
-        )
-        .order_by(BrokerTrade.trade_date.asc(), BrokerTrade.id.asc())
-        .all()
-    )
-    if not trades:
-        return []
-
-    fifo_trades = [
-        _FifoTrade(
-            symbol=t.symbol,
-            trade_date=t.trade_date,
-            side=t.side,
-            quantity=Decimal(t.quantity),
-            price=Decimal(t.price),
-            currency=t.currency,
-            fees=Decimal(t.fees or 0),
-        )
-        for t in trades
-    ]
-    fifo = compute_fifo(fifo_trades)
-
-    user = db.query(User).filter(User.id == user_id).first()
-    user_currency = (
-        getattr(user, "functional_currency", None) or holding.currency or "EUR"
-    ).upper()
-
-    from app.services.exchange_rate_service import ExchangeRateService
-
-    fx_svc = ExchangeRateService(db=db)
-    today = date.today()
-
-    out: list[HoldingLot] = []
-    for lot in fifo.open_lots:
-        if lot.symbol != holding.symbol:
-            continue
-        cost_per_share_user: Optional[Decimal] = None
-        if lot.currency.upper() == user_currency:
-            cost_per_share_user = lot.cost_per_share_native
-        else:
-            rate = fx_svc.get_exchange_rate_with_fallback(
-                lot.currency.upper(), user_currency, lot.open_date
-            )
-            if rate is not None:
-                cost_per_share_user = (Decimal(lot.cost_per_share_native) * Decimal(rate)).quantize(
-                    Decimal("0.00000001")
-                )
-        out.append(
-            HoldingLot(
-                open_date=lot.open_date,
-                quantity_remaining=lot.quantity_remaining,
-                cost_per_share_native=lot.cost_per_share_native,
-                cost_per_share_user=cost_per_share_user,
-                age_days=(today - lot.open_date).days,
-                currency=lot.currency,
-            )
-        )
-    return out
+    return []
 
 
 # ---------------------------------------------------------------------------

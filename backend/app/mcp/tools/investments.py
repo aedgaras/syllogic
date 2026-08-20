@@ -8,7 +8,6 @@ Exposes:
 - search_symbol: lookup symbols seen in user's holdings
 """
 
-from datetime import date
 from decimal import Decimal
 from typing import Optional
 
@@ -19,23 +18,14 @@ from app.mcp.dependencies import get_db, validate_date
 from app.models import (
     Account,
     AccountBalance,
-    BrokerTrade,
     Holding,
     HoldingValuation,
     User,
 )
-from app.services.broker_trade_service import import_trades as _import_trades_service
-from app.services.broker_trade_service import ImportError as _BrokerImportError
-from app.services.exchange_rate_service import ExchangeRateService
 from app.services.ownership_service import attribute_amount, entity_ids_for_people, get_owners
-from app.services.pnl_service import (
-    Trade,
-    realized_pnl_from_trades,
-    unrealized_pnl_from_trades,
-)
 
 
-INVESTMENT_ACCOUNT_TYPES = ("investment_manual", "investment_brokerage")
+INVESTMENT_ACCOUNT_TYPES = ("investment_manual",)
 
 
 def _latest_valuations_for_user(db: Session, user_id: str):
@@ -360,272 +350,11 @@ def search_symbol(user_id: str, query: str) -> list[dict]:
         return search_symbol_impl(db, user_id, query)
 
 
-def import_broker_trades_impl(
-    db: Session,
-    user_id: str,
-    account_id: str,
-    trades: list[dict],
-    dry_run: bool = False,
-) -> dict:
-    try:
-        return _import_trades_service(
-            db=db,
-            user_id=user_id,
-            account_id=account_id,
-            trades=trades,
-            dry_run=dry_run,
-        )
-    except _BrokerImportError as e:
-        return {
-            "inserted": 0,
-            "skipped_duplicate": 0,
-            "errors": [{"index": -1, "trade": None, "reason": str(e)}],
-            "affected_symbols": [],
-        }
-
-
-def import_broker_trades(
-    user_id: str,
-    account_id: str,
-    trades: list[dict],
-    dry_run: bool = False,
-) -> dict:
-    with get_db() as db:
-        return import_broker_trades_impl(db, user_id, account_id, trades, dry_run)
-
-
-def _user_base_currency(db: Session, user_id: str) -> str:
-    user = db.query(User).filter(User.id == user_id).first()
-    return getattr(user, "functional_currency", "EUR") if user else "EUR"
-
-
-def _trades_for_user(
-    db: Session,
-    user_id: str,
-    account_id: Optional[str] = None,
-    symbol: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    allowed_account_ids: Optional[set] = None,
-) -> list[Trade]:
-    """Load BrokerTrade rows scoped to the user, return as pure-engine `Trade` objects.
-
-    allowed_account_ids: if provided, further restricts to those account IDs
-    (used for person_ids ownership filtering).
-    """
-    account_ids_subq = db.query(Account.id).filter(Account.user_id == user_id).subquery()
-    q = db.query(BrokerTrade).filter(BrokerTrade.account_id.in_(account_ids_subq))
-    if account_id:
-        q = q.filter(BrokerTrade.account_id == account_id)
-    if allowed_account_ids is not None:
-        q = q.filter(BrokerTrade.account_id.in_(allowed_account_ids))
-    if symbol:
-        q = q.filter(BrokerTrade.symbol == symbol.upper())
-    if start_date:
-        q = q.filter(BrokerTrade.trade_date >= validate_date(start_date))
-    if end_date:
-        q = q.filter(BrokerTrade.trade_date <= validate_date(end_date))
-    rows = q.order_by(BrokerTrade.trade_date, BrokerTrade.id).all()
-    return [
-        Trade(
-            symbol=r.symbol,
-            trade_date=r.trade_date,
-            side=r.side,
-            quantity=Decimal(r.quantity),
-            price=Decimal(r.price),
-            currency=r.currency,
-            fees=Decimal(r.fees or 0),
-        )
-        for r in rows
-    ]
-
-
-def get_realized_pnl_impl(
-    db: Session,
-    user_id: str,
-    account_id: Optional[str] = None,
-    symbol: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    person_ids: Optional[list[str]] = None,
-) -> list[dict]:
-    # Resolve allowed accounts from person_ids
-    allowed_account_ids: Optional[set] = None
-    if person_ids is not None and len(person_ids) > 0:
-        allowed_account_ids = set(
-            str(uid) for uid in entity_ids_for_people(db, "account", person_ids)
-        )
-        if not allowed_account_ids:
-            return []
-
-    base = _user_base_currency(db, user_id)
-    trades = _trades_for_user(
-        db, user_id, account_id, symbol, start_date, end_date, allowed_account_ids
-    )
-    if not trades:
-        return []
-    fx = ExchangeRateService(db)
-    rows = realized_pnl_from_trades(trades, base_currency=base, fx_service=fx)
-    return [_jsonify_pnl_row(r) for r in rows]
-
-
-def get_realized_pnl(
-    user_id: str,
-    account_id: Optional[str] = None,
-    symbol: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    person_ids: Optional[list[str]] = None,
-) -> list[dict]:
-    with get_db() as db:
-        return get_realized_pnl_impl(
-            db, user_id, account_id, symbol, start_date, end_date, person_ids
-        )
-
-
-def get_unrealized_pnl_impl(
-    db: Session,
-    user_id: str,
-    account_id: Optional[str] = None,
-    symbol: Optional[str] = None,
-    person_ids: Optional[list[str]] = None,
-) -> list[dict]:
-    # Resolve allowed accounts from person_ids
-    allowed_account_ids: Optional[set] = None
-    if person_ids is not None and len(person_ids) > 0:
-        allowed_account_ids = set(
-            str(uid) for uid in entity_ids_for_people(db, "account", person_ids)
-        )
-        if not allowed_account_ids:
-            return []
-
-    base = _user_base_currency(db, user_id)
-    trades = _trades_for_user(
-        db, user_id, account_id, symbol, allowed_account_ids=allowed_account_ids
-    )
-    if not trades:
-        return []
-
-    # Latest valuation per symbol — pick most recent HoldingValuation joined to Holding
-    holdings_q = db.query(Holding).filter(Holding.user_id == user_id)
-    if account_id:
-        holdings_q = holdings_q.filter(Holding.account_id == account_id)
-    if allowed_account_ids is not None:
-        holdings_q = holdings_q.filter(Holding.account_id.in_(allowed_account_ids))
-    if symbol:
-        holdings_q = holdings_q.filter(Holding.symbol == symbol.upper())
-    holdings = holdings_q.all()
-
-    valuations = _latest_valuations_for_user(db, user_id)
-    latest_prices: dict[str, Decimal] = {}
-    latest_dates: list[date] = []
-    for h in holdings:
-        v = valuations.get(h.id)
-        if v is not None and v.price is not None:
-            latest_prices[h.symbol] = Decimal(v.price)
-            latest_dates.append(v.date)
-
-    as_of = max(latest_dates) if latest_dates else date.today()
-
-    fx = ExchangeRateService(db)
-    rows = unrealized_pnl_from_trades(
-        trades,
-        base_currency=base,
-        fx_service=fx,
-        latest_prices=latest_prices,
-        as_of_date=as_of,
-    )
-    return [_jsonify_pnl_row(r) for r in rows]
-
-
-def get_unrealized_pnl(
-    user_id: str,
-    account_id: Optional[str] = None,
-    symbol: Optional[str] = None,
-    person_ids: Optional[list[str]] = None,
-) -> list[dict]:
-    with get_db() as db:
-        return get_unrealized_pnl_impl(db, user_id, account_id, symbol, person_ids)
-
-
-def get_holding_trades_impl(db: Session, user_id: str, holding_id: str) -> list[dict]:
-    """Return broker trades behind a holding, chronologically, with running quantity."""
-    holding = db.query(Holding).filter(Holding.id == holding_id, Holding.user_id == user_id).first()
-    if not holding:
-        return []
-    trades = (
-        db.query(BrokerTrade)
-        .filter(
-            BrokerTrade.account_id == holding.account_id,
-            BrokerTrade.symbol == holding.symbol,
-        )
-        .order_by(BrokerTrade.trade_date.asc(), BrokerTrade.id.asc())
-        .all()
-    )
-    out: list[dict] = []
-    running = Decimal("0")
-    for t in trades:
-        qty = Decimal(t.quantity)
-        price = Decimal(t.price)
-        fees = Decimal(t.fees or 0)
-        if t.side == "buy":
-            running += qty
-            cost_native = qty * price + fees
-            proceeds_native = None
-        else:
-            running -= qty
-            cost_native = None
-            proceeds_native = qty * price - fees
-        out.append(
-            {
-                "id": str(t.id),
-                "trade_date": t.trade_date.isoformat(),
-                "symbol": t.symbol,
-                "side": t.side,
-                "quantity": _dec_str_local(qty),
-                "price": _dec_str_local(price),
-                "currency": t.currency,
-                "fees": _dec_str_local(fees),
-                "external_id": t.external_id,
-                "cost_native": _dec_str_local(cost_native) if cost_native is not None else None,
-                "proceeds_native": _dec_str_local(proceeds_native)
-                if proceeds_native is not None
-                else None,
-                "running_quantity": _dec_str_local(running),
-            }
-        )
-    return out
-
-
 def get_holding_trades(user_id: str, holding_id: str) -> list[dict]:
+    """Manual holdings have no trade-import data source, so this always
+    returns an empty list once the holding's existence is confirmed."""
     with get_db() as db:
-        return get_holding_trades_impl(db, user_id, holding_id)
-
-
-def _dec_str_local(v: Decimal) -> str:
-    return format(v.normalize(), "f")
-
-
-def _dec_str(v: Decimal) -> str:
-    """Stringify a Decimal, stripping trailing zeros (e.g. '500' not '500.0000000000000000')."""
-    normalized = v.normalize()
-    # normalize() can produce scientific notation for very large/small values; use 'f' format
-    return format(normalized, "f")
-
-
-def _jsonify_pnl_row(row: dict) -> dict:
-    """Convert Decimals to strings recursively for JSON-friendly output."""
-    out = {}
-    for k, v in row.items():
-        if isinstance(v, Decimal):
-            out[k] = _dec_str(v)
-        elif isinstance(v, list):
-            out[k] = [
-                {kk: (_dec_str(vv) if isinstance(vv, Decimal) else vv) for kk, vv in item.items()}
-                if isinstance(item, dict)
-                else item
-                for item in v
-            ]
-        else:
-            out[k] = v
-    return out
+        holding = (
+            db.query(Holding).filter(Holding.id == holding_id, Holding.user_id == user_id).first()
+        )
+        return [] if holding else []

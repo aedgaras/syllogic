@@ -26,7 +26,7 @@ export function ProjectedBalanceKpiCard({
       title={translate("projectedBalanceIn30Days")}
       value={data?.projectedBalanceAtHorizon ?? 0}
       currency={currency}
-      subtitle={translate("basedOnRecurringAndTrend")}
+      subtitle={translate("basedOnRecurringAndTrend", { value1: 30 })}
       sparkData={
         data
           ? data.series.map((p) => ({
