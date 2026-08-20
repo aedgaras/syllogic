@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { normalizeDecimalInput } from "@/lib/utils";
 import {
   Popover,
   PopoverContent,
@@ -136,14 +137,15 @@ export function CategoryMultiSelect({
                 )}
                 {onSubLimitChange && (
                   <Input
-                    type="number"
+                    type="text"
                     inputMode="decimal"
-                    step="0.01"
-                    min="0"
                     placeholder={translate("subBudgetOptional")}
                     value={subLimits?.[option.id] ?? ""}
                     onChange={(event) =>
-                      onSubLimitChange(option.id, event.target.value)
+                      onSubLimitChange(
+                        option.id,
+                        normalizeDecimalInput(event.target.value),
+                      )
                     }
                     className="h-7 w-32 text-xs"
                   />

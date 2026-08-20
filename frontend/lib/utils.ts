@@ -6,6 +6,20 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Normalize a user-typed decimal amount, accepting "," or "." as the
+ * decimal separator (mobile numeric keyboards vary by locale) and
+ * collapsing it to "." so downstream parsing (Number/z.coerce.number) works.
+ */
+export function normalizeDecimalInput(value: string): string {
+  const sanitized = value.replace(/,/g, ".").replace(/[^0-9.-]/g, "");
+  const negative = sanitized.startsWith("-");
+  const digitsAndDot = sanitized.replace(/-/g, "");
+  const [intPart, ...rest] = digitsAndDot.split(".");
+  const normalized = rest.length ? `${intPart}.${rest.join("")}` : intPart;
+  return negative ? `-${normalized}` : normalized;
+}
+
+/**
  * Format a number as currency
  * @param value - The numeric value to format
  * @param currency - ISO 4217 currency code (e.g., "EUR", "USD")

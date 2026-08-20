@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CURRENCIES } from "@/lib/constants/currencies";
+import { normalizeDecimalInput } from "@/lib/utils";
 import { createVehicle } from "@/lib/actions/vehicles";
 import { VEHICLE_TYPES } from "./types";
 import {
@@ -250,12 +251,11 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
           <Label htmlFor="vehicle-value">{translate("currentValue")}</Label>
           <Input
             id="vehicle-value"
-            type="number"
+            type="text"
             inputMode="decimal"
-            step="0.01"
             placeholder="0.00"
             value={currentValue}
-            onChange={(e) => setCurrentValue(e.target.value)}
+            onChange={(e) => setCurrentValue(normalizeDecimalInput(e.target.value))}
           />
         </div>
 

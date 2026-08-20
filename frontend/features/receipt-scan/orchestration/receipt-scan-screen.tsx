@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { normalizeDecimalInput } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -167,13 +168,14 @@ export default function ReceiptScanScreen() {
                   />
                   <Input
                     aria-label={translate("amount")}
-                    type="number"
+                    type="text"
                     inputMode="decimal"
-                    step="0.01"
                     placeholder="0.00"
                     value={item.amount}
                     onChange={(e) =>
-                      updateItem(item.key, { amount: e.target.value })
+                      updateItem(item.key, {
+                        amount: normalizeDecimalInput(e.target.value),
+                      })
                     }
                   />
                   <Select

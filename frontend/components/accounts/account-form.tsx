@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CURRENCIES, ACCOUNT_TYPES } from "@/lib/constants";
+import { normalizeDecimalInput } from "@/lib/utils";
 import {
   createAccount,
   createPocketAccount,
@@ -304,12 +305,13 @@ export function AccountForm({
           </Label>
           <Input
             id="account-balance"
-            type="number"
+            type="text"
             inputMode="decimal"
-            step="0.01"
             placeholder="0.00"
             value={initialBalance}
-            onChange={(e) => setInitialBalance(e.target.value)}
+            onChange={(e) =>
+              setInitialBalance(normalizeDecimalInput(e.target.value))
+            }
           />
         </div>
 

@@ -22,7 +22,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { cn, normalizeDecimalInput } from "@/lib/utils";
 import { createOrUpdateBalancingTransaction } from "@/lib/actions/transactions";
 import { getCategoryByName } from "@/lib/actions/categories";
 import { getAccountBalanceOnDate } from "@/features/accounts/client/actions";
@@ -205,12 +205,11 @@ export function UpdateBalanceDialog({
               <Label htmlFor="new-balance">{translate("correctBalance")}</Label>
               <Input
                 id="new-balance"
-                type="number"
+                type="text"
                 inputMode="decimal"
-                step="0.01"
                 placeholder={translate("enterCorrectBalance")}
                 value={newBalance}
-                onChange={(e) => setNewBalance(e.target.value)}
+                onChange={(e) => setNewBalance(normalizeDecimalInput(e.target.value))}
                 autoFocus
               />
             </div>

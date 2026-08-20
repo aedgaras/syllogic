@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { normalizeDecimalInput } from "@/lib/utils";
 import { SymbolSearchInput } from "./SymbolSearchInput";
 import type { SymbolSearchResult } from "@/lib/api/investments";
 
@@ -104,10 +105,10 @@ export function EditHoldingDialog({
             </Label>
             <Input
               id="avg-cost"
-              type="number"
+              type="text"
               inputMode="decimal"
               value={avgCost}
-              onChange={(e) => setAvgCost(e.target.value)}
+              onChange={(e) => setAvgCost(normalizeDecimalInput(e.target.value))}
               placeholder="—"
             />
           </div>

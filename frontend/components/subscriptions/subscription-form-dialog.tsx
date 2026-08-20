@@ -40,6 +40,7 @@ import type {
   SubscriptionViewModel,
 } from "@/features/subscriptions/public";
 import { withAssetVersion } from "@/lib/utils/asset-url";
+import { normalizeDecimalInput } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 
 interface SubscriptionFormDialogProps {
@@ -530,13 +531,11 @@ export function SubscriptionFormDialog({
               </Label>
               <Input
                 id="amount"
-                type="number"
+                type="text"
                 inputMode="decimal"
-                step="0.01"
-                min="0.01"
                 placeholder="0.00"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => setAmount(normalizeDecimalInput(e.target.value))}
                 required
               />
             </div>

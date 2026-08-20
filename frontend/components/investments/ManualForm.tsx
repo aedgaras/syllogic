@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { normalizeDecimalInput } from "@/lib/utils";
 import { Field, Input } from "./_form-bits";
 
 const NEW = "__new__";
@@ -408,11 +409,13 @@ function HoldingRow({
         </Field>
         <Field label={translate("avgCost")} className="flex-1">
           <Input
-            type="number"
+            type="text"
             inputMode="decimal"
             placeholder="0.00"
             value={row.avgCost}
-            onChange={(e) => onChange({ avgCost: e.target.value })}
+            onChange={(e) =>
+              onChange({ avgCost: normalizeDecimalInput(e.target.value) })
+            }
           />
         </Field>
       </div>

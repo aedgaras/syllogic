@@ -42,7 +42,7 @@ import {
 } from "@remixicon/react";
 import type { TransactionWithRelations } from "@/features/transactions/public";
 import type { CategoryForFilter } from "@/shared/domain/display-contracts";
-import { cn } from "@/lib/utils";
+import { cn, normalizeDecimalInput } from "@/lib/utils";
 
 interface AccountTransactionFiltersProps {
   table: Table<TransactionWithRelations>;
@@ -327,20 +327,20 @@ function AmountRangeFilter({
       </Label>
       <div className="flex items-center gap-2">
         <Input
-          type="number"
+          type="text"
           inputMode="decimal"
           placeholder={translate("min")}
           value={minAmount}
-          onChange={(e) => onMinChange(e.target.value)}
+          onChange={(e) => onMinChange(normalizeDecimalInput(e.target.value))}
           className="h-8"
         />
         <span className="text-muted-foreground text-xs">{translate("to")}</span>
         <Input
-          type="number"
+          type="text"
           inputMode="decimal"
           placeholder={translate("max")}
           value={maxAmount}
-          onChange={(e) => onMaxChange(e.target.value)}
+          onChange={(e) => onMaxChange(normalizeDecimalInput(e.target.value))}
           className="h-8"
         />
       </div>

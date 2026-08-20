@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CURRENCIES } from "@/lib/constants/currencies";
+import { normalizeDecimalInput } from "@/lib/utils";
 import { CategoryMultiSelect } from "./category-multi-select";
 import {
   budgetEditSchema,
@@ -135,11 +136,9 @@ export function BudgetEditForm({
                 </Label>
                 <Input
                   id="budget-amount"
-                  type="number"
+                  type="text"
                   inputMode="decimal"
-                  step="0.01"
-                  min="0.01"
-                  {...register("amount")}
+                  {...register("amount", { setValueAs: normalizeDecimalInput })}
                 />
                 {errors.amount?.message && (
                   <p className="text-xs text-destructive">

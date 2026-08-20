@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { OwnersField } from "@/components/household/owners-field";
 import { CURRENCIES } from "@/lib/constants/currencies";
+import { normalizeDecimalInput } from "@/lib/utils";
 import { VEHICLE_TYPES } from "@/components/assets/types";
 import { vehicleEditSchema } from "../domain/edit-schemas";
 import type { AssetPerson, VehicleEditValues } from "../domain/contracts";
@@ -121,10 +122,11 @@ export function VehicleEditForm({
             >
               <Input
                 aria-label={translate("currentValue")}
-                type="number"
+                type="text"
                 inputMode="decimal"
-                step="0.01"
-                {...register("currentValue")}
+                {...register("currentValue", {
+                  setValueAs: normalizeDecimalInput,
+                })}
               />
             </Field>
             <Controller

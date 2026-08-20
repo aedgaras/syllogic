@@ -49,7 +49,7 @@ import type {
 } from "@/shared/domain/display-contracts";
 import type { TransactionsQueryState } from "@/features/transactions/public";
 import { useTransactionFilterDraft } from "@/features/transactions/hooks/use-transaction-filter-draft";
-import { cn } from "@/lib/utils";
+import { cn, normalizeDecimalInput } from "@/lib/utils";
 
 interface RecurringFilterOption {
   id: string;
@@ -364,20 +364,24 @@ function AmountRangeFilter({
       </Label>
       <div className="flex items-center gap-2">
         <Input
-          type="number"
+          type="text"
           inputMode="decimal"
           placeholder={translate("min")}
           value={minAmount}
-          onChange={(event) => onMinChange(event.target.value)}
+          onChange={(event) =>
+            onMinChange(normalizeDecimalInput(event.target.value))
+          }
           className="h-8"
         />
         <span className="text-xs text-muted-foreground">{translate("to")}</span>
         <Input
-          type="number"
+          type="text"
           inputMode="decimal"
           placeholder={translate("max")}
           value={maxAmount}
-          onChange={(event) => onMaxChange(event.target.value)}
+          onChange={(event) =>
+            onMaxChange(normalizeDecimalInput(event.target.value))
+          }
           className="h-8"
         />
       </div>

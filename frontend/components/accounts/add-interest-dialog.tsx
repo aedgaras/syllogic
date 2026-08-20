@@ -22,7 +22,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
+import { cn, normalizeDecimalInput } from "@/lib/utils";
 import { format } from "date-fns";
 import { addInterestTransaction } from "@/lib/actions/transactions";
 
@@ -96,13 +96,11 @@ export function AddInterestDialog({
               <Label htmlFor="interest-amount">{translate("amount")}</Label>
               <Input
                 id="interest-amount"
-                type="number"
+                type="text"
                 inputMode="decimal"
-                step="0.01"
-                min="0"
                 placeholder="0.00"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => setAmount(normalizeDecimalInput(e.target.value))}
               />
             </div>
             <div className="space-y-2">

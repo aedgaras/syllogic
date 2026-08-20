@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CURRENCIES } from "@/lib/constants/currencies";
+import { normalizeDecimalInput } from "@/lib/utils";
 import { createProperty } from "@/lib/actions/properties";
 import { PROPERTY_TYPES } from "./types";
 import {
@@ -213,12 +214,11 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
           <Label htmlFor="property-value">{translate("currentValue")}</Label>
           <Input
             id="property-value"
-            type="number"
+            type="text"
             inputMode="decimal"
-            step="0.01"
             placeholder="0.00"
             value={currentValue}
-            onChange={(e) => setCurrentValue(e.target.value)}
+            onChange={(e) => setCurrentValue(normalizeDecimalInput(e.target.value))}
           />
         </div>
 

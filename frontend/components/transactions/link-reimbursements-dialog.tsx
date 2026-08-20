@@ -33,7 +33,7 @@ import {
   RiMoneyDollarCircleLine,
 } from "@remixicon/react";
 import { format, subDays } from "date-fns";
-import { cn, formatAmount } from "@/lib/utils";
+import { cn, formatAmount, normalizeDecimalInput } from "@/lib/utils";
 import type {
   SuggestedTransactionLink,
   TransactionLinkAccountOption,
@@ -465,22 +465,26 @@ export function LinkReimbursementsDialog({
                     </Label>
                     <div className="flex items-center gap-2">
                       <Input
-                        type="number"
+                        type="text"
                         inputMode="decimal"
                         placeholder={translate("min")}
                         value={minAmount}
-                        onChange={(e) => setMinAmount(e.target.value)}
+                        onChange={(e) =>
+                          setMinAmount(normalizeDecimalInput(e.target.value))
+                        }
                         className="h-8"
                       />
                       <span className="text-muted-foreground text-xs">
                         {translate("to")}
                       </span>
                       <Input
-                        type="number"
+                        type="text"
                         inputMode="decimal"
                         placeholder={translate("max")}
                         value={maxAmount}
-                        onChange={(e) => setMaxAmount(e.target.value)}
+                        onChange={(e) =>
+                          setMaxAmount(normalizeDecimalInput(e.target.value))
+                        }
                         className="h-8"
                       />
                     </div>

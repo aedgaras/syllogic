@@ -36,7 +36,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { cn, normalizeDecimalInput } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   convertTransactionToTransfer,
@@ -530,14 +530,12 @@ export function AddTransactionDialog({
                 <Label htmlFor="amount">{translate("amount")}</Label>
                 <Input
                   id="amount"
-                  type="number"
+                  type="text"
                   inputMode="decimal"
-                  step="0.01"
-                  min="0"
                   placeholder="0.00"
                   value={amount}
                   disabled={isLinkedTransfer}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => setAmount(normalizeDecimalInput(e.target.value))}
                 />
               </div>
 
