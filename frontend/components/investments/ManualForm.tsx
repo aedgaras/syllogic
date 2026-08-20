@@ -409,6 +409,7 @@ function HoldingRow({
         <Field label={translate("avgCost")} className="flex-1">
           <Input
             type="number"
+            inputMode="decimal"
             placeholder="0.00"
             value={row.avgCost}
             onChange={(e) => onChange({ avgCost: e.target.value })}

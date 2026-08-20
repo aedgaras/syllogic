@@ -136,6 +136,7 @@ export function BudgetEditForm({
                 <Input
                   id="budget-amount"
                   type="number"
+                  inputMode="decimal"
                   step="0.01"
                   min="0.01"
                   {...register("amount")}

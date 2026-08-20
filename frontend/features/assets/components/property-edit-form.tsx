@@ -104,6 +104,7 @@ export function PropertyEditForm({
               <Input
                 aria-label={translate("currentValue")}
                 type="number"
+                inputMode="decimal"
                 step="0.01"
                 {...register("currentValue")}
               />

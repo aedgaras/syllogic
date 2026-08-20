@@ -202,6 +202,7 @@ export function AccountEditForm({
                 <Input
                   id="edit-account-balance"
                   type="number"
+                  inputMode="decimal"
                   step="0.01"
                   disabled
                   {...register("balance")}

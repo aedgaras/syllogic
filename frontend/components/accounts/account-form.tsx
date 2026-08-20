@@ -305,6 +305,7 @@ export function AccountForm({
           <Input
             id="account-balance"
             type="number"
+            inputMode="decimal"
             step="0.01"
             placeholder="0.00"
             value={initialBalance}

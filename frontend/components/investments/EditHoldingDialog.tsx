@@ -105,6 +105,7 @@ export function EditHoldingDialog({
             <Input
               id="avg-cost"
               type="number"
+              inputMode="decimal"
               value={avgCost}
               onChange={(e) => setAvgCost(e.target.value)}
               placeholder="—"

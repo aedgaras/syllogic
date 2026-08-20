@@ -214,6 +214,7 @@ export function AddPropertyForm({ onSuccess, onCancel }: AddPropertyFormProps) {
           <Input
             id="property-value"
             type="number"
+            inputMode="decimal"
             step="0.01"
             placeholder="0.00"
             value={currentValue}

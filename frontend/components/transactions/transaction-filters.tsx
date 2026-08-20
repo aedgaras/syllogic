@@ -365,6 +365,7 @@ function AmountRangeFilter({
       <div className="flex items-center gap-2">
         <Input
           type="number"
+          inputMode="decimal"
           placeholder={translate("min")}
           value={minAmount}
           onChange={(event) => onMinChange(event.target.value)}
@@ -373,6 +374,7 @@ function AmountRangeFilter({
         <span className="text-xs text-muted-foreground">{translate("to")}</span>
         <Input
           type="number"
+          inputMode="decimal"
           placeholder={translate("max")}
           value={maxAmount}
           onChange={(event) => onMaxChange(event.target.value)}

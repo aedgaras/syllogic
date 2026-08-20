@@ -206,6 +206,7 @@ export function UpdateBalanceDialog({
               <Input
                 id="new-balance"
                 type="number"
+                inputMode="decimal"
                 step="0.01"
                 placeholder={translate("enterCorrectBalance")}
                 value={newBalance}

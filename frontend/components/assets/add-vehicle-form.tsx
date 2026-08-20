@@ -251,6 +251,7 @@ export function AddVehicleForm({ onSuccess, onCancel }: AddVehicleFormProps) {
           <Input
             id="vehicle-value"
             type="number"
+            inputMode="decimal"
             step="0.01"
             placeholder="0.00"
             value={currentValue}

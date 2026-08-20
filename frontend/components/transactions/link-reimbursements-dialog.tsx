@@ -466,6 +466,7 @@ export function LinkReimbursementsDialog({
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
+                        inputMode="decimal"
                         placeholder={translate("min")}
                         value={minAmount}
                         onChange={(e) => setMinAmount(e.target.value)}
@@ -476,6 +477,7 @@ export function LinkReimbursementsDialog({
                       </span>
                       <Input
                         type="number"
+                        inputMode="decimal"
                         placeholder={translate("max")}
                         value={maxAmount}
                         onChange={(e) => setMaxAmount(e.target.value)}
