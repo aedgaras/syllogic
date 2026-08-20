@@ -3,7 +3,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from datetime import datetime
 from datetime import time as _time_type
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -170,6 +170,13 @@ class TransactionUpdate(BaseModel):
     category_system_id: Optional[UUID] = None
     categorization_instructions: Optional[str] = None
     enrichment_data: Optional[dict] = None
+    # Presence of any of these four triggers the "full mutation" path in
+    # update_transaction (amount/account/date/type change together with a
+    # currency + balance recalc), as opposed to a plain field patch.
+    account_id: Optional[UUID] = None
+    amount: Optional[Decimal] = None
+    transaction_type: Optional[str] = None
+    booked_at: Optional[datetime] = None
 
 
 class CategoryAssign(BaseModel):
@@ -181,6 +188,13 @@ class TransactionResponse(TransactionBase):
     external_id: Optional[str] = None
     category_id: Optional[UUID] = None
     category_system_id: Optional[UUID] = None
+    functional_amount: Optional[Decimal] = None
+    creditor: Optional[str] = None
+    debtor: Optional[str] = None
+    internal_transfer_id: Optional[UUID] = None
+    recurring_transaction_id: Optional[UUID] = None
+    include_in_analytics: bool = True
+    csv_import_id: Optional[UUID] = None
     pending: bool
     categorization_instructions: Optional[str] = None
     enrichment_data: Optional[dict] = None
@@ -190,9 +204,251 @@ class TransactionResponse(TransactionBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class RecurringTransactionSummary(BaseModel):
+    id: UUID
+    name: str
+    merchant: Optional[str] = None
+    frequency: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TransactionLinkSummary(BaseModel):
+    id: UUID
+    group_id: UUID
+    link_role: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TransferAccountSummary(BaseModel):
+    id: UUID
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InternalTransferSummary(BaseModel):
+    id: UUID
+    source_txn_id: UUID
+    mirror_txn_id: Optional[UUID] = None
+    source_account_id: UUID
+    pocket_account_id: UUID
+    amount: Decimal
+    currency: str
+    source_account: Optional[TransferAccountSummary] = None
+    pocket_account: Optional[TransferAccountSummary] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TransactionAccountSummary(BaseModel):
+    id: UUID
+    name: str
+    institution: Optional[str] = None
+    account_type: str
+    logo_id: Optional[UUID] = None
+    logo: Optional[AccountLogoSchema] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TransactionWithDetails(TransactionResponse):
     category_name: Optional[str] = None
     account_name: str
+    account: Optional[TransactionAccountSummary] = None
+    category: Optional[CategoryResponse] = None
+    category_system: Optional[CategoryResponse] = None
+    recurring_transaction: Optional[RecurringTransactionSummary] = None
+    transaction_link: Optional[TransactionLinkSummary] = None
+    internal_transfer: Optional[InternalTransferSummary] = None
+
+
+# Transfer / interest / balancing / delete-impact schemas
+class TransferTransactionCreate(BaseModel):
+    source_account_id: UUID
+    destination_account_id: UUID
+    amount: Decimal
+    description: str
+    booked_at: datetime
+
+
+class TransferTransactionResponse(BaseModel):
+    source_transaction_id: UUID
+    destination_transaction_id: UUID
+
+
+class TransactionConvertToTransferRequest(BaseModel):
+    source_account_id: UUID
+    destination_account_id: UUID
+    amount: Decimal
+    description: str
+    booked_at: datetime
+
+
+class InterestTransactionCreate(BaseModel):
+    account_id: UUID
+    amount: Decimal
+    booked_at: datetime
+    description: Optional[str] = None
+
+
+class InterestTransactionResponse(BaseModel):
+    transaction_id: UUID
+
+
+class AccruedInterestResponse(BaseModel):
+    total: Decimal
+
+
+class BalancingTransactionUpsert(BaseModel):
+    account_id: UUID
+    target_balance: Decimal
+    adjustment_date: datetime
+    balancing_category_id: UUID
+
+
+class BalancingTransactionUpsertResponse(BaseModel):
+    transaction_id: Optional[UUID] = None
+    is_update: bool = False
+
+
+class AccountDeleteImpact(BaseModel):
+    account_id: UUID
+    account_name: str
+    currency: str
+    amount_change: Decimal
+    current_balance: Decimal
+    projected_balance: Decimal
+    balance_is_anchored: bool
+
+
+class DeleteImpactRequest(BaseModel):
+    transaction_ids: List[UUID]
+
+
+class DeleteImpactResponse(BaseModel):
+    account_impacts: List[AccountDeleteImpact]
+    total_transactions: int
+    earliest_date: datetime
+
+
+class BulkDeleteRequest(BaseModel):
+    transaction_ids: List[UUID]
+
+
+class BulkDeleteResponse(BaseModel):
+    affected_account_ids: List[UUID]
+    deleted_count: int
+
+
+class FilteredTransactionTotalsResponse(BaseModel):
+    total_in: Decimal
+    total_out: Decimal
+
+
+class TransactionPageResponse(BaseModel):
+    rows: List[TransactionWithDetails]
+    total_count: int
+    filtered_totals: Optional[FilteredTransactionTotalsResponse] = None
+    page: int
+    page_size: int
+    resolved_from: Optional[str] = None
+    resolved_to: Optional[str] = None
+    effective_horizon: Optional[int] = None
+
+
+class BulkCategoryUpdateRequest(BaseModel):
+    transaction_ids: List[UUID]
+    category_id: Optional[UUID] = None
+
+
+class BulkUpdateResponse(BaseModel):
+    updated_count: int
+
+
+class BulkAnalyticsUpdateRequest(BaseModel):
+    transaction_ids: List[UUID]
+    include_in_analytics: bool
+
+
+class IncludeInAnalyticsUpdate(BaseModel):
+    include_in_analytics: bool
+
+
+# Transaction Link Schemas
+class AccountOptionResponse(BaseModel):
+    id: UUID
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CreateLinkGroupRequest(BaseModel):
+    primary_id: UUID
+    linked_ids: List[UUID]
+    link_type: Literal["reimbursement", "expense"]
+
+
+class CreateLinkGroupResponse(BaseModel):
+    group_id: UUID
+
+
+class AddToLinkGroupRequest(BaseModel):
+    transaction_id: UUID
+    role: Literal["primary", "reimbursement", "expense"]
+
+
+class RemoveFromLinkGroupResponse(BaseModel):
+    group_deleted: bool
+
+
+class LinkedTransactionResponse(BaseModel):
+    id: UUID
+    amount: Decimal
+    description: Optional[str] = None
+    merchant: Optional[str] = None
+    booked_at: datetime
+    transaction_type: Optional[str] = None
+    link_role: str
+
+
+class TransactionLinkGroupResponse(BaseModel):
+    group_id: UUID
+    primary: Optional[LinkedTransactionResponse] = None
+    linked: List[LinkedTransactionResponse]
+    net_amount: Decimal
+    currency: Optional[str] = None
+
+
+class SuggestedLinkResponse(BaseModel):
+    id: UUID
+    amount: Decimal
+    description: Optional[str] = None
+    merchant: Optional[str] = None
+    booked_at: datetime
+    transaction_type: Optional[str] = None
+    account_id: UUID
+    account_name: Optional[str] = None
+    score: float = 0
+
+
+class LinkSearchResponse(BaseModel):
+    transactions: List[SuggestedLinkResponse]
+    total_count: int
+    has_more: bool
+
+
+class TransactionLinkInfoResponse(BaseModel):
+    id: UUID
+    group_id: UUID
+    transaction_id: UUID
+    link_role: str
+    created_at: Optional[datetime] = None
+
+
+class CreateLinkGroupFromSelectionRequest(BaseModel):
+    transaction_ids: List[UUID]
 
 
 # Receipt Scan Schemas
@@ -236,6 +492,53 @@ class CategorySpending(BaseModel):
     category_name: Optional[str]
     total: Decimal
     count: int
+
+
+class CategorySpendingCategoryResponse(BaseModel):
+    id: str  # UUID string, or the literal "uncategorized"
+    name: str
+    color: Optional[str] = None
+    icon: Optional[str] = None
+    amount: Decimal
+    share_pct: float
+    delta_amount: Decimal
+    delta_pct: float
+    average_monthly_amount: Decimal
+
+
+class CategorySpendingTopCategoryResponse(BaseModel):
+    id: str
+    name: str
+    amount: Decimal
+
+
+class CategorySpendingSummaryResponse(BaseModel):
+    total_spend: Decimal
+    average_monthly_spend: Decimal
+    top_category: Optional[CategorySpendingTopCategoryResponse] = None
+
+
+class CategorySpendingRangeResponse(BaseModel):
+    start_date: str
+    end_date: str
+    comparison_start_date: str
+    comparison_end_date: str
+    month_count: int
+    reference_date: str
+
+
+class CategorySpendingDataResponse(BaseModel):
+    currency: str
+    categories: List[CategorySpendingCategoryResponse]
+    summary: CategorySpendingSummaryResponse
+    range: CategorySpendingRangeResponse
+
+
+class CategorySpendingTransactionsPageResponse(BaseModel):
+    rows: List[TransactionWithDetails]
+    total_count: int
+    page: int
+    page_size: int
 
 
 class AccountSummary(BaseModel):

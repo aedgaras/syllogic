@@ -165,7 +165,9 @@ class Category(Base):
     )  # User instructions for AI categorization
     is_system = Column(Boolean, default=False)
     hide_from_selection = Column(Boolean, default=False)
-    system_key = Column(String(50), nullable=True, index=True)  # stable, non-translated identifier for system categories
+    system_key = Column(
+        String(50), nullable=True, index=True
+    )  # stable, non-translated identifier for system categories
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -273,6 +275,7 @@ class Transaction(Base):
     transaction_link = relationship("TransactionLink", back_populates="transaction", uselist=False)
     csv_import = relationship("CsvImport", back_populates="transactions")
     receipt_scan = relationship("ReceiptScan", back_populates="transactions")
+    internal_transfer = relationship("InternalTransfer", foreign_keys=[internal_transfer_id])
 
     # Indexes and constraints
     __table_args__ = (
@@ -384,6 +387,9 @@ class InternalTransfer(Base):
     currency = Column(String(3), nullable=False)
     detected_at = Column(DateTime, server_default=text("now()"))
     created_at = Column(DateTime, server_default=text("now()"))
+
+    source_account = relationship("Account", foreign_keys=[source_account_id])
+    pocket_account = relationship("Account", foreign_keys=[pocket_account_id])
 
     __table_args__ = (
         Index("idx_internal_transfers_user", "user_id"),
@@ -585,9 +591,7 @@ class ReceiptScan(Base):
     )
     file_path = Column(Text, nullable=True)
     file_path_ciphertext = Column(Text, nullable=True)
-    status = Column(
-        String(20), default="pending"
-    )  # pending, processed, completed, failed
+    status = Column(String(20), default="pending")  # pending, processed, completed, failed
     raw_ocr_text = Column(Text, nullable=True)
     merchant_name = Column(String(255), nullable=True)
     receipt_total = Column(Numeric(15, 2), nullable=True)

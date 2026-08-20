@@ -24,6 +24,7 @@ from app.schemas import (
 )
 from pydantic import BaseModel
 from app.services.category_matcher import CategoryMatcher
+from app.services.system_categories import SystemCategorySeed, ensure_system_categories
 
 logger = logging.getLogger(__name__)
 
@@ -222,29 +223,19 @@ def ensure_system_transfer_categories(
     """
     user_id = get_user_id(user_id)
 
-    existing = (
-        db.query(Category.name, Category.system_key).filter(Category.user_id == user_id).all()
-    )
-    existing_keys = {row.system_key for row in existing if row.system_key}
-    existing_names = {row.name for row in existing}
-
-    inserted: List[Category] = []
-    for item in request.categories:
-        if item.key in existing_keys or item.name in existing_names:
-            continue
-        db_category = Category(
-            user_id=user_id,
+    seeds = [
+        SystemCategorySeed(
+            key=item.key,
             name=item.name,
             category_type=item.category_type,
             color=item.color,
             icon=item.icon,
             description=item.description,
-            is_system=True,
             hide_from_selection=item.hide_from_selection,
-            system_key=item.key,
         )
-        db.add(db_category)
-        inserted.append(db_category)
+        for item in request.categories
+    ]
+    inserted = ensure_system_categories(db, user_id, seeds)
 
     if inserted:
         db.commit()
