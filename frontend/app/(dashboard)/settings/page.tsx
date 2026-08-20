@@ -15,6 +15,7 @@ import { listApiKeys } from "@/lib/actions/api-keys";
 import { getCsvImportHistory } from "@/lib/actions/csv-import";
 import { getBankConnections } from "@/lib/actions/bank-connections";
 import { resolveMcpServerUrlForSnippet } from "@/lib/mcp/server-url";
+import { resolveServerBaseUrl } from "@/lib/base-url";
 import { isDemoRestrictedUserEmail } from "@/lib/demo-access";
 import { getPeople } from "@/lib/people";
 import { avatarUrl } from "@/lib/people/avatars";
@@ -75,12 +76,7 @@ export default async function SettingsPage({
       process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
     appUrl: process.env.APP_URL,
   });
-  const appBaseUrl = (
-    process.env.APP_URL ||
-    process.env.BETTER_AUTH_URL ||
-    process.env.NEXT_PUBLIC_BETTER_AUTH_URL ||
-    "http://localhost:3000"
-  ).replace(/\/+$/, "");
+  const appBaseUrl = resolveServerBaseUrl() || "http://localhost:3000";
 
   return (
     <>

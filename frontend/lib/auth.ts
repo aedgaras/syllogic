@@ -6,31 +6,9 @@ import { oauthProvider } from "@better-auth/oauth-provider";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import type { OidcRuntimeConfig } from "@/lib/oidc-config";
+import { resolveServerBaseUrl, toValidOrigin } from "@/lib/base-url";
 
-const toValidOrigin = (value?: string | null): string | undefined => {
-  const trimmed = value?.trim();
-  if (!trimmed) return undefined;
-
-  const candidate =
-    trimmed.startsWith("http://") || trimmed.startsWith("https://")
-      ? trimmed
-      : `https://${trimmed}`;
-
-  try {
-    return new URL(candidate).origin;
-  } catch {
-    return undefined;
-  }
-};
-
-const resolvedBaseURL = [
-  process.env.APP_URL,
-  process.env.BETTER_AUTH_URL,
-  process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
-  process.env.RENDER_EXTERNAL_URL,
-]
-  .map((value) => toValidOrigin(value))
-  .find((value): value is string => Boolean(value));
+const resolvedBaseURL = resolveServerBaseUrl();
 
 export function createAuth(
   oidcConfig?: OidcRuntimeConfig | null,

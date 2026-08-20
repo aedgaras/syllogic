@@ -19,9 +19,45 @@ function normalizeUrl(value: string): string {
   return parsed.toString();
 }
 
-export function validateOidcConfig(
+async function checkDiscoveryDocument(discoveryUrl: string): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(discoveryUrl, {
+      signal: AbortSignal.timeout(8000),
+      headers: { accept: "application/json" },
+    });
+  } catch (error) {
+    throw new Error(
+      `Could not reach the discovery URL: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+  if (!response.ok) {
+    throw new Error(
+      `Discovery URL returned HTTP ${response.status}. Check that it points at the ".well-known/openid-configuration" document for your Authentik application.`,
+    );
+  }
+  let doc: Record<string, unknown>;
+  try {
+    doc = await response.json();
+  } catch {
+    throw new Error(
+      "Discovery URL did not return valid JSON. Make sure it points at the full \".well-known/openid-configuration\" URL, not just the issuer root.",
+    );
+  }
+  const requiredFields = ["authorization_endpoint", "token_endpoint", "issuer"];
+  const missing = requiredFields.filter((field) => !doc[field]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Discovery document is missing required field(s): ${missing.join(", ")}. Make sure the discovery URL points at the full ".well-known/openid-configuration" document.`,
+    );
+  }
+}
+
+export async function validateOidcConfig(
   config: OidcRuntimeConfig,
-): OidcRuntimeConfig {
+): Promise<OidcRuntimeConfig> {
   const normalized = {
     ...config,
     displayName: config.displayName.trim() || "Single Sign-On",
@@ -41,6 +77,7 @@ export function validateOidcConfig(
       );
     }
     normalized.discoveryUrl = normalizeUrl(normalized.discoveryUrl);
+    await checkDiscoveryDocument(normalized.discoveryUrl);
   } else if (normalized.discoveryUrl) {
     normalized.discoveryUrl = normalizeUrl(normalized.discoveryUrl);
   }

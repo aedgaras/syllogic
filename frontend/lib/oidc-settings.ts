@@ -52,7 +52,10 @@ export async function getOidcRuntimeConfig(): Promise<OidcRuntimeConfig | null> 
 
   const decrypted = decryptValue(row.valueEncrypted);
   if (!decrypted) return null;
-  const config = validateOidcConfig(parseStoredConfig(decrypted));
+  // Discovery was already checked when the settings were saved; re-checking
+  // it on every request would add latency and an external dependency to the
+  // hot auth path, so parse without re-validating against the network here.
+  const config = parseStoredConfig(decrypted);
   return config.enabled ? config : null;
 }
 
@@ -92,7 +95,7 @@ export async function saveOidcSettings(
   updatedByUserId: string,
 ): Promise<OidcAdminSettings> {
   const existing = await getOidcRuntimeConfigIncludingDisabled();
-  const config = validateOidcConfig({
+  const config = await validateOidcConfig({
     ...input,
     clientSecret: input.clientSecret?.trim() || existing?.clientSecret || "",
   });
