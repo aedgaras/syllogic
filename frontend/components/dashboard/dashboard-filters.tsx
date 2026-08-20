@@ -169,7 +169,7 @@ export function DashboardFilters({ accounts }: DashboardFiltersProps) {
             {!isAllAccountsSelected && (
               <Badge
                 variant="outline"
-                className="h-4 min-w-4 px-1 text-[10px] leading-none"
+                className="h-4 min-w-4 px-1 text-2xs leading-none"
               >
                 {selectedAccountsCount}
               </Badge>

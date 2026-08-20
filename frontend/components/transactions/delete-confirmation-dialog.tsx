@@ -130,7 +130,7 @@ export function DeleteConfirmationDialog({
                         className={cn(
                           "text-xs font-mono",
                           acc.amountChange > 0
-                            ? "text-emerald-600"
+                            ? "text-success"
                             : "text-destructive",
                         )}
                       >
@@ -139,7 +139,7 @@ export function DeleteConfirmationDialog({
                       </span>
                     </div>
                     {acc.balanceIsAnchored ? (
-                      <div className="flex items-start gap-1.5 text-xs text-amber-600">
+                      <div className="flex items-start gap-1.5 text-xs text-warning">
                         <RiAlertLine className="size-3.5 shrink-0 mt-0.5" />
                         <span>
                           {translate(
@@ -160,7 +160,7 @@ export function DeleteConfirmationDialog({
               </div>
 
               {hasAnchoredAccount && (
-                <div className="flex items-start gap-2 rounded-none border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                <div className="flex items-start gap-2 rounded-none border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
                   <RiErrorWarningLine className="size-4 shrink-0 mt-0.5" />
                   <span>
                     {translate(

@@ -255,7 +255,7 @@ export function DataTable<TData, TValue>({
 
                         return (
                           <div key={cell.id} className="min-w-0">
-                            <dt className="text-[10px] uppercase text-muted-foreground">
+                            <dt className="text-2xs uppercase text-muted-foreground">
                               {label}
                             </dt>
                             <dd

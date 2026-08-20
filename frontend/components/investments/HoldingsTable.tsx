@@ -23,7 +23,7 @@ export function HoldingsTable({
                 </div>
               </div>
               <div
-                className={`shrink-0 text-right text-sm font-medium ${h.is_stale ? "text-amber-600" : ""}`}
+                className={`shrink-0 text-right text-sm font-medium ${h.is_stale ? "text-warning" : ""}`}
               >
                 {h.current_value_user_currency ?? "—"}
               </div>
@@ -49,7 +49,7 @@ export function HoldingsTable({
                 {onDelete && h.source === "manual" && (
                   <button
                     type="button"
-                    className="text-xs text-red-600"
+                    className="text-xs text-destructive"
                     onClick={() => onDelete(h.id)}
                   >
                     {translate("remove")}
@@ -84,7 +84,7 @@ export function HoldingsTable({
                 {h.current_price ?? "—"} {h.currency}
               </td>
               <td
-                className={`text-right ${h.is_stale ? "text-amber-600" : ""}`}
+                className={`text-right ${h.is_stale ? "text-warning" : ""}`}
               >
                 {h.current_value_user_currency ?? "—"}
               </td>
@@ -92,7 +92,7 @@ export function HoldingsTable({
                 {onDelete && h.source === "manual" && (
                   <button
                     type="button"
-                    className="text-xs text-red-600"
+                    className="text-xs text-destructive"
                     onClick={() => onDelete(h.id)}
                   >
                     {translate("remove")}

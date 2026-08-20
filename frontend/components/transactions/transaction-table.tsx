@@ -252,7 +252,7 @@ export function TransactionTable({
                 <span className="text-muted-foreground">
                   {translate("totalIn")}
                 </span>
-                <span className="font-mono font-medium text-emerald-700">
+                <span className="font-mono font-medium text-success">
                   +{formatSummaryAmount(resolvedFilteredTotals.totalIn)}
                 </span>
               </div>

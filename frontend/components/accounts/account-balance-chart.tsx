@@ -375,7 +375,7 @@ export function AccountBalanceChart({
                     {formatCurrencyValue(springY.get())}
                   </div>
                   {currentDate && (
-                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                    <div className="text-2xs text-muted-foreground mt-0.5">
                       {format(parseISO(currentDate), "MMM d")}
                     </div>
                   )}

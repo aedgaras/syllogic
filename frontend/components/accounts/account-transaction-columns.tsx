@@ -290,7 +290,7 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] =
               value2: recurring.frequency,
             })}
           >
-            <RiCheckLine className="h-4 w-4 text-emerald-600" />
+            <RiCheckLine className="h-4 w-4 text-success" />
           </span>
         );
       },

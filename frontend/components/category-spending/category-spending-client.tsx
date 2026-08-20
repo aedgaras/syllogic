@@ -386,7 +386,7 @@ export function CategorySpendingClient({
                           className={cn(
                             "flex items-center gap-1 justify-self-center text-center",
                             deltaPositive && "text-rose-600",
-                            deltaNegative && "text-emerald-600",
+                            deltaNegative && "text-success",
                           )}
                         >
                           {deltaPositive ? (

@@ -401,7 +401,7 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
               value2: recurring.frequency,
             })}
           >
-            <RiCheckLine className="h-4 w-4 text-emerald-600" />
+            <RiCheckLine className="h-4 w-4 text-success" />
           </span>
         </div>
       );
@@ -446,7 +446,7 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
         <div className="flex justify-center">
           <Tooltip>
             <TooltipTrigger render={<span />}>
-              <RiLink className="h-4 w-4 text-blue-600" />
+              <RiLink className="h-4 w-4 text-info" />
             </TooltipTrigger>
             <TooltipContent side="top">
               <p>

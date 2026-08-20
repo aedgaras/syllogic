@@ -101,7 +101,7 @@ export function ImportHistoryManager({
                         {imp.hasEditedTransactions && (
                           <Tooltip>
                             <TooltipTrigger>
-                              <RiAlertLine className="size-3.5 shrink-0 text-amber-500" />
+                              <RiAlertLine className="size-3.5 shrink-0 text-warning" />
                             </TooltipTrigger>
                             <TooltipContent side="top">
                               <p>

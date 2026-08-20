@@ -68,13 +68,13 @@ export function PortfolioStatsStrip({
     <div className="grid grid-cols-1 gap-px overflow-hidden rounded-md border border-border bg-border min-[420px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
       {cells.map(({ label, value, tone }) => (
         <div key={label} className="flex flex-col gap-1 bg-card p-3">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-2xs uppercase tracking-wider text-muted-foreground">
             {label}
           </div>
           <div
             className={`break-words text-sm font-semibold tabular-nums ${
               tone === "positive"
-                ? "text-emerald-600 dark:text-emerald-400"
+                ? "text-success"
                 : tone === "negative"
                   ? "text-destructive"
                   : ""

@@ -41,7 +41,7 @@ export function PortfolioHero({
   const positive = absChange >= 0;
   const sym = currencySymbol(currency);
   const changeClass = positive
-    ? "text-emerald-600 dark:text-emerald-400"
+    ? "text-success"
     : "text-destructive";
   return (
     <Card>
@@ -79,7 +79,7 @@ export function PortfolioHero({
             </span>
           )}
           {staleCount > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] text-amber-600 dark:text-amber-400 border border-amber-600/30 rounded">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-2xs text-warning border border-warning/30 rounded">
               <RiAlertLine size={10} /> {staleCount} {translate("stalePrice")}
               {staleCount > 1 ? "s" : ""}
             </span>

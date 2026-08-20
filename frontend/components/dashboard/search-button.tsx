@@ -27,7 +27,7 @@ export function SearchButton() {
         <RiSearchLine className="h-4 w-4 shrink-0" />
         <span className="truncate">{translate("search6d7a30")}</span>
       </span>
-      <kbd className="pointer-events-none ml-1 hidden h-5 select-none items-center gap-0.5 border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+      <kbd className="pointer-events-none ml-1 hidden h-5 select-none items-center gap-0.5 border bg-muted px-1.5 font-mono text-2xs font-medium opacity-100 sm:flex">
         <span className="text-xs">⌘</span>K
       </kbd>
     </Button>

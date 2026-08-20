@@ -154,7 +154,7 @@ export function LinkedTransactionsSection({
           <span
             className={cn(
               "text-sm font-mono font-medium",
-              linkGroup.netAmount > 0 ? "text-emerald-600" : "text-foreground",
+              linkGroup.netAmount > 0 ? "text-success" : "text-foreground",
             )}
           >
             {formatAmount(linkGroup.netAmount, currency)}
@@ -188,7 +188,7 @@ export function LinkedTransactionsSection({
                 <span
                   className={cn(
                     "font-mono shrink-0",
-                    txn.amount > 0 && "text-emerald-600",
+                    txn.amount > 0 && "text-success",
                   )}
                 >
                   {txn.amount > 0 ? "+" : ""}

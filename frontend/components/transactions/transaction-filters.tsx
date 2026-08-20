@@ -641,7 +641,7 @@ export function TransactionFilters({
               <RiFilter3Line className="h-4 w-4" />
               {translate("filters")}
               {activeFilterCount > 0 && (
-                <span className="flex h-5 min-w-5 items-center justify-center bg-muted px-1.5 text-[10px] font-medium text-muted-foreground">
+                <span className="flex h-5 min-w-5 items-center justify-center bg-muted px-1.5 text-2xs font-medium text-muted-foreground">
                   {activeFilterCount}
                 </span>
               )}

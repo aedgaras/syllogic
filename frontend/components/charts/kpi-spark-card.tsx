@@ -90,7 +90,7 @@ export function KpiSparkCard({
               <span
                 className={cn(
                   "text-xs font-medium",
-                  trend.isPositive ? "text-emerald-600" : "text-red-600",
+                  trend.isPositive ? "text-success" : "text-destructive",
                 )}
               >
                 {trend.isPositive ? "+" : "-"}

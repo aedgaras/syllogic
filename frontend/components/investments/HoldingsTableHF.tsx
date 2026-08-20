@@ -240,7 +240,7 @@ export function HoldingsTableHF({
                             router.push(`/investments/${h.id}`);
                           }
                         }}
-                        className={`cursor-pointer p-4 ${h.is_stale ? "bg-amber-50 dark:bg-amber-950/30" : ""}`}
+                        className={`cursor-pointer p-4 ${h.is_stale ? "bg-warning/10" : ""}`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -250,7 +250,7 @@ export function HoldingsTableHF({
                               {h.is_stale && (
                                 <span
                                   title={translate("priceMayBeStale")}
-                                  className="size-1.5 rounded-full bg-amber-500"
+                                  className="size-1.5 rounded-full bg-warning"
                                 />
                               )}
                               <OwnerBadges
@@ -259,7 +259,7 @@ export function HoldingsTableHF({
                                 size={16}
                               />
                             </div>
-                            <div className="break-words text-[10px] text-muted-foreground">
+                            <div className="break-words text-2xs text-muted-foreground">
                               {h.name ?? ""}
                             </div>
                           </div>
@@ -305,7 +305,7 @@ export function HoldingsTableHF({
                                 h._pnl == null
                                   ? "text-muted-foreground"
                                   : h._pnl >= 0
-                                    ? "text-emerald-600 dark:text-emerald-400"
+                                    ? "text-success"
                                     : "text-destructive"
                               }`}
                             >
@@ -382,7 +382,7 @@ export function HoldingsTableHF({
                 <TableHead
                   key={k}
                   onClick={() => handleSort(k as SortKey)}
-                  className={`cursor-pointer select-none uppercase tracking-wider text-[10px] ${
+                  className={`cursor-pointer select-none uppercase tracking-wider text-2xs ${
                     align === "right" ? "text-right" : "text-left"
                   }`}
                 >
@@ -419,7 +419,7 @@ export function HoldingsTableHF({
                 >
                   <TableCell
                     colSpan={5}
-                    className="uppercase tracking-wider text-[10px] font-semibold text-muted-foreground"
+                    className="uppercase tracking-wider text-2xs font-semibold text-muted-foreground"
                   >
                     {groupLabel} · {groupRows.length}
                   </TableCell>
@@ -451,7 +451,7 @@ export function HoldingsTableHF({
                         }
                       }}
                       className={`cursor-pointer ${
-                        h.is_stale ? "bg-amber-50 dark:bg-amber-950/30" : ""
+                        h.is_stale ? "bg-warning/10" : ""
                       }`}
                     >
                       <TableCell>
@@ -460,7 +460,7 @@ export function HoldingsTableHF({
                           {h.is_stale && (
                             <span
                               title={translate("priceMayBeStale")}
-                              className="size-1.5 rounded-full bg-amber-500"
+                              className="size-1.5 rounded-full bg-warning"
                             />
                           )}
                           <OwnerBadges
@@ -469,7 +469,7 @@ export function HoldingsTableHF({
                             size={16}
                           />
                         </div>
-                        <div className="text-[10px] text-muted-foreground">
+                        <div className="text-2xs text-muted-foreground">
                           {h.name ?? ""}
                         </div>
                       </TableCell>
@@ -502,7 +502,7 @@ export function HoldingsTableHF({
                           h._pnl == null
                             ? "text-muted-foreground"
                             : h._pnl >= 0
-                              ? "text-emerald-600 dark:text-emerald-400"
+                              ? "text-success"
                               : "text-destructive"
                         }`}
                       >

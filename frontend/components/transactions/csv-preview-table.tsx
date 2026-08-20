@@ -147,7 +147,7 @@ export function CsvPreviewTable({
                 </div>
                 <p className="break-words text-sm">{tx.description}</p>
                 {tx.isDuplicate && (
-                  <span className="inline-flex rounded bg-muted px-2 py-0.5 text-[10px] uppercase text-muted-foreground">
+                  <span className="inline-flex rounded bg-muted px-2 py-0.5 text-2xs uppercase text-muted-foreground">
                     {translate("duplicate")}
                   </span>
                 )}

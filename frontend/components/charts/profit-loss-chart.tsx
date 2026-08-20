@@ -137,7 +137,7 @@ function CustomTooltip({
           <span
             className={cn(
               "font-mono font-medium tabular-nums",
-              net >= 0 ? "text-emerald-500" : "text-red-500",
+              net >= 0 ? "text-success" : "text-destructive",
             )}
           >
             {net >= 0 ? "+" : ""}

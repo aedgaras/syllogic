@@ -64,8 +64,8 @@ interface CategoryGroup {
 }
 
 const frequencyColors: Record<string, string> = {
-  monthly: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
-  weekly: "bg-green-500/10 text-green-700 dark:text-green-400",
+  monthly: "bg-info/10 text-info",
+  weekly: "bg-success/10 text-success",
   yearly: "bg-purple-500/10 text-purple-700 dark:text-purple-400",
   quarterly: "bg-orange-500/10 text-orange-700 dark:text-orange-400",
   biweekly: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400",
@@ -311,7 +311,7 @@ export function SubscriptionsGroupedList({
             (item.isActive ? (
               <Badge
                 variant="default"
-                className="bg-green-500/10 text-green-700"
+                className="bg-success/10 text-success"
               >
                 <RiCheckLine className="mr-1 h-3 w-3" />
                 {translate("active")}

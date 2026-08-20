@@ -246,7 +246,7 @@ export function LinkReimbursementsDialog({
         <span
           className={cn(
             "text-sm font-mono font-medium shrink-0 text-right min-w-[80px]",
-            item.amount > 0 && "text-emerald-600",
+            item.amount > 0 && "text-success",
           )}
         >
           {item.amount > 0 ? "+" : ""}
@@ -283,7 +283,7 @@ export function LinkReimbursementsDialog({
               <div
                 className={cn(
                   "text-sm font-mono font-medium text-right min-w-[80px]",
-                  transaction.amount > 0 && "text-emerald-600",
+                  transaction.amount > 0 && "text-success",
                 )}
               >
                 {formatAmount(
@@ -318,7 +318,7 @@ export function LinkReimbursementsDialog({
                     <RiFilter3Line className="h-4 w-4 mr-2" />
                     <span className="text-xs">{translate("filters")}</span>
                     {activeFilterCount > 0 && (
-                      <span className="ml-1.5 flex h-5 min-w-5 items-center justify-center bg-muted px-1 text-[10px] font-medium">
+                      <span className="ml-1.5 flex h-5 min-w-5 items-center justify-center bg-muted px-1 text-2xs font-medium">
                         {activeFilterCount}
                       </span>
                     )}
@@ -583,7 +583,7 @@ export function LinkReimbursementsDialog({
                 <div
                   className={cn(
                     "text-lg font-mono font-semibold",
-                    netAmount > 0 && "text-emerald-600",
+                    netAmount > 0 && "text-success",
                   )}
                 >
                   {formatAmount(netAmount, transaction.currency || "EUR")}

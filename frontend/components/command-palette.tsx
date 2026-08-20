@@ -559,8 +559,8 @@ export function CommandPalette() {
                               <span
                                 className={
                                   tx.amount < 0
-                                    ? "text-red-500"
-                                    : "text-green-500"
+                                    ? "text-destructive"
+                                    : "text-success"
                                 }
                               >
                                 {formatAmount(tx.amount, tx.currency)}

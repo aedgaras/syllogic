@@ -236,7 +236,7 @@ export function AccountMappingWizard({
             {suggestionByUid[currentAccount.uid]?.suggested_action ===
               "link" && (
               <div className="mb-3 flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                <RiCheckLine className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                <RiCheckLine className="h-3.5 w-3.5 shrink-0 text-success" />
                 {translate("previouslyLinkedPreSelectedForYouYouCanChange")}
               </div>
             )}
@@ -360,7 +360,7 @@ export function AccountMappingWizard({
                       currentAccount.currency.toUpperCase()
                   ) {
                     return (
-                      <div className="flex items-start gap-2 rounded-none border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                      <div className="flex items-start gap-2 rounded-none border border-warning/30 bg-warning/10 p-3 text-warning">
                         <RiAlertLine className="mt-0.5 h-4 w-4 shrink-0" />
                         <p className="text-xs">
                           {translate("currencyMismatchBankAccountIs")}{" "}

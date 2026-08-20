@@ -135,7 +135,7 @@ export function ForecastChart({ currency, accountIds }: ForecastChartProps) {
             <span
               className={cn(
                 "font-mono font-medium tabular-nums",
-                netChange >= 0 ? "text-emerald-500" : "text-red-500",
+                netChange >= 0 ? "text-success" : "text-destructive",
               )}
             >
               {netChange >= 0 ? "+" : ""}

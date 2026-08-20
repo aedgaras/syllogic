@@ -116,7 +116,7 @@ export function RevertImportDialog({
 
         {/* Manually edited warning */}
         {csvImport.hasEditedTransactions && (
-          <div className="flex items-start gap-2 rounded-none border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+          <div className="flex items-start gap-2 rounded-none border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
             <RiAlertLine className="size-4 shrink-0 mt-0.5" />
             <span>
               {translate("someTransactionsFromThisImportHaveBeenManuallyRe")}

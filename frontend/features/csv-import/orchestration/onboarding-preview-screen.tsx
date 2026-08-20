@@ -42,7 +42,7 @@ function ShortcutKeys({ keys }: { keys: string[] }) {
       {keys.map((key) => (
         <kbd
           key={key}
-          className="inline-flex h-6 items-center rounded border bg-muted px-2 text-[10px] font-mono text-muted-foreground"
+          className="inline-flex h-6 items-center rounded border bg-muted px-2 text-2xs font-mono text-muted-foreground"
         >
           {key}
         </kbd>
@@ -142,17 +142,17 @@ function PreviewPageContent() {
                 !balanceVerification.canVerify
                   ? "border-muted bg-muted/30"
                   : balanceVerification.isVerified
-                    ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950"
-                    : "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950",
+                    ? "border-success/30 bg-success/10"
+                    : "border-warning/30 bg-warning/10",
               )}
             >
               <div className="flex items-center gap-2 mb-3">
                 {!balanceVerification.canVerify ? (
                   <RiAlertLine className="h-5 w-5 text-muted-foreground" />
                 ) : balanceVerification.isVerified ? (
-                  <RiCheckLine className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <RiCheckLine className="h-5 w-5 text-success" />
                 ) : (
-                  <RiAlertLine className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  <RiAlertLine className="h-5 w-5 text-warning" />
                 )}
                 <span className="font-medium">
                   {!balanceVerification.canVerify
@@ -196,7 +196,7 @@ function PreviewPageContent() {
                 {balanceVerification.canVerify &&
                   !balanceVerification.isVerified &&
                   balanceVerification.discrepancy !== null && (
-                    <div className="flex justify-between gap-3 text-amber-600 dark:text-amber-400">
+                    <div className="flex justify-between gap-3 text-warning">
                       <span>{translate("discrepancy")}</span>
                       <span className="font-mono font-medium">
                         {balanceVerification.discrepancy.toFixed(2)}

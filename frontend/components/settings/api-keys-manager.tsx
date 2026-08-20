@@ -250,7 +250,7 @@ export function ApiKeysManager({
                   onClick={() => copyToClipboard(mcpServerUrl, "mcp-url")}
                 >
                   {copied && copiedTarget === "mcp-url" ? (
-                    <RiCheckLine className="h-4 w-4 text-green-500" />
+                    <RiCheckLine className="h-4 w-4 text-success" />
                   ) : (
                     <RiFileCopyLine className="h-4 w-4" />
                   )}
@@ -446,13 +446,13 @@ export function ApiKeysManager({
                 onClick={() => createdKey && copyToClipboard(createdKey)}
               >
                 {copied ? (
-                  <RiCheckLine className="h-4 w-4 text-green-500" />
+                  <RiCheckLine className="h-4 w-4 text-success" />
                 ) : (
                   <RiFileCopyLine className="h-4 w-4" />
                 )}
               </Button>
             </div>
-            <div className="flex items-start gap-2 rounded border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+            <div className="flex items-start gap-2 rounded border border-warning/30 bg-warning/10 p-3 text-warning">
               <RiAlertLine className="mt-0.5 h-4 w-4 shrink-0" />
               <p className="text-xs">
                 {translate("makeSureToCopyYourApiKeyNowFor")}

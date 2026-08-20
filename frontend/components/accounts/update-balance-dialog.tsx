@@ -223,7 +223,7 @@ export function UpdateBalanceDialog({
                 <div
                   className={cn(
                     "text-lg font-medium",
-                    difference > 0 ? "text-green-600" : "text-red-600",
+                    difference > 0 ? "text-success" : "text-destructive",
                   )}
                 >
                   {formatCurrencyValue(difference, true)}

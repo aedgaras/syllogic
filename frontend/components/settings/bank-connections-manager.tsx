@@ -406,7 +406,7 @@ export function BankConnectionsManager({
                         <div
                           className={`mt-1 flex items-center gap-1 text-xs ${
                             isConsentExpiringSoon(connection)
-                              ? "text-amber-600"
+                              ? "text-warning"
                               : "text-muted-foreground"
                           }`}
                           title={translate("consentExpires", {

@@ -164,7 +164,7 @@ export function HoldingDetailView({
           {holding.is_stale && (
             <span
               title={translate("priceMayBeStale")}
-              className="size-2 rounded-full bg-amber-500"
+              className="size-2 rounded-full bg-warning"
             />
           )}
           <Badge variant="outline" className="ml-auto">
@@ -187,13 +187,13 @@ export function HoldingDetailView({
         {stats.map(({ label, value, tone }) => (
           <Card key={label}>
             <CardContent className="flex flex-col gap-1 p-3">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              <div className="text-2xs uppercase tracking-wider text-muted-foreground">
                 {label}
               </div>
               <div
                 className={`text-sm font-semibold tabular-nums ${
                   tone === "positive"
-                    ? "text-emerald-600 dark:text-emerald-400"
+                    ? "text-success"
                     : tone === "negative"
                       ? "text-destructive"
                       : ""
@@ -429,7 +429,7 @@ export function HoldingDetailView({
                               <div
                                 className={
                                   t.side === "buy"
-                                    ? "capitalize text-emerald-600 dark:text-emerald-400"
+                                    ? "capitalize text-success"
                                     : "capitalize text-destructive"
                                 }
                               >
@@ -503,7 +503,7 @@ export function HoldingDetailView({
                                 <span
                                   className={
                                     t.side === "buy"
-                                      ? "text-emerald-600 dark:text-emerald-400"
+                                      ? "text-success"
                                       : "text-destructive"
                                   }
                                 >

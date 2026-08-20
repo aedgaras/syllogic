@@ -97,7 +97,7 @@ export function WalkthroughPopover({ step }: WalkthroughPopoverProps) {
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-sm">{step.title}</h3>
           <p className="text-muted-foreground text-xs mt-1">{step.content}</p>
-          <p className="text-muted-foreground text-[10px] mt-2 opacity-80">
+          <p className="text-muted-foreground text-2xs mt-2 opacity-80">
             {translate("tipRestartAnytimeFromTheHelpButtonInThe")}
           </p>
         </div>

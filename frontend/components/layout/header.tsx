@@ -27,7 +27,7 @@ export function Header({ title, action, shortcut, className }: HeaderProps) {
               {title}
             </h1>
             {shortcut && (
-              <kbd className="pointer-events-none hidden h-5 select-none items-center border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-60 sm:flex">
+              <kbd className="pointer-events-none hidden h-5 select-none items-center border bg-muted px-1.5 font-mono text-2xs font-medium opacity-60 sm:flex">
                 {shortcut}
               </kbd>
             )}

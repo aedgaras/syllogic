@@ -320,11 +320,11 @@ function HoldingRow({
     <span className="flex items-center gap-1.5">
       {translate("symbol")}
       {row.symbolConfirmed ? (
-        <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-px text-[9px] font-semibold tracking-wide text-emerald-700 dark:text-emerald-400">
+        <span className="rounded border border-success/40 bg-success/10 px-1.5 py-px text-[9px] font-semibold tracking-wide text-success">
           {translate("verified")}
         </span>
       ) : (
-        <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-px text-[9px] font-semibold tracking-wide text-amber-700 dark:text-amber-400">
+        <span className="rounded border border-warning/40 bg-warning/10 px-1.5 py-px text-[9px] font-semibold tracking-wide text-warning">
           {translate("pickFromList")}
         </span>
       )}
@@ -336,7 +336,7 @@ function HoldingRow({
   return (
     <div className="rounded border border-border p-3 space-y-3 relative">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+        <div className="text-2xs uppercase tracking-wider text-muted-foreground">
           #{index + 1}
         </div>
         {canRemove && (
