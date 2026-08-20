@@ -23,6 +23,7 @@ export const CACHE_TAGS = {
   categories: (userId: string) => `categories:${userId}`,
   accounts: (userId: string) => `accounts:${userId}`,
   onboarding: (userId: string) => `onboarding:${userId}`,
+  preferences: (userId: string) => `preferences:${userId}`,
 } as const;
 
 export const getCachedSession = cache(async () => {
@@ -109,6 +110,38 @@ export const getCachedFullUserAccounts = cache(async () => {
   } catch (error) {
     logger.error("Failed to get cached full user accounts", { error });
     return [];
+  }
+});
+
+// ---------- Preferences (hide balances, tutorials) ----------
+
+async function fetchPreferencesForUser(userId: string) {
+  const user = await db.query.users.findFirst({
+    columns: { hideBalances: true, tutorialsEnabled: true },
+    where: eq(users.id, userId),
+  });
+  return {
+    hideBalances: user?.hideBalances ?? false,
+    tutorialsEnabled: user?.tutorialsEnabled ?? true,
+  };
+}
+
+const getCachedPreferencesByUser = (userId: string) =>
+  unstable_cache(
+    () => fetchPreferencesForUser(userId),
+    ["preferences", userId],
+    { tags: [CACHE_TAGS.preferences(userId)] },
+  )();
+
+export const getCachedUserPreferences = cache(async () => {
+  const session = await getCachedSession();
+  const userId = session?.user?.id;
+  if (!userId) return { hideBalances: false, tutorialsEnabled: true };
+  try {
+    return await getCachedPreferencesByUser(userId);
+  } catch (error) {
+    logger.error("Failed to get cached user preferences", { error });
+    return { hideBalances: false, tutorialsEnabled: true };
   }
 });
 

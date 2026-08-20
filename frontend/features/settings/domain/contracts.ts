@@ -5,6 +5,8 @@ export interface SettingsUser {
   image: string | null;
   functionalCurrency: string | null;
   profilePhotoPath: string | null;
+  hideBalances: boolean | null;
+  tutorialsEnabled: boolean | null;
 }
 
 export interface SettingsCategory {

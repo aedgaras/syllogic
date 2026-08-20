@@ -4,6 +4,7 @@ import * as React from "react";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 import { cn, formatCurrency } from "@/lib/utils";
 
 interface SparkDataPoint {
@@ -24,6 +25,8 @@ interface KpiSparkCardProps {
   icon?: React.ReactNode;
   isLoading?: boolean;
   showSign?: boolean;
+  /** Mask this card's value when the user has hidden balance amounts */
+  sensitive?: boolean;
 }
 
 function KpiSparkCardSkeleton() {
@@ -51,6 +54,7 @@ export function KpiSparkCard({
   icon,
   isLoading = false,
   showSign = false,
+  sensitive = false,
 }: KpiSparkCardProps) {
   // Generate unique ID for gradient to avoid conflicts with multiple charts
   const gradientId = React.useId();
@@ -72,7 +76,11 @@ export function KpiSparkCard({
             </p>
           </div>
           <p className="break-words font-mono text-xl font-semibold tracking-tight sm:text-2xl">
-            {formattedValue}
+            {sensitive ? (
+              <MaskableAmount value={formattedValue} />
+            ) : (
+              formattedValue
+            )}
           </p>
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <p className="min-w-0 truncate text-xs text-muted-foreground">

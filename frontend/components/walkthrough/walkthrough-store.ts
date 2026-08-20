@@ -38,6 +38,8 @@ export interface WalkthroughState {
   setTutorialsEnabled: (enabled: boolean) => void;
   /** Sync completed state with current user; clears if user changed */
   syncWithUser: (userId: string) => void;
+  /** Set tutorialsEnabled from the DB-backed value without side effects (no persist call) */
+  hydrateTutorialsEnabled: (enabled: boolean) => void;
 }
 
 export const useWalkthroughStore = create<WalkthroughState>()(
@@ -136,12 +138,18 @@ export const useWalkthroughStore = create<WalkthroughState>()(
           set({ completedPages: [], userId });
         }
       },
+
+      hydrateTutorialsEnabled: (enabled: boolean) => {
+        set({ tutorialsEnabled: enabled });
+      },
     }),
     {
       name: STORAGE_KEY,
+      // tutorialsEnabled is DB-backed (see updateTutorialsEnabled server
+      // action) and hydrated from the server on load; only completion
+      // progress stays in localStorage.
       partialize: (state) => ({
         completedPages: state.completedPages,
-        tutorialsEnabled: state.tutorialsEnabled,
         userId: state.userId,
       }),
     },

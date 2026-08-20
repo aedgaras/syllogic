@@ -37,6 +37,7 @@ import {
 } from "@/lib/actions/command-palette";
 import { formatAmount, formatDate } from "@/lib/utils";
 import { AccountLogo } from "@/components/ui/account-logo";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 import { useCommandPaletteCallbacks } from "./command-palette-context";
 import {
   GLOBAL_FILTER_STORAGE_KEY,
@@ -476,7 +477,12 @@ export function CommandPalette() {
                             )}
                           </div>
                           <span className="text-muted-foreground text-sm shrink-0 ml-2">
-                            {formatAmount(account.balance, account.currency)}
+                            <MaskableAmount
+                              value={formatAmount(
+                                account.balance,
+                                account.currency,
+                              )}
+                            />
                           </span>
                         </CommandItem>
                       ))}
@@ -513,7 +519,12 @@ export function CommandPalette() {
                               )}
                             </div>
                             <span className="text-muted-foreground text-sm shrink-0 ml-2">
-                              {formatAmount(asset.value, asset.currency)}
+                              <MaskableAmount
+                                value={formatAmount(
+                                  asset.value,
+                                  asset.currency,
+                                )}
+                              />
                             </span>
                           </CommandItem>
                         ))}

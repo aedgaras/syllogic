@@ -36,6 +36,7 @@ export function ProjectedBalanceKpiCard({
           : []
       }
       isLoading={isLoading}
+      sensitive
     />
   );
 }

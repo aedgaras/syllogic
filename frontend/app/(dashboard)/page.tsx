@@ -109,6 +109,7 @@ async function DashboardContent({
             currency={data.balance.currency}
             subtitle={accountSubtitle}
             sparkData={data.balanceHistory}
+            sensitive
           />
         </div>
         <div data-walkthrough="walkthrough-spending">

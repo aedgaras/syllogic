@@ -5,6 +5,7 @@ import { RiRefreshLine } from "@remixicon/react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { AccountLogo } from "@/components/ui/account-logo";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 import { formatDistanceToNow } from "date-fns";
 import type { AccountViewModel } from "@/features/accounts/domain/contracts";
 
@@ -73,7 +74,9 @@ export function AccountHeader({ account, currency }: AccountHeaderProps) {
         </div>
         <div className="text-right">
           <p className="font-mono text-2xl font-semibold">
-            {formatCurrency(account.functionalBalance, currency)}
+            <MaskableAmount
+              value={formatCurrency(account.functionalBalance, currency)}
+            />
           </p>
           <p className="text-sm text-muted-foreground">{currency}</p>
         </div>

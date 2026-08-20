@@ -12,8 +12,10 @@ import {
 } from "./walkthrough-store";
 
 export function WalkthroughProvider({
+  initialTutorialsEnabled,
   children,
 }: {
+  initialTutorialsEnabled: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -24,7 +26,15 @@ export function WalkthroughProvider({
     skipWalkthrough,
     nextStep,
     previousStep,
+    hydrateTutorialsEnabled,
   } = useWalkthroughStore();
+
+  // Sync tutorialsEnabled from the DB-backed value on load, overriding any
+  // stale localStorage value from before this became a per-user DB setting.
+  useEffect(() => {
+    hydrateTutorialsEnabled(initialTutorialsEnabled);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTutorialsEnabled]);
 
   // Close walkthrough when navigating to a different page
   useEffect(() => {

@@ -40,6 +40,8 @@ export const users = pgTable("users", {
   onboardingCompletedAt: timestamp("onboarding_completed_at"),
   functionalCurrency: char("functional_currency", { length: 3 }).default("EUR"), // User's functional currency for reporting
   profilePhotoPath: text("profile_photo_path"),
+  hideBalances: boolean("hide_balances").default(false), // Mask balance amounts across the app
+  tutorialsEnabled: boolean("tutorials_enabled").default(true), // Show page tours/onboarding tips
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

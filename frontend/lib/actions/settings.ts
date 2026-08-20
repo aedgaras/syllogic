@@ -1,11 +1,12 @@
 "use server";
 
 import { logger } from "@/lib/logger";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users, transactions, accounts, type User } from "@/lib/db/schema";
 import { getAuthenticatedSession, requireAuth } from "@/lib/auth-helpers";
+import { CACHE_TAGS } from "@/lib/data/cached";
 import { storage } from "@/lib/storage";
 import { normalizeProfileImage } from "@/lib/profile-image";
 import { getBackendBaseUrl } from "@/lib/backend-url";
@@ -595,6 +596,60 @@ export async function updateUserProfile(
   } catch (error) {
     logger.error("Failed to update user profile", { error });
     return { success: false, error: "Failed to update profile" };
+  }
+}
+
+/**
+ * Update whether the current user's balance amounts are masked across the app.
+ */
+export async function updateHideBalances(
+  hideBalances: boolean,
+): Promise<{ success: boolean; error?: string }> {
+  const session = await getAuthenticatedSession();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    await db
+      .update(users)
+      .set({ hideBalances, updatedAt: new Date() })
+      .where(eq(users.id, session.user.id));
+
+    updateTag(CACHE_TAGS.preferences(session.user.id));
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error) {
+    logger.error("Failed to update hide balances setting", { error });
+    return { success: false, error: "Failed to update setting" };
+  }
+}
+
+/**
+ * Update whether page tours/onboarding tips are shown for the current user.
+ */
+export async function updateTutorialsEnabled(
+  tutorialsEnabled: boolean,
+): Promise<{ success: boolean; error?: string }> {
+  const session = await getAuthenticatedSession();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    await db
+      .update(users)
+      .set({ tutorialsEnabled, updatedAt: new Date() })
+      .where(eq(users.id, session.user.id));
+
+    updateTag(CACHE_TAGS.preferences(session.user.id));
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error) {
+    logger.error("Failed to update tutorials enabled setting", { error });
+    return { success: false, error: "Failed to update setting" };
   }
 }
 

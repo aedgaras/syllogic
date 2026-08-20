@@ -1,5 +1,6 @@
 import { t as translate } from "@/i18n/translate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 import { RiWalletLine } from "@remixicon/react";
 
 interface CashBalanceCardProps {
@@ -24,7 +25,9 @@ export function CashBalanceCard({ balance, currency }: CashBalanceCardProps) {
         <RiWalletLine className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{formattedBalance}</div>
+        <div className="text-2xl font-bold">
+          <MaskableAmount value={formattedBalance} />
+        </div>
         <p className="text-xs text-muted-foreground">
           {translate("acrossAllActiveAccounts")}
         </p>

@@ -17,10 +17,12 @@ import {
 } from "@/components/ui/select";
 import { ThemeSelector } from "@/components/theme-selector";
 import { useWalkthroughStore } from "@/components/walkthrough/walkthrough-store";
+import { useHideBalances } from "@/components/hide-balances/hide-balances-provider";
 import {
   clearOpenAiApiKey,
   updateLlmModel,
   updateOpenAiApiKey,
+  updateTutorialsEnabled,
   type OpenAiSettings,
 } from "@/lib/actions/settings";
 
@@ -44,12 +46,18 @@ function sourceLabel(source: OpenAiSettings["source"]) {
 
 export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
   const { tutorialsEnabled, setTutorialsEnabled } = useWalkthroughStore();
+  const { hideBalances, setHideBalances } = useHideBalances();
   const [openAiSettings, setOpenAiSettings] = useState(initialOpenAiSettings);
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [modelInput, setModelInput] = useState(initialOpenAiSettings.model);
   const [savingModel, setSavingModel] = useState(false);
+
+  function handleToggleTutorials(enabled: boolean) {
+    setTutorialsEnabled(enabled);
+    void updateTutorialsEnabled(enabled);
+  }
 
   async function handleSaveModel() {
     const normalized = modelInput.trim();
@@ -141,8 +149,27 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
           <Switch
             id="tutorials-enabled"
             checked={tutorialsEnabled}
-            onCheckedChange={setTutorialsEnabled}
+            onCheckedChange={handleToggleTutorials}
             aria-label={translate("enableToursAndTutorials")}
+          />
+        </div>
+      </div>
+
+      <div className="border border-border p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="hide-balances">
+              {translate("hideBalanceAmounts")}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {translate("hideBalanceAmountsDescription")}
+            </p>
+          </div>
+          <Switch
+            id="hide-balances"
+            checked={hideBalances}
+            onCheckedChange={setHideBalances}
+            aria-label={translate("enableHideBalanceAmounts")}
           />
         </div>
       </div>

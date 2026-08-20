@@ -5,10 +5,15 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { getOnboardingRedirectPath } from "@/lib/actions/onboarding";
-import { getCachedSession, getCachedOnboardingStatus } from "@/lib/data/cached";
+import {
+  getCachedSession,
+  getCachedOnboardingStatus,
+  getCachedUserPreferences,
+} from "@/lib/data/cached";
 import { ImportStatusNotifier } from "@/components/import-status-notifier";
 import { MobileAddTransactionFab } from "@/components/transactions/mobile-add-transaction-fab";
 import { WalkthroughProvider } from "@/components/walkthrough/walkthrough-provider";
+import { HideBalancesProvider } from "@/components/hide-balances/hide-balances-provider";
 import { getRegistrationStatus } from "@/lib/registration-settings";
 
 const jbMono = JetBrains_Mono({
@@ -47,16 +52,22 @@ export default async function DashboardLayout({
     redirect(redirectPath);
   }
 
+  const preferences = await getCachedUserPreferences();
+
   return (
     <SidebarProvider defaultOpen={defaultSidebarOpen}>
-      <WalkthroughProvider>
-        <AppSidebar initialUser={session.user} />
-        <SidebarInset className={cn(jbMono.variable, "pb-24 md:pb-0")}>
-          {children}
-        </SidebarInset>
-        <ImportStatusNotifier />
-        <MobileAddTransactionFab />
-      </WalkthroughProvider>
+      <HideBalancesProvider initialHideBalances={preferences.hideBalances}>
+        <WalkthroughProvider
+          initialTutorialsEnabled={preferences.tutorialsEnabled}
+        >
+          <AppSidebar initialUser={session.user} />
+          <SidebarInset className={cn(jbMono.variable, "pb-24 md:pb-0")}>
+            {children}
+          </SidebarInset>
+          <ImportStatusNotifier />
+          <MobileAddTransactionFab />
+        </WalkthroughProvider>
+      </HideBalancesProvider>
     </SidebarProvider>
   );
 }

@@ -4,6 +4,7 @@ import { t as translate } from "@/i18n/translate";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 import { AssetsStackedBar } from "./assets-stacked-bar";
 import { AssetsTable } from "./assets-table";
 import { AddAssetDialog } from "./add-asset-dialog";
@@ -29,7 +30,7 @@ export function AssetsOverviewCard({ data }: AssetsOverviewCardProps) {
             <AddAssetDialog onAssetAdded={handleAssetAdded} />
           </div>
           <span className="break-words text-xl font-bold sm:text-2xl">
-            {formatCurrency(data.total, data.currency)}
+            <MaskableAmount value={formatCurrency(data.total, data.currency)} />
           </span>
         </div>
       </CardHeader>

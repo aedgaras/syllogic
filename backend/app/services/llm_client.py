@@ -15,6 +15,8 @@ from app.services.app_settings import (
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
+
 
 def create_llm_client(db: Session) -> Optional[object]:
     """Create a client for OpenAI or an OpenAI-compatible endpoint."""
@@ -28,11 +30,13 @@ def create_llm_client(db: Session) -> Optional[object]:
     if not api_key:
         return None
 
-    options = {"api_key": api_key}
-    base_url = get_llm_base_url()
-    if base_url:
-        options["base_url"] = base_url
-    return OpenAI(**options)
+    # Always pass an explicit base_url. The openai SDK falls back to reading
+    # OPENAI_BASE_URL from the environment directly when base_url isn't
+    # passed, and our deployment always sets that variable (possibly to an
+    # empty string via `${OPENAI_BASE_URL:-}`), which breaks the SDK's own
+    # default-URL fallback.
+    base_url = get_llm_base_url() or DEFAULT_OPENAI_BASE_URL
+    return OpenAI(api_key=api_key, base_url=base_url)
 
 
 def create_llm_fallback_client() -> Optional[object]:
