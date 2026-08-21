@@ -59,6 +59,9 @@ class Account(Base):
     starting_balance = Column(
         Numeric(15, 2), default=Decimal("0")
     )  # Starting balance for calculation
+    credit_limit = Column(
+        Numeric(15, 2), nullable=True
+    )  # Credit card limit, used to derive available credit
     functional_balance = Column(
         Numeric(15, 2), nullable=True
     )  # Calculated balance (sum of transactions + starting_balance)

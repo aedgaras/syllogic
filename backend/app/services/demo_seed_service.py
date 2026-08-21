@@ -93,7 +93,7 @@ ACCOUNT_SPECS: tuple[AccountSpec, ...] = (
     ),
     AccountSpec(
         name="Travel Card",
-        account_type="credit",
+        account_type="credit_card",
         institution="Wise",
         currency="USD",
         target_ending_balance=Decimal("1280.00"),

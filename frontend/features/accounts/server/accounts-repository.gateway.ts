@@ -17,6 +17,7 @@ export interface BackendAccount {
   provider: string | null;
   startingBalance: string;
   functionalBalance: string | null;
+  creditLimit: string | null;
   logoId: string | null;
   logo: BackendAccountLogo | null;
   lastSyncedAt: Date | null;
@@ -38,6 +39,7 @@ interface AccountApiResponse {
   is_active: boolean;
   starting_balance: string;
   functional_balance: string | null;
+  credit_limit: string | null;
   logo_id: string | null;
   logo: AccountLogoApiResponse | null;
   last_synced_at: string | null;
@@ -62,6 +64,7 @@ function mapAccount(data: AccountApiResponse): BackendAccount {
     provider: data.provider,
     startingBalance: data.starting_balance,
     functionalBalance: data.functional_balance,
+    creditLimit: data.credit_limit,
     logoId: data.logo_id,
     logo: mapLogo(data.logo),
     lastSyncedAt: data.last_synced_at ? new Date(data.last_synced_at) : null,
@@ -143,6 +146,7 @@ export async function insertManualAccountViaBackend(
     institution?: string;
     currency: string;
     startingBalance?: number;
+    creditLimit?: number;
   },
 ): Promise<{ id: string }> {
   const response = await backendFetch("POST", "/api/accounts/", userId, {
@@ -152,6 +156,7 @@ export async function insertManualAccountViaBackend(
     currency: input.currency,
     provider: "manual",
     starting_balance: String(input.startingBalance ?? 0),
+    credit_limit: input.creditLimit !== undefined ? String(input.creditLimit) : null,
   });
   if (!response.ok) {
     throw new Error(await extractErrorDetail(response, "Failed to create account"));
@@ -171,6 +176,9 @@ export async function updateOwnedAccountViaBackend(
   if ("institution" in input) body.institution = input.institution ?? null;
   if (input.currency !== undefined) body.currency = input.currency;
   if (input.startingBalance !== undefined) body.starting_balance = String(input.startingBalance);
+  if ("creditLimit" in input) {
+    body.credit_limit = input.creditLimit == null ? null : String(input.creditLimit);
+  }
   if ("logoId" in input) body.logo_id = input.logoId ?? null;
   const response = await backendFetch("PATCH", `/api/accounts/${accountId}`, userId, body);
   if (!response.ok) {

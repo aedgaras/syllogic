@@ -13,6 +13,7 @@ export interface AccountViewModel {
   provider: string | null;
   startingBalance: string;
   functionalBalance: string;
+  creditLimit: string | null;
   lastSyncedAt: string | null;
   logo: AccountLogoViewModel | null;
 }
@@ -23,10 +24,13 @@ export interface CreateAccountInput {
   institution?: string;
   currency: string;
   startingBalance?: number;
+  creditLimit?: number;
 }
 
-export interface UpdateAccountInput extends Partial<CreateAccountInput> {
+export interface UpdateAccountInput
+  extends Partial<Omit<CreateAccountInput, "creditLimit">> {
   logoId?: string | null;
+  creditLimit?: number | null;
 }
 
 export interface CreatePocketAccountInput {

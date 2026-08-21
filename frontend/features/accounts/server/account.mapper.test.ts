@@ -13,6 +13,7 @@ describe("toAccountViewModel", () => {
         provider: "manual",
         startingBalance: null,
         functionalBalance: "42.00",
+        creditLimit: null,
         lastSyncedAt: new Date("2026-08-17T12:00:00Z"),
         logo: null,
       }),

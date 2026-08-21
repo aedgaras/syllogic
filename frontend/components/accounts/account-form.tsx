@@ -57,6 +57,7 @@ export function AccountForm({
   const [institution, setInstitution] = useState("");
   const [currency, setCurrency] = useState("EUR");
   const [initialBalance, setInitialBalance] = useState("");
+  const [creditLimit, setCreditLimit] = useState("");
   const [isPocket, setIsPocket] = useState(false);
   const [iban, setIban] = useState("");
 
@@ -88,6 +89,7 @@ export function AccountForm({
     setInstitution("");
     setCurrency("EUR");
     setInitialBalance("");
+    setCreditLimit("");
     setIsPocket(false);
     setIban("");
     setOwnersError(null);
@@ -176,12 +178,17 @@ export function AccountForm({
     setIsLoading(true);
 
     try {
-      const balance = initialBalance ? parseFloat(initialBalance) : 0;
-      if (initialBalance && isNaN(balance)) {
+      const enteredBalance = initialBalance ? parseFloat(initialBalance) : 0;
+      if (initialBalance && isNaN(enteredBalance)) {
         toast.error(translate("pleaseEnterAValidInitialBalance"));
         setIsLoading(false);
         return;
       }
+      // Credit card balances are debt: the user enters what they owe as a
+      // positive amount, but it's stored as a negative balance so it
+      // subtracts from net worth like any other liability.
+      const balance =
+        accountType === "credit_card" ? -Math.abs(enteredBalance) : enteredBalance;
 
       const result = isPocket
         ? await createPocketAccount({
@@ -197,6 +204,7 @@ export function AccountForm({
             institution: institution.trim() || undefined,
             currency,
             startingBalance: balance,
+            creditLimit: creditLimit ? parseFloat(creditLimit) : undefined,
           });
 
       if (result.success) {
@@ -301,7 +309,9 @@ export function AccountForm({
 
         <div className="space-y-2">
           <Label htmlFor="account-balance">
-            {translate("initialBalanceOptional")}
+            {accountType === "credit_card"
+              ? translate("amountOwedOptional")
+              : translate("initialBalanceOptional")}
           </Label>
           <Input
             id="account-balance"
@@ -314,6 +324,24 @@ export function AccountForm({
             }
           />
         </div>
+
+        {accountType === "credit_card" && (
+          <div className="space-y-2">
+            <Label htmlFor="account-credit-limit">
+              {translate("creditLimitOptional")}
+            </Label>
+            <Input
+              id="account-credit-limit"
+              type="text"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={creditLimit}
+              onChange={(e) =>
+                setCreditLimit(normalizeDecimalInput(e.target.value))
+              }
+            />
+          </div>
+        )}
 
         <div className="flex items-center justify-between rounded border p-3">
           <div className="space-y-0.5">

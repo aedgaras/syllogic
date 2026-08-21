@@ -120,7 +120,11 @@ def _total_balance(db: Session, report: Report) -> Optional[str]:
     )
     if not rows or any(a.functional_balance is None for a in rows):
         return None
-    return str(sum((a.functional_balance for a in rows), Decimal("0")).quantize(Decimal("0.01")))
+    signed_balances = (
+        -a.functional_balance if a.account_type == "credit_card" else a.functional_balance
+        for a in rows
+    )
+    return str(sum(signed_balances, Decimal("0")).quantize(Decimal("0.01")))
 
 
 def _fetch_transactions(db: Session, report: Report) -> dict:

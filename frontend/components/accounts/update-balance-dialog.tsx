@@ -34,6 +34,7 @@ interface UpdateBalanceDialogProps {
     name: string;
     currency: string | null;
     functionalBalance: string | null;
+    accountType?: string;
   };
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -57,7 +58,12 @@ export function UpdateBalanceDialog({
   const [balanceOnDate, setBalanceOnDate] = useState<number>(0);
 
   const currency = account.currency || "EUR";
-  const newBalanceValue = parseFloat(newBalance) || 0;
+  const isCreditCard = account.accountType === "credit_card";
+  const enteredBalance = parseFloat(newBalance) || 0;
+  // Credit card balances are debt: the user enters what they currently owe
+  // as a positive amount, but it's stored negative so it correctly
+  // subtracts from net worth like any other liability.
+  const newBalanceValue = isCreditCard ? -Math.abs(enteredBalance) : enteredBalance;
   const difference = newBalanceValue - balanceOnDate;
 
   // Fetch balance for a specific date
@@ -202,12 +208,20 @@ export function UpdateBalanceDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="new-balance">{translate("correctBalance")}</Label>
+              <Label htmlFor="new-balance">
+                {isCreditCard
+                  ? translate("amountCurrentlyOwed")
+                  : translate("correctBalance")}
+              </Label>
               <Input
                 id="new-balance"
                 type="text"
                 inputMode="decimal"
-                placeholder={translate("enterCorrectBalance")}
+                placeholder={
+                  isCreditCard
+                    ? translate("enterAmountCurrentlyOwed")
+                    : translate("enterCorrectBalance")
+                }
                 value={newBalance}
                 onChange={(e) => setNewBalance(normalizeDecimalInput(e.target.value))}
                 autoFocus

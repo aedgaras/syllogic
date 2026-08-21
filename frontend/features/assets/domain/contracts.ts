@@ -33,6 +33,7 @@ export interface AccountAssetViewModel {
   institution: string | null;
   currency: string;
   balance: string;
+  creditLimit: string | null;
   logo: AssetLogo | null;
   ownerIds: string[];
 }
@@ -72,6 +73,7 @@ export interface AccountEditValues {
   institution: string;
   currency: string;
   balance: string;
+  creditLimit: string;
   logoId: string | null;
   logoUrl: string | null;
   logoUpdatedAt: string | null;

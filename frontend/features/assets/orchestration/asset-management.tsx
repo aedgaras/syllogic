@@ -193,6 +193,7 @@ export function AssetManagement({
             name: account.name,
             currency: account.currency,
             functionalBalance: account.balance,
+            accountType: account.accountType,
           }}
           open
           onOpenChange={(isOpen) => !isOpen && close()}

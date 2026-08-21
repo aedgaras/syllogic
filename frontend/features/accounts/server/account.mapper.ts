@@ -9,6 +9,7 @@ interface AccountRow {
   provider: string | null;
   startingBalance: string | null;
   functionalBalance: string | null;
+  creditLimit: string | null;
   lastSyncedAt: Date | string | null;
   logo?: {
     id: string;
@@ -33,6 +34,7 @@ export function toAccountViewModel(row: AccountRow): AccountViewModel {
     provider: row.provider,
     startingBalance: row.startingBalance ?? "0",
     functionalBalance: row.functionalBalance ?? "0",
+    creditLimit: row.creditLimit,
     lastSyncedAt: toISOStringSafe(row.lastSyncedAt),
     logo: row.logo
       ? {

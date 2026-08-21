@@ -51,6 +51,8 @@ def _resolve_transfer_system_key(destination_account_type: str) -> str:
         return "savings_transfer"
     if destination_account_type in INVESTMENT_ACCOUNT_TYPES:
         return "investment_transfer"
+    if destination_account_type == "credit_card":
+        return "credit_card_payment"
     return "internal_transfer"
 
 
@@ -306,6 +308,42 @@ class TransactionMutationService:
         self.db.commit()
 
         return source_txn, destination_txn
+
+    def repay_credit_card(
+        self,
+        credit_card_account_id: UUID,
+        sources: List[Tuple[UUID, Decimal]],
+        description: str,
+        booked_at: datetime,
+    ) -> List[Tuple[Transaction, Transaction]]:
+        """Pay down a credit card from one or more source accounts.
+
+        Each source produces its own linked transfer pair via create_transfer,
+        so a failure partway through leaves the earlier transfers committed
+        rather than rolling back everything already paid.
+        """
+        if not sources:
+            raise ValueError("At least one source account is required")
+
+        source_ids = [source_id for source_id, _ in sources]
+        if len(set(source_ids)) != len(source_ids):
+            raise ValueError("Each source account can only be used once")
+        for _, amount in sources:
+            if amount is None or amount <= 0:
+                raise ValueError("Each source amount must be greater than zero")
+
+        credit_card_account = self._get_owned_account(credit_card_account_id)
+        if not credit_card_account:
+            raise LookupError("Credit card account not found")
+        if credit_card_account.account_type != "credit_card":
+            raise ValueError("Destination account is not a credit card")
+
+        return [
+            self.create_transfer(
+                source_id, credit_card_account_id, amount, description, booked_at
+            )
+            for source_id, amount in sources
+        ]
 
     def convert_to_transfer(
         self,

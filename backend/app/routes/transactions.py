@@ -27,6 +27,8 @@ from app.schemas import (
     CategorySpendingSummaryResponse,
     CategorySpendingTopCategoryResponse,
     CategorySpendingTransactionsPageResponse,
+    CreditCardRepaymentCreate,
+    CreditCardRepaymentResponse,
     DeleteImpactRequest,
     DeleteImpactResponse,
     FilteredTransactionTotalsResponse,
@@ -1069,6 +1071,39 @@ def create_transfer_transaction(
         raise HTTPException(status_code=400, detail=str(exc))
     return TransferTransactionResponse(
         source_transaction_id=source_txn.id, destination_transaction_id=destination_txn.id
+    )
+
+
+@router.post("/repay-credit-card", response_model=CreditCardRepaymentResponse)
+def repay_credit_card(
+    payload: CreditCardRepaymentCreate,
+    user_id: str = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    """Pay down a credit card balance from one or more source accounts.
+
+    Each source account produces its own linked transfer pair. If a later
+    source fails validation, earlier transfers in this request are already
+    committed and are not rolled back."""
+    service = TransactionMutationService(db, user_id)
+    try:
+        pairs = service.repay_credit_card(
+            payload.credit_card_account_id,
+            [(source.source_account_id, source.amount) for source in payload.sources],
+            payload.description,
+            payload.booked_at,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return CreditCardRepaymentResponse(
+        transfers=[
+            TransferTransactionResponse(
+                source_transaction_id=source_txn.id, destination_transaction_id=destination_txn.id
+            )
+            for source_txn, destination_txn in pairs
+        ]
     )
 
 

@@ -71,6 +71,14 @@ TRANSFER_CATEGORY_SEEDS: List[SystemCategorySeed] = [
         icon="RiLineChartLine",
         description="Transfers moved into your investment accounts",
     ),
+    SystemCategorySeed(
+        key="credit_card_payment",
+        name="Credit Card Payment",
+        category_type="transfer",
+        color="#9A3412",
+        icon="RiBankCardLine",
+        description="Payments made towards your credit card balance",
+    ),
 ]
 
 INTEREST_CATEGORY_SEEDS: List[SystemCategorySeed] = [

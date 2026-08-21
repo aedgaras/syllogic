@@ -13,6 +13,7 @@ import { getUserCategories } from "@/lib/actions/categories";
 import { listHoldings, type Holding } from "@/lib/api/investments";
 import { HoldingsTable } from "@/components/investments/HoldingsTable";
 import { AccruedInterestCard } from "@/components/accounts/accrued-interest-card";
+import { CreditCardRepayCard } from "@/components/accounts/credit-card-repay-card";
 import { INVESTMENT_ACCOUNT_TYPES } from "@/lib/constants/account-types";
 
 interface AccountPageProps {
@@ -31,6 +32,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
 
   const isInvestmentAccount = INVESTMENT_ACCOUNT_TYPES.has(account.accountType);
   const isSavingsAccount = account.accountType === "savings";
+  const isCreditCardAccount = account.accountType === "credit_card";
 
   // Then fetch remaining data in parallel
   const [balanceHistory, transactions, categories, holdings, accruedInterest] =
@@ -73,6 +75,15 @@ export default async function AccountPage({ params }: AccountPageProps) {
             accountId={accountId}
             currency={account.currency}
             accruedInterest={accruedInterest}
+          />
+        </section>
+      )}
+      {isCreditCardAccount && (
+        <section className="rounded-xl border p-4">
+          <CreditCardRepayCard
+            accountId={accountId}
+            currency={account.currency}
+            functionalBalance={Number.parseFloat(account.functionalBalance)}
           />
         </section>
       )}

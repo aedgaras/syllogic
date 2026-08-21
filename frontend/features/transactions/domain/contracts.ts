@@ -189,6 +189,13 @@ export interface ConvertTransactionToTransferInput extends CreateTransferTransac
   transactionId: string;
 }
 
+export interface RepayCreditCardInput {
+  creditCardAccountId: string;
+  sources: { sourceAccountId: string; amount: number }[];
+  description: string;
+  bookedAt: Date;
+}
+
 export interface AddInterestTransactionInput {
   accountId: string;
   amount: number;

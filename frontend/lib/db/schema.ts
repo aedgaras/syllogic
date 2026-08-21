@@ -247,6 +247,10 @@ export const accounts = pgTable(
       precision: 15,
       scale: 2,
     }).default("0"), // Starting balance for calculation
+    creditLimit: decimal("credit_limit", {
+      precision: 15,
+      scale: 2,
+    }), // Credit card limit, used to derive available credit
     functionalBalance: decimal("functional_balance", {
       precision: 15,
       scale: 2,

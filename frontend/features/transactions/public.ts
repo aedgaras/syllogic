@@ -4,6 +4,7 @@ export type {
   AccountDeleteImpact,
   CreateTransactionInput,
   CreateTransferTransactionInput,
+  RepayCreditCardInput,
   FilteredTransactionTotals,
   DeleteImpact,
   TransactionFilters,

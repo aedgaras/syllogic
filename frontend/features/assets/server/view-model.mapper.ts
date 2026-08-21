@@ -17,6 +17,7 @@ export function toAccountAssetViewModel(
     institution: row.institution,
     currency: row.currency ?? "EUR",
     balance: row.functionalBalance ?? "0",
+    creditLimit: row.creditLimit,
     logo: row.logo,
     ownerIds,
   };

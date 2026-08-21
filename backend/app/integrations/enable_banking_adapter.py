@@ -42,7 +42,7 @@ _ACCOUNT_TYPE_MAP = {
     "SVGS": "savings",  # Savings Account
     "TRAN": "checking",  # Transaction Account
     "CASH": "checking",  # Cash Payment
-    "CARD": "credit",  # Card Account
+    "CARD": "credit_card",  # Card Account
     "LOAN": "credit",  # Loan Account
     "MGLD": "savings",  # Managed Account
     "MOMA": "savings",  # Money Market Account

@@ -815,7 +815,7 @@ def restore_seed_accounts(user_id: Optional[str] = None, db: Session = Depends(g
         },
         {
             "name": "Credit Card",
-            "account_type": "credit",
+            "account_type": "credit_card",
             "institution": "Visa",
             "currency": "EUR",
         },

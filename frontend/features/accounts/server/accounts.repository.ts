@@ -31,6 +31,7 @@ export async function insertManualAccount(
     institution?: string;
     currency: string;
     startingBalance?: number;
+    creditLimit?: number;
   },
 ) {
   return insertManualAccountViaBackend(userId, input);

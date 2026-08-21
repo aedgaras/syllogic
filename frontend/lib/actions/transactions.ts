@@ -19,6 +19,7 @@ import type {
   ConvertTransactionToTransferInput,
   CreateTransactionInput,
   CreateTransferTransactionInput,
+  RepayCreditCardInput,
   TransactionWithRelations,
   UpdateTransactionInput,
 } from "@/features/transactions/public";
@@ -28,6 +29,7 @@ import {
 } from "@/features/transactions/server";
 import {
   createTransferTransactionViaBackend,
+  repayCreditCardViaBackend,
   convertTransactionToTransferViaBackend,
   addInterestTransactionViaBackend,
   getAccruedInterestForAccountViaBackend,
@@ -190,6 +192,74 @@ export async function createTransferTransaction(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to create transfer",
+    };
+  }
+}
+
+/**
+ * Pays down a credit card balance from one or more source accounts, each
+ * producing its own linked transfer pair.
+ */
+export async function repayCreditCard(input: RepayCreditCardInput): Promise<{
+  success: boolean;
+  error?: string;
+  sourceTransactionIds?: string[];
+  destinationTransactionIds?: string[];
+}> {
+  const session = await getAuthenticatedSession();
+  const userId = session?.user?.id ?? null;
+
+  if (!userId) return { success: false, error: "Not authenticated" };
+  if (isDemoRestrictedUserEmail(session?.user?.email)) {
+    return { success: false, error: DEMO_RESTRICTED_ACTION_ERROR };
+  }
+
+  const description = input.description.trim();
+  if (!description) return { success: false, error: "Description is required" };
+  if (input.sources.length === 0) {
+    return { success: false, error: "At least one source account is required" };
+  }
+  const sourceIds = input.sources.map((source) => source.sourceAccountId);
+  if (new Set(sourceIds).size !== sourceIds.length) {
+    return { success: false, error: "Each source account can only be used once" };
+  }
+  if (sourceIds.includes(input.creditCardAccountId)) {
+    return { success: false, error: "The credit card cannot pay itself" };
+  }
+  for (const source of input.sources) {
+    if (!Number.isFinite(source.amount) || source.amount <= 0) {
+      return { success: false, error: "Each source amount must be greater than zero" };
+    }
+  }
+  if (
+    !(input.bookedAt instanceof Date) ||
+    Number.isNaN(input.bookedAt.getTime())
+  ) {
+    return { success: false, error: "A valid transaction date is required" };
+  }
+
+  try {
+    const result = await repayCreditCardViaBackend(userId, input);
+
+    revalidatePath("/transactions");
+    revalidatePath("/");
+    revalidatePath("/settings");
+    revalidatePath("/assets");
+    revalidatePath(`/accounts/${input.creditCardAccountId}`);
+    for (const source of input.sources) {
+      revalidatePath(`/accounts/${source.sourceAccountId}`);
+    }
+
+    return {
+      success: true,
+      sourceTransactionIds: result.transfers.map((t) => t.sourceTransactionId),
+      destinationTransactionIds: result.transfers.map((t) => t.destinationTransactionId),
+    };
+  } catch (error) {
+    logger.error("Failed to repay credit card", { error });
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to repay credit card",
     };
   }
 }

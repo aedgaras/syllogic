@@ -119,6 +119,7 @@ export function useAccountAssetController(
           institution: account.institution ?? "",
           currency: account.currency,
           balance: account.balance,
+          creditLimit: account.creditLimit ?? "",
           logoId: account.logo?.id ?? null,
           logoUrl: account.logo?.logoUrl ?? null,
           logoUpdatedAt: account.logo?.updatedAt ?? null,

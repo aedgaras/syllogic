@@ -59,6 +59,38 @@ export async function createTransferTransactionViaBackend(
   };
 }
 
+export async function repayCreditCardViaBackend(
+  userId: string,
+  input: {
+    creditCardAccountId: string;
+    sources: { sourceAccountId: string; amount: number }[];
+    description: string;
+    bookedAt: Date;
+  },
+): Promise<{ transfers: TransferTransactionResult[] }> {
+  const response = await backendFetch("POST", "/api/transactions/repay-credit-card", userId, {
+    credit_card_account_id: input.creditCardAccountId,
+    sources: input.sources.map((source) => ({
+      source_account_id: source.sourceAccountId,
+      amount: source.amount,
+    })),
+    description: input.description,
+    booked_at: input.bookedAt.toISOString(),
+  });
+  if (!response.ok) {
+    throw new Error(await extractErrorDetail(response, "Failed to repay credit card"));
+  }
+  const data = await response.json();
+  return {
+    transfers: data.transfers.map(
+      (transfer: { source_transaction_id: string; destination_transaction_id: string }) => ({
+        sourceTransactionId: transfer.source_transaction_id,
+        destinationTransactionId: transfer.destination_transaction_id,
+      }),
+    ),
+  };
+}
+
 export async function convertTransactionToTransferViaBackend(
   userId: string,
   transactionId: string,

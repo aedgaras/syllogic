@@ -80,10 +80,18 @@ export function AccountEditForm({
     resolver: zodResolver(accountEditSchema),
     defaultValues: values,
   });
-  const [name, logoId, logoUrl, logoUpdatedAt, institution] = useWatch({
-    control,
-    name: ["name", "logoId", "logoUrl", "logoUpdatedAt", "institution"],
-  });
+  const [name, logoId, logoUrl, logoUpdatedAt, institution, accountType] =
+    useWatch({
+      control,
+      name: [
+        "name",
+        "logoId",
+        "logoUrl",
+        "logoUpdatedAt",
+        "institution",
+        "accountType",
+      ],
+    });
   const search = async () => {
     setSearching(true);
     const logo = await onLookupLogo(logoSearch || institution || name);
@@ -218,6 +226,22 @@ export function AccountEditForm({
                 </Button>
               </div>
             </Field>
+            {accountType === "credit_card" && (
+              <Field
+                label={translate("creditLimitOptional")}
+                id="edit-account-credit-limit"
+                error={errors.creditLimit?.message}
+              >
+                <Input
+                  id="edit-account-credit-limit"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  placeholder="0.00"
+                  {...register("creditLimit")}
+                />
+              </Field>
+            )}
             <Controller
               control={control}
               name="currency"

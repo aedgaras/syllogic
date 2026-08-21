@@ -98,6 +98,6 @@ class TrueLayerAdapter(BankAdapter):
         mapping = {
             "TRANSACTION": "checking",
             "SAVINGS": "savings",
-            "CREDIT_CARD": "credit",
+            "CREDIT_CARD": "credit_card",
         }
         return mapping.get(truelayer_type, "checking")

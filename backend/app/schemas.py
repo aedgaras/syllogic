@@ -14,6 +14,7 @@ class AccountBase(BaseModel):
     account_type: str
     institution: Optional[str] = None
     currency: str = "EUR"
+    credit_limit: Optional[Decimal] = None
 
 
 class AccountCreate(AccountBase):
@@ -28,6 +29,7 @@ class AccountUpdate(BaseModel):
     currency: Optional[str] = None
     starting_balance: Optional[Decimal] = None
     functional_balance: Optional[Decimal] = None
+    credit_limit: Optional[Decimal] = None
     logo_id: Optional[UUID] = None
     is_active: Optional[bool] = None
     alias_patterns: list[str] = Field(default_factory=list)
@@ -284,6 +286,22 @@ class TransactionConvertToTransferRequest(BaseModel):
     amount: Decimal
     description: str
     booked_at: datetime
+
+
+class CreditCardRepaymentSource(BaseModel):
+    source_account_id: UUID
+    amount: Decimal
+
+
+class CreditCardRepaymentCreate(BaseModel):
+    credit_card_account_id: UUID
+    sources: List[CreditCardRepaymentSource]
+    description: str
+    booked_at: datetime
+
+
+class CreditCardRepaymentResponse(BaseModel):
+    transfers: List[TransferTransactionResponse]
 
 
 class InterestTransactionCreate(BaseModel):

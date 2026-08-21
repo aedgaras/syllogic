@@ -79,6 +79,20 @@ export function AccountHeader({ account, currency }: AccountHeaderProps) {
             />
           </p>
           <p className="text-sm text-muted-foreground">{currency}</p>
+          {account.accountType === "credit_card" && account.creditLimit && (
+            <p className="text-sm text-muted-foreground">
+              {translate("availableCredit")}:{" "}
+              <MaskableAmount
+                value={formatCurrency(
+                  (
+                    parseFloat(account.creditLimit) +
+                    parseFloat(account.functionalBalance || "0")
+                  ).toString(),
+                  currency,
+                )}
+              />
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>

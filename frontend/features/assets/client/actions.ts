@@ -54,6 +54,7 @@ export async function updateAccountAsset(
     institution: values.institution.trim() || undefined,
     currency: values.currency,
     startingBalance: Number(values.balance) || 0,
+    creditLimit: values.creditLimit.trim() ? Number(values.creditLimit) : null,
     logoId: values.logoId,
   });
 }

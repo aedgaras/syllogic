@@ -6,6 +6,12 @@ const owners = z
 const money = z
   .string()
   .refine((value) => Number.isFinite(Number(value)), "Enter a valid amount");
+const optionalMoney = z
+  .string()
+  .refine(
+    (value) => value === "" || Number.isFinite(Number(value)),
+    "Enter a valid amount",
+  );
 
 export const accountEditSchema = z.object({
   name: z.string().trim().min(1, "Account name is required"),
@@ -13,6 +19,7 @@ export const accountEditSchema = z.object({
   institution: z.string(),
   currency: z.string().min(3),
   balance: money,
+  creditLimit: optionalMoney,
   logoId: z.string().nullable(),
   logoUrl: z.string().nullable(),
   logoUpdatedAt: z.string().nullable(),
