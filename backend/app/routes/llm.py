@@ -7,12 +7,27 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.db_helpers import get_request_user_id
+from app.rate_limit import is_rate_limited
 from app.services.app_settings import get_ai_summary_enabled_status
 from app.services.llm_client import create_llm_clients, is_fallback_worthy_error
 
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# These endpoints proxy to a paid LLM API and take their inputs straight from
+# the request body rather than looking anything up, so the only thing
+# stopping a signed-in user from burning through the deployment's LLM
+# spend is this limit.
+_LLM_RATE_LIMIT_MAX = 20
+_LLM_RATE_LIMIT_WINDOW_SECONDS = 60
+
+
+def _enforce_llm_rate_limit() -> None:
+    identity = get_request_user_id() or "anonymous"
+    if is_rate_limited(f"llm:{identity}", _LLM_RATE_LIMIT_MAX, _LLM_RATE_LIMIT_WINDOW_SECONDS):
+        raise HTTPException(status_code=429, detail="Too many AI requests. Please try again later.")
 
 
 class ColumnMappingRequest(BaseModel):
@@ -41,6 +56,7 @@ class ColumnMappingResponse(BaseModel):
 
 @router.post("/column-mapping", response_model=ColumnMappingResponse)
 def map_csv_columns(payload: ColumnMappingRequest, db: Session = Depends(get_db)):
+    _enforce_llm_rate_limit()
     providers = create_llm_clients(db)
     if not providers:
         raise HTTPException(status_code=503, detail="LLM API is not configured.")
@@ -133,9 +149,7 @@ be AUTO, DOT_DECIMAL, or COMMA_DECIMAL. Default dateFormat to DD-MM-YYYY when un
             # mode would repeat on the fallback provider, so stop here.
             break
 
-    logger.error(
-        "LLM column mapping failed on every configured provider", exc_info=last_error
-    )
+    logger.error("LLM column mapping failed on every configured provider", exc_info=last_error)
     raise HTTPException(status_code=502, detail="LLM column mapping failed.") from last_error
 
 
@@ -202,6 +216,7 @@ class SummaryResponse(BaseModel):
 
 @router.post("/dashboard-summary", response_model=SummaryResponse)
 def generate_dashboard_summary(payload: DashboardSummaryRequest, db: Session = Depends(get_db)):
+    _enforce_llm_rate_limit()
     _require_ai_summary_enabled(db)
     prompt = f"""You are a personal finance assistant. Write a short (2-3 sentence),
 plain-language narrative summary of this user's finances for "{payload.period_label}".
@@ -218,6 +233,7 @@ Spending this period: {payload.period_spending:.2f} {payload.currency}"""
 def generate_transactions_summary(
     payload: TransactionsSummaryRequest, db: Session = Depends(get_db)
 ):
+    _enforce_llm_rate_limit()
     _require_ai_summary_enabled(db)
     prompt = f"""You are a personal finance assistant. Write a short (2-3 sentence),
 plain-language narrative summary of the user's transactions between {payload.date_from}

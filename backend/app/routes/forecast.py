@@ -8,7 +8,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.db_helpers import get_user_id
+from app.db_helpers import get_current_user_id
 from app.mcp.tools._asset_class import account_type_to_asset_class
 from app.models import Account, AccountBalance, Category, RecurringTransaction, Transaction
 from app.services.forecast_service import (
@@ -62,7 +62,7 @@ def _finite_decimal(value: Optional[Decimal]) -> Decimal:
 def get_cashflow_forecast(
     horizon_days: int = Query(30, ge=1, le=365),
     account_ids: Optional[list[UUID]] = Query(None),
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Project daily account balance forward, plus a savings summary.
@@ -144,7 +144,8 @@ def get_cashflow_forecast(
     if cash_account_ids:
         daily_rows = (
             db.query(
-                func.date(Transaction.booked_at).label("day"), func.sum(Transaction.functional_amount)
+                func.date(Transaction.booked_at).label("day"),
+                func.sum(Transaction.functional_amount),
             )
             .filter(
                 Transaction.user_id == user_id,
@@ -199,9 +200,7 @@ def get_cashflow_forecast(
             last_balance = _finite_decimal(last_balance)
             span_days = (last_date - first_date).days
             if span_days > 0 and first_balance > 0 and last_balance > 0:
-                growth_daily_rate = (last_balance / first_balance) ** (
-                    Decimal(1) / span_days
-                ) - 1
+                growth_daily_rate = (last_balance / first_balance) ** (Decimal(1) / span_days) - 1
 
     growth_result = project_compounding_balance(
         starting_balance=growth_starting_balance,

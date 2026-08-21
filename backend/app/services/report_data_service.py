@@ -7,7 +7,7 @@ so report numbers match what the user sees in-app.
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
@@ -47,7 +47,7 @@ def build_report_payload(db: Session, report: Report) -> dict:
         # Trailing "Z" so the frontend's `new Date(generatedAt)` parses this
         # as UTC rather than the worker container's local timezone (which
         # would silently shift the displayed date/time otherwise).
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "period_label": period_label(report.frequency),
         "total_balance": _total_balance(db, report),
         "total_currency": functional_currency,
@@ -131,7 +131,7 @@ def _fetch_transactions(db: Session, report: Report) -> dict:
     types = _DIRECTION_TYPES.get(report.transaction_direction, ("debit", "credit"))
     # Both TOP_N and RECENT are scoped to the report's own cadence, so a weekly
     # digest reports on the last seven days rather than on all of history.
-    window_start = horizon_start(report.frequency, datetime.utcnow())
+    window_start = horizon_start(report.frequency, datetime.now(timezone.utc))
     query = db.query(Transaction).filter(
         Transaction.user_id == report.user_id,
         Transaction.transaction_type.in_(types),

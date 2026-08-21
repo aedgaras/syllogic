@@ -6,7 +6,7 @@ Processes transactions in batches with real-time progress updates via Redis Pub/
 import logging
 import uuid
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from celery_app import celery_app
@@ -443,7 +443,7 @@ def process_csv_import(
         # Update CSV import record
         csv_import.status = "completed"
         csv_import.imported_rows = total_inserted
-        csv_import.completed_at = datetime.utcnow()
+        csv_import.completed_at = datetime.now(timezone.utc)
         db.commit()
 
         publisher.publish_import_completed(

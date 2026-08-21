@@ -8,7 +8,7 @@ import hmac
 import os
 import time
 from typing import Mapping, Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
 try:
@@ -180,8 +180,11 @@ def get_mcp_user_id(user_id: Optional[str] = None, api_key: Optional[str] = None
 def get_user_id(user_id: Optional[str] = None, api_key: Optional[str] = None) -> str:
     """
     Get user ID with authentication priority:
-    1. MCP auth context (Bearer token) or API key parameter
-    2. Signed internal request identity
+    1. Signed internal request identity (the BFF-forwarded session)
+    2. MCP auth context (Bearer token) or API key parameter
+
+    The signed internal identity is checked first so a caller cannot
+    override another user's session by supplying an api_key alongside it.
 
     Args:
         user_id: Optional explicit user ID (pre-validated)
@@ -193,28 +196,49 @@ def get_user_id(user_id: Optional[str] = None, api_key: Optional[str] = None) ->
     Raises:
         ValueError: If no valid authentication is found
     """
-    # Priority 1: MCP auth context or API key parameter (if present)
-    resolved = _get_authenticated_user_id(api_key)
-    if resolved:
-        return resolved
-
-    request_user_id = get_request_user_id()
-    if not request_user_id:
+    resolved = get_request_user_id() or _get_authenticated_user_id(api_key)
+    if not resolved:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required.",
         )
 
-    if user_id and user_id != request_user_id:
+    if user_id and user_id != resolved:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Provided user_id does not match authenticated user.",
         )
 
-    return request_user_id
+    return resolved
 
 
-def require_admin(user_id: str = Depends(get_user_id), db: Session = Depends(get_db)) -> str:
+def _extract_bearer_api_key(authorization: Optional[str] = Header(None)) -> Optional[str]:
+    """FastAPI dependency: pulls a pf_ API key from the Authorization header
+    only. Never accept API keys as query parameters -- they end up in access
+    logs, proxy logs, and Referer headers.
+    """
+    if not authorization:
+        return None
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        return None
+    return token
+
+
+def get_current_user_id(
+    user_id: Optional[str] = None,
+    api_key: Optional[str] = Depends(_extract_bearer_api_key),
+) -> str:
+    """FastAPI-route-safe wrapper around get_user_id. Use this (not
+    get_user_id) as a route Depends() so api_key is bound from the
+    Authorization header instead of being auto-bound as a query parameter.
+    """
+    return get_user_id(user_id, api_key)
+
+
+def require_admin(
+    user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)
+) -> str:
     """FastAPI dependency: resolves the caller and requires role == 'admin'."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user or user.role != "admin":

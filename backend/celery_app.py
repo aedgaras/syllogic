@@ -126,6 +126,17 @@ celery_app.conf.update(
     task_track_started=True,
     task_time_limit=3600,  # 1 hour max per task
     task_soft_time_limit=3300,  # Soft limit at 55 minutes
+    # Ack after the task runs, not before -- otherwise a worker crash mid-task
+    # silently drops the job (no retry, no trace). Paired with
+    # task_reject_on_worker_lost so a lost worker's task is requeued instead
+    # of left stuck as "started" forever, and a broker visibility_timeout
+    # comfortably longer than task_time_limit so Redis doesn't redeliver a
+    # still-running task to a second worker (which would double-run e.g. a
+    # CSV import or bank sync).
+    task_acks_late=True,
+    task_reject_on_worker_lost=True,
+    broker_transport_options={"visibility_timeout": 7200},
+    broker_connection_retry_on_startup=True,
     # Worker settings
     worker_prefetch_multiplier=1,
     worker_concurrency=4,

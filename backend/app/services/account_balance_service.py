@@ -6,7 +6,7 @@ Handles:
 3. Importing daily balances from CSV files
 """
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import Dict, Optional, List, Set
 from uuid import UUID
@@ -49,7 +49,7 @@ class AccountBalanceService:
         afterward to keep the daily snapshot table consistent. Caller is
         responsible for committing.
         """
-        start_date = datetime(from_date.year, from_date.month, from_date.day)
+        start_date = datetime(from_date.year, from_date.month, from_date.day, tzinfo=timezone.utc)
 
         account = self.db.query(Account).filter(Account.id == account_id).first()
         if not account:
@@ -82,7 +82,9 @@ class AccountBalanceService:
             .first()
         )
 
-        today = datetime.utcnow().replace(hour=23, minute=59, second=59, microsecond=999000)
+        today = datetime.now(timezone.utc).replace(
+            hour=23, minute=59, second=59, microsecond=999000
+        )
 
         if next_balancing_transfer_date:
             end_date = (next_balancing_transfer_date - timedelta(days=1)).replace(
@@ -125,7 +127,7 @@ class AccountBalanceService:
             if existing:
                 existing.balance_in_account_currency = balance_on_date
                 existing.balance_in_functional_currency = balance_on_date
-                existing.updated_at = datetime.utcnow()
+                existing.updated_at = datetime.now(timezone.utc)
             else:
                 self.db.add(
                     AccountBalance(
@@ -742,7 +744,7 @@ class AccountBalanceService:
                         # Update existing record
                         existing.balance_in_account_currency = balance_value
                         existing.balance_in_functional_currency = functional_balance
-                        existing.updated_at = datetime.utcnow()
+                        existing.updated_at = datetime.now(timezone.utc)
                         logger.debug(
                             f"[BALANCE_IMPORT] Updated balance for {balance_date}: {balance_value} {account_currency}"
                         )

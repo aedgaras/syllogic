@@ -16,7 +16,7 @@ Run with:
 import os
 import sys
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -148,7 +148,7 @@ def test_recalculate_balances_stops_before_next_balancing_transfer(user_id, db_s
     db_session.commit()
     db_session.refresh(balancing_category)
 
-    base = datetime(2024, 1, 1)
+    base = datetime(2024, 1, 1, tzinfo=timezone.utc)
     _seed_transaction(db_session, user_id, account.id, "100.00", base)
     _seed_transaction(db_session, user_id, account.id, "50.00", base + timedelta(days=2))
     balancing_txn = _seed_transaction(
@@ -184,7 +184,7 @@ def test_recalculate_balances_stops_before_next_balancing_transfer(user_id, db_s
 
 def test_recalculate_balances_stops_at_most_recent_existing_balance(user_id, db_session):
     account = _seed_account(db_session, user_id, starting_balance="0")
-    base = datetime(2024, 2, 1)
+    base = datetime(2024, 2, 1, tzinfo=timezone.utc)
     _seed_transaction(db_session, user_id, account.id, "10.00", base)
 
     existing = AccountBalance(
@@ -217,7 +217,7 @@ def test_recalculate_balances_stops_at_most_recent_existing_balance(user_id, db_
 
 def test_recalculate_balances_excludes_given_transaction(user_id, db_session):
     account = _seed_account(db_session, user_id, starting_balance="0")
-    base = datetime(2024, 3, 1)
+    base = datetime(2024, 3, 1, tzinfo=timezone.utc)
     _seed_transaction(db_session, user_id, account.id, "100.00", base)
     to_delete = _seed_transaction(db_session, user_id, account.id, "-40.00", base)
 

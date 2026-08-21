@@ -12,6 +12,7 @@ restart.
 import json
 import logging
 import os
+import re
 import time
 
 
@@ -26,6 +27,37 @@ REFRESH_INTERVAL_SECONDS = 10
 # Force the first refresh_log_level_from_db() call to always run.
 _last_checked_monotonic = float("-inf")
 
+# This app logs IBANs, tokens, and API keys in various error/debug paths
+# without meaning to (an exception's repr(), a raw request echoed for
+# debugging, etc). Redact known-sensitive shapes out of every log message
+# before it's ever written anywhere, rather than relying on every call site
+# to remember not to log them.
+_REDACTIONS = [
+    (re.compile(r"\bBearer\s+[A-Za-z0-9\-_\.]+"), "Bearer [REDACTED]"),
+    (re.compile(r"\bpf_[A-Za-z0-9]{6,}"), "pf_[REDACTED]"),
+    (re.compile(r"\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b"), "[REDACTED_IBAN]"),
+]
+
+
+def _redact(message: str) -> str:
+    for pattern, replacement in _REDACTIONS:
+        message = pattern.sub(replacement, message)
+    return message
+
+
+class RedactionFilter(logging.Filter):
+    """Redacts known-sensitive patterns (bearer tokens, pf_ API keys,
+    IBAN-shaped strings) from every log record's rendered message."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            rendered = record.getMessage()
+        except Exception:  # noqa: BLE001 - never let logging itself crash
+            return True
+        record.msg = _redact(rendered)
+        record.args = None
+        return True
+
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
@@ -33,6 +65,7 @@ class JsonFormatter(logging.Formatter):
             "time": self.formatTime(record, "%Y-%m-%dT%H:%M:%S%z"),
             "level": record.levelname,
             "logger": record.name,
+            "request_id": getattr(record, "request_id", "-"),
             "message": record.getMessage(),
         }
         if record.exc_info:
@@ -46,16 +79,22 @@ def _resolve_level(level_name: str) -> int:
 
 def configure_logging() -> None:
     """Install the root logger's handler/formatter. Call once at startup."""
+    from app.request_context import RequestIdLogFilter
+
     root = logging.getLogger()
     for handler in list(root.handlers):
         root.removeHandler(handler)
 
     handler = logging.StreamHandler()
+    handler.addFilter(RequestIdLogFilter())
+    handler.addFilter(RedactionFilter())
     if (os.getenv("LOG_FORMAT") or "").strip().lower() == "json":
         handler.setFormatter(JsonFormatter())
     else:
         handler.setFormatter(
-            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            logging.Formatter(
+                "%(asctime)s - %(name)s - [%(request_id)s] - %(levelname)s - %(message)s"
+            )
         )
     root.addHandler(handler)
     root.setLevel(_resolve_level(os.getenv("LOG_LEVEL", "info")))

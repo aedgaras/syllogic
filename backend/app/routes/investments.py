@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
@@ -165,7 +165,8 @@ def create_manual_holding(
         raise HTTPException(status_code=404, detail="Funding account not found")
     if funding_account.account_type in _INVESTMENT_ACCOUNT_TYPES:
         raise HTTPException(
-            status_code=400, detail="Funding account must be a cash account, not an investment account"
+            status_code=400,
+            detail="Funding account must be a cash account, not an investment account",
         )
     if funding_account.currency != payload.currency:
         raise HTTPException(
@@ -210,7 +211,7 @@ def create_manual_holding(
         amount=-cost,
         currency=funding_account.currency,
         description=f"Investment purchase: {payload.symbol}",
-        booked_at=datetime.utcnow(),
+        booked_at=datetime.now(timezone.utc),
         pending=False,
         include_in_analytics=False,
     )

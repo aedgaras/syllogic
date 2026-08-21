@@ -8,7 +8,7 @@ from sqlalchemy import and_, desc, func, or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.db_helpers import get_user_id
+from app.db_helpers import get_current_user_id
 from app.models import Account, Transaction, TransactionLink
 from app.schemas import (
     AccountOptionResponse,
@@ -65,7 +65,9 @@ def _build_link_group(
 
 
 @router.get("/accounts-for-linking", response_model=List[AccountOptionResponse])
-def get_accounts_for_linking(user_id: str = Depends(get_user_id), db: Session = Depends(get_db)):
+def get_accounts_for_linking(
+    user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)
+):
     """Accounts for the link-search filter dropdown."""
     accounts = (
         db.query(Account.id, Account.name)
@@ -79,7 +81,7 @@ def get_accounts_for_linking(user_id: str = Depends(get_user_id), db: Session = 
 @router.post("/groups", response_model=CreateLinkGroupResponse, status_code=201)
 def create_link_group(
     payload: CreateLinkGroupRequest,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Creates a new link group with a primary transaction and one or more
@@ -135,7 +137,7 @@ def create_link_group(
 def add_to_link_group(
     group_id: UUID,
     payload: AddToLinkGroupRequest,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Adds a transaction to an existing link group."""
@@ -177,7 +179,7 @@ def add_to_link_group(
 
 @router.delete("/transactions/{transaction_id}", response_model=RemoveFromLinkGroupResponse)
 def remove_transaction_from_link_group(
-    transaction_id: UUID, user_id: str = Depends(get_user_id), db: Session = Depends(get_db)
+    transaction_id: UUID, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)
 ):
     """Removes a transaction from its link group. If it's the primary
     transaction, or only one other transaction would remain, deletes the
@@ -215,7 +217,7 @@ def remove_transaction_from_link_group(
 
 @router.delete("/groups/{group_id}", status_code=204)
 def delete_link_group(
-    group_id: UUID, user_id: str = Depends(get_user_id), db: Session = Depends(get_db)
+    group_id: UUID, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)
 ):
     """Deletes an entire link group."""
     exists = (
@@ -237,7 +239,7 @@ def delete_link_group(
     "/transactions/{transaction_id}/group", response_model=Optional[TransactionLinkGroupResponse]
 )
 def get_transaction_link_group(
-    transaction_id: UUID, user_id: str = Depends(get_user_id), db: Session = Depends(get_db)
+    transaction_id: UUID, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)
 ):
     """The link group for a transaction, including all linked transactions
     and net amount. None if the transaction isn't linked."""
@@ -256,7 +258,9 @@ def get_transaction_link_group(
 
 
 @router.get("/groups", response_model=List[TransactionLinkGroupResponse])
-def get_user_link_groups(user_id: str = Depends(get_user_id), db: Session = Depends(get_db)):
+def get_user_link_groups(
+    user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)
+):
     """All link groups for the current user."""
     user_links = db.query(TransactionLink).filter(TransactionLink.user_id == user_id).all()
 
@@ -288,6 +292,9 @@ def _find_suggested_links(
     )
     if not source_txn:
         return LinkSearchResponse(transactions=[], total_count=0, has_more=False)
+
+    page = max(1, page)
+    page_size = max(10, min(100, page_size))
 
     source_amount = float(source_txn.amount)
     if direction == "reimbursement":
@@ -383,7 +390,7 @@ def find_potential_reimbursements(
     max_amount: Optional[float] = None,
     page: int = 1,
     page_size: int = Query(50, alias="page_size"),
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Potential reimbursement transactions (credits, across all accounts)
@@ -415,7 +422,7 @@ def find_potential_expenses(
     max_amount: Optional[float] = None,
     page: int = 1,
     page_size: int = Query(50, alias="page_size"),
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Potential expense transactions (debits, across all accounts) for an
@@ -440,7 +447,7 @@ def find_potential_expenses(
     "/transactions/{transaction_id}/link-info", response_model=Optional[TransactionLinkInfoResponse]
 )
 def get_transaction_link_info(
-    transaction_id: UUID, user_id: str = Depends(get_user_id), db: Session = Depends(get_db)
+    transaction_id: UUID, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)
 ):
     """The link-group membership row for a single transaction, if any."""
     link = (
@@ -464,7 +471,7 @@ def get_transaction_link_info(
 @router.post("/groups/from-selection", response_model=CreateLinkGroupResponse, status_code=201)
 def create_link_group_from_selection(
     payload: CreateLinkGroupFromSelectionRequest,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Bulk-creates a link group from selected transactions. Auto-detects

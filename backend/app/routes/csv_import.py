@@ -5,7 +5,7 @@ Handles enqueueing imports and checking status.
 
 import logging
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -93,7 +93,7 @@ def _reconcile_import_status(db: Session, csv_import: CsvImport) -> None:
             if isinstance(imported_count, int) and csv_import.imported_rows is None:
                 csv_import.imported_rows = imported_count
             if csv_import.completed_at is None:
-                csv_import.completed_at = datetime.utcnow()
+                csv_import.completed_at = datetime.now(timezone.utc)
             db.commit()
             return
 
@@ -106,7 +106,7 @@ def _reconcile_import_status(db: Session, csv_import: CsvImport) -> None:
                 else f"Background task {task_state.lower()}"
             )
             if csv_import.completed_at is None:
-                csv_import.completed_at = datetime.utcnow()
+                csv_import.completed_at = datetime.now(timezone.utc)
             db.commit()
     except Exception as e:
         logger.warning("Failed to reconcile import %s from Celery task state: %s", csv_import.id, e)

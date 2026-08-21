@@ -10,7 +10,7 @@ import base64
 import os
 import sys
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -47,7 +47,7 @@ def _seed_user_with_account_and_transactions(db):
     db.add(account)
     db.flush()
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for i, (amount, ttype, desc) in enumerate(
         [
             (Decimal("-50.00"), "debit", "Groceries"),
@@ -99,7 +99,7 @@ def test_build_report_payload_top_n_all_orders_by_absolute_magnitude():
     db = SessionLocal()
     try:
         user, account = _seed_user_with_account_and_transactions(db)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         # Mixed large debit/credit on top of the -50/-20/+2000 seeded above.
         db.add(
             Transaction(
@@ -205,7 +205,7 @@ def test_transactions_outside_the_horizon_are_excluded():
         db.add(account)
         db.flush()
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         # Huge, but far outside a 7-day window.
         db.add(
             Transaction(
@@ -266,7 +266,7 @@ def test_recent_mode_is_also_windowed():
         db.add(account)
         db.flush()
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         db.add(
             Transaction(
                 user_id=user.id,

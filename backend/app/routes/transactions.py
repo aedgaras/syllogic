@@ -3,12 +3,12 @@ from sqlalchemy.orm import Session, joinedload, aliased
 from sqlalchemy import func, or_, and_, asc, desc, case, select, false
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 
 from app.database import get_db
 from app.models import Transaction, Account, Category, InternalTransfer, TransactionLink, User
-from app.db_helpers import get_user_id
+from app.db_helpers import get_user_id, get_current_user_id
 from app.schemas import (
     AccountDeleteImpact,
     AccruedInterestResponse,
@@ -136,6 +136,8 @@ def list_transactions(
     db: Session = Depends(get_db),
 ):
     """List transactions for the current user."""
+    page = max(1, page)
+    limit = max(10, min(100, limit))
     user_id = get_user_id(user_id)
     query = db.query(Transaction).filter(Transaction.user_id == user_id).options(*_DETAIL_RELATIONS)
 
@@ -229,7 +231,7 @@ def _latest_booked_at_for_scope(db: Session, user_id: str, account_ids: List[UUI
     if account_ids:
         query = query.filter(Transaction.account_id.in_(account_ids))
     latest = query.scalar()
-    return latest or datetime.utcnow()
+    return latest or datetime.now(timezone.utc)
 
 
 def _build_page_where(
@@ -368,7 +370,7 @@ def get_transaction_page(
     page: int = 1,
     page_size: int = 50,
     include_filtered_totals: bool = False,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Paginated/filtered transaction list backing the frontend transactions
@@ -378,6 +380,8 @@ def get_transaction_page(
     sentinel, and date range resolves from an explicit from/to or a
     trailing-window horizon (in days) anchored to the latest transaction in
     scope."""
+    page = max(1, page)
+    page_size = max(10, min(100, page_size))
     where_clause, resolved_from, resolved_to, effective_horizon = _build_page_where(
         db,
         user_id,
@@ -695,7 +699,7 @@ def get_category_spending_data(
     from_date: Optional[str] = Query(None, alias="from"),
     to_date: Optional[str] = Query(None, alias="to"),
     horizon: Optional[int] = None,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Category spending breakdown for the resolved date window, with
@@ -784,7 +788,7 @@ def get_category_spending_transactions_page(
     order: str = "desc",
     page: int = 1,
     page_size: int = 20,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Transactions backing one category-spending window, restricted to the
@@ -992,7 +996,7 @@ def bulk_update_category(
         db.query(Transaction)
         .filter(Transaction.id.in_(payload.transaction_ids), Transaction.user_id == user_id)
         .update(
-            {"category_id": payload.category_id, "updated_at": datetime.utcnow()},
+            {"category_id": payload.category_id, "updated_at": datetime.now(timezone.utc)},
             synchronize_session=False,
         )
     )
@@ -1017,7 +1021,7 @@ def update_include_in_analytics(
         raise HTTPException(status_code=404, detail="Transaction not found")
 
     transaction.include_in_analytics = payload.include_in_analytics
-    transaction.updated_at = datetime.utcnow()
+    transaction.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(transaction)
     return transaction
@@ -1039,7 +1043,7 @@ def bulk_update_include_in_analytics(
         .update(
             {
                 "include_in_analytics": payload.include_in_analytics,
-                "updated_at": datetime.utcnow(),
+                "updated_at": datetime.now(timezone.utc),
             },
             synchronize_session=False,
         )
@@ -1051,7 +1055,7 @@ def bulk_update_include_in_analytics(
 @router.post("/transfer", response_model=TransferTransactionResponse)
 def create_transfer_transaction(
     payload: TransferTransactionCreate,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Create both sides of an account-to-account transfer, linked so the
@@ -1077,7 +1081,7 @@ def create_transfer_transaction(
 @router.post("/repay-credit-card", response_model=CreditCardRepaymentResponse)
 def repay_credit_card(
     payload: CreditCardRepaymentCreate,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Pay down a credit card balance from one or more source accounts.
@@ -1111,7 +1115,7 @@ def repay_credit_card(
 def convert_transaction_to_transfer(
     transaction_id: UUID,
     payload: TransactionConvertToTransferRequest,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Convert an existing standalone transaction into the source side of a
@@ -1138,7 +1142,7 @@ def convert_transaction_to_transfer(
 @router.post("/interest", response_model=InterestTransactionResponse)
 def add_interest_transaction(
     payload: InterestTransactionCreate,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Record interest earned on a savings account, tagged with the system
@@ -1158,7 +1162,7 @@ def add_interest_transaction(
 @router.get("/accounts/{account_id}/accrued-interest", response_model=AccruedInterestResponse)
 def get_accrued_interest(
     account_id: UUID,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Sum of interest transactions (system 'savings_interest' category) for
@@ -1170,7 +1174,7 @@ def get_accrued_interest(
 @router.put("/balancing", response_model=BalancingTransactionUpsertResponse)
 def upsert_balancing_transaction(
     payload: BalancingTransactionUpsert,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Create or update the balancing transfer for an account/date so the
@@ -1194,7 +1198,7 @@ def upsert_balancing_transaction(
 @router.delete("/{transaction_id}/balancing", status_code=204)
 def delete_balancing_transaction(
     transaction_id: UUID,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Delete a balancing transfer and recalculate balances, reverting the
@@ -1212,7 +1216,7 @@ def delete_balancing_transaction(
 @router.post("/delete-impact", response_model=DeleteImpactResponse)
 def get_delete_impact(
     payload: DeleteImpactRequest,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Compute the balance impact of deleting a set of transactions without
@@ -1236,7 +1240,7 @@ def get_delete_impact(
 @router.post("/bulk-delete", response_model=BulkDeleteResponse)
 def bulk_delete_transactions(
     payload: BulkDeleteRequest,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Permanently delete a set of transactions (expanding to include both

@@ -6,7 +6,7 @@ regardless of caller.
 
 from __future__ import annotations
 
-from datetime import datetime, time as time_cls
+from datetime import datetime, time as time_cls, timedelta, timezone
 from uuid import UUID
 
 import pydantic
@@ -31,6 +31,14 @@ class ReportDispatchError(Exception):
     unreachable) — distinct from ReportValidationError since this isn't a
     bad-request condition; callers should map it to a 5xx/service-unavailable
     style response, not 422."""
+
+
+class ReportQuotaExceededError(Exception):
+    """Raised when a user exceeds the send-test-report quota."""
+
+
+_TEST_SEND_QUOTA = 10
+_TEST_SEND_QUOTA_WINDOW = timedelta(hours=1)
 
 
 _NON_NULLABLE_UPDATE_FIELDS = (
@@ -74,7 +82,7 @@ def _recompute_next_run(report: Report) -> None:
         timezone=report.timezone,
         send_day_of_week=report.send_day_of_week,
         send_day_of_month=report.send_day_of_month,
-        after=datetime.utcnow(),
+        after=datetime.now(timezone.utc),
     )
 
 
@@ -172,6 +180,23 @@ def delete_report(db: Session, user_id: str, report_id: str) -> None:
 
 def send_test_report(db: Session, user_id: str, report_id: str) -> ReportRun:
     report = _get_owned_report(db, user_id, report_id)
+
+    window_start = datetime.now(timezone.utc) - _TEST_SEND_QUOTA_WINDOW
+    recent_sends = (
+        db.query(ReportRun)
+        .join(Report, ReportRun.report_id == Report.id)
+        .filter(
+            Report.user_id == user_id,
+            ReportRun.is_test.is_(True),
+            ReportRun.created_at >= window_start,
+        )
+        .count()
+    )
+    if recent_sends >= _TEST_SEND_QUOTA:
+        raise ReportQuotaExceededError(
+            f"Test report send limit reached ({_TEST_SEND_QUOTA} per hour). Try again later."
+        )
+
     run = ReportRun(
         report_id=report.id,
         scheduled_for=None,

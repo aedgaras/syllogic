@@ -1,8 +1,7 @@
 """Computes the next scheduled send time for a Report.
 
-All persisted `next_run_at` values are naive UTC datetimes (matching the
-rest of this codebase's `DateTime` columns, which are naive-UTC by
-convention — see `Transaction.booked_at`).
+All persisted `next_run_at` values are timezone-aware UTC datetimes
+(matching the rest of this codebase's `DateTime(timezone=True)` columns).
 """
 
 from __future__ import annotations
@@ -23,18 +22,18 @@ def compute_next_run_at(
 ) -> datetime:
     """Return the next UTC datetime a report is due, strictly after `after`.
 
-    `after` is a naive UTC datetime. `send_time` and the day fields are
-    interpreted in `timezone` (IANA name), then converted back to naive
-    UTC for storage/comparison.
+    `after` must be a timezone-aware datetime. `send_time` and the day
+    fields are interpreted in `timezone` (IANA name), then converted back
+    to aware UTC for storage/comparison.
     """
     tz = ZoneInfo(timezone)
-    after_local = after.replace(tzinfo=_UTC).astimezone(tz)
+    after_local = after.astimezone(tz)
 
     if frequency == "DAILY":
         candidate_local = _combine(after_local.date(), send_time, tz)
         if candidate_local <= after_local:
             candidate_local = _combine(after_local.date() + timedelta(days=1), send_time, tz)
-        return _to_naive_utc(candidate_local)
+        return _to_utc(candidate_local)
 
     if frequency in ("WEEKLY", "BIWEEKLY"):
         if send_day_of_week is None:
@@ -46,7 +45,7 @@ def compute_next_run_at(
             candidate_local = _combine(candidate_date + timedelta(days=7), send_time, tz)
         if frequency == "BIWEEKLY":
             candidate_local = _combine(candidate_local.date() + timedelta(days=7), send_time, tz)
-        return _to_naive_utc(candidate_local)
+        return _to_utc(candidate_local)
 
     if frequency == "MONTHLY":
         if send_day_of_month is None:
@@ -59,7 +58,7 @@ def compute_next_run_at(
                 year, month = year + 1, 1
             candidate_date = _safe_date(year, month, send_day_of_month)
             candidate_local = _combine(candidate_date, send_time, tz)
-        return _to_naive_utc(candidate_local)
+        return _to_utc(candidate_local)
 
     raise ValueError(f"Unknown frequency: {frequency}")
 
@@ -74,8 +73,8 @@ def _combine(date_part, time_part: time, tz: ZoneInfo) -> datetime:
     return datetime.combine(date_part, time_part, tzinfo=tz)
 
 
-def _to_naive_utc(dt: datetime) -> datetime:
-    return dt.astimezone(_UTC).replace(tzinfo=None)
+def _to_utc(dt: datetime) -> datetime:
+    return dt.astimezone(_UTC)
 
 
 def _safe_date(year: int, month: int, day: int):

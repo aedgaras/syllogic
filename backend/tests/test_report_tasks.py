@@ -11,7 +11,7 @@ import json
 import os
 import sys
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -66,7 +66,7 @@ def _seed_due_report(db) -> Report:
         frequency="DAILY",
         recipient_emails=["me@example.com"],
         is_active=True,
-        next_run_at=datetime.utcnow() - timedelta(minutes=1),
+        next_run_at=datetime.now(timezone.utc) - timedelta(minutes=1),
     )
     db.add(report)
     db.flush()
@@ -99,7 +99,7 @@ def test_check_due_reports_enqueues_and_reschedules():
             report_tasks.check_due_reports()
 
         db.refresh(report)
-        assert report.next_run_at > datetime.utcnow()
+        assert report.next_run_at > datetime.now(timezone.utc)
         mock_delay.assert_called_once()
 
         runs = db.query(ReportRun).filter(ReportRun.report_id == report.id).all()

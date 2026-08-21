@@ -13,10 +13,12 @@ Usage:
 """
 
 from app.mcp.server import mcp
+from app.rate_limit import IPRateLimitMiddleware
 from starlette.responses import JSONResponse
 
 # HTTP app for uvicorn deployment
 app = mcp.http_app()
+app.add_middleware(IPRateLimitMiddleware)
 
 
 async def health(_request):

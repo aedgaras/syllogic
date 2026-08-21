@@ -10,7 +10,7 @@ import hashlib
 import logging
 import random
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Dict, Iterable, List, Optional, Tuple
 
@@ -864,8 +864,8 @@ class DemoSeedService:
         user.functional_currency = "EUR"
         user.onboarding_status = "completed"
         if not user.onboarding_completed_at:
-            user.onboarding_completed_at = datetime.utcnow()
-        user.updated_at = datetime.utcnow()
+            user.onboarding_completed_at = datetime.now(timezone.utc)
+        user.updated_at = datetime.now(timezone.utc)
         self.db.commit()
 
     def _clear_user_financial_data(self, user_id: str) -> Dict[str, int]:
@@ -937,7 +937,7 @@ class DemoSeedService:
 
     def _create_accounts(self, user_id: str) -> List[Account]:
         accounts: List[Account] = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         for spec in ACCOUNT_SPECS:
             account = Account(
@@ -964,7 +964,7 @@ class DemoSeedService:
 
     def _create_categories(self, user_id: str) -> List[Category]:
         categories: List[Category] = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         for spec in CATEGORY_SPECS:
             category = Category(
@@ -1007,7 +1007,7 @@ class DemoSeedService:
         """
         self._clear_investment_data(user.id)
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         accounts: List[Tuple[Account, InvestmentAccountSpec]] = []
 
         for acct_spec in INVESTMENT_ACCOUNT_SPECS:
@@ -1060,8 +1060,7 @@ class DemoSeedService:
         )
 
         logger.info(
-            "[DEMO_SEED] Seeded investments for user=%s accounts=%s holdings=%s "
-            "valuations=%s",
+            "[DEMO_SEED] Seeded investments for user=%s accounts=%s holdings=%s valuations=%s",
             user.id,
             len(accounts),
             len(holdings),
@@ -1148,7 +1147,7 @@ class DemoSeedService:
                     value_native, h_spec.currency, acct_spec.currency, last_rate
                 )
             account.balance_available = total_acct
-            account.last_synced_at = datetime.utcnow()
+            account.last_synced_at = datetime.now(timezone.utc)
 
         self.db.commit()
         return {"valuations": valuations, "account_balances": account_balances}
@@ -1233,7 +1232,7 @@ class DemoSeedService:
             )
             account_balances += 1
             account.balance_available = total_acct
-            account.last_synced_at = datetime.utcnow()
+            account.last_synced_at = datetime.now(timezone.utc)
 
         self.db.commit()
         return {
@@ -1912,8 +1911,8 @@ class DemoSeedService:
             booked_at=booked_at,
             pending=False,
             include_in_analytics=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
     def _build_balance_adjustment_transaction(

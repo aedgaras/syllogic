@@ -7,7 +7,7 @@ more Transaction rows.
 import base64
 import binascii
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -199,7 +199,7 @@ def confirm_receipt_scan(
         created.append(transaction)
 
     receipt_scan.status = "completed"
-    receipt_scan.completed_at = datetime.utcnow()
+    receipt_scan.completed_at = datetime.now(timezone.utc)
     db.commit()
 
     for transaction in created:

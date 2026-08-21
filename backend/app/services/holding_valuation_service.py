@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 import logging
 from typing import Protocol
@@ -109,4 +109,4 @@ class HoldingValuationService:
             row.balance_in_account_currency = total_account_ccy
             row.balance_in_functional_currency = total_user
         account.balance_available = total_account_ccy
-        account.last_synced_at = datetime.utcnow()
+        account.last_synced_at = datetime.now(timezone.utc)

@@ -25,7 +25,7 @@ import time
 import urllib.parse
 import httpx
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import logging
 
@@ -342,9 +342,9 @@ class KrakenAdapter(BankAdapter):
 
         # Parse timestamp
         try:
-            booked_at = datetime.fromtimestamp(float(ledger_time))
+            booked_at = datetime.fromtimestamp(float(ledger_time), tz=timezone.utc)
         except (ValueError, TypeError):
-            booked_at = datetime.now()
+            booked_at = datetime.now(timezone.utc)
 
         # Use account_external_id or construct from asset
         if not account_external_id:

@@ -267,34 +267,39 @@ def test_filtered_totals_only_computed_when_requested(user_id):
 
 
 def test_pagination_and_amount_sort(user_id):
+    # page_size is clamped to a minimum of 10 (see get_transaction_page),
+    # so this needs enough rows to actually exercise a second page.
     db = SessionLocal()
     account = _seed_account(db, user_id)
     base = datetime(2024, 1, 1)
-    small = _seed_transaction(db, user_id, account, "-5.00", base)
-    large = _seed_transaction(db, user_id, account, "-50.00", base)
+    # Ascending amounts: -110, -100, ..., -10, largest (least negative) last.
+    ids = [_seed_transaction(db, user_id, account, f"-{(11 - i) * 10}.00", base) for i in range(11)]
+    largest = ids[-1]  # -10.00, sorts last ascending
     try:
         page1 = _call_page(
             account_ids=[account],
             sort="amount",
             order="asc",
             page=1,
-            page_size=1,
+            page_size=10,
             user_id=user_id,
             db=db,
         )
-        assert page1.total_count == 2
-        assert page1.rows[0].id == large  # -50 sorts before -5 ascending
+        assert page1.total_count == 11
+        assert len(page1.rows) == 10
+        assert page1.rows[0].id != largest
 
         page2 = _call_page(
             account_ids=[account],
             sort="amount",
             order="asc",
             page=2,
-            page_size=1,
+            page_size=10,
             user_id=user_id,
             db=db,
         )
-        assert page2.rows[0].id == small
+        assert len(page2.rows) == 1
+        assert page2.rows[0].id == largest
     finally:
         db.close()
         _cleanup(account_ids=[account])

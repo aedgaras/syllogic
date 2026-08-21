@@ -81,7 +81,7 @@ describe("HoldingsTableHF", () => {
     // Find the row containing MSFT (the stale holding) and check class
     const msftCell = within(screen.getByRole("table")).getByText("MSFT");
     const row = msftCell.closest("tr");
-    expect(row?.className).toMatch(/bg-amber/);
+    expect(row?.className).toMatch(/bg-warning/);
   });
 });
 

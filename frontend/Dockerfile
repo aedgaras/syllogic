@@ -94,4 +94,10 @@ COPY --from=builder --chown=node:node /app/lib/db/migrations ./lib/db/migrations
 USER node
 
 EXPOSE 3000
-CMD ["sh", "-c", "node scripts/migrate.js && exec node server.js"]
+# Migrations are owned by the one-shot "migrate" Compose service (which
+# overrides this CMD with `node scripts/migrate.js`); the "app" service
+# waits on it via depends_on/service_completed_successfully and just runs
+# the server. Running migrate.js again here would re-apply it on every
+# "app" start and race the migrate service the moment this scales past one
+# replica.
+CMD ["node", "server.js"]

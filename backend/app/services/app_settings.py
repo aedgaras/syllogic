@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -130,7 +130,7 @@ def set_llm_model(db: Session, model: str, updated_by_user_id: Optional[str]) ->
     value_encrypted = encrypt_value(serialized) or serialized
 
     setting = db.query(AppSetting).filter(AppSetting.key == LLM_MODEL_SETTING).first()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if setting is None:
         setting = AppSetting(
             key=LLM_MODEL_SETTING,
@@ -213,7 +213,7 @@ def set_openai_api_key(db: Session, api_key: str, updated_by_user_id: Optional[s
         raise ValueError("LLM API key is required.")
 
     setting = db.query(AppSetting).filter(AppSetting.key == OPENAI_API_KEY_SETTING).first()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     value_encrypted = encrypt_value(normalized)
     if value_encrypted is None:
         raise AppSettingEncryptionMissing(
@@ -300,7 +300,7 @@ def set_log_level(db: Session, level: str, updated_by_user_id: Optional[str]) ->
     value_encrypted = encrypt_value(serialized) or serialized
 
     setting = db.query(AppSetting).filter(AppSetting.key == LOG_LEVEL_SETTING).first()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if setting is None:
         setting = AppSetting(
             key=LOG_LEVEL_SETTING,
@@ -359,7 +359,7 @@ def set_ai_summary_enabled(db: Session, enabled: bool, updated_by_user_id: Optio
     value_encrypted = encrypt_value(serialized) or serialized
 
     setting = db.query(AppSetting).filter(AppSetting.key == AI_SUMMARY_ENABLED_SETTING).first()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if setting is None:
         setting = AppSetting(
             key=AI_SUMMARY_ENABLED_SETTING,

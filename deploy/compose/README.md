@@ -181,11 +181,11 @@ docker compose --env-file deploy/compose/.env -f deploy/compose/docker-compose.y
 
 MCP port contract:
 - Internal container port is fixed at `8001`.
-- External host port defaults to `8001`.
+- External host port defaults to `8001` and is bound to `127.0.0.1` only.
 - Override external port with `MCP_PORT` (example: `MCP_PORT=9001` maps `9001 -> 8001`).
 - Health endpoint is exposed at `http://localhost:${MCP_PORT:-8001}/health`.
 
-Security note: the MCP service is currently best treated as **single-user** and should only be exposed to trusted networks (LAN/VPN), or protected by an auth layer.
+Security note: the MCP service is currently best treated as **single-user**. It is bound to loopback by default; set `MCP_BIND_ADDR=0.0.0.0` only if you're deliberately exposing it to a trusted network (LAN/VPN) or fronting it with an auth layer.
 
 ## Making GHCR Images Public
 
@@ -235,12 +235,45 @@ From repository root:
 - Lightweight ARM64/small-server stack: `./scripts/prod-up.sh --lite`
 - Local source-compose smoke validation: `./scripts/local-smoke.sh`
 - VPS post-install verification: `deploy/install/post-install-check.sh /opt/syllogic`
+- Back up the database + uploads volume: `./scripts/backup.sh`
+- Restore from a backup: `./scripts/restore.sh <backup_dir>`
 
-## Backups (Docs-Only in v1)
-
-Example manual backup:
+## Backups
 
 ```bash
-docker compose --env-file deploy/compose/.env -f deploy/compose/docker-compose.yml exec -T postgres \
-  sh -lc 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > backup.sql
+./scripts/backup.sh                        # writes to backups/<UTC timestamp>/
+./scripts/backup.sh /path/to/backup/dir     # or an explicit destination
+```
+
+Backs up two things, both required to fully recover a deployment:
+
+- **The database** (`db.dump`, `pg_dump -Fc`) -- transactions, accounts, categories, everything in Postgres.
+- **The uploads volume** (`uploads.tar.gz`) -- profile photos, merchant logos, people avatars, anything under `LOCAL_STORAGE_PATH`.
+
+It does **not** back up `DATA_ENCRYPTION_KEY_CURRENT` / `DATA_ENCRYPTION_KEY_PREVIOUS`. IBANs, account external IDs, and other encrypted columns in `db.dump` are unreadable without the matching key(s) from the `deploy/compose/.env` the backup was taken from — a backup and a lost key together are as good as no backup. Keep that `.env` (or at minimum its `DATA_ENCRYPTION_KEY_*` values) somewhere durable and separate from the backup files themselves, and note the `DATA_ENCRYPTION_KEY_ID` written into each backup's `manifest.txt` so you know which key a given backup needs.
+
+Automate it with cron, e.g. nightly at 03:00, keeping 14 days:
+
+```cron
+0 3 * * * cd /opt/syllogic && ./scripts/backup.sh >> /var/log/syllogic-backup.log 2>&1
+```
+
+(Rotation isn't built in -- pair this with your own retention, e.g. `find /opt/syllogic/backups -mindepth 1 -maxdepth 1 -mtime +14 -exec rm -rf {} \;`, or point backups at storage that already expires old objects.)
+
+### Restore drill
+
+Practice this before you need it for real -- ideally on a disposable stack, not production.
+
+```bash
+./scripts/restore.sh backups/20260101T030000Z
+```
+
+This stops `app`/`backend`/`worker`/`beat`/`mcp` (leaves `postgres`/`redis` up), `pg_restore --clean`s the database, and untars `uploads.tar.gz` over the uploads volume, wiping whatever was there first. It's destructive and asks for confirmation (type the database name) unless run with `--yes`. It does not restart the stack — after it finishes, verify `DATA_ENCRYPTION_KEY_CURRENT`/`PREVIOUS` in `deploy/compose/.env` match the backup's `manifest.txt`, then run `./scripts/prod-up.sh`.
+
+To actually rehearse a restore without touching a real deployment, point both scripts at an isolated Compose project and env file:
+
+```bash
+COMPOSE_PROJECT_NAME=syllogic-restore-drill ENV_FILE=/path/to/scratch.env ./scripts/backup.sh /tmp/drill
+# ...mutate/seed the scratch stack...
+COMPOSE_PROJECT_NAME=syllogic-restore-drill ENV_FILE=/path/to/scratch.env ./scripts/restore.sh /tmp/drill --yes
 ```

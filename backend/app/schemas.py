@@ -802,11 +802,18 @@ def _validate_timezone(v: Optional[str]) -> Optional[str]:
     return v
 
 
+_MAX_RECIPIENT_EMAILS = 10
+
+
 def _validate_recipient_emails(v: Optional[list[str]]) -> Optional[list[str]]:
     if v is None:
         return v
     if len(v) < 1:
         raise ValueError("recipient_emails must contain at least one email address")
+    if len(v) > _MAX_RECIPIENT_EMAILS:
+        raise ValueError(
+            f"recipient_emails cannot contain more than {_MAX_RECIPIENT_EMAILS} addresses"
+        )
     for email in v:
         if not _EMAIL_RE.match(email):
             raise ValueError(f"Invalid email address: {email}")

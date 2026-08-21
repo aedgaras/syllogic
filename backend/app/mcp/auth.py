@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 import os
 import bcrypt
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from typing import Optional
 
@@ -84,11 +84,14 @@ def validate_api_key(api_key: str) -> Optional[str]:
             record.key_hash = hash_api_key(api_key)
             db.commit()
         else:
-            # Try to find a bcrypt-hashed key, scoped by key prefix when possible.
+            # Try to find a bcrypt-hashed key, scoped by (indexed) key prefix.
+            # The prefix lookup is authoritative: a miss here means the key
+            # doesn't exist, full stop. Falling back to scanning every row
+            # would mean an unrecognized key still costs one bcrypt
+            # comparison per row in the table -- CPU exhaustion available to
+            # anyone who can send a request with a bogus pf_ prefix.
             key_prefix = api_key[:11]  # "pf_" + 8 chars
             candidates = db.query(ApiKey).filter(ApiKey.key_prefix == key_prefix).all()
-            if not candidates:
-                candidates = db.query(ApiKey).all()
             for key_record in candidates:
                 if verify_api_key(api_key, key_record.key_hash):
                     record = key_record
@@ -98,11 +101,11 @@ def validate_api_key(api_key: str) -> Optional[str]:
             return None
 
         # Check if expired
-        if record.expires_at and record.expires_at < datetime.utcnow():
+        if record.expires_at and record.expires_at < datetime.now(timezone.utc):
             return None
 
         # Update last_used_at timestamp
-        record.last_used_at = datetime.utcnow()
+        record.last_used_at = datetime.now(timezone.utc)
         db.commit()
 
         return record.user_id
@@ -135,13 +138,19 @@ except ImportError:  # pragma: no cover
     JWTVerifier = None  # type: ignore
 
 
-AS_ISSUER = os.environ.get("MCP_OAUTH_ISSUER", "https://app.syllogic.ai/api/auth")
-AS_JWKS_URI = os.environ.get("MCP_OAUTH_JWKS_URI", "https://app.syllogic.ai/api/auth/jwks")
-MCP_AUDIENCE = os.environ.get("MCP_OAUTH_AUDIENCE", "https://mcp.syllogic.ai/mcp")
+# Self-hosted default: derive the authorization server from this deployment's
+# own APP_URL rather than trusting a third-party host. A fork that never sets
+# these must verify tokens against *its own* better-auth instance, not
+# upstream's — otherwise any JWT the upstream project issues would be
+# accepted here.
+APP_URL = os.environ.get("APP_URL", "http://localhost:8080")
+AS_ISSUER = os.environ.get("MCP_OAUTH_ISSUER") or f"{APP_URL}/api/auth"
+AS_JWKS_URI = os.environ.get("MCP_OAUTH_JWKS_URI") or f"{AS_ISSUER}/jwks"
 # Public server root (no path). RemoteAuthProvider uses this as base_url and
 # appends the MCP route on top when advertising the Protected Resource.
 # Keep it separate from MCP_AUDIENCE (which is the JWT `aud` claim value).
-MCP_PUBLIC_URL = os.environ.get("MCP_PUBLIC_URL", "https://mcp.syllogic.ai")
+MCP_PUBLIC_URL = os.environ.get("MCP_PUBLIC_URL", "http://localhost:8001")
+MCP_AUDIENCE = os.environ.get("MCP_OAUTH_AUDIENCE") or f"{MCP_PUBLIC_URL}/mcp"
 
 
 class CompositeAuthProvider(AuthProvider):

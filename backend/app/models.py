@@ -4,7 +4,7 @@ These models mirror the frontend Drizzle schema for consistency.
 """
 
 import uuid
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 from sqlalchemy import (
     Column,
     String,
@@ -25,6 +25,10 @@ from sqlalchemy.orm import relationship
 from decimal import Decimal
 
 from app.database import Base
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class Account(Base):
@@ -70,9 +74,9 @@ class Account(Base):
     )  # True when starting_balance is from verified bank data
     is_active = Column(Boolean, default=True)
     alias_patterns = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
-    last_synced_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_synced_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     user = relationship("User", back_populates="accounts")
@@ -123,17 +127,17 @@ class BankConnection(Base):
     session_id = Column(String(255), nullable=False)
     aspsp_name = Column(String(255), nullable=False)
     aspsp_country = Column(String(2), nullable=False)
-    consent_expires_at = Column(DateTime, nullable=True)
-    consent_notified_at = Column(DateTime, nullable=True)
+    consent_expires_at = Column(DateTime(timezone=True), nullable=True)
+    consent_notified_at = Column(DateTime(timezone=True), nullable=True)
     status = Column(String(20), nullable=False, default="active")
-    last_synced_at = Column(DateTime, nullable=True)
-    sync_started_at = Column(DateTime, nullable=True)
+    last_synced_at = Column(DateTime(timezone=True), nullable=True)
+    sync_started_at = Column(DateTime(timezone=True), nullable=True)
     last_sync_error = Column(Text, nullable=True)
     sync_cursor = Column(JSONB, nullable=True)
     initial_sync_days = Column(Integer, nullable=False, server_default="90")
     raw_session_data = Column(JSONB, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     user = relationship("User", back_populates="bank_connections")
@@ -171,7 +175,7 @@ class Category(Base):
     system_key = Column(
         String(50), nullable=True, index=True
     )  # stable, non-translated identifier for system categories
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     # Relationships
     user = relationship("User", back_populates="categories")
@@ -237,7 +241,7 @@ class Transaction(Base):
     category_system_id = Column(
         UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True, index=True
     )  # AI-assigned category
-    booked_at = Column(DateTime, nullable=False, index=True)
+    booked_at = Column(DateTime(timezone=True), nullable=False, index=True)
     pending = Column(Boolean, default=False)
     categorization_instructions = Column(Text)  # User instructions for AI categorization
     enrichment_data = Column(JSONB)  # Enriched merchant info, logos, etc.
@@ -262,8 +266,8 @@ class Transaction(Base):
         nullable=True,
         index=True,
     )  # Source receipt scan (null unless created by splitting a scanned receipt)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     user = relationship("User", back_populates="transactions")
@@ -292,6 +296,15 @@ class Transaction(Base):
         Index("idx_transactions_receipt_scan", "receipt_scan_id"),
         UniqueConstraint("account_id", "external_id", name="transactions_account_external_id"),
         Index("idx_transactions_user_counterparty_iban", "user_id", "counterparty_iban_hash"),
+        # Composite indexes matching the dominant access pattern: one user's
+        # transactions, newest first, optionally narrowed by account or
+        # category -- covers list_transactions/get_transaction_page without
+        # Postgres having to combine separate single-column indexes or sort.
+        Index("idx_transactions_user_booked_at", "user_id", booked_at.desc()),
+        Index("idx_transactions_user_account_booked_at", "user_id", "account_id", booked_at.desc()),
+        Index(
+            "idx_transactions_user_category_booked_at", "user_id", "category_id", booked_at.desc()
+        ),
     )
 
 
@@ -314,9 +327,9 @@ class Report(Base):
     timezone = Column(String(64), nullable=False, default="UTC")
     recipient_emails = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     is_active = Column(Boolean, default=True, nullable=False)
-    next_run_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    next_run_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     user = relationship("User")
     runs = relationship("ReportRun", back_populates="report", cascade="all, delete-orphan")
@@ -336,14 +349,14 @@ class ReportRun(Base):
     report_id = Column(
         UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False
     )
-    scheduled_for = Column(DateTime, nullable=True)
+    scheduled_for = Column(DateTime(timezone=True), nullable=True)
     is_test = Column(Boolean, default=False, nullable=False)
-    started_at = Column(DateTime, nullable=True)
-    finished_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
     status = Column(String(20), nullable=False, default="SCHEDULED")
     error_message = Column(Text, nullable=True)
     recipient_emails = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     report = relationship("Report", back_populates="runs")
 
@@ -388,8 +401,8 @@ class InternalTransfer(Base):
     )
     amount = Column(Numeric(15, 2), nullable=False)
     currency = Column(String(3), nullable=False)
-    detected_at = Column(DateTime, server_default=text("now()"))
-    created_at = Column(DateTime, server_default=text("now()"))
+    detected_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
     source_account = relationship("Account", foreign_keys=[source_account_id])
     pocket_account = relationship("Account", foreign_keys=[pocket_account_id])
@@ -418,7 +431,9 @@ class RecurringTransaction(Base):
     )
     name = Column(String(255), nullable=False)
     merchant = Column(String(255), nullable=True)
-    amount = Column(Numeric(15, 2), nullable=False)  # estimated/typical amount when is_variable_amount
+    amount = Column(
+        Numeric(15, 2), nullable=False
+    )  # estimated/typical amount when is_variable_amount
     is_variable_amount = Column(Boolean, nullable=False, default=False, server_default="false")
     currency = Column(String(3), default="EUR")
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True, index=True)
@@ -436,8 +451,8 @@ class RecurringTransaction(Base):
     next_due_date = Column(Date, nullable=True, index=True)
     end_date = Column(Date, nullable=True)
     auto_generate = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     user = relationship("User", back_populates="recurring_transactions")
@@ -472,8 +487,8 @@ class Budget(Base):
     period = Column(String(20), nullable=False, default="monthly")  # monthly, weekly, yearly
     start_date = Column(Date, nullable=True)  # anchor for weekly/yearly period boundary math
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     user = relationship("User", back_populates="budgets")
@@ -498,7 +513,7 @@ class BudgetCategory(Base):
         UUID(as_uuid=True), ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True
     )
     sub_limit = Column(Numeric(15, 2), nullable=True)  # per-category cap within this budget
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
     # Relationships
     budget = relationship("Budget", back_populates="budget_categories")
@@ -523,7 +538,7 @@ class CategorizationRule(Base):
     )
     instructions = Column(Text)  # User-provided instructions for AI categorization
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     # Relationships
     user = relationship("User", back_populates="categorization_rules")
@@ -561,8 +576,8 @@ class CsvImport(Base):
     celery_task_id = Column(String(255), nullable=True)
     progress_count = Column(Integer, default=0)
     selected_indices = Column(JSONB, nullable=True)  # Array of row indices selected for import
-    created_at = Column(DateTime, default=datetime.utcnow)
-    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="csv_imports")
@@ -599,10 +614,10 @@ class ReceiptScan(Base):
     raw_ocr_text = Column(Text, nullable=True)
     merchant_name = Column(String(255), nullable=True)
     receipt_total = Column(Numeric(15, 2), nullable=True)
-    receipt_date = Column(DateTime, nullable=True)
+    receipt_date = Column(DateTime(timezone=True), nullable=True)
     error_message = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="receipt_scans")
@@ -625,7 +640,7 @@ class ExchangeRate(Base):
     __tablename__ = "exchange_rates"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    date = Column(DateTime, nullable=False, index=True)  # Date of the exchange rate
+    date = Column(DateTime(timezone=True), nullable=False, index=True)  # Date of the exchange rate
     base_currency = Column(
         String(3), nullable=False, index=True
     )  # Source currency (transaction currency)
@@ -633,8 +648,8 @@ class ExchangeRate(Base):
     rate = Column(
         Numeric(18, 8), nullable=False
     )  # Exchange rate (how many target currency = 1 base currency)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Indexes and constraints
     __table_args__ = (
@@ -662,15 +677,17 @@ class AccountBalance(Base):
         nullable=False,
         index=True,
     )
-    date = Column(DateTime, nullable=False, index=True)  # Date of the balance snapshot
+    date = Column(
+        DateTime(timezone=True), nullable=False, index=True
+    )  # Date of the balance snapshot
     balance_in_account_currency = Column(
         Numeric(15, 2), nullable=False
     )  # Balance in account's currency
     balance_in_functional_currency = Column(
         Numeric(15, 2), nullable=False
     )  # Balance converted to functional currency
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     account = relationship("Account", back_populates="balances")
@@ -699,8 +716,8 @@ class Property(Base):
     current_value = Column(Numeric(15, 2), default=Decimal("0"))
     currency = Column(String(3), default="EUR")
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     user = relationship("User", back_populates="properties")
@@ -727,8 +744,8 @@ class Vehicle(Base):
     current_value = Column(Numeric(15, 2), default=Decimal("0"))
     currency = Column(String(3), default="EUR")
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     user = relationship("User", back_populates="vehicles")
@@ -778,8 +795,8 @@ class SubscriptionSuggestion(Base):
     status = Column(String(20), default="pending", nullable=False)  # pending, approved, dismissed
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False)
 
     # Relationships
     user = relationship("User", back_populates="subscription_suggestions")
@@ -812,7 +829,7 @@ class TransactionLink(Base):
         UUID(as_uuid=True), ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False
     )
     link_role = Column(String(20), nullable=False)  # "primary" | "reimbursement" | "expense"
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     # Relationships
     user = relationship("User", back_populates="transaction_links")
@@ -839,9 +856,9 @@ class CompanyLogo(Base):
     company_name = Column(String(255), nullable=True)  # "Netflix"
     logo_url = Column(Text, nullable=True)  # Local path: "/uploads/logos/netflix.png"
     status = Column(String(20), default="found", nullable=False)  # "found" | "not_found"
-    last_checked_at = Column(DateTime, default=datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_checked_at = Column(DateTime(timezone=True), default=_utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     accounts = relationship("Account", back_populates="logo")
@@ -871,10 +888,10 @@ class VerificationToken(Base):
 
     id = Column(String, primary_key=True)
     identifier = Column(String, nullable=False)
-    token = Column(String, unique=True, nullable=False)
-    expires_at = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    value = Column(String, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
 
 class Session(Base):
@@ -889,11 +906,12 @@ class Session(Base):
     id = Column(String, primary_key=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     token = Column(String, unique=True, nullable=False)
-    expires_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
     ip_address = Column(Text, nullable=True)
     user_agent = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    impersonated_by = Column(Text, nullable=True)  # better-auth admin plugin: impersonation
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     user = relationship("User", back_populates="sessions")
@@ -914,13 +932,13 @@ class AuthAccount(Base):
     provider_id = Column(String, nullable=False)
     access_token = Column(Text, nullable=True)
     refresh_token = Column(Text, nullable=True)
-    access_token_expires_at = Column(DateTime, nullable=True)
-    refresh_token_expires_at = Column(DateTime, nullable=True)
+    access_token_expires_at = Column(DateTime(timezone=True), nullable=True)
+    refresh_token_expires_at = Column(DateTime(timezone=True), nullable=True)
     scope = Column(Text, nullable=True)
     id_token = Column(Text, nullable=True)
     password = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     user = relationship("User", back_populates="auth_accounts")
@@ -941,16 +959,21 @@ class User(Base):
     email_verified = Column(Boolean, default=False)
     image = Column(Text, nullable=True)
     role = Column(Text, nullable=True)  # better-auth admin plugin: "admin" or "user"
+    banned = Column(Boolean, default=False)  # better-auth admin plugin
+    ban_reason = Column(Text, nullable=True)
+    ban_expires = Column(DateTime(timezone=True), nullable=True)
+    hide_balances = Column(Boolean, default=False)  # Mask balance amounts across the app
+    tutorials_enabled = Column(Boolean, default=True)  # Show page tours/onboarding tips
     onboarding_status = Column(
         String(20), default="pending"
     )  # pending, step_1, step_2, step_3, completed
-    onboarding_completed_at = Column(DateTime, nullable=True)
+    onboarding_completed_at = Column(DateTime(timezone=True), nullable=True)
     functional_currency = Column(
         String(3), default="EUR"
     )  # User's functional currency for reporting
     profile_photo_path = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     # Relationships
     sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
@@ -996,9 +1019,9 @@ class ApiKey(Base):
         String(128), nullable=False, index=True
     )  # Supports bcrypt (60 chars) and SHA-256 (64 chars)
     key_prefix = Column(String(12), nullable=False)
-    last_used_at = Column(DateTime, nullable=True)
-    expires_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
     # Relationships
     user = relationship("User", back_populates="api_keys")
@@ -1007,6 +1030,7 @@ class ApiKey(Base):
     __table_args__ = (
         Index("idx_api_keys_user", "user_id"),
         Index("idx_api_keys_hash", "key_hash"),
+        Index("idx_api_keys_prefix", "key_prefix"),
     )
 
 
@@ -1021,8 +1045,8 @@ class AppSetting(Base):
     key = Column(String(255), primary_key=True)
     value_encrypted = Column(Text, nullable=True)
     updated_by_user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
 
 class Holding(Base):
@@ -1043,8 +1067,8 @@ class Holding(Base):
     as_of_date = Column(Date, nullable=True)
     source = Column(String(20), nullable=False)
     last_price_error = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     valuations = relationship(
         "HoldingValuation", back_populates="holding", cascade="all, delete-orphan"
@@ -1100,8 +1124,8 @@ class Person(Base):
     kind = Column(String(20), nullable=False, default="member")
     color = Column(String(7), nullable=True)
     avatar_path = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False)
 
     user = relationship("User", backref="people")
 
@@ -1118,7 +1142,7 @@ class AccountOwner(Base):
         UUID(as_uuid=True), ForeignKey("people.id", ondelete="CASCADE"), primary_key=True
     )
     share = Column(Numeric(5, 4), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
 
 class PropertyOwner(Base):
@@ -1131,7 +1155,7 @@ class PropertyOwner(Base):
         UUID(as_uuid=True), ForeignKey("people.id", ondelete="CASCADE"), primary_key=True
     )
     share = Column(Numeric(5, 4), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
 
 class VehicleOwner(Base):
@@ -1144,4 +1168,4 @@ class VehicleOwner(Base):
         UUID(as_uuid=True), ForeignKey("people.id", ondelete="CASCADE"), primary_key=True
     )
     share = Column(Numeric(5, 4), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)

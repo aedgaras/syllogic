@@ -48,14 +48,18 @@ jobs:
             type=sha,prefix=sha-
 
       - name: Build & push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: ./${{ matrix.service }}
           file: ./${{ matrix.service }}/Dockerfile
           platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
           push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: true
+          sbom: true
           # backend/Dockerfile's report-builder stage bundles the report
           # newsletter renderer and needs frontend/ as a
           # named additional context since the primary context stays
@@ -66,6 +70,27 @@ jobs:
             NEXT_PUBLIC_DISABLE_SIGN_UPS=${{ vars.NEXT_PUBLIC_DISABLE_SIGN_UPS || 'false' }}
             NEXT_PUBLIC_DEMO_EMAIL=${{ vars.NEXT_PUBLIC_DEMO_EMAIL || '' }}
             NEXT_PUBLIC_DEMO_PASSWORD=${{ vars.NEXT_PUBLIC_DEMO_PASSWORD || '' }}
+
+      # PR builds are loaded into the local daemon (never pushed) and
+      # scanned by image id; push/tag builds are scanned by the tag GHCR
+      # just received. Report-only for now (exit-code 0) -- results still
+      # surface in the Security tab so findings are visible without making
+      # an upstream CVE in a base image an unreviewable hard failure.
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ github.event_name == 'pull_request' && steps.build.outputs.imageid || fromJSON(steps.meta.outputs.json).tags[0] }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+
+      - name: Upload vulnerability scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-${{ matrix.service }}
 
   release_bundle:
     if: startsWith(github.ref, 'refs/tags/v')

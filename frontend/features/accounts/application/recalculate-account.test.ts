@@ -34,7 +34,7 @@ describe("account recalculation use cases", () => {
         knownCurrentBalance: 150,
       }),
     ).resolves.toEqual({ success: true, newStartingBalance: 125 });
-    expect(deps.updateBalances).toHaveBeenCalledWith("account-1", {
+    expect(deps.updateBalances).toHaveBeenCalledWith("user-1", "account-1", {
       startingBalance: 125,
       functionalBalance: 150,
     });
@@ -54,7 +54,7 @@ describe("account recalculation use cases", () => {
       daysProcessed: 10,
       recordsStored: 10,
     });
-    expect(deps.updateBalances).toHaveBeenCalledWith("account-1", {
+    expect(deps.updateBalances).toHaveBeenCalledWith("user-1", "account-1", {
       functionalBalance: 125,
     });
   });

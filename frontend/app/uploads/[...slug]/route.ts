@@ -7,6 +7,12 @@ import { resolveLocalStorageRoot } from "@/lib/storage/local-paths";
 // CSV imports and other private files must NOT be added here.
 const PUBLIC_UPLOAD_DIRS = new Set(["profile", "logos", "people"]);
 
+// Of those, which require a signed-in session. Merchant logos stay public so
+// their long-lived immutable caching keeps working; profile photos and
+// people avatars are personal data and must not be readable by anyone who
+// guesses the path.
+const SESSION_REQUIRED_DIRS = new Set(["profile", "people"]);
+
 function contentTypeFor(filePath: string): string {
   const ext = path.extname(filePath).toLowerCase();
   switch (ext) {
@@ -25,7 +31,7 @@ function contentTypeFor(filePath: string): string {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ slug: string[] }> },
 ) {
   const { slug } = await context.params;
@@ -36,6 +42,18 @@ export async function GET(
   const [topLevel] = slug;
   if (!PUBLIC_UPLOAD_DIRS.has(topLevel)) {
     return new NextResponse("Not Found", { status: 404 });
+  }
+
+  if (SESSION_REQUIRED_DIRS.has(topLevel)) {
+    try {
+      const { auth } = await import("@/lib/auth");
+      const session = await auth.api.getSession({ headers: request.headers });
+      if (!session?.user?.id) {
+        return new NextResponse("Not Found", { status: 404 });
+      }
+    } catch {
+      return new NextResponse("Not Found", { status: 404 });
+    }
   }
 
   const storageRoot = resolveLocalStorageRoot();

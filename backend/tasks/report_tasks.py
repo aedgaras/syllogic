@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import update
@@ -40,7 +40,7 @@ def _report_renderer_command() -> tuple[list[str], Path]:
 def check_due_reports() -> None:
     db = SessionLocal()
     try:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         due_reports = (
             db.query(Report).filter(Report.is_active.is_(True), Report.next_run_at <= now).all()
         )
@@ -121,7 +121,7 @@ def send_report_run(report_run_id: str) -> None:
             claim_result = db.execute(
                 update(ReportRun)
                 .where(ReportRun.id == report_run_id, ReportRun.status == "SCHEDULED")
-                .values(status="RUNNING", started_at=datetime.utcnow())
+                .values(status="RUNNING", started_at=datetime.now(timezone.utc))
             )
             db.commit()
             if claim_result.rowcount == 0:
@@ -164,13 +164,13 @@ def send_report_run(report_run_id: str) -> None:
             adapter = get_mail_adapter()
             adapter.send(
                 to=run.recipient_emails,
-                subject=f"{report.name} — {datetime.utcnow().date().isoformat()}",
+                subject=f"{report.name} — {datetime.now(timezone.utc).date().isoformat()}",
                 html=rendered["html"],
                 text=rendered["text"],
             )
 
             run.status = "SUCCEEDED"
-            run.finished_at = datetime.utcnow()
+            run.finished_at = datetime.now(timezone.utc)
             db.commit()
         except Exception as exc:  # noqa: BLE001 - must never break the Beat loop
             _mark_run_failed(db, run, report_run_id, exc)
@@ -198,7 +198,7 @@ def _mark_run_failed(db, run, report_run_id: str, exc: Exception) -> None:
             return
         run.status = "FAILED"
         run.error_message = str(exc)
-        run.finished_at = datetime.utcnow()
+        run.finished_at = datetime.now(timezone.utc)
         db.commit()
     except Exception:  # noqa: BLE001 - never let the failure handler itself raise
         try:

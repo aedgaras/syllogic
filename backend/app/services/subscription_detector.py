@@ -17,7 +17,7 @@ import logging
 from typing import Optional, List, Dict, Tuple, Set
 from decimal import Decimal
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 from uuid import UUID
 
@@ -957,7 +957,7 @@ class SubscriptionDetector:
             query = query.filter(Transaction.account_id.in_(account_ids))
 
         if lookback_days is not None:
-            lookback_date = datetime.utcnow() - timedelta(days=lookback_days)
+            lookback_date = datetime.now(timezone.utc) - timedelta(days=lookback_days)
             query = query.filter(Transaction.booked_at >= lookback_date)
 
         transactions = query.order_by(

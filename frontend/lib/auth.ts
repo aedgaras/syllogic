@@ -28,8 +28,13 @@ export function createAuth(
         oauthRefreshToken: schema.oauthRefreshToken,
         oauthConsent: schema.oauthConsent,
         jwks: schema.jwks,
+        rateLimit: schema.rateLimit,
       },
     }),
+    rateLimit: {
+      enabled: true,
+      storage: "database",
+    },
     plugins: [
       admin(),
       jwt({
@@ -58,24 +63,31 @@ export function createAuth(
         : []),
       oauthProvider({
         scopes: ["mcp:access"],
-        accessTokenExpiresIn: 60 * 60 * 24 * 30, // 30 days
+        accessTokenExpiresIn: 60 * 60, // 1 hour
         refreshTokenExpiresIn: 60 * 60 * 24 * 90, // 90 days
-        allowDynamicClientRegistration: true,
-        allowUnauthenticatedClientRegistration: true,
+        // Off by default: anyone who can reach the origin could otherwise
+        // register an OAuth client without authenticating and drive the
+        // consent flow. Only enable this for deployments that need MCP
+        // clients (e.g. Claude custom connectors) to self-register via
+        // RFC 7591 instead of using a pre-shared pf_ API key.
+        allowDynamicClientRegistration:
+          process.env.MCP_OAUTH_ALLOW_DYNAMIC_REGISTRATION === "true",
+        allowUnauthenticatedClientRegistration:
+          process.env.MCP_OAUTH_ALLOW_DYNAMIC_REGISTRATION === "true",
         loginPage: "/login",
         consentPage: "/oauth/consent",
         // Allow MCP clients (e.g. Claude custom connectors) to request the
         // Syllogic MCP server as the JWT audience via RFC 8707. Without this,
         // better-auth rejects the resource parameter and falls back to an
         // opaque token that the MCP JWTVerifier can't validate.
+        //
+        // Defaults to this deployment's own local MCP server, not
+        // upstream's — a fork that never sets MCP_VALID_AUDIENCES should
+        // issue tokens scoped to its own MCP instance.
         validAudiences: Array.from(
           new Set(
             [
-              "https://mcp.syllogic.ai/mcp",
-              "https://mcp.syllogic.ai",
-              ...(process.env.MCP_LOCAL_AUDIENCE
-                ? [process.env.MCP_LOCAL_AUDIENCE]
-                : []),
+              process.env.MCP_LOCAL_AUDIENCE || "http://localhost:8001/mcp",
               ...(process.env.MCP_VALID_AUDIENCES
                 ? process.env.MCP_VALID_AUDIENCES.split(",").map((v) =>
                     v.trim(),

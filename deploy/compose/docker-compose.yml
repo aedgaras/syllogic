@@ -75,6 +75,7 @@ services:
       DATA_ENCRYPTION_KEY_ID: ${DATA_ENCRYPTION_KEY_ID:-k1}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FORMAT: ${LOG_FORMAT:-json}
+      ERROR_REPORTING_WEBHOOK_URL: ${ERROR_REPORTING_WEBHOOK_URL:-}
       # Optional integrations / features
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
@@ -95,10 +96,13 @@ services:
       migrate:
         condition: service_completed_successfully
     healthcheck:
+      # /health/ready actually touches Postgres and Redis (unlike /health,
+      # which only proves the process is alive) so a dead dependency here
+      # trips the restart policy instead of being reported healthy forever.
       test:
         [
           "CMD-SHELL",
-          "python -c \"import os,urllib.request; urllib.request.urlopen(os.environ.get('BACKEND_HEALTHCHECK_URL','http://localhost:8000/health')).read()\"",
+          "python -c \"import os,urllib.request; urllib.request.urlopen(os.environ.get('BACKEND_HEALTHCHECK_URL','http://localhost:8000/health/ready')).read()\"",
         ]
       interval: 10s
       timeout: 5s
@@ -109,7 +113,10 @@ services:
   # MCP server (FastMCP) for Claude Desktop / programmatic access.
   #
   # Internal service port is fixed at 8001.
-  # External host port defaults to 8001 and is configurable via MCP_PORT.
+  # Best treated as single-user: bound to loopback by default so it is not
+  # reachable from the network. Set MCP_BIND_ADDR=0.0.0.0 (and put it behind
+  # Caddy/a VPN) to expose it deliberately. External host port defaults to
+  # 8001 and is configurable via MCP_PORT.
   mcp:
     image: ${BACKEND_IMAGE:-ghcr.io/aedgaras/syllogic-backend}:${APP_VERSION:-edge}
     container_name: syllogic-mcp
@@ -117,6 +124,8 @@ services:
     environment:
       PROCESS_TYPE: mcp
       PORT: "8001"
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-http://localhost:8001}
       DATABASE_URL: ${DATABASE_URL}
       DATA_ENCRYPTION_KEY_CURRENT: ${DATA_ENCRYPTION_KEY_CURRENT:-}
       DATA_ENCRYPTION_KEY_PREVIOUS: ${DATA_ENCRYPTION_KEY_PREVIOUS:-}
@@ -141,7 +150,7 @@ services:
       migrate:
         condition: service_completed_successfully
     ports:
-      - "${MCP_PORT:-8001}:8001"
+      - "${MCP_BIND_ADDR:-127.0.0.1}:${MCP_PORT:-8001}:8001"
     logging: *default-logging
     restart: unless-stopped
 

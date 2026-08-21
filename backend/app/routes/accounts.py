@@ -17,7 +17,7 @@ from app.models import (
     SubscriptionSuggestion,
     Transaction,
 )
-from app.db_helpers import get_user_id
+from app.db_helpers import get_user_id, get_current_user_id
 from app.schemas import (
     AccountCreate,
     AccountHardDeleteResponse,
@@ -71,7 +71,7 @@ class CreatePocketResponse(BaseModel):
 @router.post("/pocket", response_model=CreatePocketResponse)
 def create_pocket_account(
     payload: CreatePocketRequest,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """
@@ -170,7 +170,7 @@ def create_pocket_account(
 )
 def unlink_internal_transfer(
     transfer_id: UUID,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Unlink a detected internal transfer.
@@ -265,7 +265,7 @@ def get_account(account_id: UUID, user_id: Optional[str] = None, db: Session = D
 @router.get("/{account_id}/logo", response_model=AccountLogoResponse)
 def get_account_logo(
     account_id: UUID,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Read an account's currently persisted company logo, if any."""
@@ -279,7 +279,7 @@ def get_account_logo(
 def set_account_logo_if_missing(
     account_id: UUID,
     payload: AccountLogoSetRequest,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Persist a resolved company logo onto an account without ever
@@ -351,7 +351,7 @@ def update_account(
 @router.delete("/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_account(
     account_id: UUID,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Hard-delete an account.
@@ -385,7 +385,7 @@ def delete_account(
 @router.post("/{account_id}/hard-delete", response_model=AccountHardDeleteResponse)
 def hard_delete_account(
     account_id: UUID,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Permanently delete an account and everything scoped to it.
@@ -600,7 +600,7 @@ def recalculate_account_timeseries(
 def recalculate_balances_from_date(
     account_id: UUID,
     payload: RecalculateBalancesFromDateRequest,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Recompute daily account_balances snapshots from a given date onward.
@@ -629,7 +629,7 @@ def recalculate_balances_from_date(
 def get_transaction_sum(
     account_id: UUID,
     through: Optional[datetime] = None,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
@@ -648,7 +648,7 @@ def get_transaction_sum(
 def get_transaction_sum_before(
     account_id: UUID,
     date: datetime,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
@@ -663,7 +663,7 @@ def get_transaction_sum_before(
 @router.get("/{account_id}/earliest-transaction-date")
 def get_earliest_transaction_date(
     account_id: UUID,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
@@ -681,7 +681,7 @@ def get_earliest_transaction_date(
 def get_balance_history(
     account_id: UUID,
     since: Optional[datetime] = None,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
@@ -705,7 +705,7 @@ def get_balance_history(
 def get_latest_stored_balance(
     account_id: UUID,
     date: datetime,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
@@ -730,7 +730,7 @@ def get_latest_stored_balance(
 def get_daily_transaction_changes(
     account_id: UUID,
     since: datetime,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()

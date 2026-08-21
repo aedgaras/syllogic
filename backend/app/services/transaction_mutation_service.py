@@ -10,7 +10,7 @@ ValueError/LookupError into HTTP responses.
 
 from __future__ import annotations
 
-from datetime import datetime, date as date_type
+from datetime import datetime, date as date_type, timezone
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
 from uuid import UUID
@@ -28,6 +28,22 @@ from app.models import (
     User,
 )
 from app.services.account_balance_service import AccountBalanceService
+
+
+def _ensure_aware_utc(value: datetime) -> datetime:
+    """Callers (routes, MCP tools, tests) sometimes construct a naive
+    datetime for booked_at/adjustment_date. Transaction.booked_at et al are
+    tz-aware columns, so comparing a naive caller-supplied value against an
+    aware one read back from the DB (e.g. `min(old.booked_at, new_booked_at)`)
+    raises TypeError. Normalize at the boundary instead of chasing every
+    comparison site -- a naive input is assumed to already be UTC, matching
+    how this codebase always treated naive datetimes before the timezone
+    sweep."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
 from app.services.exchange_rate_service import ExchangeRateService
 from app.services.system_categories import (
     INTEREST_CATEGORY_SEEDS,
@@ -117,7 +133,7 @@ class TransactionMutationService:
         starting = account.starting_balance or Decimal("0")
         new_balance = (starting + total).quantize(_CENTS)
         account.functional_balance = new_balance
-        account.updated_at = datetime.utcnow()
+        account.updated_at = datetime.now(timezone.utc)
         return new_balance
 
     def _recalculate_from_date(
@@ -148,7 +164,7 @@ class TransactionMutationService:
         )
         if holding:
             holding.quantity = (holding.quantity + signed_amount).quantize(_HOLDING_QTY)
-            holding.updated_at = datetime.utcnow()
+            holding.updated_at = datetime.now(timezone.utc)
         else:
             holding = Holding(
                 user_id=self.user_id,
@@ -166,7 +182,7 @@ class TransactionMutationService:
         quantity = holding.quantity
         rate = functional_rate if functional_rate is not None else Decimal("1")
         value_user_currency = (quantity * rate).quantize(_CENTS)
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         valuation = (
             self.db.query(HoldingValuation)
             .filter(HoldingValuation.holding_id == holding.id, HoldingValuation.date == today)
@@ -204,6 +220,7 @@ class TransactionMutationService:
         description: str,
         booked_at: datetime,
     ) -> Tuple[Transaction, Transaction]:
+        booked_at = _ensure_aware_utc(booked_at)
         description = description.strip()
         if not description:
             raise ValueError("Description is required")
@@ -339,9 +356,7 @@ class TransactionMutationService:
             raise ValueError("Destination account is not a credit card")
 
         return [
-            self.create_transfer(
-                source_id, credit_card_account_id, amount, description, booked_at
-            )
+            self.create_transfer(source_id, credit_card_account_id, amount, description, booked_at)
             for source_id, amount in sources
         ]
 
@@ -354,6 +369,7 @@ class TransactionMutationService:
         description: str,
         booked_at: datetime,
     ) -> Tuple[Transaction, Transaction]:
+        booked_at = _ensure_aware_utc(booked_at)
         description = description.strip()
         if not description:
             raise ValueError("Description is required")
@@ -444,7 +460,7 @@ class TransactionMutationService:
         existing.booked_at = booked_at
         existing.pending = False
         existing.include_in_analytics = False
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(timezone.utc)
 
         destination_txn = Transaction(
             user_id=self.user_id,
@@ -504,6 +520,7 @@ class TransactionMutationService:
         booked_at: datetime,
         description: Optional[str],
     ) -> Transaction:
+        booked_at = _ensure_aware_utc(booked_at)
         if amount is None or amount <= 0:
             raise ValueError("Amount must be greater than zero")
 
@@ -620,7 +637,7 @@ class TransactionMutationService:
             else:
                 signed_amount = existing.amount
 
-            booked_at = updates.get("booked_at", existing.booked_at)
+            booked_at = _ensure_aware_utc(updates.get("booked_at", existing.booked_at))
             currency = account.currency or "EUR"
             functional_currency = self._functional_currency()
             functional_rate = self._get_functional_rate(
@@ -647,7 +664,7 @@ class TransactionMutationService:
         if "category_system_id" in updates:
             existing.category_system_id = updates["category_system_id"]
 
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(timezone.utc)
         self.db.flush()
 
         if not is_full_mutation:
@@ -692,6 +709,7 @@ class TransactionMutationService:
         adjustment_date: datetime,
         balancing_category_id: UUID,
     ) -> Tuple[Optional[UUID], bool]:
+        adjustment_date = _ensure_aware_utc(adjustment_date)
         account = self._get_owned_account(account_id)
         if not account:
             raise LookupError("Account not found")
@@ -703,7 +721,9 @@ class TransactionMutationService:
         if not category or category.name != BALANCING_CATEGORY_NAME:
             raise ValueError("Invalid balancing transfer category")
 
-        start_of_day = datetime(adjustment_date.year, adjustment_date.month, adjustment_date.day)
+        start_of_day = datetime(
+            adjustment_date.year, adjustment_date.month, adjustment_date.day, tzinfo=timezone.utc
+        )
         end_of_day = start_of_day.replace(hour=23, minute=59, second=59, microsecond=999000)
 
         existing = (
@@ -747,7 +767,7 @@ class TransactionMutationService:
         if existing:
             existing.amount = amount
             existing.transaction_type = transaction_type
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = datetime.now(timezone.utc)
             transaction_id = existing.id
             is_update = True
         else:

@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.database import get_db
-from app.db_helpers import get_user_id
+from app.db_helpers import get_current_user_id
 from app.models import BankConnection, Account
 from app.integrations.enable_banking_auth import EnableBankingClient
 from app.integrations.enable_banking_adapter import (
@@ -229,7 +229,7 @@ def _relink_accounts(
 
 
 @router.get("/aspsps")
-def list_aspsps(country: Optional[str] = None, user_id: str = Depends(get_user_id)):
+def list_aspsps(country: Optional[str] = None, user_id: str = Depends(get_current_user_id)):
     """
     List available banks (ASPSPs), optionally filtered by country.
     Results are cached in Redis for 24 hours.
@@ -268,7 +268,7 @@ def list_aspsps(country: Optional[str] = None, user_id: str = Depends(get_user_i
 @router.post("/auth", response_model=AuthResponse)
 def initiate_auth(
     body: AuthRequest,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Generate bank authorization URL for PSU redirect."""
@@ -332,7 +332,7 @@ def initiate_auth(
 @router.post("/session", response_model=SessionResponse)
 def create_session(
     body: SessionRequest,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """
@@ -459,7 +459,7 @@ def map_accounts(
     connection_id: str,
     request: MapAccountsRequest,
     db: Session = Depends(get_db),
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     Map bank accounts to new or existing accounts and activate the connection.
@@ -596,7 +596,7 @@ def map_accounts(
 @router.post("/connections/{connection_id}/recategorize", response_model=SyncTriggerResponse)
 def recategorize_connection(
     connection_id: str,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """
@@ -658,7 +658,7 @@ def recategorize_connection(
 @router.post("/sync/{connection_id}", response_model=SyncTriggerResponse)
 def trigger_sync(
     connection_id: str,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Trigger on-demand sync for a bank connection."""
@@ -691,7 +691,7 @@ def trigger_sync(
 @router.get("/status/{connection_id}", response_model=ConnectionStatusResponse)
 def connection_status(
     connection_id: str,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Get connection status, last sync time, consent expiry."""
@@ -742,7 +742,7 @@ def connection_status(
 
 @router.get("/connections")
 def list_connections(
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """List all bank connections for the current user."""
@@ -845,7 +845,7 @@ def _build_suggested_mappings(
 )
 def get_suggested_mappings(
     connection_id: str,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """
@@ -883,7 +883,7 @@ def get_suggested_mappings(
 @router.delete("/{connection_id}")
 def disconnect(
     connection_id: str,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Disconnect bank: revoke EB session, mark connection as disconnected."""

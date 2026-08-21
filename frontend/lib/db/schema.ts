@@ -16,6 +16,7 @@ import {
   time,
   uniqueIndex,
   primaryKey,
+  bigint,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -33,17 +34,17 @@ export const users = pgTable("users", {
   role: text("role").default("user"),
   banned: boolean("banned").default(false),
   banReason: text("ban_reason"),
-  banExpires: timestamp("ban_expires"),
+  banExpires: timestamp("ban_expires", { withTimezone: true }),
   onboardingStatus: varchar("onboarding_status", { length: 20 }).default(
     "pending",
   ), // pending, step_1, step_2, step_3, completed
-  onboardingCompletedAt: timestamp("onboarding_completed_at"),
+  onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
   functionalCurrency: char("functional_currency", { length: 3 }).default("EUR"), // User's functional currency for reporting
   profilePhotoPath: text("profile_photo_path"),
   hideBalances: boolean("hide_balances").default(false), // Mask balance amounts across the app
   tutorialsEnabled: boolean("tutorials_enabled").default(true), // Show page tours/onboarding tips
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 export const sessions = pgTable("sessions", {
@@ -52,13 +53,13 @@ export const sessions = pgTable("sessions", {
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
   token: text("token").unique().notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   // Required by BetterAuth admin plugin (impersonation).
   impersonatedBy: text("impersonated_by"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 export const authAccounts = pgTable("auth_accounts", {
@@ -70,22 +71,22 @@ export const authAccounts = pgTable("auth_accounts", {
   providerId: text("provider_id").notNull(),
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
-  accessTokenExpiresAt: timestamp("access_token_expires_at"),
-  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
   scope: text("scope"),
   idToken: text("id_token"),
   password: text("password"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 export const verificationTokens = pgTable("verification_tokens", {
   id: text("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 // ============================================================================
@@ -104,8 +105,8 @@ export const oauthClient = pgTable("oauth_client", {
   subjectType: text("subject_type"),
   scopes: text("scopes").array(),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at"),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
   name: text("name"),
   uri: text("uri"),
   icon: text("icon"),
@@ -139,8 +140,8 @@ export const oauthAccessToken = pgTable("oauth_access_token", {
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   referenceId: text("reference_id"),
   refreshId: text("refresh_id"),
-  expiresAt: timestamp("expires_at"),
-  createdAt: timestamp("created_at"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }),
   scopes: text("scopes").array().notNull(),
 });
 
@@ -157,10 +158,10 @@ export const oauthRefreshToken = pgTable("oauth_refresh_token", {
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
   referenceId: text("reference_id"),
-  expiresAt: timestamp("expires_at"),
-  createdAt: timestamp("created_at"),
-  revoked: timestamp("revoked"),
-  authTime: timestamp("auth_time"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }),
+  revoked: timestamp("revoked", { withTimezone: true }),
+  authTime: timestamp("auth_time", { withTimezone: true }),
   scopes: text("scopes").array().notNull(),
 });
 
@@ -172,16 +173,26 @@ export const oauthConsent = pgTable("oauth_consent", {
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   referenceId: text("reference_id"),
   scopes: text("scopes").array().notNull(),
-  createdAt: timestamp("created_at"),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
 
 export const jwks = pgTable("jwks", {
   id: text("id").primaryKey(),
   publicKey: text("public_key").notNull(),
   privateKey: text("private_key").notNull(),
-  createdAt: timestamp("created_at").notNull(),
-  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+});
+
+// BetterAuth's rate limit counters, backed by the database so limits
+// actually hold across a restart and across more than one instance
+// (the in-memory default resets on every deploy and doesn't share state).
+export const rateLimit = pgTable("rate_limit", {
+  id: text("id").primaryKey(),
+  key: text("key"),
+  count: integer("count"),
+  lastRequest: bigint("last_request", { mode: "number" }),
 });
 
 export const apiKeys = pgTable(
@@ -194,13 +205,14 @@ export const apiKeys = pgTable(
     name: varchar("name", { length: 255 }).notNull(),
     keyHash: varchar("key_hash", { length: 64 }).notNull(),
     keyPrefix: varchar("key_prefix", { length: 12 }).notNull(),
-    lastUsedAt: timestamp("last_used_at"),
-    expiresAt: timestamp("expires_at"),
-    createdAt: timestamp("created_at").defaultNow(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index("idx_api_keys_user").on(table.userId),
     index("idx_api_keys_hash").on(table.keyHash),
+    index("idx_api_keys_prefix").on(table.keyPrefix),
   ],
 );
 
@@ -210,8 +222,8 @@ export const appSettings = pgTable("app_settings", {
   updatedByUserId: text("updated_by_user_id").references(() => users.id, {
     onDelete: "set null",
   }),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 // ============================================================================
@@ -261,9 +273,9 @@ export const accounts = pgTable(
       .$type<string[]>()
       .default([])
       .notNull(),
-    lastSyncedAt: timestamp("last_synced_at"),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index("idx_accounts_user").on(table.userId),
@@ -303,17 +315,17 @@ export const bankConnections = pgTable(
     sessionId: varchar("session_id", { length: 255 }).notNull(),
     aspspName: varchar("aspsp_name", { length: 255 }).notNull(),
     aspspCountry: char("aspsp_country", { length: 2 }).notNull(),
-    consentExpiresAt: timestamp("consent_expires_at"),
-    consentNotifiedAt: timestamp("consent_notified_at"),
+    consentExpiresAt: timestamp("consent_expires_at", { withTimezone: true }),
+    consentNotifiedAt: timestamp("consent_notified_at", { withTimezone: true }),
     status: varchar("status", { length: 20 }).notNull().default("active"),
-    lastSyncedAt: timestamp("last_synced_at"),
-    syncStartedAt: timestamp("sync_started_at"),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    syncStartedAt: timestamp("sync_started_at", { withTimezone: true }),
     lastSyncError: text("last_sync_error"),
     syncCursor: jsonb("sync_cursor"),
     rawSessionData: jsonb("raw_session_data"),
     initialSyncDays: integer("initial_sync_days").notNull().default(90),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index("idx_bank_connections_user").on(table.userId),
@@ -340,7 +352,7 @@ export const categories = pgTable(
     isSystem: boolean("is_system").default(false),
     hideFromSelection: boolean("hide_from_selection").default(false),
     systemKey: varchar("system_key", { length: 50 }), // stable, non-translated identifier for system categories
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index("idx_categories_user").on(table.userId),
@@ -377,8 +389,8 @@ export const csvImports = pgTable(
     celeryTaskId: varchar("celery_task_id", { length: 255 }),
     progressCount: integer("progress_count").default(0),
     selectedIndices: jsonb("selected_indices"), // Array of row indices selected for import
-    createdAt: timestamp("created_at").defaultNow(),
-    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
   },
   (table) => [
     index("idx_csv_imports_user").on(table.userId),
@@ -412,7 +424,7 @@ export const transactions = pgTable(
     categorySystemId: uuid("category_system_id").references(
       () => categories.id,
     ), // AI-assigned category (never updated by user)
-    bookedAt: timestamp("booked_at").notNull(),
+    bookedAt: timestamp("booked_at", { withTimezone: true }).notNull(),
     pending: boolean("pending").default(false),
     categorizationInstructions: text("categorization_instructions"), // User instructions for AI categorization
     enrichmentData: jsonb("enrichment_data"), // Enriched merchant info, logos, etc.
@@ -424,8 +436,8 @@ export const transactions = pgTable(
     csvImportId: uuid("csv_import_id").references(() => csvImports.id, {
       onDelete: "set null",
     }), // Source CSV import (null for manual/bank-synced transactions)
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index("idx_transactions_user").on(table.userId),
@@ -454,6 +466,22 @@ export const transactions = pgTable(
       table.userId,
       table.counterpartyIbanHash,
     ),
+    // Dominant access pattern: one user's transactions, newest first,
+    // optionally narrowed by account or category.
+    index("idx_transactions_user_booked_at").on(
+      table.userId,
+      table.bookedAt.desc(),
+    ),
+    index("idx_transactions_user_account_booked_at").on(
+      table.userId,
+      table.accountId,
+      table.bookedAt.desc(),
+    ),
+    index("idx_transactions_user_category_booked_at").on(
+      table.userId,
+      table.categoryId,
+      table.bookedAt.desc(),
+    ),
   ],
 );
 
@@ -479,8 +507,8 @@ export const internalTransfers = pgTable(
       .notNull(),
     amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
     currency: char("currency", { length: 3 }).notNull(),
-    detectedAt: timestamp("detected_at").defaultNow(),
-    createdAt: timestamp("created_at").defaultNow(),
+    detectedAt: timestamp("detected_at", { withTimezone: true }).defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index("idx_internal_transfers_user").on(table.userId),
@@ -516,8 +544,8 @@ export const recurringTransactions = pgTable(
     nextDueDate: date("next_due_date"),
     endDate: date("end_date"),
     autoGenerate: boolean("auto_generate").notNull().default(false),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index("idx_recurring_transactions_user").on(table.userId),
@@ -541,8 +569,8 @@ export const budgets = pgTable(
     period: varchar("period", { length: 20 }).notNull().default("monthly"), // monthly, weekly, yearly
     startDate: date("start_date"), // anchor for weekly/yearly period boundary math
     isActive: boolean("is_active").default(true),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index("idx_budgets_user").on(table.userId),
@@ -560,7 +588,7 @@ export const budgetCategories = pgTable(
       .references(() => categories.id, { onDelete: "cascade" })
       .notNull(),
     subLimit: decimal("sub_limit", { precision: 15, scale: 2 }), // per-category cap within this budget, independent of the budget's total amount
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     primaryKey({ columns: [table.budgetId, table.categoryId] }),
@@ -578,7 +606,7 @@ export const categorizationRules = pgTable("categorization_rules", {
     .notNull(),
   instructions: text("instructions"), // User-provided instructions for AI categorization
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 export const properties = pgTable(
@@ -596,8 +624,8 @@ export const properties = pgTable(
     ),
     currency: char("currency", { length: 3 }).default("EUR"),
     isActive: boolean("is_active").default(true),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [index("idx_properties_user").on(table.userId)],
 );
@@ -619,8 +647,8 @@ export const vehicles = pgTable(
     ),
     currency: char("currency", { length: 3 }).default("EUR"),
     isActive: boolean("is_active").default(true),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [index("idx_vehicles_user").on(table.userId)],
 );
@@ -629,12 +657,12 @@ export const exchangeRates = pgTable(
   "exchange_rates",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    date: timestamp("date").notNull(), // Date of the exchange rate
+    date: timestamp("date", { withTimezone: true }).notNull(), // Date of the exchange rate
     baseCurrency: char("base_currency", { length: 3 }).notNull(), // Source currency (transaction currency)
     targetCurrency: char("target_currency", { length: 3 }).notNull(), // Target currency (EUR or USD)
     rate: decimal("rate", { precision: 18, scale: 8 }).notNull(), // Exchange rate (how many target currency = 1 base currency)
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index("idx_exchange_rates_date").on(table.date),
@@ -682,8 +710,8 @@ export const subscriptionSuggestions = pgTable(
     status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, approved, dismissed
 
     // Timestamps
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     index("idx_subscription_suggestions_user").on(table.userId),
@@ -702,7 +730,7 @@ export const accountBalances = pgTable(
     accountId: uuid("account_id")
       .references(() => accounts.id, { onDelete: "cascade" })
       .notNull(),
-    date: timestamp("date").notNull(), // Date of the balance snapshot
+    date: timestamp("date", { withTimezone: true }).notNull(), // Date of the balance snapshot
     balanceInAccountCurrency: decimal("balance_in_account_currency", {
       precision: 15,
       scale: 2,
@@ -711,8 +739,8 @@ export const accountBalances = pgTable(
       precision: 15,
       scale: 2,
     }).notNull(), // Balance converted to functional currency
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index("idx_account_balances_account").on(table.accountId),
@@ -738,7 +766,7 @@ export const transactionLinks = pgTable(
       .references(() => transactions.id, { onDelete: "cascade" })
       .notNull(),
     linkRole: varchar("link_role", { length: 20 }).notNull(), // "primary" | "reimbursement" | "expense"
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index("idx_transaction_links_user").on(table.userId),
@@ -755,9 +783,9 @@ export const companyLogos = pgTable(
     companyName: varchar("company_name", { length: 255 }), // "Netflix"
     logoUrl: text("logo_url"), // Local path: "/uploads/logos/netflix.png"
     status: varchar("status", { length: 20 }).default("found").notNull(), // "found" | "not_found"
-    lastCheckedAt: timestamp("last_checked_at").defaultNow(),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }).defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index("idx_company_logos_domain").on(table.domain),
@@ -776,11 +804,11 @@ export const brokerConnections = pgTable("broker_connections", {
     .references(() => accounts.id, { onDelete: "cascade" }),
   provider: text("provider").notNull(),
   credentialsEncrypted: text("credentials_encrypted").notNull(),
-  lastSyncAt: timestamp("last_sync_at"),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
   lastSyncStatus: text("last_sync_status").default("pending"),
   lastSyncError: text("last_sync_error"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 export const holdings = pgTable(
@@ -803,8 +831,8 @@ export const holdings = pgTable(
     asOfDate: date("as_of_date"),
     source: text("source").notNull(),
     lastPriceError: text("last_price_error"),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (t) => ({
     uniqHolding: uniqueIndex("holdings_account_symbol_type_uq").on(
@@ -900,8 +928,8 @@ export const people = pgTable(
     // Storage path inside the configured storage provider (e.g. "people/<id>.jpg").
     // null = no avatar; UI falls back to a colored initial badge.
     avatarPath: text("avatar_path"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
     index("idx_people_user").on(t.userId),
@@ -921,7 +949,7 @@ export const accountOwners = pgTable(
       .references(() => people.id, { onDelete: "cascade" })
       .notNull(),
     share: decimal("share", { precision: 5, scale: 4 }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
     primaryKey({ columns: [t.accountId, t.personId] }),
@@ -939,7 +967,7 @@ export const propertyOwners = pgTable(
       .references(() => people.id, { onDelete: "cascade" })
       .notNull(),
     share: decimal("share", { precision: 5, scale: 4 }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
     primaryKey({ columns: [t.propertyId, t.personId] }),
@@ -957,7 +985,7 @@ export const vehicleOwners = pgTable(
       .references(() => people.id, { onDelete: "cascade" })
       .notNull(),
     share: decimal("share", { precision: 5, scale: 4 }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
     primaryKey({ columns: [t.vehicleId, t.personId] }),
@@ -1329,9 +1357,9 @@ export const reports = pgTable(
       .default([])
       .notNull(),
     isActive: boolean("is_active").default(true).notNull(),
-    nextRunAt: timestamp("next_run_at"),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    nextRunAt: timestamp("next_run_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index("idx_reports_user").on(table.userId),
@@ -1346,17 +1374,17 @@ export const reportRuns = pgTable(
     reportId: uuid("report_id")
       .references(() => reports.id, { onDelete: "cascade" })
       .notNull(),
-    scheduledFor: timestamp("scheduled_for"),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
     isTest: boolean("is_test").default(false).notNull(),
-    startedAt: timestamp("started_at"),
-    finishedAt: timestamp("finished_at"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
     status: varchar("status", { length: 20 }).notNull().default("SCHEDULED"), // SCHEDULED, RUNNING, SUCCEEDED, FAILED
     errorMessage: text("error_message"),
     recipientEmails: jsonb("recipient_emails")
       .$type<string[]>()
       .default([])
       .notNull(),
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     index("idx_report_runs_report").on(table.reportId),

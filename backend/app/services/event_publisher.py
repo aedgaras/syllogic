@@ -6,7 +6,7 @@ Publishes events that are consumed by SSE endpoints for client notifications.
 import json
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import redis
@@ -96,7 +96,7 @@ class EventPublisher:
                 "type": "import_started",
                 "import_id": import_id,
                 "total_rows": total_rows,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             },
         )
         logger.info(f"Import started: {import_id} with {total_rows} rows")
@@ -123,7 +123,7 @@ class EventPublisher:
                 "processed_rows": processed_rows,
                 "total_rows": total_rows,
                 "percentage": percentage,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             },
         )
         logger.debug(
@@ -157,7 +157,7 @@ class EventPublisher:
                 "imported_count": imported_count,
                 "skipped_count": skipped_count,
                 "categorization_summary": categorization_summary,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             },
         )
         logger.info(
@@ -180,7 +180,7 @@ class EventPublisher:
                 "type": "import_failed",
                 "import_id": import_id,
                 "error": error,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             },
         )
         logger.error(f"Import failed: {import_id} - {error}")
@@ -199,7 +199,7 @@ class EventPublisher:
             {
                 "type": "subscriptions_started",
                 "import_id": import_id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             },
         )
         logger.info(f"Subscription processing started for import: {import_id}")
@@ -224,7 +224,7 @@ class EventPublisher:
                 "import_id": import_id,
                 "matched_count": matched_count,
                 "detected_count": detected_count,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             },
         )
         logger.info(

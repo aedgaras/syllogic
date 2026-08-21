@@ -10,7 +10,7 @@ import base64
 import os
 import sys
 import uuid
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -60,7 +60,7 @@ def test_create_report_and_run_round_trip():
 
         run = ReportRun(
             report_id=report.id,
-            scheduled_for=datetime(2026, 7, 20, 8, 0),
+            scheduled_for=datetime(2026, 7, 20, 8, 0, tzinfo=timezone.utc),
             status="SCHEDULED",
             recipient_emails=["me@example.com"],
         )

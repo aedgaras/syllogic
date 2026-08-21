@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from uuid import UUID
 import logging
 from sqlalchemy.orm import Session
@@ -43,5 +43,5 @@ class InvestmentSyncService:
         if symbols:
             self.price_service.get_or_fetch(symbols, on)
         self.valuation_service.compute(account_id=account.id, on=on)
-        account.last_synced_at = datetime.utcnow()
+        account.last_synced_at = datetime.now(timezone.utc)
         self.db.commit()

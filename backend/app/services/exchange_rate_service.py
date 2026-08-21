@@ -4,7 +4,7 @@ Uses Yahoo Finance API (via yfinance library) for batch fetching of historical r
 Yahoo Finance is free and supports historical data from 1970 onwards.
 """
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
@@ -241,7 +241,7 @@ class ExchangeRateService:
                 if existing:
                     # Update existing rate
                     existing.rate = rate
-                    existing.updated_at = datetime.utcnow()
+                    existing.updated_at = datetime.now(timezone.utc)
                     logger.debug(f"Updated rate: {base_currency}/{target_currency} = {rate}")
                 else:
                     # Create new rate
@@ -414,7 +414,9 @@ class ExchangeRateService:
                                     dates_processed += 1
 
                             total_stored += batch_stored
-                            logger.debug(f"{base_currency} -> {cross_target}: {batch_stored} rates stored")
+                            logger.debug(
+                                f"{base_currency} -> {cross_target}: {batch_stored} rates stored"
+                            )
 
                             # Small delay between batches
                             if current_batch_start < date.today():

@@ -23,6 +23,18 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _scheduled_demo_window(today: date) -> tuple[date, date]:
+    """Coverage end and daily-append target date for a run anchored on `today`.
+
+    Coverage runs through today; the daily append fills in yesterday, so the
+    scheduled reset (which seeds up to `coverage_end`) leaves exactly one day
+    for the daily engine to add.
+    """
+    coverage_end = today
+    target_date = today - timedelta(days=1)
+    return coverage_end, target_date
+
+
 @celery_app.task(bind=True, max_retries=2, name="tasks.demo_tasks.reset_demo_environment")
 def reset_demo_environment(
     self,
@@ -112,9 +124,7 @@ def append_previous_day_demo_transactions(
         }
 
     random_seed = int(os.getenv("DEMO_SEED_RANDOM_SEED", "42"))
-    today = date.today()
-    coverage_end = today
-    target_date = today - timedelta(days=1)
+    coverage_end, target_date = _scheduled_demo_window(today=date.today())
 
     session = SessionLocal()
     try:

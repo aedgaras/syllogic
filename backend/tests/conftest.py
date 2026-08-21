@@ -1,14 +1,24 @@
 """
 Shared pytest fixtures for the backend test suite.
 
-Provides a `db_session` fixture that yields a SQLAlchemy session connected
-to the development/test database defined by `app.database.SessionLocal`.
-Each test gets a fresh session; the session is rolled back on teardown so
-test data does not persist between runs.
+Every test gets a clean database: after each test, every application table
+is truncated. This is deliberately *not* the classic "wrap the test in a
+transaction and roll it back" recipe -- this codebase's routes/services
+each open their own `SessionLocal()` and commit independently (there is no
+single request-scoped session to hook), including from code the fixture
+never sees (Celery tasks, nested service calls). Rebinding `SessionLocal`
+onto one shared connection with per-Session SAVEPOINTs was tried and
+discarded: a `Session.rollback()` call on a session that hasn't itself
+started a transaction falls through to the shared connection and rolls
+back *everything*, including other sessions' already-committed work --
+exactly the kind of defensive `db.rollback()` calls this test suite already
+does routinely (see e.g. test_report_tasks.py). Truncating after the fact
+sidesteps that class of bug entirely: every `SessionLocal()` call anywhere
+keeps behaving exactly like it does in production.
 
-Tests that need to query the database via the MCP tools (which call
-`app.mcp.dependencies.get_db`) should use this fixture to seed data, then
-rely on the tools to open their own short-lived sessions.
+DATABASE_URL must point at a disposable database -- CI runs this against a
+fresh Postgres service container; locally, point it at a scratch database
+you don't mind being wiped between every test.
 """
 
 from __future__ import annotations
@@ -36,20 +46,53 @@ def _set_test_env() -> None:
 _set_test_env()
 
 import pytest  # noqa: E402
+from sqlalchemy import text  # noqa: E402
 
-from app.database import SessionLocal  # noqa: E402
+from app.database import Base, SessionLocal, engine  # noqa: E402
 from app.security.data_encryption import reset_encryption_config_cache  # noqa: E402
+import app.models  # noqa: E402, F401 -- registers every table on Base.metadata
 
 
 reset_encryption_config_cache()
 
+_ALL_TABLES = [table.name for table in Base.metadata.sorted_tables]
+
+
+@pytest.fixture(autouse=True)
+def _clean_db():
+    """Truncate every application table after each test so state never
+    leaks between tests, regardless of how many sessions/commits the test
+    (or the code it calls) used."""
+    try:
+        yield
+    finally:
+        if not _ALL_TABLES:
+            return
+        with engine.begin() as conn:
+            # If a test (or a fixture/helper it calls) leaked a connection
+            # holding a transaction open, TRUNCATE would otherwise hang
+            # forever waiting on its lock and silently wedge the whole
+            # suite. Fail fast and name the blocker instead.
+            conn.execute(text("SET LOCAL lock_timeout = '5s'"))
+            quoted = ", ".join(f'"{name}"' for name in _ALL_TABLES)
+            try:
+                conn.execute(text(f"TRUNCATE TABLE {quoted} RESTART IDENTITY CASCADE"))
+            except Exception as exc:
+                raise RuntimeError(
+                    "Post-test TRUNCATE timed out waiting on a lock -- a "
+                    "previous test likely leaked an open DB session/transaction. "
+                    "Check pg_stat_activity for 'idle in transaction' connections."
+                ) from exc
+
 
 @pytest.fixture
 def db_session():
-    """Yield a SQLAlchemy session; roll back and close on teardown."""
+    """Yield a SQLAlchemy session; close on teardown. Actual cleanup happens
+    via the `_clean_db` truncation fixture above, not a rollback -- code
+    under test may have committed through other sessions this fixture never
+    sees."""
     session = SessionLocal()
     try:
         yield session
     finally:
-        session.rollback()
         session.close()

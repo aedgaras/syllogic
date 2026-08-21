@@ -18,12 +18,18 @@ def client():
 
 
 def test_protected_resource_metadata_exposed(client):
-    resp = client.get("/.well-known/oauth-protected-resource")
+    # RFC 9728 resource-scoped metadata: served under the protected
+    # resource's own path (/mcp), not the bare .well-known root.
+    resp = client.get("/.well-known/oauth-protected-resource/mcp")
     assert resp.status_code == 200
     body = resp.json()
     assert "authorization_servers" in body
     servers = body["authorization_servers"]
-    assert any("app.syllogic.ai" in str(s) for s in servers), body
+    # Self-hosted default: the authorization server is derived from this
+    # deployment's own APP_URL (localhost:8080 unless overridden), not
+    # upstream's app.syllogic.ai -- see AS_ISSUER in app/mcp/auth.py.
+    assert any("localhost:8080" in str(s) for s in servers), body
+    assert not any("app.syllogic.ai" in str(s) for s in servers), body
 
 
 def test_unauthenticated_request_returns_401_with_www_authenticate(client):

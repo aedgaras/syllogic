@@ -1,19 +1,43 @@
 {$CADDY_ADDRESS} {
 	encode zstd gzip
 
+	# Baseline security headers for every response, including the ones that
+	# bypass Next.js (e.g. /api/health -> backend directly). The app itself
+	# also sets a page-specific CSP; these are the transport-level ones that
+	# make sense regardless of which upstream answered.
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	# One request id per inbound request, correlating logs across Caddy,
+	# Next.js, and the backend. Set here (not trusted from the client) so
+	# it's authoritative at the true edge; each downstream service falls
+	# back to generating its own if it's ever reached directly.
+
 	# BetterAuth lives in the Next.js app (do not send to backend).
 	@auth path /api/auth/*
-	reverse_proxy @auth app:3000
+	reverse_proxy @auth app:3000 {
+		header_up X-Request-Id "{http.request.uuid}"
+	}
 
 	# Health checks remain direct to backend for operational probes.
 	@health path /api/health
-	reverse_proxy @health backend:8000
+	reverse_proxy @health backend:8000 {
+		header_up X-Request-Id "{http.request.uuid}"
+	}
 
 	# All other /api/* routes go through the Next.js proxy which signs
 	# authenticated backend requests with internal headers.
 	@api path /api/*
-	reverse_proxy @api app:3000
+	reverse_proxy @api app:3000 {
+		header_up X-Request-Id "{http.request.uuid}"
+	}
 
 	# Everything else goes to Next.js.
-	reverse_proxy app:3000
+	reverse_proxy app:3000 {
+		header_up X-Request-Id "{http.request.uuid}"
+	}
 }
