@@ -98,10 +98,10 @@ export function RepayCreditCardDialog({
     setSources([{ key: nextRowKey++, accountId: "", amount: "" }]);
   };
 
-  const allocated = sources.reduce(
-    (sum, source) => sum + (parseFloat(source.amount) || 0),
-    0,
-  );
+  const singleSource = sources.length === 1;
+  const allocated = singleSource
+    ? parseFloat(totalAmount) || 0
+    : sources.reduce((sum, source) => sum + (parseFloat(source.amount) || 0), 0);
   const target = parseFloat(totalAmount) || 0;
   const remaining = Math.round((target - allocated) * 100) / 100;
 
@@ -142,16 +142,18 @@ export function RepayCreditCardDialog({
       toast.error(translate("eachSourceAccountCanOnlyBeUsedOnce"));
       return;
     }
-    for (const row of sources) {
-      const amount = parseFloat(row.amount);
-      if (isNaN(amount) || amount <= 0) {
-        toast.error(translate("pleaseEnterAValidAmount"));
+    if (!singleSource) {
+      for (const row of sources) {
+        const amount = parseFloat(row.amount);
+        if (isNaN(amount) || amount <= 0) {
+          toast.error(translate("pleaseEnterAValidAmount"));
+          return;
+        }
+      }
+      if (remaining !== 0) {
+        toast.error(translate("sourceAmountsMustAddUpToTheTotalAmount"));
         return;
       }
-    }
-    if (remaining !== 0) {
-      toast.error(translate("sourceAmountsMustAddUpToTheTotalAmount"));
-      return;
     }
 
     setIsLoading(true);
@@ -160,7 +162,7 @@ export function RepayCreditCardDialog({
         creditCardAccountId,
         sources: sources.map((row) => ({
           sourceAccountId: row.accountId,
-          amount: parseFloat(row.amount),
+          amount: singleSource ? parsedTotal : parseFloat(row.amount),
         })),
         description: description.trim(),
         bookedAt,
@@ -244,18 +246,20 @@ export function RepayCreditCardDialog({
                         ))}
                       </SelectContent>
                     </Select>
-                    <Input
-                      className="w-28"
-                      type="text"
-                      inputMode="decimal"
-                      placeholder="0.00"
-                      value={row.amount}
-                      onChange={(e) =>
-                        updateSource(row.key, {
-                          amount: normalizeDecimalInput(e.target.value),
-                        })
-                      }
-                    />
+                    {!singleSource && (
+                      <Input
+                        className="w-28"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        value={row.amount}
+                        onChange={(e) =>
+                          updateSource(row.key, {
+                            amount: normalizeDecimalInput(e.target.value),
+                          })
+                        }
+                      />
+                    )}
                     {sources.length > 1 && (
                       <Button
                         type="button"
@@ -273,7 +277,7 @@ export function RepayCreditCardDialog({
                 <RiAddLine className="mr-2 h-4 w-4" />
                 {translate("addAnotherAccount")}
               </Button>
-              {target > 0 && (
+              {!singleSource && target > 0 && (
                 <p
                   className={cn(
                     "text-xs",
