@@ -319,7 +319,7 @@ def test_cashflow_forecast_growth_leg_compounds_from_balance_history(client, db)
     db.commit()
 
     # 31 daily snapshots growing from 900 to 1000 over 30 days -> a clear
-    # positive historical daily rate, comfortably above the 30-row minimum.
+    # positive historical daily rate, comfortably above the 5-row minimum.
     for i in range(31):
         snapshot_date = datetime.utcnow() - timedelta(days=30 - i)
         balance = Decimal("900") + (Decimal("100") * i / 30)
@@ -357,10 +357,10 @@ def test_cashflow_forecast_growth_leg_falls_back_to_flat_with_sparse_history(cli
     db.add(investment_account)
     db.commit()
 
-    # Only 5 snapshots - below the 30-row minimum, so the rate must fall
+    # Only 3 snapshots - below the 5-row minimum, so the rate must fall
     # back to 0% rather than extrapolating from too little data.
-    for i in range(5):
-        snapshot_date = datetime.utcnow() - timedelta(days=5 - i)
+    for i in range(3):
+        snapshot_date = datetime.utcnow() - timedelta(days=3 - i)
         db.add(
             AccountBalance(
                 id=uuid4(),

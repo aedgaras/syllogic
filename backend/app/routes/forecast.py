@@ -27,14 +27,35 @@ _TRAILING_HISTORY_DAYS = 90
 
 # Window + minimum coverage used to derive a flat daily growth rate for
 # investment/crypto accounts from historical AccountBalance snapshots.
+# Kept low deliberately: daily_investment_sync_all only writes one
+# AccountBalance row per account per day, so a 30-row floor would make the
+# growth leg unconditionally 0 for a full month after every account is
+# added (or after the sync pipeline itself is rebuilt, as it was recently)
+# — long enough that it reads as permanently broken rather than "still
+# warming up".
 _GROWTH_HISTORY_DAYS = 180
-_MIN_GROWTH_HISTORY_ROWS = 30
+_MIN_GROWTH_HISTORY_ROWS = 5
 
 _GROWTH_ASSET_CLASSES = {"investment", "crypto"}
 
 
 def _is_growth_account(account_type: Optional[str]) -> bool:
     return account_type_to_asset_class(account_type) in _GROWTH_ASSET_CLASSES
+
+
+def _finite_decimal(value: Optional[Decimal]) -> Decimal:
+    """Coerce a stored balance to a finite Decimal, treating NaN/Infinity as 0.
+
+    Numeric DB columns can hold NaN/Infinity (Postgres allows it), and
+    Decimal silently propagates those through +/-/* without raising —
+    unlike comparisons, which raise InvalidOperation. Left unchecked, one
+    corrupt balance turns the whole projection (and every point in the
+    chart) into NaN. Values are guarded once here, at the DB boundary,
+    instead of at every downstream arithmetic op.
+    """
+    if value is None or not value.is_finite():
+        return Decimal("0")
+    return value
 
 
 @router.get("/cashflow")
@@ -63,11 +84,11 @@ def get_cashflow_forecast(
     growth_account_ids = [a.id for a in growth_accounts]
 
     cash_starting_balance = sum(
-        (a.functional_balance or Decimal("0")) for a in cash_accounts
-    ) or Decimal("0")
+        (_finite_decimal(a.functional_balance) for a in cash_accounts), Decimal("0")
+    )
     growth_starting_balance = sum(
-        (a.functional_balance or Decimal("0")) for a in growth_accounts
-    ) or Decimal("0")
+        (_finite_decimal(a.functional_balance) for a in growth_accounts), Decimal("0")
+    )
 
     # --- Known leg: active recurring transactions on cash accounts only.
     # A recurring row on a growth account (e.g. a scheduled brokerage
@@ -135,7 +156,7 @@ def get_cashflow_forecast(
             .group_by(func.date(Transaction.booked_at))
             .all()
         )
-    daily_totals_by_day = {row[0]: Decimal(row[1] or 0) for row in daily_rows}
+    daily_totals_by_day = {row[0]: _finite_decimal(Decimal(row[1] or 0)) for row in daily_rows}
     daily_nets = [
         daily_totals_by_day.get(history_start + timedelta(days=i), Decimal("0"))
         for i in range(_TRAILING_HISTORY_DAYS)
@@ -174,9 +195,11 @@ def get_cashflow_forecast(
         if len(balance_rows) >= _MIN_GROWTH_HISTORY_ROWS:
             first_date, first_balance = balance_rows[0]
             last_date, last_balance = balance_rows[-1]
+            first_balance = _finite_decimal(first_balance)
+            last_balance = _finite_decimal(last_balance)
             span_days = (last_date - first_date).days
-            if span_days > 0 and first_balance and first_balance > 0 and last_balance and last_balance > 0:
-                growth_daily_rate = (Decimal(last_balance) / Decimal(first_balance)) ** (
+            if span_days > 0 and first_balance > 0 and last_balance > 0:
+                growth_daily_rate = (last_balance / first_balance) ** (
                     Decimal(1) / span_days
                 ) - 1
 
