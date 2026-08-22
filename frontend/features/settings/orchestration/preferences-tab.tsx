@@ -24,7 +24,7 @@ import {
   updateOpenAiApiKey,
   updateTutorialsEnabled,
   type OpenAiSettings,
-} from "@/lib/actions/settings";
+} from "@/features/settings/client/actions";
 
 const LLM_MODEL_PRESETS = [
   "gpt-4o-mini",

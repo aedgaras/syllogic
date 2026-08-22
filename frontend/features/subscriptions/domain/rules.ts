@@ -1,4 +1,4 @@
-import type { SubscriptionFrequency } from "./contracts";
+import type { SubscriptionFrequency, SubscriptionListRow } from "./contracts";
 
 const monthlyMultipliers: Record<SubscriptionFrequency, number> = {
   weekly: 4,
@@ -17,6 +17,13 @@ export function monthlyEquivalent(
   return (
     parsedAmount * (monthlyMultipliers[frequency as SubscriptionFrequency] ?? 1)
   );
+}
+
+export function getCurrencyFallback(
+  items: SubscriptionListRow[],
+  fallback = "EUR",
+): string {
+  return items.find((item) => item.currency)?.currency || fallback;
 }
 
 export function validateSubscriptionInput(input: {

@@ -32,9 +32,14 @@ import {
   disconnectBank,
   triggerRecategorize,
   initiateAuth,
-} from "@/lib/actions/bank-connections";
+} from "@/features/settings/client/actions";
 import { fetchBankConnectionStatus } from "@/lib/bank-connections/client";
 import { logger } from "@/lib/logger";
+import {
+  consentTimeRemaining,
+  isConsentExpired,
+  isConsentExpiringSoon,
+} from "@/features/settings/domain/bank-connection-status";
 type BankConnectionItem = {
   id: string;
   aspspName: string;
@@ -292,13 +297,11 @@ export function BankConnectionsManager({
     });
   };
 
-  const isConsentExpired = (connection: BankConnectionItem) =>
-    connection.status === "expired" ||
-    (!!connection.consentExpiresAt &&
-      connection.consentExpiresAt.getTime() <= now);
+  const connectionIsConsentExpired = (connection: BankConnectionItem) =>
+    isConsentExpired(connection, now);
 
   const getStatusBadge = (connection: BankConnectionItem) => {
-    if (isConsentExpired(connection)) {
+    if (connectionIsConsentExpired(connection)) {
       return <Badge variant="destructive">{translate("consentExpired")}</Badge>;
     }
     switch (connection.status) {
@@ -313,25 +316,11 @@ export function BankConnectionsManager({
     }
   };
 
-  const isConsentExpiringSoon = (connection: BankConnectionItem) => {
-    if (!connection.consentExpiresAt) return false;
-    const daysUntilExpiry = Math.ceil(
-      (connection.consentExpiresAt.getTime() - now) / (1000 * 60 * 60 * 24),
-    );
-    return daysUntilExpiry <= 14 && daysUntilExpiry > 0;
-  };
+  const connectionIsConsentExpiringSoon = (connection: BankConnectionItem) =>
+    isConsentExpiringSoon(connection, now);
 
-  const consentTimeRemaining = (connection: BankConnectionItem) => {
-    if (!connection.consentExpiresAt) return null;
-    const milliseconds = connection.consentExpiresAt.getTime() - now;
-    if (milliseconds <= 0) return "expired";
-    const minutes = Math.max(1, Math.ceil(milliseconds / 60_000));
-    if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"}`;
-    const hours = Math.ceil(minutes / 60);
-    if (hours < 48) return `${hours} hour${hours === 1 ? "" : "s"}`;
-    const days = Math.ceil(hours / 24);
-    return `${days} day${days === 1 ? "" : "s"}`;
-  };
+  const connectionConsentTimeRemaining = (connection: BankConnectionItem) =>
+    consentTimeRemaining(connection, now);
 
   const activeConnections = connections.filter(
     (c) => c.status !== "disconnected",
@@ -402,10 +391,10 @@ export function BankConnectionsManager({
                       )}
                     </div>
                     {connection.consentExpiresAt &&
-                      !isConsentExpired(connection) && (
+                      !connectionIsConsentExpired(connection) && (
                         <div
                           className={`mt-1 flex items-center gap-1 text-xs ${
-                            isConsentExpiringSoon(connection)
+                            connectionIsConsentExpiringSoon(connection)
                               ? "text-warning"
                               : "text-muted-foreground"
                           }`}
@@ -417,11 +406,11 @@ export function BankConnectionsManager({
                           <RiAlertLine className="h-3 w-3" />
                           <span>
                             {translate("bankConsentExpiresIn")}{" "}
-                            {consentTimeRemaining(connection)}.
+                            {connectionConsentTimeRemaining(connection)}.
                           </span>
                         </div>
                       )}
-                    {isConsentExpired(connection) && (
+                    {connectionIsConsentExpired(connection) && (
                       <div className="mt-1 flex items-center gap-1 text-xs text-destructive">
                         <RiAlertLine className="h-3 w-3" />
                         <span>
@@ -440,11 +429,11 @@ export function BankConnectionsManager({
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {(isConsentExpired(connection) ||
-                    isConsentExpiringSoon(connection)) && (
+                  {(connectionIsConsentExpired(connection) ||
+                    connectionIsConsentExpiringSoon(connection)) && (
                     <Button
                       variant={
-                        isConsentExpired(connection) ? "default" : "outline"
+                        connectionIsConsentExpired(connection) ? "default" : "outline"
                       }
                       size="sm"
                       onClick={() => handleRelink(connection)}
@@ -461,7 +450,7 @@ export function BankConnectionsManager({
                     </Button>
                   )}
                   {connection.status === "active" &&
-                    !isConsentExpired(connection) && (
+                    !connectionIsConsentExpired(connection) && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -479,7 +468,7 @@ export function BankConnectionsManager({
                       </Button>
                     )}
                   {connection.status === "active" &&
-                    !isConsentExpired(connection) && (
+                    !connectionIsConsentExpired(connection) && (
                       <Button
                         variant="outline"
                         size="sm"

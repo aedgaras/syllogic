@@ -1,4 +1,4 @@
-import { SubscriptionsClient } from "@/components/subscriptions/subscriptions-client";
+import { SubscriptionList } from "@/features/subscriptions/public";
 import {
   getSubscriptions,
   getSubscriptionKpis,
@@ -18,7 +18,7 @@ export async function SubscriptionsSection() {
     ]);
 
   return (
-    <SubscriptionsClient
+    <SubscriptionList
       initialSubscriptions={subscriptions}
       accounts={accounts}
       categories={categories}

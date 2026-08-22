@@ -20,7 +20,7 @@ import {
   updateAppLogLevel,
   updateOidcSettings,
   updateSignupSettings,
-} from "@/lib/actions/settings";
+} from "@/features/settings/client/actions";
 import type { LogLevel, LogLevelStatus } from "@/lib/log-level";
 import type { AiSummaryEnabledStatus } from "@/lib/ai-summary-settings";
 import type { OidcAdminSettings } from "@/lib/oidc-settings";

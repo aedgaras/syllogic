@@ -12,22 +12,22 @@ import type {
   BudgetKpis,
   BudgetViewModel,
 } from "@/features/budgets/public";
-import { BudgetKpiCards } from "./budget-kpi-cards";
-import { BudgetProgressRow } from "./budget-progress-row";
-import { BudgetEditForm } from "./budget-edit-form";
-import { DeleteBudgetDialog } from "./delete-budget-dialog";
+import { BudgetKpiCards } from "@/components/budgets/budget-kpi-cards";
+import { BudgetProgressRow } from "@/components/budgets/budget-progress-row";
+import { BudgetEditForm } from "@/components/budgets/budget-edit-form";
+import { DeleteBudgetDialog } from "@/components/budgets/delete-budget-dialog";
 
-interface BudgetsClientProps {
+interface BudgetManagementProps {
   initialBudgets: BudgetViewModel[];
   categories: Array<{ id: string; name: string; color: string | null }>;
   kpis: BudgetKpis;
 }
 
-export function BudgetsClient({
+export function BudgetManagement({
   initialBudgets,
   categories,
   kpis,
-}: BudgetsClientProps) {
+}: BudgetManagementProps) {
   const {
     budgets,
     dialog,

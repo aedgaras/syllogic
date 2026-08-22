@@ -27,7 +27,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { exportUserData, importUserData } from "@/lib/actions/data-export";
+import {
+  exportUserData,
+  importUserData,
+} from "@/features/settings/client/actions";
 
 export function DataManagementTab() {
   const fileInputRef = useRef<HTMLInputElement>(null);

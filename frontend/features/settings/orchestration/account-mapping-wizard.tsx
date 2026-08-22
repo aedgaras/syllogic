@@ -31,8 +31,11 @@ import {
   RiCheckLine,
   RiAlertLine,
 } from "@remixicon/react";
-import { submitAccountMappings } from "@/lib/actions/bank-connections";
-import type { SuggestedMapping } from "@/lib/actions/bank-connections";
+import {
+  submitAccountMappings,
+  type SuggestedMapping,
+} from "@/features/settings/client/actions";
+import { maskIban } from "@/features/settings/domain/mask-iban";
 
 interface BankAccount {
   uid: string;
@@ -64,11 +67,6 @@ interface AccountMappingWizardProps {
   bankAccounts: BankAccount[];
   linkableAccounts: LinkableAccount[];
   suggestedMappings?: SuggestedMapping[];
-}
-
-function maskIban(iban: string): string {
-  if (!iban || iban.length < 8) return iban;
-  return iban.slice(0, 4) + " •••• " + iban.slice(-4);
 }
 
 const SYNC_DAY_OPTIONS = [30, 60, 90, 180, 365, 730];

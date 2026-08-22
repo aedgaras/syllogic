@@ -13,25 +13,25 @@ import {
   RiLockLine,
   RiDatabase2Line,
 } from "@remixicon/react";
-import { ProfileEditor } from "./profile-editor";
-import { CategoryManager } from "./category-manager";
-import { ApiKeysManager } from "./api-keys-manager";
-import { ImportHistoryManager } from "./import-history-manager";
-import { BankConnectionsManager } from "./bank-connections-manager";
 import { HouseholdTab } from "./household-tab";
-import { PreferencesTab } from "./preferences-tab";
-import { DataManagementTab } from "./data-management-tab";
-import type {
-  SettingsCategory,
-  SettingsUser,
+import {
+  ProfileEditor,
+  CategoryManager,
+  ApiKeysManager,
+  ImportHistoryManager,
+  BankConnectionsManager,
+  PreferencesTab,
+  DataManagementTab,
+  AuthenticationTab,
+  type SettingsCategory,
+  type SettingsUser,
+  type OpenAiSettings,
 } from "@/features/settings/public";
 import type { CsvImportWithStats } from "@/features/csv-import/public";
-import type { OpenAiSettings } from "@/lib/actions/settings";
 import type { LogLevelStatus } from "@/lib/log-level";
 import type { AiSummaryEnabledStatus } from "@/lib/ai-summary-settings";
 import type { OidcAdminSettings } from "@/lib/oidc-settings";
 import type { RegistrationStatus } from "@/lib/registration-settings";
-import { AuthenticationTab } from "./authentication-tab";
 
 type Person = {
   id: string;

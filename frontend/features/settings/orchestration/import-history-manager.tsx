@@ -23,8 +23,10 @@ import {
   RiDeleteBinLine,
   RiInboxLine,
 } from "@remixicon/react";
+import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
-import { RevertImportDialog } from "./revert-import-dialog";
+import { RevertImportDialog } from "@/components/settings/revert-import-dialog";
+import { revertCsvImport } from "@/features/settings/client/actions";
 import type { CsvImportWithStats } from "@/features/csv-import/public";
 
 function statusBadgeVariant(
@@ -52,10 +54,29 @@ export function ImportHistoryManager({
   const router = useRouter();
   const [selectedImport, setSelectedImport] =
     useState<CsvImportWithStats | null>(null);
+  const [isReverting, setIsReverting] = useState(false);
 
-  function handleRevertSuccess() {
-    setSelectedImport(null);
-    router.refresh();
+  async function handleRevert() {
+    if (!selectedImport) return;
+    setIsReverting(true);
+    try {
+      const result = await revertCsvImport(selectedImport.id);
+      if (result.success) {
+        toast.success(
+          translate("revertedTransactionDeleted", {
+            value1: selectedImport.fileName,
+            value2: result.deletedCount,
+            value3: result.deletedCount !== 1 ? "s" : "",
+          }),
+        );
+        setSelectedImport(null);
+        router.refresh();
+      } else {
+        toast.error(result.error ?? translate("failedToRevertImport"));
+      }
+    } finally {
+      setIsReverting(false);
+    }
   }
 
   return (
@@ -191,10 +212,11 @@ export function ImportHistoryManager({
         <RevertImportDialog
           open={selectedImport !== null}
           onOpenChange={(open) => {
-            if (!open) setSelectedImport(null);
+            if (!open && !isReverting) setSelectedImport(null);
           }}
           csvImport={selectedImport}
-          onSuccess={handleRevertSuccess}
+          onConfirm={handleRevert}
+          isReverting={isReverting}
         />
       )}
     </>

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SubscriptionsClient } from "./subscriptions-client";
+import { SubscriptionList } from "./subscription-list";
 
 const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
@@ -20,13 +20,13 @@ vi.mock("@/features/subscriptions/client/actions", () => ({
   deleteSubscription: vi.fn(),
   dismissSuggestion: mocks.dismissSuggestion,
 }));
-vi.mock("./subscription-form-dialog", () => ({
+vi.mock("@/components/subscriptions/subscription-form-dialog", () => ({
   SubscriptionFormDialog: () => null,
 }));
-vi.mock("./subscription-detail-sheet", () => ({
+vi.mock("@/components/subscriptions/subscription-detail-sheet", () => ({
   SubscriptionDetailSheet: () => null,
 }));
-vi.mock("./subscriptions-grouped-list", () => ({
+vi.mock("@/components/subscriptions/subscriptions-grouped-list", () => ({
   SubscriptionsGroupedList: ({
     data,
     onToggleActive,
@@ -78,7 +78,7 @@ const suggestion = {
   matchCount: 3,
 };
 
-describe("SubscriptionsClient characterization", () => {
+describe("SubscriptionList characterization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.toggleSubscriptionActive.mockResolvedValue({ success: true });
@@ -87,7 +87,7 @@ describe("SubscriptionsClient characterization", () => {
 
   it("persists a toggle and updates the client-owned list without a route refresh", async () => {
     render(
-      <SubscriptionsClient
+      <SubscriptionList
         initialSubscriptions={[subscription] as never}
         accounts={[]}
         categories={[]}
@@ -115,7 +115,7 @@ describe("SubscriptionsClient characterization", () => {
 
   it("removes a successfully dismissed suggestion without refreshing", async () => {
     render(
-      <SubscriptionsClient
+      <SubscriptionList
         initialSubscriptions={[subscription] as never}
         accounts={[]}
         categories={[]}

@@ -3,9 +3,9 @@ import { t as translate } from "@/i18n/translate";
 
 import type { SubscriptionListRow as SubscriptionOrSuggestion } from "@/features/subscriptions/public";
 import {
-  calculateMonthlyEquivalent,
   getCurrencyFallback,
-} from "./subscription-math";
+  monthlyEquivalent,
+} from "@/features/subscriptions/public";
 
 interface SubscriptionsSummaryRowProps {
   data: SubscriptionOrSuggestion[];
@@ -18,7 +18,7 @@ export function SubscriptionsSummaryRow({
   const activeSubscriptions = data.filter((s) => !s.isSuggestion && s.isActive);
 
   const monthlyTotal = activeSubscriptions.reduce((sum, subscription) => {
-    return sum + calculateMonthlyEquivalent(subscription);
+    return sum + monthlyEquivalent(subscription.amount, subscription.frequency);
   }, 0);
 
   // Get currency from first subscription (assuming all use same currency)

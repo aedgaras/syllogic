@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProfilePhotoUpload } from "@/components/onboarding/profile-photo-upload";
-import { updateUserProfile } from "@/lib/actions/settings";
+import { updateUserProfile } from "@/features/settings/client/actions";
 import type { SettingsUser } from "@/features/settings/public";
 
 interface ProfileEditorProps {

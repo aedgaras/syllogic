@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { SubscriptionsGroupedList } from "./subscriptions-grouped-list";
-import { SubscriptionFormDialog } from "./subscription-form-dialog";
-import { SubscriptionDetailSheet } from "./subscription-detail-sheet";
+import { SubscriptionsGroupedList } from "@/components/subscriptions/subscriptions-grouped-list";
+import { SubscriptionFormDialog } from "@/components/subscriptions/subscription-form-dialog";
+import { SubscriptionDetailSheet } from "@/components/subscriptions/subscription-detail-sheet";
 import { withAssetVersion } from "@/lib/utils/asset-url";
 import type {
   SubscriptionKpis,
@@ -17,7 +17,7 @@ import { useSubscriptionListController } from "@/features/subscriptions/hooks/us
 // Extended type for table rows that can be either a subscription or a suggestion
 export type SubscriptionOrSuggestion = SubscriptionListRow;
 
-interface SubscriptionsClientProps {
+interface SubscriptionListProps {
   initialSubscriptions: SubscriptionViewModel[];
   accounts: Array<{ id: string; name: string }>;
   categories: Array<{ id: string; name: string; color: string | null }>;
@@ -25,13 +25,13 @@ interface SubscriptionsClientProps {
   kpis: SubscriptionKpis;
 }
 
-export function SubscriptionsClient({
+export function SubscriptionList({
   initialSubscriptions,
   accounts,
   categories,
   suggestions: initialSuggestions = [],
   kpis,
-}: SubscriptionsClientProps) {
+}: SubscriptionListProps) {
   const router = useRouter();
   const { subscriptions, suggestions, dismiss, remove, toggle, upsert } =
     useSubscriptionListController(initialSubscriptions, initialSuggestions);

@@ -18,3 +18,4 @@ export {
 } from "./domain/status";
 export { budgetEditSchema, type BudgetEditFormValues } from "./domain/edit-schemas";
 export { getBudgetKpis } from "@/lib/actions/budgets";
+export { BudgetManagement } from "./orchestration/budget-management";

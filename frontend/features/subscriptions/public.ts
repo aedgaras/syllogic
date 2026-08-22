@@ -11,4 +11,9 @@ export type {
   SubscriptionUpdateInput,
   SubscriptionViewModel,
 } from "./domain/contracts";
-export { monthlyEquivalent, validateSubscriptionInput } from "./domain/rules";
+export {
+  getCurrencyFallback,
+  monthlyEquivalent,
+  validateSubscriptionInput,
+} from "./domain/rules";
+export { SubscriptionList } from "./orchestration/subscription-list";

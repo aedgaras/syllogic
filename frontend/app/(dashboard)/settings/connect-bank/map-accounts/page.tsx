@@ -10,7 +10,7 @@ import {
   getSuggestedMappings,
   type SuggestedMapping,
 } from "@/lib/actions/bank-connections";
-import { AccountMappingWizard } from "@/components/settings/account-mapping-wizard";
+import { AccountMappingWizard } from "@/features/settings/public";
 import { RiLoader4Line } from "@remixicon/react";
 
 interface MapAccountsPageProps {

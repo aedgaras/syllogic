@@ -34,9 +34,9 @@ import {
 } from "@remixicon/react";
 import type { SubscriptionListRow as SubscriptionOrSuggestion } from "@/features/subscriptions/public";
 import {
-  calculateMonthlyEquivalent,
   getCurrencyFallback,
-} from "./subscription-math";
+  monthlyEquivalent,
+} from "@/features/subscriptions/public";
 import { WeightBarVisualizer } from "@/components/assets/weight-bar-visualizer";
 import type { SubscriptionKpis } from "@/features/subscriptions/public";
 import { SubscriptionsKpiGrid } from "./subscriptions-kpi-grid";
@@ -94,7 +94,7 @@ function groupByCategory(
     const name = category?.name ?? "Uncategorized";
     const color = category?.color ?? UNCATEGORIZED_COLOR;
     const existing = map.get(key);
-    const monthly = calculateMonthlyEquivalent(item);
+    const monthly = monthlyEquivalent(item.amount, item.frequency);
 
     if (existing) {
       existing.items.push(item);
@@ -172,7 +172,7 @@ export function SubscriptionsGroupedList({
     const suggestions = data.filter((d) => d.isSuggestion);
 
     const totalMonthlyActive = active.reduce(
-      (sumValue, item) => sumValue + calculateMonthlyEquivalent(item),
+      (sumValue, item) => sumValue + monthlyEquivalent(item.amount, item.frequency),
       0,
     );
 

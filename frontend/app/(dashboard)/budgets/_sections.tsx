@@ -1,4 +1,4 @@
-import { BudgetsClient } from "@/components/budgets/budgets-client";
+import { BudgetManagement } from "@/features/budgets/public";
 import { getBudgetKpis, getBudgets } from "@/features/budgets/server";
 import { getUserCategories } from "@/lib/actions/categories";
 
@@ -10,7 +10,7 @@ export async function BudgetsSection() {
   ]);
 
   return (
-    <BudgetsClient
+    <BudgetManagement
       initialBudgets={budgets}
       categories={categories}
       kpis={kpis}

@@ -19,8 +19,6 @@ import {
   RiAlertLine,
   RiErrorWarningLine,
 } from "@remixicon/react";
-import { toast } from "sonner";
-import { revertCsvImport } from "@/lib/actions/csv-import";
 import type { CsvImportWithStats } from "@/features/csv-import/public";
 
 const CONFIRMATION_PHRASE = "delete transactions";
@@ -29,48 +27,31 @@ interface RevertImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   csvImport: CsvImportWithStats;
-  onSuccess: () => void;
+  onConfirm: () => void;
+  isReverting: boolean;
 }
 
 export function RevertImportDialog({
   open,
   onOpenChange,
   csvImport,
-  onSuccess,
+  onConfirm,
+  isReverting,
 }: RevertImportDialogProps) {
   const [confirmInput, setConfirmInput] = useState("");
-  const [reverting, setReverting] = useState(false);
 
   const isConfirmed = confirmInput.trim().toLowerCase() === CONFIRMATION_PHRASE;
 
   function handleOpenChange(nextOpen: boolean) {
-    if (!reverting) {
+    if (!isReverting) {
       if (!nextOpen) setConfirmInput("");
       onOpenChange(nextOpen);
     }
   }
 
-  async function handleRevert() {
-    if (!isConfirmed || reverting) return;
-    setReverting(true);
-    try {
-      const result = await revertCsvImport(csvImport.id);
-      if (result.success) {
-        toast.success(
-          translate("revertedTransactionDeleted", {
-            value1: csvImport.fileName,
-            value2: result.deletedCount,
-            value3: result.deletedCount !== 1 ? "s" : "",
-          }),
-        );
-        onSuccess();
-        onOpenChange(false);
-      } else {
-        toast.error(result.error ?? translate("failedToRevertImport"));
-      }
-    } finally {
-      setReverting(false);
-    }
+  function handleConfirmClick() {
+    if (!isConfirmed || isReverting) return;
+    onConfirm();
   }
 
   return (
@@ -149,8 +130,8 @@ export function RevertImportDialog({
             placeholder={translate("deleteTransactions")}
             className="font-mono text-xs"
             onKeyDown={(e) => {
-              if (e.key === "Enter" && isConfirmed && !reverting)
-                handleRevert();
+              if (e.key === "Enter" && isConfirmed && !isReverting)
+                handleConfirmClick();
             }}
           />
         </div>
@@ -159,16 +140,16 @@ export function RevertImportDialog({
           <Button
             variant="outline"
             onClick={() => handleOpenChange(false)}
-            disabled={reverting}
+            disabled={isReverting}
           >
             {translate("cancel")}
           </Button>
           <Button
             variant="destructive"
-            disabled={!isConfirmed || reverting}
-            onClick={handleRevert}
+            disabled={!isConfirmed || isReverting}
+            onClick={handleConfirmClick}
           >
-            {reverting ? (
+            {isReverting ? (
               <>
                 <RiLoader4Line className="size-4 animate-spin" />
                 {translate("reverting")}

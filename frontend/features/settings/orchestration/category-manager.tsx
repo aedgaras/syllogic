@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CategoryRow } from "@/components/onboarding/category-row";
 import { CategoryFormDialog } from "@/components/onboarding/category-form-dialog";
-import { DeleteCategoryDialog } from "./delete-category-dialog";
+import { DeleteCategoryDialog } from "@/components/settings/delete-category-dialog";
 import {
   createCategory,
   updateCategory,
@@ -25,8 +25,9 @@ import {
   type CategoryCreateInput,
   type CategoryUpdateInput,
   type CategoryInput,
-} from "@/lib/actions/categories";
+} from "@/features/settings/client/actions";
 import type { SettingsCategory } from "@/features/settings/public";
+import { categoryToFormInput } from "@/features/settings/domain/category-mapping";
 import {
   groupCategoriesByType,
   getCategoryTypeLabel,
@@ -203,21 +204,7 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
     }
   };
 
-  const categoryToInput = (
-    category: SettingsCategory | null,
-  ): CategoryInput | null => {
-    if (!category) return null;
-    return {
-      name: category.name,
-      categoryType: category.categoryType as "expense" | "income" | "transfer",
-      color: category.color || "#6b7280",
-      icon: category.icon || "RiFolderLine",
-      description: category.description || undefined,
-      categorizationInstructions:
-        category.categorizationInstructions || undefined,
-      isSystem: category.isSystem || false,
-    };
-  };
+  const categoryToInput = categoryToFormInput;
 
   const renderCategoryList = (
     categoryList: SettingsCategory[],

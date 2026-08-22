@@ -1,4 +1,2 @@
 export { AddAccountDialog } from "./add-account-dialog";
-export { ProfileEditor } from "./profile-editor";
-export { CategoryManager } from "./category-manager";
 export { SettingsTabs } from "./settings-tabs";
