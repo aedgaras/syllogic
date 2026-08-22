@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { buildCategorySpendingQuery } from "@/lib/category-spending/query-params";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 
 interface CategoryData {
   id: string | null;
@@ -109,7 +110,7 @@ export function SpendingByCategoryChart({
             {periodTitle} {translate("expenses")}
           </CardTitle>
           <span className="max-w-full font-mono text-xl font-semibold tracking-tight [overflow-wrap:anywhere] sm:text-2xl">
-            {formatCurrency(total, currency)}
+            <MaskableAmount value={formatCurrency(total, currency)} />
           </span>
         </div>
       </CardHeader>
@@ -137,7 +138,7 @@ export function SpendingByCategoryChart({
                     {category.name || translate("unknown")}
                   </span>
                   <span className="min-w-0 max-w-[55vw] text-right font-mono text-muted-foreground [overflow-wrap:anywhere] sm:max-w-none">
-                    {formatCurrency(category.amount, currency)}
+                    <MaskableAmount value={formatCurrency(category.amount, currency)} />
                   </span>
                 </div>
                 <div className="relative h-2 w-full bg-muted">

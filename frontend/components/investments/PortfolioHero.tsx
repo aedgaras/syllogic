@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { currencySymbol } from "@/lib/utils/currency";
 import type { Range } from "@/lib/actions/investments";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 
 const RANGES: Range[] = ["1W", "1M", "3M", "1Y", "ALL"];
 
@@ -54,19 +55,21 @@ export function PortfolioHero({
         </div>
         <div className="flex items-baseline gap-3 flex-wrap">
           <span className="text-4xl font-bold tabular-nums">
-            {sym}{" "}
-            {totalValue.toLocaleString("en", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            <MaskableAmount
+              value={`${sym} ${totalValue.toLocaleString("en", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`}
+            />
           </span>
           <span className={`text-sm font-medium tabular-nums ${changeClass}`}>
-            {positive ? "▲" : "▼"} {positive ? "+" : "-"}
-            {sym}{" "}
-            {Math.abs(absChange).toLocaleString("en", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}{" "}
+            {positive ? "▲" : "▼"}{" "}
+            <MaskableAmount
+              value={`${positive ? "+" : "-"}${sym} ${Math.abs(absChange).toLocaleString("en", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`}
+            />{" "}
             ({positive ? "+" : ""}
             {pctChange.toFixed(2)}%)
           </span>

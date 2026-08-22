@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 import { SubscriptionsSummaryRow } from "./subscriptions-summary-row";
 import { CompanyLogo } from "@/components/ui/company-logo";
 import {
@@ -213,7 +214,8 @@ export function SubscriptionsGroupedList({
             </span>
           </div>
           <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
-            {group.monthlyTotal.toFixed(2)} {currency} {translate("mo5fc050")}
+            <MaskableAmount value={`${group.monthlyTotal.toFixed(2)} ${currency}`} />{" "}
+            {translate("mo5fc050")}
           </span>
         </div>
       </div>
@@ -305,8 +307,9 @@ export function SubscriptionsGroupedList({
 
         <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
           <span className="whitespace-nowrap font-mono text-sm">
-            {item.isVariable && "~"}
-            {amount.toFixed(2)} {currency}
+            <MaskableAmount
+              value={`${item.isVariable ? "~" : ""}${amount.toFixed(2)} ${currency}`}
+            />
           </span>
           {!item.isSuggestion &&
             (item.isActive ? (

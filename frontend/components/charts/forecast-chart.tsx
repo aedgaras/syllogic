@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/chart";
 import { formatCurrency, cn } from "@/lib/utils";
 import { getCashflowForecast } from "@/lib/forecast/api";
+import { useHideBalances } from "@/components/hide-balances/hide-balances-provider";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 
 const HORIZONS = [7, 30, 90, 180] as const;
 type Horizon = (typeof HORIZONS)[number];
@@ -69,6 +71,7 @@ interface CustomTooltipProps {
 }
 
 function CustomTooltip({ active, payload, currency }: CustomTooltipProps) {
+  const { hideBalances } = useHideBalances();
   if (!active || !payload?.length) {
     return null;
   }
@@ -81,13 +84,19 @@ function CustomTooltip({ active, payload, currency }: CustomTooltipProps) {
           {translate("projectedBalance")}
         </span>
         <span className="font-mono font-medium tabular-nums">
-          {formatCurrency(point.value, currency)}
+          <MaskableAmount value={formatCurrency(point.value, currency)} />
         </span>
       </div>
       <div className="mt-1 flex items-center justify-between gap-8">
         <span className="text-muted-foreground">{translate("projectedRange")}</span>
         <span className="font-mono text-muted-foreground tabular-nums">
-          {formatCurrency(point.payload.low, currency)} – {formatCurrency(point.payload.high, currency)}
+          {hideBalances ? (
+            "••••"
+          ) : (
+            <>
+              {formatCurrency(point.payload.low, currency)} – {formatCurrency(point.payload.high, currency)}
+            </>
+          )}
         </span>
       </div>
     </div>
@@ -101,6 +110,7 @@ interface ForecastChartProps {
 
 export function ForecastChart({ currency, accountIds }: ForecastChartProps) {
   const [horizon, setHorizon] = React.useState<Horizon>(30);
+  const { hideBalances } = useHideBalances();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["forecast", "cashflow", horizon, accountIds],
@@ -138,19 +148,22 @@ export function ForecastChart({ currency, accountIds }: ForecastChartProps) {
                 netChange >= 0 ? "text-success" : "text-destructive",
               )}
             >
-              {netChange >= 0 ? "+" : ""}
-              {formatCurrency(netChange, currency)}
+              <MaskableAmount
+                value={`${netChange >= 0 ? "+" : ""}${formatCurrency(netChange, currency)}`}
+              />
             </span>
           </p>
           {hasGrowthLeg && (
             <p className="text-xs text-muted-foreground">
               {translate("cashVsGrowth")}:{" "}
               <span className="font-mono tabular-nums">
-                {formatCurrency(netChange - growthChange, currency)}
+                <MaskableAmount
+                  value={formatCurrency(netChange - growthChange, currency)}
+                />
               </span>{" "}
               {translate("cash")} / {" "}
               <span className="font-mono tabular-nums">
-                {formatCurrency(growthChange, currency)}
+                <MaskableAmount value={formatCurrency(growthChange, currency)} />
               </span>{" "}
               {translate("growth")}
             </p>
@@ -196,7 +209,9 @@ export function ForecastChart({ currency, accountIds }: ForecastChartProps) {
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-              tickFormatter={(value) => formatCompactNumber(value)}
+              tickFormatter={(value) =>
+                hideBalances ? "••" : formatCompactNumber(value)
+              }
               tickMargin={8}
               width={42}
             />

@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import { AccountLogo } from "@/components/ui/account-logo";
 import { parseGlobalFiltersFromSearchParams } from "@/lib/filters/global-filters";
 import { buildCategorySpendingQuery } from "@/lib/category-spending/query-params";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 
 function AccountCell({
   accountId,
@@ -324,8 +325,9 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       const isCredit = type === "credit";
       return (
         <span className="block whitespace-nowrap text-center font-mono">
-          {isCredit ? "+" : "-"}
-          {Math.abs(amount).toFixed(2)}
+          <MaskableAmount
+            value={`${isCredit ? "+" : "-"}${Math.abs(amount).toFixed(2)}`}
+          />
         </span>
       );
     },

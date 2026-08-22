@@ -26,6 +26,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn, normalizeDecimalInput } from "@/lib/utils";
+import { useHideBalances } from "@/components/hide-balances/hide-balances-provider";
 import { format } from "date-fns";
 import { getUserAccounts, repayCreditCard } from "@/lib/actions/transactions";
 
@@ -68,6 +69,7 @@ export function RepayCreditCardDialog({
   onOpenChange,
 }: RepayCreditCardDialogProps) {
   const router = useRouter();
+  const { hideBalances } = useHideBalances();
   const [isLoading, setIsLoading] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [totalAmount, setTotalAmount] = useState<string>("");
@@ -285,7 +287,9 @@ export function RepayCreditCardDialog({
                   )}
                 >
                   {translate("remainingToAllocate", {
-                    value1: formatCurrency(remaining, currency),
+                    value1: hideBalances
+                      ? "••••"
+                      : formatCurrency(remaining, currency),
                   })}
                 </p>
               )}

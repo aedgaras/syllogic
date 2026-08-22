@@ -1,6 +1,7 @@
 import { t as translate } from "@/i18n/translate";
 import Link from "next/link";
 import { getPortfolio } from "@/lib/api/investments";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 
 export async function PortfolioSummaryCard() {
   let portfolio;
@@ -24,12 +25,16 @@ export async function PortfolioSummaryCard() {
             change >= 0 ? "text-success text-sm" : "text-destructive text-sm"
           }
         >
-          {change >= 0 ? "+" : ""}
-          {change.toFixed(2)} {translate("today2dd2be")}
+          <MaskableAmount
+            value={`${change >= 0 ? "+" : ""}${change.toFixed(2)}`}
+          />{" "}
+          {translate("today2dd2be")}
         </span>
       </div>
       <p className="text-2xl mt-1">
-        {portfolio.total_value} {portfolio.currency}
+        <MaskableAmount
+          value={`${portfolio.total_value} ${portfolio.currency}`}
+        />
       </p>
     </Link>
   );

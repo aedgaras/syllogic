@@ -119,6 +119,7 @@ async function DashboardContent({
             currency={data.periodSpending.currency}
             subtitle={data.periodLabel.subtitle}
             sparkData={data.spendingHistory}
+            sensitive
           />
         </div>
         <div data-walkthrough="walkthrough-income">
@@ -128,6 +129,7 @@ async function DashboardContent({
             currency={data.periodIncome.currency}
             subtitle={data.periodLabel.subtitle}
             sparkData={data.incomeHistory}
+            sensitive
           />
         </div>
         <div data-walkthrough="walkthrough-savings">
@@ -138,6 +140,7 @@ async function DashboardContent({
             subtitle={data.periodLabel.subtitle}
             sparkData={[]}
             showSign
+            sensitive
             trend={
               data.savingsRate.amount !== 0
                 ? {

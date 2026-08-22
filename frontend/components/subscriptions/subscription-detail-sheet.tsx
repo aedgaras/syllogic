@@ -21,6 +21,7 @@ import {
 import { format } from "date-fns";
 import type { SubscriptionViewModel } from "@/features/subscriptions/public";
 import { useSubscriptionDetailController } from "@/features/subscriptions/hooks/use-subscription-detail-controller";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 
 interface SubscriptionDetailSheetProps {
   subscription: SubscriptionViewModel | null;
@@ -114,8 +115,9 @@ export function SubscriptionDetailSheet({
           <SheetTitle className="text-xl">{subscription.name}</SheetTitle>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <SheetDescription className="text-base font-mono">
-              {subscription.isVariable && "~"}
-              {parseFloat(subscription.amount).toFixed(2)} {currency}
+              <MaskableAmount
+                value={`${subscription.isVariable ? "~" : ""}${parseFloat(subscription.amount).toFixed(2)} ${currency}`}
+              />
               {subscription.isVariable && (
                 <span className="ml-2 font-sans text-xs text-muted-foreground">
                   ({translate("estimatedAmount").toLowerCase()})
@@ -160,7 +162,9 @@ export function SubscriptionDetailSheet({
                   {translate("thisYear")}
                 </div>
                 <div className="text-xl font-mono font-medium">
-                  {costAggregations.thisYear.toFixed(2)} {currency}
+                  <MaskableAmount
+                    value={`${costAggregations.thisYear.toFixed(2)} ${currency}`}
+                  />
                 </div>
               </div>
               <div className="bg-muted/50 p-4 space-y-1">
@@ -168,7 +172,9 @@ export function SubscriptionDetailSheet({
                   {translate("allTime4745c5")}
                 </div>
                 <div className="text-xl font-mono font-medium">
-                  {costAggregations.allTime.toFixed(2)} {currency}
+                  <MaskableAmount
+                    value={`${costAggregations.allTime.toFixed(2)} ${currency}`}
+                  />
                 </div>
               </div>
             </div>
@@ -226,8 +232,9 @@ export function SubscriptionDetailSheet({
                           </div>
                         </div>
                         <div className="shrink-0 text-sm font-mono sm:ml-4">
-                          {Math.abs(parseFloat(txn.amount)).toFixed(2)}{" "}
-                          {currency}
+                          <MaskableAmount
+                            value={`${Math.abs(parseFloat(txn.amount)).toFixed(2)} ${currency}`}
+                          />
                         </div>
                       </div>
                     ))}

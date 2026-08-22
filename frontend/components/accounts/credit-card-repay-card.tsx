@@ -5,6 +5,7 @@ import { useState } from "react";
 import { RiBankCardLine } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import { RepayCreditCardDialog } from "./repay-credit-card-dialog";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 
 interface CreditCardRepayCardProps {
   accountId: string;
@@ -37,7 +38,7 @@ export function CreditCardRepayCard({
               {translate("outstandingBalance")}
             </p>
             <p className="font-mono text-lg font-semibold">
-              {formatCurrency(outstandingBalance, currency)}
+              <MaskableAmount value={formatCurrency(outstandingBalance, currency)} />
             </p>
           </div>
         </div>

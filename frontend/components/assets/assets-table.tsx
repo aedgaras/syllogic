@@ -4,6 +4,7 @@ import { t as translate } from "@/i18n/translate";
 import { useState } from "react";
 import { RiArrowDownSLine, RiArrowRightSLine } from "@remixicon/react";
 import { formatCurrency } from "@/lib/utils";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 import { WeightBarVisualizer } from "./weight-bar-visualizer";
 import type { AssetCategory, AssetAccount, AssetCategoryKey } from "./types";
 
@@ -69,7 +70,7 @@ function AccountRow({
           </span>
         </div>
         <span className="ml-auto text-sm font-medium sm:w-24 sm:text-right">
-          {formatCurrency(account.value, currency)}
+          <MaskableAmount value={formatCurrency(account.value, currency)} />
         </span>
       </div>
     </div>
@@ -138,7 +139,7 @@ function CategoryRow({
             </span>
           </div>
           <span className="ml-auto text-sm font-medium sm:w-24 sm:text-right">
-            {formatCurrency(category.value, currency)}
+            <MaskableAmount value={formatCurrency(category.value, currency)} />
           </span>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { t as translate } from "@/i18n/translate";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 import type { SubscriptionKpis } from "@/features/subscriptions/public";
 
 interface SubscriptionsKpiGridProps {
@@ -35,10 +36,12 @@ export function SubscriptionsKpiGrid({ kpis }: SubscriptionsKpiGridProps) {
               {translate("totalMonthly")}
             </p>
             <p className="break-words font-mono text-xl font-semibold tracking-tight sm:text-2xl">
-              {formatCurrency(kpis.monthlyTotal, kpis.currency, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+              <MaskableAmount
+                value={formatCurrency(kpis.monthlyTotal, kpis.currency, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              />
             </p>
           </div>
         </CardContent>
@@ -51,10 +54,12 @@ export function SubscriptionsKpiGrid({ kpis }: SubscriptionsKpiGridProps) {
               {translate("allTimeTotal")}
             </p>
             <p className="break-words font-mono text-xl font-semibold tracking-tight sm:text-2xl">
-              {formatCurrency(kpis.allTimeTotal, kpis.currency, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+              <MaskableAmount
+                value={formatCurrency(kpis.allTimeTotal, kpis.currency, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              />
             </p>
           </div>
         </CardContent>

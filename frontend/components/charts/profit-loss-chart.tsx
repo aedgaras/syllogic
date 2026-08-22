@@ -19,6 +19,8 @@ import {
   ChartTooltip,
 } from "@/components/ui/chart";
 import { formatCurrency, cn } from "@/lib/utils";
+import { useHideBalances } from "@/components/hide-balances/hide-balances-provider";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 
 interface IncomeExpenseDataPoint {
   month: string;
@@ -115,7 +117,7 @@ function CustomTooltip({
             </span>
           </div>
           <span className="font-mono font-medium tabular-nums">
-            {formatCurrency(income, currency)}
+            <MaskableAmount value={formatCurrency(income, currency)} />
           </span>
         </div>
         <div className="flex items-center justify-between gap-8">
@@ -129,7 +131,7 @@ function CustomTooltip({
             </span>
           </div>
           <span className="font-mono font-medium tabular-nums">
-            {formatCurrency(expenses, currency)}
+            <MaskableAmount value={formatCurrency(expenses, currency)} />
           </span>
         </div>
         <div className="mt-2 flex items-center justify-between gap-8 border-t border-border/50 pt-2">
@@ -140,8 +142,9 @@ function CustomTooltip({
               net >= 0 ? "text-success" : "text-destructive",
             )}
           >
-            {net >= 0 ? "+" : ""}
-            {formatCurrency(net, currency)}
+            <MaskableAmount
+              value={`${net >= 0 ? "+" : ""}${formatCurrency(net, currency)}`}
+            />
           </span>
         </div>
       </div>
@@ -155,6 +158,7 @@ export function ProfitLossChart({
   average,
   isLoading = false,
 }: ProfitLossChartProps) {
+  const { hideBalances } = useHideBalances();
   if (isLoading) {
     return <ProfitLossChartSkeleton />;
   }
@@ -212,7 +216,9 @@ export function ProfitLossChart({
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-              tickFormatter={(value) => formatCompactNumber(value)}
+              tickFormatter={(value) =>
+                hideBalances ? "••" : formatCompactNumber(value)
+              }
               tickMargin={8}
               width={42}
             />
@@ -235,9 +241,11 @@ export function ProfitLossChart({
                 strokeDasharray="5 5"
                 strokeWidth={1}
                 label={{
-                  value: translate("avg", {
-                    value1: formatCompactNumber(average),
-                  }),
+                  value: hideBalances
+                    ? translate("avg", { value1: "••" })
+                    : translate("avg", {
+                        value1: formatCompactNumber(average),
+                      }),
                   position: "right",
                   fill: "var(--muted-foreground)",
                   fontSize: 11,

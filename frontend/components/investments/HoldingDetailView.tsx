@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { currencySymbol } from "@/lib/utils/currency";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 import { PortfolioChart } from "./PortfolioChart";
 import { TypeBadge } from "./HoldingsTableHF";
 import { EditHoldingDialog } from "./EditHoldingDialog";
@@ -102,6 +103,7 @@ export function HoldingDetailView({
     label: string;
     value: string;
     tone?: "positive" | "negative";
+    sensitive?: boolean;
   }[] = [
     {
       label: translate("currentPrice"),
@@ -112,6 +114,7 @@ export function HoldingDetailView({
     {
       label: translate("marketValue"),
       value: `${portfolioCurrSym} ${fmt(marketValue)}`,
+      sensitive: true,
     },
     {
       label: translate("totalReturn"),
@@ -131,6 +134,7 @@ export function HoldingDetailView({
       value: holding.avg_cost
         ? `${holdingCurrSym} ${fmt(Number(holding.avg_cost))}`
         : "—",
+      sensitive: true,
     },
     {
       label: translate("portfolioWeight"),
@@ -184,7 +188,7 @@ export function HoldingDetailView({
       </Card>
 
       <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-5">
-        {stats.map(({ label, value, tone }) => (
+        {stats.map(({ label, value, tone, sensitive }) => (
           <Card key={label}>
             <CardContent className="flex flex-col gap-1 p-3">
               <div className="text-2xs uppercase tracking-wider text-muted-foreground">
@@ -199,7 +203,7 @@ export function HoldingDetailView({
                       : ""
                 }`}
               >
-                {value}
+                {sensitive ? <MaskableAmount value={value} /> : value}
               </div>
             </CardContent>
           </Card>

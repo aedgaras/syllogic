@@ -28,6 +28,7 @@ import {
   startOfDay,
 } from "date-fns";
 import type { BalanceHistoryPoint } from "@/features/accounts/public";
+import { useHideBalances } from "@/components/hide-balances/hide-balances-provider";
 
 type Horizon = "7D" | "LM" | "30D" | "90D" | "6M" | "1Y" | "5Y" | "ALL";
 
@@ -138,6 +139,7 @@ export function AccountBalanceChart({
   currency,
   storageKey,
 }: AccountBalanceChartProps) {
+  const { hideBalances } = useHideBalances();
   const chartRef = useRef<HTMLDivElement>(null);
   const [axis, setAxis] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -372,7 +374,7 @@ export function AccountBalanceChart({
                     className="text-white text-xs font-semibold px-2 py-1 font-mono min-w-16 text-right"
                     style={{ backgroundColor: "#047857" }}
                   >
-                    {formatCurrencyValue(springY.get())}
+                    {hideBalances ? "••••" : formatCurrencyValue(springY.get())}
                   </div>
                   {currentDate && (
                     <div className="text-2xs text-muted-foreground mt-0.5">

@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { OwnerBadges } from "@/components/household/owner-badges";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 import { PROPERTY_TYPES, VEHICLE_TYPES } from "@/components/assets/types";
 import type {
   AccountAssetViewModel,
@@ -123,7 +124,9 @@ export function AccountAssetList({
                 <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end sm:gap-4">
                   <div className="text-right">
                     <p className="font-medium">
-                      {formatCurrency(account.balance, account.currency)}
+                      <MaskableAmount
+                        value={formatCurrency(account.balance, account.currency)}
+                      />
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {account.currency}
@@ -322,7 +325,9 @@ function AssetRowActions({
   return (
     <div className="flex items-center gap-4">
       <div className="text-right">
-        <p className="font-medium">{value}</p>
+        <p className="font-medium">
+          <MaskableAmount value={value} />
+        </p>
         <p className="text-xs text-muted-foreground">{currency}</p>
       </div>
       <DropdownMenu>

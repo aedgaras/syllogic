@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { buildTransactionsDrilldownQuery } from "@/lib/dashboard/drilldown-query";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 import { useIsMobile } from "@/shared/client/hooks/use-mobile";
 
 interface SankeyNode {
@@ -255,7 +256,7 @@ function CustomTooltip({ active, payload, currency }: CustomTooltipProps) {
         <div className="text-muted-foreground">
           {translate("total")}{" "}
           <span className="font-mono font-medium text-foreground">
-            {formatCurrency(total, currency)}
+            <MaskableAmount value={formatCurrency(total, currency)} />
           </span>
         </div>
       </div>
@@ -271,7 +272,7 @@ function CustomTooltip({ active, payload, currency }: CustomTooltipProps) {
         <div className="text-muted-foreground">
           {translate("amount281473")}{" "}
           <span className="font-mono font-medium text-foreground">
-            {formatCurrency(data.value, currency)}
+            <MaskableAmount value={formatCurrency(data.value, currency)} />
           </span>
         </div>
       </div>
@@ -413,7 +414,7 @@ export function SankeyFlowChart({
               {selectedNode.name || translate("unknown")}
             </span>
             <span className="font-mono">
-              {formatCurrency(selectedTotal, currency)}
+              <MaskableAmount value={formatCurrency(selectedTotal, currency)} />
             </span>
             <span>{translate("clickAgainToViewTransactions")}</span>
           </p>

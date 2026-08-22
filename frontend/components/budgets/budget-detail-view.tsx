@@ -5,6 +5,8 @@ import Link from "next/link";
 import { WeightBarVisualizer } from "@/components/assets/weight-bar-visualizer";
 import { RiArrowLeftLine } from "@remixicon/react";
 import { formatCurrency, cn } from "@/lib/utils";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
+import { useHideBalances } from "@/components/hide-balances/hide-balances-provider";
 import type { BudgetDetailViewModel } from "@/features/budgets/public";
 import {
   statusClasses,
@@ -21,6 +23,7 @@ interface BudgetDetailViewProps {
 
 export function BudgetDetailView({ budget }: BudgetDetailViewProps) {
   const clampedOverall = Math.min(budget.percentage, 100);
+  const { hideBalances } = useHideBalances();
 
   return (
     <div className="flex flex-col gap-4">
@@ -48,15 +51,15 @@ export function BudgetDetailView({ budget }: BudgetDetailViewProps) {
             </span>
           </div>
           <span className="whitespace-nowrap font-mono text-sm">
-            {formatCurrency(budget.spent, budget.currency, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}{" "}
-            /{" "}
-            {formatCurrency(budget.amount, budget.currency, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            <MaskableAmount
+              value={`${formatCurrency(budget.spent, budget.currency, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })} / ${formatCurrency(budget.amount, budget.currency, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`}
+            />
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -76,10 +79,12 @@ export function BudgetDetailView({ budget }: BudgetDetailViewProps) {
         {budget.isActive && budget.projectedStatus !== budget.status && (
           <div className={cn("text-xs", statusClasses[budget.projectedStatus])}>
             {translate("projectedByPeriodEnd", {
-              value1: formatCurrency(budget.projectedSpend, budget.currency, {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              }),
+              value1: hideBalances
+                ? "••••"
+                : formatCurrency(budget.projectedSpend, budget.currency, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  }),
             })}
           </div>
         )}
@@ -122,22 +127,26 @@ export function BudgetDetailView({ budget }: BudgetDetailViewProps) {
                       )}
                     </div>
                     <span className="whitespace-nowrap font-mono text-sm">
-                      {category.subLimit == null
-                        ? formatCurrency(category.spent, budget.currency, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })
-                        : `${formatCurrency(category.spent, budget.currency, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })} / ${formatCurrency(
-                            category.subLimit,
-                            budget.currency,
-                            {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            },
-                          )}`}
+                      <MaskableAmount
+                        value={
+                          category.subLimit == null
+                            ? formatCurrency(category.spent, budget.currency, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })
+                            : `${formatCurrency(category.spent, budget.currency, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })} / ${formatCurrency(
+                                category.subLimit,
+                                budget.currency,
+                                {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                },
+                              )}`
+                        }
+                      />
                     </span>
                   </div>
                   {category.subLimit != null && (

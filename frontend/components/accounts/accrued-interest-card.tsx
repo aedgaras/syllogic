@@ -5,6 +5,7 @@ import { useState } from "react";
 import { RiPercentLine } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import { AddInterestDialog } from "./add-interest-dialog";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 
 interface AccruedInterestCardProps {
   accountId: string;
@@ -36,7 +37,7 @@ export function AccruedInterestCard({
               {translate("accruedInterest")}
             </p>
             <p className="font-mono text-lg font-semibold">
-              {formatCurrency(accruedInterest, currency)}
+              <MaskableAmount value={formatCurrency(accruedInterest, currency)} />
             </p>
           </div>
         </div>

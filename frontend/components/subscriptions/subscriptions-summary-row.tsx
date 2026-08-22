@@ -6,6 +6,7 @@ import {
   getCurrencyFallback,
   monthlyEquivalent,
 } from "@/features/subscriptions/public";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 
 interface SubscriptionsSummaryRowProps {
   data: SubscriptionOrSuggestion[];
@@ -30,7 +31,7 @@ export function SubscriptionsSummaryRow({
         {translate("monthlyTotal")}
       </span>
       <span className="text-sm font-mono font-semibold">
-        {monthlyTotal.toFixed(2)} {currency}
+        <MaskableAmount value={`${monthlyTotal.toFixed(2)} ${currency}`} />
       </span>
     </div>
   );

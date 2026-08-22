@@ -1,4 +1,5 @@
 import { t as translate } from "@/i18n/translate";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 export function computeBestDay(
   series: number[],
 ): { delta: number; index: number } | null {
@@ -30,31 +31,41 @@ export function PortfolioStatsStrip({
   bestDay: { delta: number; label: string } | null;
   currencySymbol: string;
 }) {
-  const cells: { label: string; value: string; tone: Tone }[] = [
+  const cells: {
+    label: string;
+    value: string;
+    tone: Tone;
+    sensitive: boolean;
+  }[] = [
     {
       label: translate("costBasis"),
       value: `${currencySymbol} ${costBasis.toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       tone: "neutral",
+      sensitive: true,
     },
     {
       label: translate("unrealizedPL"),
       value: `${unrealizedPnl >= 0 ? "▲ +" : "▼ -"}${currencySymbol} ${Math.abs(unrealizedPnl).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       tone: unrealizedPnl >= 0 ? "positive" : "negative",
+      sensitive: true,
     },
     {
       label: translate("return"),
       value: `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(1)}%`,
       tone: returnPct >= 0 ? "positive" : "negative",
+      sensitive: false,
     },
     {
       label: translate("holdings"),
       value: `${holdingsCount}`,
       tone: "neutral",
+      sensitive: false,
     },
     {
       label: translate("accounts"),
       value: `${accountsCount}`,
       tone: "neutral",
+      sensitive: false,
     },
     {
       label: translate("bestDay"),
@@ -62,11 +73,12 @@ export function PortfolioStatsStrip({
         ? `▲ +${currencySymbol} ${bestDay.delta.toLocaleString("en", { maximumFractionDigits: 0 })} (${bestDay.label})`
         : "—",
       tone: "neutral",
+      sensitive: true,
     },
   ];
   return (
     <div className="grid grid-cols-1 gap-px overflow-hidden rounded-md border border-border bg-border min-[420px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
-      {cells.map(({ label, value, tone }) => (
+      {cells.map(({ label, value, tone, sensitive }) => (
         <div key={label} className="flex flex-col gap-1 bg-card p-3">
           <div className="text-2xs uppercase tracking-wider text-muted-foreground">
             {label}
@@ -80,7 +92,7 @@ export function PortfolioStatsStrip({
                   : ""
             }`}
           >
-            {value}
+            {sensitive ? <MaskableAmount value={value} /> : value}
           </div>
         </div>
       ))}

@@ -27,6 +27,7 @@ import { createOrUpdateBalancingTransaction } from "@/lib/actions/transactions";
 import { getCategoryByName } from "@/lib/actions/categories";
 import { getAccountBalanceOnDate } from "@/features/accounts/client/actions";
 import { logger } from "@/lib/logger";
+import { useHideBalances } from "@/components/hide-balances/hide-balances-provider";
 
 interface UpdateBalanceDialogProps {
   account: {
@@ -47,6 +48,7 @@ export function UpdateBalanceDialog({
   onOpenChange,
   onSuccess,
 }: UpdateBalanceDialogProps) {
+  const { hideBalances } = useHideBalances();
   const [newBalance, setNewBalance] = useState("");
   const [adjustmentDate, setAdjustmentDate] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(false);
@@ -201,6 +203,8 @@ export function UpdateBalanceDialog({
               <div className="flex items-center gap-2 text-lg font-medium">
                 {isLoadingBalance ? (
                   <RiLoader4Line className="h-4 w-4 animate-spin" />
+                ) : hideBalances ? (
+                  "••••"
                 ) : (
                   formatCurrencyValue(balanceOnDate)
                 )}
@@ -239,7 +243,7 @@ export function UpdateBalanceDialog({
                     difference > 0 ? "text-success" : "text-destructive",
                   )}
                 >
-                  {formatCurrencyValue(difference, true)}
+                  {hideBalances ? "••••" : formatCurrencyValue(difference, true)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   A {difference > 0 ? translate("credit") : translate("debit")}{" "}

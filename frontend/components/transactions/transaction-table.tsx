@@ -24,6 +24,7 @@ import {
 } from "@/features/transactions/public";
 import { useTransactionQueryState } from "@/features/transactions/hooks/use-transaction-query-state";
 import type { BulkTransactionActions } from "@/features/transactions/hooks/use-bulk-transaction-actions";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 
 interface TransactionTableProps {
   transactions: TransactionWithRelations[];
@@ -253,7 +254,9 @@ export function TransactionTable({
                   {translate("totalIn")}
                 </span>
                 <span className="font-mono font-medium text-success">
-                  +{formatSummaryAmount(resolvedFilteredTotals.totalIn)}
+                  <MaskableAmount
+                    value={`+${formatSummaryAmount(resolvedFilteredTotals.totalIn)}`}
+                  />
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs">
@@ -261,7 +264,9 @@ export function TransactionTable({
                   {translate("totalOut")}
                 </span>
                 <span className="font-mono font-medium text-rose-700">
-                  -{formatSummaryAmount(resolvedFilteredTotals.totalOut)}
+                  <MaskableAmount
+                    value={`-${formatSummaryAmount(resolvedFilteredTotals.totalOut)}`}
+                  />
                 </span>
               </div>
             </div>

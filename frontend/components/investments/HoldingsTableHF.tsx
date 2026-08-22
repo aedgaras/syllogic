@@ -12,6 +12,7 @@ import {
 } from "@remixicon/react";
 import type { Holding } from "@/lib/api/investments";
 import { currencySymbol } from "@/lib/utils/currency";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -215,11 +216,12 @@ export function HoldingsTableHF({
                     {groupLabel} · {groupRows.length}
                   </span>
                   <span className="shrink-0 tabular-nums">
-                    {portfolioCurrencySymbol}{" "}
-                    {groupTotal.toLocaleString("en", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
+                    <MaskableAmount
+                      value={`${portfolioCurrencySymbol} ${groupTotal.toLocaleString("en", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}`}
+                    />
                   </span>
                 </div>
                 <div className="divide-y">
@@ -265,11 +267,12 @@ export function HoldingsTableHF({
                           </div>
                           <div className="shrink-0 text-right">
                             <div className="tabular-nums text-sm font-semibold">
-                              {portfolioCurrencySymbol}{" "}
-                              {h._value.toLocaleString("en", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
+                              <MaskableAmount
+                                value={`${portfolioCurrencySymbol} ${h._value.toLocaleString("en", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}`}
+                              />
                             </div>
                             <div className="text-xs text-muted-foreground">
                               {h.current_price
@@ -309,9 +312,11 @@ export function HoldingsTableHF({
                                     : "text-destructive"
                               }`}
                             >
-                              {h._pnl == null
-                                ? "—"
-                                : translate("message4ec9f0", {
+                              {h._pnl == null ? (
+                                "—"
+                              ) : (
+                                <MaskableAmount
+                                  value={translate("message4ec9f0", {
                                     value1: h._pnl >= 0 ? "+" : "",
                                     portfolioCurrencySymbol:
                                       portfolioCurrencySymbol,
@@ -320,6 +325,8 @@ export function HoldingsTableHF({
                                       maximumFractionDigits: 2,
                                     }),
                                   })}
+                                />
+                              )}
                             </div>
                           </div>
                           {!readOnly && h.source === "manual" && (
@@ -357,11 +364,12 @@ export function HoldingsTableHF({
           <div className="flex items-center justify-between gap-3 bg-muted/40 px-4 py-3 text-sm font-semibold">
             <span>{translate("totalb25928")}</span>
             <span className="tabular-nums">
-              {portfolioCurrencySymbol}{" "}
-              {totalValue.toLocaleString("en", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+              <MaskableAmount
+                value={`${portfolioCurrencySymbol} ${totalValue.toLocaleString("en", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`}
+              />
             </span>
           </div>
         </div>
@@ -427,11 +435,12 @@ export function HoldingsTableHF({
                     colSpan={3}
                     className="text-right tabular-nums text-xs font-semibold text-muted-foreground"
                   >
-                    {portfolioCurrencySymbol}{" "}
-                    {groupTotal.toLocaleString("en", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
+                    <MaskableAmount
+                      value={`${portfolioCurrencySymbol} ${groupTotal.toLocaleString("en", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}`}
+                    />
                   </TableCell>
                 </TableRow>,
                 ...groupRows.map((h) => {
@@ -491,11 +500,12 @@ export function HoldingsTableHF({
                           : "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums font-semibold">
-                        {portfolioCurrencySymbol}{" "}
-                        {h._value.toLocaleString("en", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        <MaskableAmount
+                          value={`${portfolioCurrencySymbol} ${h._value.toLocaleString("en", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}`}
+                        />
                       </TableCell>
                       <TableCell
                         className={`text-right tabular-nums ${
@@ -506,9 +516,11 @@ export function HoldingsTableHF({
                               : "text-destructive"
                         }`}
                       >
-                        {h._pnl == null
-                          ? "—"
-                          : translate("message4ec9f0", {
+                        {h._pnl == null ? (
+                          "—"
+                        ) : (
+                          <MaskableAmount
+                            value={translate("message4ec9f0", {
                               value1: h._pnl >= 0 ? "+" : "",
                               portfolioCurrencySymbol: portfolioCurrencySymbol,
                               value3: h._pnl.toLocaleString("en", {
@@ -516,6 +528,8 @@ export function HoldingsTableHF({
                                 maximumFractionDigits: 2,
                               }),
                             })}
+                          />
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -578,11 +592,12 @@ export function HoldingsTableHF({
                 {translate("totalb25928")}
               </TableCell>
               <TableCell className="text-right tabular-nums font-bold">
-                {portfolioCurrencySymbol}{" "}
-                {totalValue.toLocaleString("en", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+                <MaskableAmount
+                  value={`${portfolioCurrencySymbol} ${totalValue.toLocaleString("en", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`}
+                />
               </TableCell>
               <TableCell />
             </TableRow>

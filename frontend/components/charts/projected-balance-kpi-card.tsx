@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { KpiSparkCard } from "@/components/charts/kpi-spark-card";
 import { getCashflowForecast } from "@/lib/forecast/api";
 import { formatCurrency } from "@/lib/utils";
+import { useHideBalances } from "@/components/hide-balances/hide-balances-provider";
 
 interface ProjectedBalanceKpiCardProps {
   currency: string;
@@ -21,14 +22,16 @@ export function ProjectedBalanceKpiCard({
     queryKey: ["forecast", "cashflow", 30, accountIds],
     queryFn: () => getCashflowForecast({ horizonDays: 30, accountIds }),
   });
+  const { hideBalances } = useHideBalances();
 
-  const subtitle =
-    data
-      ? `${formatCurrency(data.projectedBalanceLowAtHorizon, currency)} – ${formatCurrency(
+  const subtitle = data
+    ? hideBalances
+      ? "•••• – ••••"
+      : `${formatCurrency(data.projectedBalanceLowAtHorizon, currency)} – ${formatCurrency(
           data.projectedBalanceHighAtHorizon,
           currency,
         )}`
-      : translate("basedOnRecurringAndTrend", { value1: 30 });
+    : translate("basedOnRecurringAndTrend", { value1: 30 });
 
   return (
     <KpiSparkCard

@@ -25,6 +25,7 @@ import type {
 } from "@/shared/domain/display-contracts";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 
 interface CategorySpendingClientProps {
   data: CategorySpendingData;
@@ -245,7 +246,9 @@ export function CategorySpendingClient({
           </CardHeader>
           <CardContent>
             <p className="font-mono text-2xl font-semibold tracking-tight">
-              {formatCurrency(data.summary.totalSpend, data.currency)}
+              <MaskableAmount
+                value={formatCurrency(data.summary.totalSpend, data.currency)}
+              />
             </p>
           </CardContent>
         </Card>
@@ -266,10 +269,14 @@ export function CategorySpendingClient({
                   {selectedCategories.length === 1 ? "y" : translate("ies")}
                 </p>
                 <p className="font-mono text-xl text-muted-foreground">
-                  {formatCurrency(selectedTotal, data.currency)}
+                  <MaskableAmount
+                    value={formatCurrency(selectedTotal, data.currency)}
+                  />
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {formatCurrency(selectedAverageMonthly, data.currency)}
+                  <MaskableAmount
+                    value={formatCurrency(selectedAverageMonthly, data.currency)}
+                  />
                   {translate("mo")}
                 </p>
               </>
@@ -279,10 +286,12 @@ export function CategorySpendingClient({
                   {data.summary.topCategory.name}
                 </p>
                 <p className="font-mono text-xl text-muted-foreground">
-                  {formatCurrency(
-                    data.summary.topCategory.amount,
-                    data.currency,
-                  )}
+                  <MaskableAmount
+                    value={formatCurrency(
+                      data.summary.topCategory.amount,
+                      data.currency,
+                    )}
+                  />
                 </p>
               </>
             ) : (
@@ -301,7 +310,12 @@ export function CategorySpendingClient({
           </CardHeader>
           <CardContent>
             <p className="font-mono text-2xl font-semibold tracking-tight">
-              {formatCurrency(data.summary.averageMonthlySpend, data.currency)}
+              <MaskableAmount
+                value={formatCurrency(
+                  data.summary.averageMonthlySpend,
+                  data.currency,
+                )}
+              />
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {translate("basedOn")} {data.range.monthCount}{" "}
@@ -363,7 +377,9 @@ export function CategorySpendingClient({
                           </span>
                         </div>
                         <span className="shrink-0 font-mono text-sm text-muted-foreground">
-                          {formatCurrency(category.amount, data.currency)}
+                          <MaskableAmount
+                            value={formatCurrency(category.amount, data.currency)}
+                          />
                         </span>
                       </div>
 
@@ -396,17 +412,21 @@ export function CategorySpendingClient({
                           ) : (
                             <RiSubtractLine className="h-3.5 w-3.5" />
                           )}
-                          {formatSignedCurrency(
-                            category.deltaAmount,
-                            data.currency,
-                          )}{" "}
+                          <MaskableAmount
+                            value={formatSignedCurrency(
+                              category.deltaAmount,
+                              data.currency,
+                            )}
+                          />{" "}
                           ({formatSignedPercent(category.deltaPct)})
                         </span>
                         <span className="justify-self-end text-right font-mono">
-                          {formatCurrency(
-                            category.averageMonthlyAmount,
-                            data.currency,
-                          )}
+                          <MaskableAmount
+                            value={formatCurrency(
+                              category.averageMonthlyAmount,
+                              data.currency,
+                            )}
+                          />
                           {translate("mo")}
                         </span>
                       </div>

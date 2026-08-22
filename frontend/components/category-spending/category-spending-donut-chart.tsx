@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/chart";
 import { formatCurrency } from "@/lib/utils";
 import type { CategorySpendingCategory } from "@/lib/actions/category-spending";
+import { useHideBalances } from "@/components/hide-balances/hide-balances-provider";
+import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 
 interface CategorySpendingDonutChartProps {
   data: CategorySpendingCategory[];
@@ -43,6 +45,7 @@ export function CategorySpendingDonutChart({
   selectedTotal,
   onToggleCategory,
 }: CategorySpendingDonutChartProps) {
+  const { hideBalances } = useHideBalances();
   const selectedCategorySet = React.useMemo(
     () => new Set(selectedCategoryIds),
     [selectedCategoryIds],
@@ -102,7 +105,9 @@ export function CategorySpendingDonutChart({
                               {translate("amount")}
                             </span>
                             <span className="font-mono font-medium text-foreground">
-                              {formatCurrency(Number(value), currency)}
+                              <MaskableAmount
+                                value={formatCurrency(Number(value), currency)}
+                              />
                             </span>
                           </div>
                           <div className="flex items-center justify-between gap-3">
@@ -167,7 +172,7 @@ export function CategorySpendingDonutChart({
                           y={centerY - 2}
                           className="fill-foreground font-mono text-sm font-semibold"
                         >
-                          {formatCurrency(total, currency)}
+                          {hideBalances ? "••••" : formatCurrency(total, currency)}
                         </tspan>
                         <tspan
                           x={centerX}
@@ -192,8 +197,10 @@ export function CategorySpendingDonutChart({
               {selectedCategories[0].name}
             </span>
             <span className="shrink-0 font-mono text-muted-foreground">
-              {formatCurrency(selectedCategories[0].amount, currency)} (
-              {selectedCategories[0].sharePct.toFixed(1)}%)
+              <MaskableAmount
+                value={formatCurrency(selectedCategories[0].amount, currency)}
+              />{" "}
+              ({selectedCategories[0].sharePct.toFixed(1)}%)
             </span>
           </div>
         ) : selectedCategories.length > 1 ? (
@@ -203,8 +210,8 @@ export function CategorySpendingDonutChart({
               {translate("selectedCategoriesc107fd")}
             </span>
             <span className="shrink-0 font-mono text-muted-foreground">
-              {formatCurrency(selectedTotal, currency)} (
-              {selectedSharePct.toFixed(1)}%)
+              <MaskableAmount value={formatCurrency(selectedTotal, currency)} />{" "}
+              ({selectedSharePct.toFixed(1)}%)
             </span>
           </div>
         ) : (

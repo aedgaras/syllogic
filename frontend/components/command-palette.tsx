@@ -563,7 +563,9 @@ export function CommandPalette() {
                                     : "text-success"
                                 }
                               >
-                                {formatAmount(tx.amount, tx.currency)}
+                                <MaskableAmount
+                                  value={formatAmount(tx.amount, tx.currency)}
+                                />
                               </span>
                               <span className="text-muted-foreground text-xs">
                                 {formatDate(new Date(tx.bookedAt), "short")}
