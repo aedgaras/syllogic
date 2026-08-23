@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AccountHeader } from "@/components/accounts/account-header";
 import { AccountBalanceChart } from "@/components/accounts/account-balance-chart";
 import { AccountTransactions } from "@/components/accounts/account-transactions";
+import { CreditCardRepayCard } from "@/components/accounts/credit-card-repay-card";
 import type { TransactionWithRelations } from "@/features/transactions/public";
 import type { CategoryDisplay } from "@/shared/domain/display-contracts";
 import type {
@@ -37,6 +38,15 @@ export function AccountDetail({
         currency={account.currency}
         storageKey={`filters:/accounts/${account.id}/balance-horizon`}
       />
+      {account.accountType === "credit_card" && (
+        <section className="rounded-xl border p-4">
+          <CreditCardRepayCard
+            accountId={account.id}
+            currency={account.currency}
+            functionalBalance={Number.parseFloat(account.functionalBalance)}
+          />
+        </section>
+      )}
       <div className="min-h-[400px]">
         {transactions.length === 0 ? (
           <div className="flex h-48 items-center justify-center rounded border border-dashed">

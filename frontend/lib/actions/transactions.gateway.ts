@@ -160,7 +160,7 @@ export async function getAccruedInterestForAccountViaBackend(
 }
 
 export interface UpdateTransactionBackendInput {
-  description: string;
+  description: string | null;
   merchant: string | null;
   accountId: string;
   categoryId: string | null;

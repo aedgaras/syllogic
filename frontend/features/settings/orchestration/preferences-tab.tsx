@@ -20,6 +20,7 @@ import { useWalkthroughStore } from "@/components/walkthrough/walkthrough-store"
 import { useHideBalances } from "@/components/hide-balances/hide-balances-provider";
 import {
   clearOpenAiApiKey,
+  updateDefaultAccount,
   updateLlmModel,
   updateOpenAiApiKey,
   updateTutorialsEnabled,
@@ -33,9 +34,20 @@ const LLM_MODEL_PRESETS = [
   "gpt-4.1",
 ];
 const CUSTOM_MODEL_VALUE = "__custom__";
+const NO_DEFAULT_ACCOUNT_VALUE = "__none__";
+
+type AccountOption = {
+  id: string;
+  name: string;
+  institution: string | null;
+  accountType: string;
+  currency: string | null;
+};
 
 type PreferencesTabProps = {
   initialOpenAiSettings: OpenAiSettings & { error?: string };
+  accounts: AccountOption[];
+  initialDefaultAccountId: string | null;
 };
 
 function sourceLabel(source: OpenAiSettings["source"]) {
@@ -44,7 +56,11 @@ function sourceLabel(source: OpenAiSettings["source"]) {
   return "Not configured";
 }
 
-export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
+export function PreferencesTab({
+  initialOpenAiSettings,
+  accounts,
+  initialDefaultAccountId,
+}: PreferencesTabProps) {
   const { tutorialsEnabled, setTutorialsEnabled } = useWalkthroughStore();
   const { hideBalances, setHideBalances } = useHideBalances();
   const [openAiSettings, setOpenAiSettings] = useState(initialOpenAiSettings);
@@ -53,10 +69,31 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
   const [clearing, setClearing] = useState(false);
   const [modelInput, setModelInput] = useState(initialOpenAiSettings.model);
   const [savingModel, setSavingModel] = useState(false);
+  const [defaultAccountId, setDefaultAccountId] = useState(
+    initialDefaultAccountId,
+  );
+  const [savingDefaultAccount, setSavingDefaultAccount] = useState(false);
 
   function handleToggleTutorials(enabled: boolean) {
     setTutorialsEnabled(enabled);
     void updateTutorialsEnabled(enabled);
+  }
+
+  async function handleDefaultAccountChange(value: string | null) {
+    const nextAccountId =
+      !value || value === NO_DEFAULT_ACCOUNT_VALUE ? null : value;
+    const previousAccountId = defaultAccountId;
+    setDefaultAccountId(nextAccountId);
+    setSavingDefaultAccount(true);
+    try {
+      const result = await updateDefaultAccount(nextAccountId);
+      if (!result.success) {
+        setDefaultAccountId(previousAccountId);
+        toast.error(result.error || translate("failedToUpdateDefaultAccount"));
+      }
+    } finally {
+      setSavingDefaultAccount(false);
+    }
   }
 
   async function handleSaveModel() {
@@ -172,6 +209,34 @@ export function PreferencesTab({ initialOpenAiSettings }: PreferencesTabProps) {
             aria-label={translate("enableHideBalanceAmounts")}
           />
         </div>
+      </div>
+
+      <div className="space-y-2 border border-border p-4">
+        <div className="space-y-1">
+          <Label htmlFor="default-account">{translate("defaultAccount")}</Label>
+          <p className="text-xs text-muted-foreground">
+            {translate("defaultAccountDescription")}
+          </p>
+        </div>
+        <Select
+          value={defaultAccountId ?? NO_DEFAULT_ACCOUNT_VALUE}
+          onValueChange={handleDefaultAccountChange}
+          disabled={savingDefaultAccount}
+        >
+          <SelectTrigger id="default-account" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_DEFAULT_ACCOUNT_VALUE}>
+              {translate("none")}
+            </SelectItem>
+            {accounts.map((account) => (
+              <SelectItem key={account.id} value={account.id}>
+                {account.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-4 border border-border p-4">

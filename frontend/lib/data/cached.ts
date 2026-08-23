@@ -117,12 +117,17 @@ export const getCachedFullUserAccounts = cache(async () => {
 
 async function fetchPreferencesForUser(userId: string) {
   const user = await db.query.users.findFirst({
-    columns: { hideBalances: true, tutorialsEnabled: true },
+    columns: {
+      hideBalances: true,
+      tutorialsEnabled: true,
+      defaultAccountId: true,
+    },
     where: eq(users.id, userId),
   });
   return {
     hideBalances: user?.hideBalances ?? false,
     tutorialsEnabled: user?.tutorialsEnabled ?? true,
+    defaultAccountId: user?.defaultAccountId ?? null,
   };
 }
 
@@ -136,12 +141,13 @@ const getCachedPreferencesByUser = (userId: string) =>
 export const getCachedUserPreferences = cache(async () => {
   const session = await getCachedSession();
   const userId = session?.user?.id;
-  if (!userId) return { hideBalances: false, tutorialsEnabled: true };
+  if (!userId)
+    return { hideBalances: false, tutorialsEnabled: true, defaultAccountId: null };
   try {
     return await getCachedPreferencesByUser(userId);
   } catch (error) {
     logger.error("Failed to get cached user preferences", { error });
-    return { hideBalances: false, tutorialsEnabled: true };
+    return { hideBalances: false, tutorialsEnabled: true, defaultAccountId: null };
   }
 });
 

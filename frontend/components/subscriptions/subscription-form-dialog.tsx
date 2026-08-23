@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { CategorySelect } from "@/components/categories/category-select";
+import { AccountSelect } from "@/components/accounts/account-select";
 import { CompanyLogo } from "@/components/ui/company-logo";
 import { RiSearchLine, RiCloseLine, RiLoader4Line } from "@remixicon/react";
 import { toast } from "sonner";
@@ -572,53 +574,26 @@ export function SubscriptionFormDialog({
                     translate("detectedAccount")}
                 </div>
               ) : (
-                <Select
+                <AccountSelect
+                  accounts={accounts}
                   value={accountId}
-                  onValueChange={(value) => setAccountId(value ?? "")}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={translate("selectAnAccount")}>
-                      {accountId
-                        ? accounts.find((account) => account.id === accountId)
-                            ?.name || translate("selectAnAccount")
-                        : translate("selectAnAccount")}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id}>
-                        {account.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={setAccountId}
+                  placeholder={translate("selectAnAccount")}
+                />
               )}
             </div>
 
             {/* Category */}
             <div className="grid gap-2">
               <Label htmlFor="category">{translate("category")}</Label>
-              <Select
+              <CategorySelect
+                categories={categories}
                 value={categoryId}
-                onValueChange={(value) => setCategoryId(value ?? "")}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={translate("selectACategory")}>
-                    {categoryId
-                      ? categories.find((c) => c.id === categoryId)?.name ||
-                        translate("uncategorized")
-                      : translate("uncategorized")}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">{translate("uncategorized")}</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={setCategoryId}
+                noneLabel={translate("uncategorized")}
+                placeholder={translate("selectACategory")}
+                showSwatch={false}
+              />
             </div>
 
             {/* Frequency */}

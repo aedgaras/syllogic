@@ -20,13 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { normalizeDecimalInput } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CategorySelect } from "@/components/categories/category-select";
+import { AccountSelect } from "@/components/accounts/account-select";
 import { Header } from "@/components/layout/header";
 import { ReceiptUploadDropzone } from "@/components/transactions/receipt-upload-dropzone";
 import { useReceiptScanController } from "../hooks/use-receipt-scan-controller";
@@ -81,28 +76,19 @@ export default function ReceiptScanScreen() {
                     {translate("noAccountsFoundPleaseCreateAnAccountFirst")}
                   </p>
                 ) : (
-                  <Select
+                  <AccountSelect
+                    accounts={accounts}
                     value={selectedAccountId}
-                    onValueChange={(v) => v && setSelectedAccountId(v)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={translate("selectAnAccount")}>
-                        {accounts.find((a) => a.id === selectedAccountId)
-                          ?.name ?? translate("selectAnAccount")}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
-                      {accounts.map((account) => (
-                        <SelectItem
-                          key={account.id}
-                          value={account.id}
-                          className="pr-10"
-                        >
-                          {account.name} ({account.currency})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => v && setSelectedAccountId(v)}
+                    placeholder={translate("selectAnAccount")}
+                    className="w-full"
+                    contentClassName="w-auto min-w-[var(--anchor-width)] max-w-[90vw]"
+                    itemClassName="pr-10"
+                    renderTriggerLabel={(account) => account.name}
+                    renderItemLabel={(account) =>
+                      `${account.name} (${account.currency})`
+                    }
+                  />
                 )}
               </div>
 
@@ -178,43 +164,20 @@ export default function ReceiptScanScreen() {
                       })
                     }
                   />
-                  <Select
+                  <CategorySelect
+                    categories={categories}
                     value={item.categoryId ?? ""}
-                    onValueChange={(v) =>
+                    onChange={(v) =>
                       updateItem(item.key, {
                         categoryId: v || null,
                         categoryName:
                           categories.find((c) => c.id === v)?.name ?? null,
                       })
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={translate("selectACategory")}>
-                        {item.categoryId
-                          ? (categories.find((c) => c.id === item.categoryId)
-                              ?.name ?? translate("noCategory"))
-                          : translate("noCategory")}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">
-                        {translate("noCategory")}
-                      </SelectItem>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="h-3 w-3 rounded-full"
-                              style={{
-                                backgroundColor: category.color || "#666",
-                              }}
-                            />
-                            {category.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    noneLabel={translate("noCategory")}
+                    placeholder={translate("selectACategory")}
+                    fallbackColor="#666"
+                  />
                   <div className="flex items-center gap-1 justify-self-end">
                     <Button
                       type="button"

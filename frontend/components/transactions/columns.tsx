@@ -1,5 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
+import { cn } from "@/lib/utils";
 
 import { type ColumnDef } from "@tanstack/react-table";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -215,6 +216,8 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
     cell: ({ row, column }) => {
       const columnSize = column.getSize();
       const isExcludedFromAnalytics = row.original.includeInAnalytics === false;
+      const description = row.getValue("description") as string | null;
+      const displayText = description || row.original.category?.name || "";
       return (
         <div className="flex items-center gap-1.5">
           {isExcludedFromAnalytics && (
@@ -228,13 +231,16 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
             </Tooltip>
           )}
           <div
-            className="truncate"
+            className={cn(
+              "truncate",
+              !description && "text-muted-foreground",
+            )}
             style={{
               maxWidth: `${columnSize - (isExcludedFromAnalytics ? 24 : 0)}px`,
             }}
-            title={row.getValue("description") || ""}
+            title={displayText}
           >
-            {row.getValue("description")}
+            {displayText}
           </div>
         </div>
       );

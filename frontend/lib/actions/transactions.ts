@@ -64,6 +64,13 @@ export async function createTransaction(
     return { success: false, error: "Not authenticated" };
   }
 
+  if (!input.description?.trim() && !input.categoryId) {
+    return {
+      success: false,
+      error: "Description is required when no category is selected",
+    };
+  }
+
   try {
     // Call backend API to import the transaction
     const backendUrl = getBackendBaseUrl();
@@ -74,7 +81,7 @@ export async function createTransaction(
         {
           account_id: input.accountId,
           amount: input.amount,
-          description: input.description,
+          description: input.description?.trim() || null,
           merchant: input.merchant || null,
           booked_at: input.bookedAt.toISOString(),
           transaction_type: input.transactionType,
@@ -415,10 +422,13 @@ export async function updateTransaction(
     return { success: false, error: DEMO_RESTRICTED_ACTION_ERROR };
   }
 
-  const description = input.description.trim();
+  const description = input.description?.trim() || "";
   const merchant = input.merchant?.trim() || null;
-  if (!description) {
-    return { success: false, error: "Description is required" };
+  if (!description && !input.categoryId) {
+    return {
+      success: false,
+      error: "Description is required when no category is selected",
+    };
   }
   if (!Number.isFinite(input.amount) || input.amount <= 0) {
     return { success: false, error: "Amount must be greater than zero" };
@@ -435,7 +445,7 @@ export async function updateTransaction(
 
   try {
     await updateTransactionViaBackend(userId, input.transactionId, {
-      description,
+      description: description || null,
       merchant,
       accountId: input.accountId,
       categoryId: input.categoryId || null,

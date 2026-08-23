@@ -32,6 +32,8 @@ export {
   updateAppLogLevel,
   updateOidcSettings,
   updateSignupSettings,
+  getDefaultAccountId,
+  updateDefaultAccount,
   type OpenAiSettings,
 } from "@/lib/actions/settings";
 

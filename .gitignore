@@ -9,6 +9,10 @@ venv/
 *.egg-info/
 dist/
 build/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
 
 # Node / JavaScript / TypeScript
 node_modules/
@@ -87,3 +91,5 @@ deploy/railway/V1_TO_V2_MIGRATION.md
 */.venv/*
 
 frontend/test-results
+
+frontend/coverage

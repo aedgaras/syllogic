@@ -41,6 +41,14 @@ type Person = {
   avatarUrl?: string | null;
 };
 
+type AccountOption = {
+  id: string;
+  name: string;
+  institution: string | null;
+  accountType: string;
+  currency: string | null;
+};
+
 interface SettingsTabsProps {
   user: SettingsUser;
   categories: SettingsCategory[];
@@ -69,6 +77,8 @@ interface SettingsTabsProps {
     createdAt: Date | null;
   }>;
   people: Person[];
+  accounts: AccountOption[];
+  defaultAccountId: string | null;
   openAiSettings: OpenAiSettings & { error?: string };
   isAdmin?: boolean;
   oidcSettings?: OidcAdminSettings & { error?: string };
@@ -90,6 +100,8 @@ export function SettingsTabs({
   csvImports,
   bankConnections,
   people,
+  accounts,
+  defaultAccountId,
   openAiSettings,
   isAdmin = false,
   oidcSettings,
@@ -183,7 +195,11 @@ export function SettingsTabs({
       </TabsContent>
 
       <TabsContent value="preferences">
-        <PreferencesTab initialOpenAiSettings={openAiSettings} />
+        <PreferencesTab
+          initialOpenAiSettings={openAiSettings}
+          accounts={accounts}
+          initialDefaultAccountId={defaultAccountId}
+        />
       </TabsContent>
 
       <TabsContent value="data">

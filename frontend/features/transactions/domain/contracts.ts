@@ -162,7 +162,7 @@ export interface TransactionPage {
 export interface CreateTransactionInput {
   accountId: string;
   amount: number;
-  description: string;
+  description?: string;
   categoryId?: string;
   bookedAt: Date;
   transactionType: "debit" | "credit";

@@ -2,11 +2,11 @@
 
 import { logger } from "@/lib/logger";
 import { revalidatePath, updateTag } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users, transactions, accounts, type User } from "@/lib/db/schema";
 import { getAuthenticatedSession, requireAuth } from "@/lib/auth-helpers";
-import { CACHE_TAGS } from "@/lib/data/cached";
+import { CACHE_TAGS, getCachedUserPreferences } from "@/lib/data/cached";
 import { storage } from "@/lib/storage";
 import { normalizeProfileImage } from "@/lib/profile-image";
 import { getBackendBaseUrl } from "@/lib/backend-url";
@@ -649,6 +649,52 @@ export async function updateTutorialsEnabled(
     return { success: true };
   } catch (error) {
     logger.error("Failed to update tutorials enabled setting", { error });
+    return { success: false, error: "Failed to update setting" };
+  }
+}
+
+/**
+ * Get the account preselected when the current user adds a new transaction.
+ */
+export async function getDefaultAccountId(): Promise<string | null> {
+  const preferences = await getCachedUserPreferences();
+  return preferences.defaultAccountId;
+}
+
+/**
+ * Update the account preselected when the current user adds a new transaction.
+ * Pass `null` to clear the preference.
+ */
+export async function updateDefaultAccount(
+  accountId: string | null,
+): Promise<{ success: boolean; error?: string }> {
+  const session = await getAuthenticatedSession();
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    if (accountId) {
+      const account = await db.query.accounts.findFirst({
+        columns: { id: true },
+        where: and(eq(accounts.id, accountId), eq(accounts.userId, session.user.id)),
+      });
+      if (!account) {
+        return { success: false, error: "Account not found" };
+      }
+    }
+
+    await db
+      .update(users)
+      .set({ defaultAccountId: accountId, updatedAt: new Date() })
+      .where(eq(users.id, session.user.id));
+
+    updateTag(CACHE_TAGS.preferences(session.user.id));
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error) {
+    logger.error("Failed to update default account setting", { error });
     return { success: false, error: "Failed to update setting" };
   }
 }

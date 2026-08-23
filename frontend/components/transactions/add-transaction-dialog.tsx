@@ -22,13 +22,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { SubscriptionDetectionDialog } from "./subscription-detection-dialog";
 import {
@@ -45,8 +38,11 @@ import {
   getUserAccounts,
   updateTransaction,
 } from "@/lib/actions/transactions";
+import { getDefaultAccountId } from "@/lib/actions/settings";
 import type { TransactionWithRelations } from "@/features/transactions/public";
 import { getUserCategories } from "@/lib/actions/categories";
+import { CategorySelect } from "@/components/categories/category-select";
+import { AccountSelect } from "@/components/accounts/account-select";
 type Account = {
   id: string;
   name: string;
@@ -100,7 +96,10 @@ export function AddTransactionDialog({
   useEffect(() => {
     if (open) {
       const loadData = async () => {
-        const accountsData = await getUserAccounts();
+        const [accountsData, defaultAccountId] = await Promise.all([
+          getUserAccounts(),
+          transaction ? Promise.resolve(null) : getDefaultAccountId(),
+        ]);
         setAccounts(accountsData);
 
         // Use prop categories if available, otherwise fetch
@@ -135,8 +134,13 @@ export function AddTransactionDialog({
           setBookedAt(new Date(transaction.bookedAt));
           setMerchant(transaction.merchant || "");
         } else if (accountsData.length > 0) {
+          const preselectedAccountId =
+            (defaultAccountId &&
+              accountsData.some((account) => account.id === defaultAccountId) &&
+              defaultAccountId) ||
+            accountsData[0].id;
           setAccountId(
-            (currentAccountId) => currentAccountId || accountsData[0].id,
+            (currentAccountId) => currentAccountId || preselectedAccountId,
           );
         }
       };
@@ -197,8 +201,14 @@ export function AddTransactionDialog({
       return;
     }
 
-    if (!description.trim()) {
-      toast.error(translate("pleaseEnterADescription"));
+    const needsDescription =
+      transactionType === "transfer" || !categoryId;
+    if (needsDescription && !description.trim()) {
+      toast.error(
+        transactionType === "transfer"
+          ? translate("pleaseEnterADescription")
+          : translate("pleaseEnterADescriptionOrSelectACategory"),
+      );
       return;
     }
 
@@ -250,7 +260,7 @@ export function AddTransactionDialog({
       const transactionInput = {
         accountId,
         amount: parsedAmount,
-        description: description.trim(),
+        description: description.trim() || undefined,
         categoryId: categoryId || null,
         bookedAt,
         transactionType: standardTransactionType,
@@ -293,7 +303,7 @@ export function AddTransactionDialog({
                 ? -parsedAmount
                 : parsedAmount,
             currency: selectedAccount?.currency || transaction.currency,
-            description: description.trim(),
+            description: description.trim() || null,
             merchant: merchant.trim() || null,
             categoryId: categoryId || null,
             category: selectedCategory,
@@ -344,9 +354,6 @@ export function AddTransactionDialog({
           (account.currency || "EUR") === (selectedAccount.currency || "EUR"),
       )
     : [];
-  const selectedDestinationAccount = accounts.find(
-    (account) => account.id === destinationAccountId,
-  );
 
   return (
     <>
@@ -418,10 +425,11 @@ export function AddTransactionDialog({
                     {translate("noAccountsFoundPleaseCreateAnAccountFirst")}
                   </p>
                 ) : (
-                  <Select
+                  <AccountSelect
+                    accounts={accounts}
                     value={accountId}
                     disabled={isLinkedTransfer}
-                    onValueChange={(value) => {
+                    onChange={(value) => {
                       if (!value) return;
                       setAccountId(value);
                       const nextSource = accounts.find(
@@ -438,36 +446,29 @@ export function AddTransactionDialog({
                         setDestinationAccountId("");
                       }
                     }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={translate("selectAnAccount")}>
-                        {selectedAccount
-                          ? translate("message50844f", {
-                              value1: selectedAccount.name,
-                              value2: selectedAccount.currency
-                                ? ` (${selectedAccount.currency})`
-                                : "",
+                    placeholder={translate("selectAnAccount")}
+                    className="w-full"
+                    contentClassName="w-auto min-w-[var(--anchor-width)] max-w-[90vw]"
+                    itemClassName="pr-10"
+                    renderTriggerLabel={(account) =>
+                      translate("message50844f", {
+                        value1: account.name,
+                        value2: account.currency
+                          ? ` (${account.currency})`
+                          : "",
+                      })
+                    }
+                    renderItemLabel={(account) => (
+                      <>
+                        {account.name}
+                        {account.currency
+                          ? translate("messagecd176d", {
+                              value1: account.currency,
                             })
-                          : translate("selectAnAccount")}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
-                      {accounts.map((account) => (
-                        <SelectItem
-                          key={account.id}
-                          value={account.id}
-                          className="pr-10"
-                        >
-                          {account.name}
-                          {account.currency
-                            ? translate("messagecd176d", {
-                                value1: account.currency,
-                              })
-                            : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                          : ""}
+                      </>
+                    )}
+                  />
                 )}
               </div>
 
@@ -476,44 +477,37 @@ export function AddTransactionDialog({
                   <Label htmlFor="destination-account">
                     {translate("toAccount")}
                   </Label>
-                  <Select
+                  <AccountSelect
+                    accounts={eligibleDestinationAccounts}
                     value={destinationAccountId}
                     disabled={isLinkedTransfer}
-                    onValueChange={(value) =>
+                    onChange={(value) =>
                       value && setDestinationAccountId(value)
                     }
-                  >
-                    <SelectTrigger id="destination-account" className="w-full">
-                      <SelectValue
-                        placeholder={translate("selectADestinationAccount")}
-                      >
-                        {selectedDestinationAccount
-                          ? translate("message50844f", {
-                              value1: selectedDestinationAccount.name,
-                              value2: selectedDestinationAccount.currency
-                                ? ` (${selectedDestinationAccount.currency})`
-                                : "",
+                    placeholder={translate("selectADestinationAccount")}
+                    id="destination-account"
+                    className="w-full"
+                    contentClassName="w-auto min-w-[var(--anchor-width)] max-w-[90vw]"
+                    itemClassName="pr-10"
+                    renderTriggerLabel={(account) =>
+                      translate("message50844f", {
+                        value1: account.name,
+                        value2: account.currency
+                          ? ` (${account.currency})`
+                          : "",
+                      })
+                    }
+                    renderItemLabel={(account) => (
+                      <>
+                        {account.name}
+                        {account.currency
+                          ? translate("messagecd176d", {
+                              value1: account.currency,
                             })
-                          : translate("selectADestinationAccount")}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="w-auto min-w-[var(--anchor-width)] max-w-[90vw]">
-                      {eligibleDestinationAccounts.map((account) => (
-                        <SelectItem
-                          key={account.id}
-                          value={account.id}
-                          className="pr-10"
-                        >
-                          {account.name}
-                          {account.currency
-                            ? translate("messagecd176d", {
-                                value1: account.currency,
-                              })
-                            : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                          : ""}
+                      </>
+                    )}
+                  />
                   {selectedAccount &&
                     eligibleDestinationAccounts.length === 0 && (
                       <p className="text-sm text-muted-foreground">
@@ -573,7 +567,9 @@ export function AddTransactionDialog({
               {/* Description */}
               <div className="space-y-2">
                 <Label htmlFor="description">
-                  {translate("description55f8eb")}
+                  {transactionType !== "transfer" && categoryId
+                    ? translate("descriptionOptionalIfCategorySelected")
+                    : translate("description55f8eb")}
                 </Label>
                 <Textarea
                   id="description"
@@ -610,37 +606,15 @@ export function AddTransactionDialog({
                   <Label htmlFor="category">
                     {translate("categoryOptional")}
                   </Label>
-                  <Select
+                  <CategorySelect
+                    id="category"
+                    categories={filteredCategories}
                     value={categoryId}
-                    onValueChange={(v) => setCategoryId(v ?? "")}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={translate("selectACategory")}>
-                        {categoryId
-                          ? (filteredCategories.find((c) => c.id === categoryId)
-                              ?.name ?? translate("noCategory"))
-                          : translate("noCategory")}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">
-                        {translate("noCategory")}
-                      </SelectItem>
-                      {filteredCategories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="h-3 w-3 rounded-full"
-                              style={{
-                                backgroundColor: category.color || "#666",
-                              }}
-                            />
-                            {category.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={setCategoryId}
+                    noneLabel={translate("noCategory")}
+                    placeholder={translate("selectACategory")}
+                    fallbackColor="#666"
+                  />
                 </div>
               )}
 

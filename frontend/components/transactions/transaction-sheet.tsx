@@ -23,13 +23,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+import { CategorySelect } from "@/components/categories/category-select";
 import { Separator } from "@/components/ui/separator";
 import { cn, formatDate, formatAmount } from "@/lib/utils";
 import type { TransactionWithRelations } from "@/features/transactions/public";
@@ -150,9 +144,8 @@ export function TransactionSheet({
     }
   }, [open]);
 
-  const handleCategoryChange = (value: string | null) => {
-    if (!value) return;
-    const newCategoryId = value === "uncategorized" ? null : value;
+  const handleCategoryChange = (value: string) => {
+    const newCategoryId = value || null;
     setSelectedCategoryId(newCategoryId);
     setHasChanges(newCategoryId !== transaction?.categoryId);
   };
@@ -227,7 +220,9 @@ export function TransactionSheet({
             {formatDate(transaction.bookedAt)}
           </SheetDescription>
           <SheetTitle className="text-lg font-medium break-all">
-            {transaction.description}
+            {transaction.description ||
+              transaction.category?.name ||
+              translate("uncategorized")}
           </SheetTitle>
           <div
             className={cn(
@@ -266,57 +261,16 @@ export function TransactionSheet({
           {/* Category Section */}
           <div className="space-y-3">
             <Label htmlFor="category">{translate("category")}</Label>
-            <Select
-              value={selectedCategoryId || "uncategorized"}
-              onValueChange={handleCategoryChange}
-            >
-              <SelectTrigger id="category" className="w-full">
-                <SelectValue placeholder={translate("selectCategory")}>
-                  {selectedCategoryId ? (
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-3 w-3 shrink-0"
-                        style={{
-                          backgroundColor:
-                            categories.find((c) => c.id === selectedCategoryId)
-                              ?.color || "#A1A1AA",
-                        }}
-                      />
-                      <span>
-                        {categories.find((c) => c.id === selectedCategoryId)
-                          ?.name || translate("unknown")}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <div className="h-3 w-3 shrink-0 bg-muted-foreground/30" />
-                      <span className="text-muted-foreground">
-                        {translate("uncategorized")}
-                      </span>
-                    </div>
-                  )}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="uncategorized">
-                  <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 shrink-0 bg-muted-foreground/30" />
-                    <span>{translate("uncategorized")}</span>
-                  </div>
-                </SelectItem>
-                {selectableCategories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-3 w-3 shrink-0"
-                        style={{ backgroundColor: category.color || "#A1A1AA" }}
-                      />
-                      <span>{category.name}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CategorySelect
+              id="category"
+              className="w-full"
+              categories={selectableCategories}
+              value={selectedCategoryId || ""}
+              onChange={handleCategoryChange}
+              noneLabel={translate("uncategorized")}
+              placeholder={translate("selectCategory")}
+              swatchShape="square"
+            />
             {/* Show AI-assigned category if different from user selection */}
             {transaction.categorySystemId &&
               transaction.categorySystemId !== selectedCategoryId && (

@@ -17,6 +17,7 @@ import {
   uniqueIndex,
   primaryKey,
   bigint,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -43,6 +44,10 @@ export const users = pgTable("users", {
   profilePhotoPath: text("profile_photo_path"),
   hideBalances: boolean("hide_balances").default(false), // Mask balance amounts across the app
   tutorialsEnabled: boolean("tutorials_enabled").default(true), // Show page tours/onboarding tips
+  defaultAccountId: uuid("default_account_id").references(
+    (): AnyPgColumn => accounts.id,
+    { onDelete: "set null" },
+  ), // Account preselected when adding a new transaction
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });

@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CategorySelect } from "@/components/categories/category-select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -276,55 +277,16 @@ export function SubscriptionDetectionDialog({
                 {/* Category */}
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="sub-category">{translate("category")}</Label>
-                  <Select
-                    value={categoryId || "uncategorized"}
-                    onValueChange={(v) =>
-                      setCategoryId(
-                        v === "uncategorized" || v === null ? "" : v,
-                      )
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={translate("selectCategory")}>
-                        {categoryId ? (
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="h-3 w-3 shrink-0"
-                              style={{
-                                backgroundColor:
-                                  categories.find((c) => c.id === categoryId)
-                                    ?.color || "#A1A1AA",
-                              }}
-                            />
-                            <span>
-                              {categories.find((c) => c.id === categoryId)
-                                ?.name || translate("unknown")}
-                            </span>
-                          </div>
-                        ) : (
-                          <span>{translate("uncategorized")}</span>
-                        )}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="uncategorized">
-                        {translate("uncategorized")}
-                      </SelectItem>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="h-3 w-3 shrink-0"
-                              style={{
-                                backgroundColor: cat.color || "#A1A1AA",
-                              }}
-                            />
-                            {cat.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CategorySelect
+                    id="sub-category"
+                    className="w-full"
+                    categories={categories}
+                    value={categoryId}
+                    onChange={setCategoryId}
+                    noneLabel={translate("uncategorized")}
+                    placeholder={translate("selectCategory")}
+                    swatchShape="square"
+                  />
                 </div>
               </div>
 

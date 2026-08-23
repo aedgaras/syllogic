@@ -46,6 +46,14 @@ python tests/test_account_sync_encryption.py
 - `test_mcp_server_health.py` - Verifies MCP `/health` is public while transport stays auth-protected
 - `test_account_sync_encryption.py` - Validates account sync dedupe still works with encrypted `external_id`
 
+## Coverage
+
+```bash
+pytest --cov --cov-report=term-missing --cov-report=html
+```
+
+Source scope (`app/`, `tasks/`) and omit rules live in `pyproject.toml` under `[tool.coverage.run]`. HTML report writes to `htmlcov/index.html`. Tests that talk to the API over HTTP (against a separately running `uvicorn` process) won't attribute coverage to server-side code the same way in-process tests do — most of this suite calls routes/services directly, so this is a minor gap, not a blocker.
+
 ## CI/CD
 
 These tests are automatically run in GitHub Actions on every push and pull request.

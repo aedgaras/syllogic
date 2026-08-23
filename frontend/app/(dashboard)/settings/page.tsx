@@ -6,11 +6,13 @@ import {
   getAiSummaryEnabled,
   getAppLogLevel,
   getCurrentUserProfile,
+  getDefaultAccountId,
   getOidcSettings,
   getOpenAiSettings,
   getSignupSettings,
 } from "@/lib/actions/settings";
 import { getCategories } from "@/lib/actions/categories";
+import { getUserAccounts } from "@/lib/actions/transactions";
 import { listApiKeys } from "@/lib/actions/api-keys";
 import { getCsvImportHistory } from "@/lib/actions/csv-import";
 import { getBankConnections } from "@/lib/actions/bank-connections";
@@ -37,6 +39,8 @@ export default async function SettingsPage({
     csvImports,
     bankConnections,
     peopleRows,
+    accounts,
+    defaultAccountId,
     openAiSettings,
     resolvedSearchParams,
     oidcSettings,
@@ -49,6 +53,8 @@ export default async function SettingsPage({
     getCsvImportHistory(),
     getBankConnections(),
     getPeople(user.id),
+    getUserAccounts(),
+    getDefaultAccountId(),
     getOpenAiSettings(),
     searchParams,
     user.role === "admin" ? getOidcSettings() : Promise.resolve(undefined),
@@ -94,6 +100,8 @@ export default async function SettingsPage({
           csvImports={csvImports}
           bankConnections={bankConnections}
           people={people}
+          accounts={accounts}
+          defaultAccountId={defaultAccountId}
           openAiSettings={openAiSettings}
           isAdmin={user.role === "admin"}
           oidcSettings={oidcSettings}

@@ -1,5 +1,6 @@
 "use client";
 import { t as translate } from "@/i18n/translate";
+import { cn } from "@/lib/utils";
 
 import { type ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
@@ -147,13 +148,15 @@ export const accountTransactionColumns: ColumnDef<TransactionWithRelations>[] =
       header: "Description",
       cell: ({ row, column }) => {
         const columnSize = column.getSize();
+        const description = row.getValue("description") as string | null;
+        const displayText = description || row.original.category?.name || "";
         return (
           <div
-            className="truncate"
+            className={cn("truncate", !description && "text-muted-foreground")}
             style={{ maxWidth: `${columnSize}px` }}
-            title={row.getValue("description") || ""}
+            title={displayText}
           >
-            {row.getValue("description")}
+            {displayText}
           </div>
         );
       },
