@@ -167,7 +167,7 @@ fi
 SERVICES=()
 if [ "$MODE" = "lite" ]; then
   COMPOSE_ARGS+=(-f "$ROOT_DIR/deploy/compose/docker-compose.lite.yml")
-  SERVICES=(postgres redis uploads-init migrate backend worker app)
+  SERVICES=(postgres redis uploads-init migrate backend-migrate backend worker app)
   if [ "$ENABLE_CADDY" = "true" ]; then
     SERVICES+=(caddy)
   fi
@@ -190,6 +190,50 @@ if [ "$SOURCE" = "local" ]; then
   UP_ARGS+=(--build)
 fi
 docker compose "${COMPOSE_ARGS[@]}" "${UP_ARGS[@]}" "${SERVICES[@]}"
+
+verify_backend_schema_contract() {
+  echo "Verifying backend schema migration contract..."
+
+  local exit_code
+  exit_code="$(docker compose "${COMPOSE_ARGS[@]}" ps -a --format '{{.ExitCode}}' backend-migrate 2>/dev/null | tail -n1)"
+  if [ "${exit_code:-1}" != "0" ]; then
+    echo "[error] backend-migrate did not complete successfully (exit ${exit_code:-unknown})."
+    docker compose "${COMPOSE_ARGS[@]}" logs backend-migrate
+    exit 1
+  fi
+
+  local postgres_user postgres_db missing
+  postgres_user="$(read_setting POSTGRES_USER)"
+  postgres_db="$(read_setting POSTGRES_DB)"
+  missing="$(docker compose "${COMPOSE_ARGS[@]}" exec -T postgres psql -U "${postgres_user:-financeuser}" -d "${postgres_db:-finance_db}" -tA -c "
+    select string_agg(missing, ', ') from (
+      select 'merchant_aliases table' as missing where to_regclass('public.merchant_aliases') is null
+      union all
+      select 'receipt_scans table' where to_regclass('public.receipt_scans') is null
+      union all
+      select 'accounts.alias_patterns column' where not exists (
+        select 1 from information_schema.columns
+        where table_name = 'accounts' and column_name = 'alias_patterns')
+      union all
+      select 'broker_trades.fees column' where not exists (
+        select 1 from information_schema.columns
+        where table_name = 'broker_trades' and column_name = 'fees')
+      union all
+      select 'transactions.logo_id column' where not exists (
+        select 1 from information_schema.columns
+        where table_name = 'transactions' and column_name = 'logo_id')
+    ) t;
+  " 2>/dev/null | tr -d '[:space:]')"
+
+  if [ -n "$missing" ]; then
+    echo "[error] Backend schema contract not satisfied, missing: $missing"
+    exit 1
+  fi
+
+  echo "  - backend schema contract: ok"
+}
+
+verify_backend_schema_contract
 
 APP_URL_VALUE="$(read_setting APP_URL)"
 echo "Done. Open ${APP_URL_VALUE:-http://localhost:8080}"

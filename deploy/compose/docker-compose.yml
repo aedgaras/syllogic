@@ -60,6 +60,22 @@ services:
     command: ["node", "scripts/migrate.js"]
     restart: "no"
 
+  # One-shot backend-only schema migrations (tables/columns Drizzle doesn't
+  # own). See backend/postgres_migration/run_all.py.
+  backend-migrate:
+    image: ${BACKEND_IMAGE:-ghcr.io/aedgaras/syllogic-backend}:${APP_VERSION:-edge}
+    container_name: syllogic-backend-migrate
+    command: python postgres_migration/run_all.py
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    logging: *default-logging
+    restart: "no"
+
   backend:
     image: ${BACKEND_IMAGE:-ghcr.io/aedgaras/syllogic-backend}:${APP_VERSION:-edge}
     container_name: syllogic-backend
@@ -94,6 +110,8 @@ services:
       redis:
         condition: service_healthy
       migrate:
+        condition: service_completed_successfully
+      backend-migrate:
         condition: service_completed_successfully
     healthcheck:
       # /health/ready actually touches Postgres and Redis (unlike /health,
@@ -149,6 +167,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      backend-migrate:
+        condition: service_completed_successfully
     ports:
       - "${MCP_BIND_ADDR:-127.0.0.1}:${MCP_PORT:-8001}:8001"
     logging: *default-logging
@@ -188,6 +208,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      backend-migrate:
+        condition: service_completed_successfully
     logging: *default-logging
     restart: unless-stopped
 
@@ -224,6 +246,8 @@ services:
       redis:
         condition: service_healthy
       migrate:
+        condition: service_completed_successfully
+      backend-migrate:
         condition: service_completed_successfully
     logging: *default-logging
     restart: unless-stopped
