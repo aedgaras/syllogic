@@ -867,6 +867,7 @@ export const brokerTrades = pgTable(
     price: numeric("price", { precision: 28, scale: 8 }).notNull(),
     currency: text("currency").notNull(),
     externalId: text("external_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     uniqTrade: uniqueIndex("broker_trades_account_external_uq").on(

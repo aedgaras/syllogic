@@ -1117,6 +1117,33 @@ class Holding(Base):
     )
 
 
+class BrokerTrade(Base):
+    """One buy/sell trade row. Populated for manual holdings by the
+    investments buy/sell routes; reserved for broker-import trade history
+    on synced accounts (unused today)."""
+
+    __tablename__ = "broker_trades"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    account_id = Column(
+        UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False
+    )
+    symbol = Column(String(64), nullable=False)
+    trade_date = Column(Date, nullable=False)
+    side = Column(String(10), nullable=False)
+    quantity = Column(Numeric(28, 8), nullable=False)
+    price = Column(Numeric(28, 8), nullable=False)
+    currency = Column(String(3), nullable=False)
+    external_id = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "account_id", "external_id", name="broker_trades_account_external_uq"
+        ),
+    )
+
+
 class PriceSnapshot(Base):
     __tablename__ = "price_snapshots"
 

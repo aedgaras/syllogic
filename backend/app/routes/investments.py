@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import desc
@@ -18,8 +18,10 @@ from app.integrations.price_provider import get_price_provider
 from app.models import (
     Account,
     AccountBalance,
+    BrokerTrade,
     Holding,
     HoldingValuation,
+    PriceSnapshot,
     Transaction,
     User,
 )
@@ -49,6 +51,53 @@ logger = __import__("logging").getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
+class _FxAdapter:
+    def __init__(self, db):
+        from app.services.exchange_rate_service import ExchangeRateService
+
+        self._svc = ExchangeRateService(db=db)
+
+    def convert(self, amount, src, dst, on):
+        if src.upper() == dst.upper():
+            return amount
+        result = self._svc.convert_amount(
+            amount=amount,
+            from_currency=src,
+            to_currency=dst,
+            for_date=on,
+        )
+        return result if result is not None else amount
+
+
+def _seed_price_snapshot(
+    db: Session, symbol: str, price: Decimal, currency: str, on: date
+) -> None:
+    """Record the trade price as `symbol`'s latest cached price, so the
+    holding values against it immediately instead of waiting on the next
+    background sync's external price fetch. A trade is the freshest price
+    observation available, so this overwrites same-day snapshots too
+    (including one from an earlier trade today); a later background sync
+    still supersedes it with the real market close."""
+    existing = db.query(PriceSnapshot).filter_by(symbol=symbol, date=on).first()
+    if existing is not None:
+        existing.close = price
+        existing.currency = currency
+        existing.provider = "manual"
+    else:
+        db.add(
+            PriceSnapshot(symbol=symbol, currency=currency, date=on, close=price, provider="manual")
+        )
+
+
+def _revalue_account_now(db: Session, account_id: UUID) -> None:
+    """Synchronously recompute this account's holding valuations and
+    balance, so a buy/sell response reflects the trade immediately rather
+    than waiting for the async background sync."""
+    from app.services.holding_valuation_service import HoldingValuationService
+
+    HoldingValuationService(db=db, fx=_FxAdapter(db)).compute(account_id, date.today())
+
+
 def _run_sync_in_process(account_id: UUID) -> None:
     """Sync one investment account in the FastAPI worker process.
 
@@ -60,22 +109,6 @@ def _run_sync_in_process(account_id: UUID) -> None:
     from uuid import UUID as _UUID
     from app.database import SessionLocal
     from app.services.investment_sync_service import InvestmentSyncService
-    from app.services.exchange_rate_service import ExchangeRateService
-
-    class _FxAdapter:
-        def __init__(self, db):
-            self._svc = ExchangeRateService(db=db)
-
-        def convert(self, amount, src, dst, on):
-            if src.upper() == dst.upper():
-                return amount
-            result = self._svc.convert_amount(
-                amount=amount,
-                from_currency=src,
-                to_currency=dst,
-                for_date=on,
-            )
-            return result if result is not None else amount
 
     logger.info("[INVESTMENT_SYNC] Starting in-process sync for account %s", account_id)
     db = SessionLocal()
@@ -345,10 +378,37 @@ def buy_holding(
         )
         db.add(holding)
 
+    trade_date = payload.as_of_date or date.today()
+    db.add(
+        BrokerTrade(
+            account_id=account.id,
+            symbol=payload.symbol,
+            trade_date=trade_date,
+            side="buy",
+            quantity=payload.quantity,
+            price=payload.price,
+            currency=payload.currency,
+            external_id=f"manual:{uuid4()}",
+        )
+    )
+
     db.commit()
     db.refresh(holding)
     db.refresh(cash_holding)
 
+    _seed_price_snapshot(
+        db,
+        holding.provider_symbol or holding.symbol,
+        payload.price,
+        payload.currency,
+        date.today(),
+    )
+    _revalue_account_now(db, account.id)
+    db.refresh(holding)
+    db.refresh(cash_holding)
+
+    # A later background sync fetches the real market close for `symbol`
+    # and supersedes the trade-price placeholder seeded above.
     background_tasks.add_task(_run_sync_in_process, account.id)
 
     return {
@@ -389,6 +449,9 @@ def sell_holding(
         )
 
     account_id = holding.account_id
+    symbol = holding.symbol
+    lookup_symbol = holding.provider_symbol or holding.symbol
+    currency = holding.currency
     proceeds = payload.quantity * payload.price
 
     cash_holding = _find_cash_holding(db, account_id, holding.currency)
@@ -417,7 +480,25 @@ def sell_holding(
         holding.quantity = remaining_qty
         holding.as_of_date = payload.as_of_date or holding.as_of_date
 
+    trade_date = payload.as_of_date or date.today()
+    db.add(
+        BrokerTrade(
+            account_id=account_id,
+            symbol=symbol,
+            trade_date=trade_date,
+            side="sell",
+            quantity=payload.quantity,
+            price=payload.price,
+            currency=currency,
+            external_id=f"manual:{uuid4()}",
+        )
+    )
+
     db.commit()
+    db.refresh(cash_holding)
+
+    _seed_price_snapshot(db, lookup_symbol, payload.price, currency, date.today())
+    _revalue_account_now(db, account_id)
     db.refresh(cash_holding)
 
     background_tasks.add_task(_run_sync_in_process, account_id)
@@ -729,13 +810,47 @@ def holding_trades(
     user_id: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    """Manual holdings have no trade-import data source, so this always
-    returns an empty list once the holding's existence is confirmed."""
+    """Manual holdings return their buy/sell history recorded by the
+    buy/sell routes. Other sources (broker-import) have no trade ledger
+    yet, so this returns an empty list for them."""
     user_id = get_user_id(user_id)
     holding = db.query(Holding).filter(Holding.id == holding_id, Holding.user_id == user_id).first()
     if not holding:
         raise HTTPException(status_code=404, detail="Holding not found")
-    return []
+    if holding.source != "manual":
+        return []
+
+    rows = (
+        db.query(BrokerTrade)
+        .filter(BrokerTrade.account_id == holding.account_id, BrokerTrade.symbol == holding.symbol)
+        .order_by(BrokerTrade.trade_date.asc(), BrokerTrade.created_at.asc())
+        .all()
+    )
+
+    out: list[HoldingTrade] = []
+    running_qty = Decimal("0")
+    for t in rows:
+        qty = Decimal(t.quantity)
+        price = Decimal(t.price)
+        running_qty = running_qty + qty if t.side == "buy" else running_qty - qty
+        out.append(
+            HoldingTrade(
+                id=t.id,
+                trade_date=t.trade_date,
+                symbol=t.symbol,
+                side=t.side,
+                quantity=qty,
+                price=price,
+                currency=t.currency,
+                fees=Decimal("0"),
+                external_id=t.external_id,
+                cost_native=qty * price if t.side == "buy" else None,
+                proceeds_native=qty * price if t.side == "sell" else None,
+                running_quantity=running_qty,
+            )
+        )
+    out.reverse()
+    return out
 
 
 @router.get("/holdings/{holding_id}/lots", response_model=list[HoldingLot])
