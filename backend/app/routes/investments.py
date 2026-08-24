@@ -24,8 +24,10 @@ from app.models import (
     User,
 )
 from app.schemas import (
+    HoldingBuy,
     HoldingCreate,
     HoldingLot,
+    HoldingSell,
     HoldingTrade,
     HoldingUpdate,
     HoldingResponse,
@@ -243,6 +245,188 @@ def create_manual_holding(
         "symbol": holding.symbol,
         "name": holding.name,
         "quantity": str(holding.quantity),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Buy / sell against an account's in-portfolio cash balance
+# ---------------------------------------------------------------------------
+
+
+def _find_cash_holding(db: Session, account_id: UUID, currency: str) -> Optional[Holding]:
+    return (
+        db.query(Holding)
+        .filter(
+            Holding.account_id == account_id,
+            Holding.instrument_type == "cash",
+            Holding.currency == currency,
+        )
+        .first()
+    )
+
+
+@router.post("/manual-accounts/{account_id}/holdings/buy")
+def buy_holding(
+    account_id: UUID,
+    payload: HoldingBuy,
+    background_tasks: BackgroundTasks,
+    user_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """Buy an equity/ETF using cash already held (as a "cash" holding) in
+    this investment account — no external funding account involved."""
+    user_id = get_user_id(user_id)
+    account = db.query(Account).filter(Account.id == account_id, Account.user_id == user_id).first()
+    if not account or account.account_type != "investment_manual":
+        raise HTTPException(status_code=404, detail="Manual investment account not found")
+
+    cost = payload.quantity * payload.price
+
+    cash_holding = _find_cash_holding(db, account.id, payload.currency)
+    available = Decimal(cash_holding.quantity) if cash_holding else Decimal("0")
+    if cash_holding is None or available < cost:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Not enough {payload.currency} cash in this account to buy "
+                f"{payload.symbol}. Available: {available}, required: {cost}"
+            ),
+        )
+
+    existing = (
+        db.query(Holding)
+        .filter(
+            Holding.account_id == account.id,
+            Holding.symbol == payload.symbol,
+            Holding.instrument_type == payload.instrument_type,
+        )
+        .first()
+    )
+    if existing is not None and existing.source != "manual":
+        raise HTTPException(
+            status_code=400,
+            detail="This symbol is tracked by a synced source and cannot be traded manually",
+        )
+
+    name: Optional[str] = None
+    try:
+        provider = get_price_provider()
+        matches = provider.search_symbols(payload.symbol)
+        if matches:
+            name = getattr(matches[0], "name", None)
+    except Exception:
+        name = None
+
+    cash_holding.quantity = available - cost
+
+    if existing is not None:
+        old_qty = Decimal(existing.quantity)
+        old_cost = Decimal(existing.avg_cost) if existing.avg_cost is not None else Decimal("0")
+        new_qty = old_qty + payload.quantity
+        existing.avg_cost = ((old_qty * old_cost) + cost) / new_qty
+        existing.quantity = new_qty
+        existing.as_of_date = payload.as_of_date or existing.as_of_date
+        if payload.provider_symbol:
+            existing.provider_symbol = payload.provider_symbol
+        holding = existing
+    else:
+        holding = Holding(
+            user_id=user_id,
+            account_id=account.id,
+            symbol=payload.symbol,
+            provider_symbol=payload.provider_symbol or None,
+            name=name,
+            currency=payload.currency,
+            instrument_type=payload.instrument_type,
+            quantity=payload.quantity,
+            avg_cost=payload.price,
+            as_of_date=payload.as_of_date,
+            source="manual",
+        )
+        db.add(holding)
+
+    db.commit()
+    db.refresh(holding)
+    db.refresh(cash_holding)
+
+    background_tasks.add_task(_run_sync_in_process, account.id)
+
+    return {
+        "holding_id": str(holding.id),
+        "account_id": str(account.id),
+        "symbol": holding.symbol,
+        "quantity": str(holding.quantity),
+        "avg_cost": str(holding.avg_cost),
+        "cash_remaining": str(cash_holding.quantity),
+    }
+
+
+@router.post("/holdings/{holding_id}/sell")
+def sell_holding(
+    holding_id: UUID,
+    payload: HoldingSell,
+    background_tasks: BackgroundTasks,
+    user_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """Sell (fully or partially) an equity/ETF holding, crediting the
+    proceeds back to the matching-currency "cash" holding in the same
+    investment account (creating one if it doesn't exist yet)."""
+    user_id = get_user_id(user_id)
+    holding = db.query(Holding).filter(Holding.id == holding_id, Holding.user_id == user_id).first()
+    if not holding:
+        raise HTTPException(status_code=404, detail="Holding not found")
+    if holding.source != "manual":
+        raise HTTPException(status_code=400, detail="Only manual holdings can be sold")
+    if holding.instrument_type == "cash":
+        raise HTTPException(status_code=400, detail="Cash holdings cannot be sold")
+
+    current_qty = Decimal(holding.quantity)
+    if payload.quantity > current_qty:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot sell {payload.quantity} {holding.symbol} — only {current_qty} held",
+        )
+
+    account_id = holding.account_id
+    proceeds = payload.quantity * payload.price
+
+    cash_holding = _find_cash_holding(db, account_id, holding.currency)
+    if cash_holding is not None:
+        cash_holding.quantity = Decimal(cash_holding.quantity) + proceeds
+    else:
+        cash_holding = Holding(
+            user_id=user_id,
+            account_id=account_id,
+            symbol=holding.currency,
+            name=f"Cash ({holding.currency})",
+            currency=holding.currency,
+            instrument_type="cash",
+            quantity=proceeds,
+            avg_cost=Decimal("1"),
+            as_of_date=payload.as_of_date or date.today(),
+            source="manual",
+        )
+        db.add(cash_holding)
+
+    remaining_qty = current_qty - payload.quantity
+    sold_out = remaining_qty == 0
+    if sold_out:
+        db.delete(holding)
+    else:
+        holding.quantity = remaining_qty
+        holding.as_of_date = payload.as_of_date or holding.as_of_date
+
+    db.commit()
+    db.refresh(cash_holding)
+
+    background_tasks.add_task(_run_sync_in_process, account_id)
+
+    return {
+        "holding_id": str(holding_id),
+        "sold_out": sold_out,
+        "remaining_quantity": str(remaining_qty),
+        "cash_balance": str(cash_holding.quantity),
     }
 
 

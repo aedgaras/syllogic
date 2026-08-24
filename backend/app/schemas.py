@@ -730,6 +730,22 @@ class HoldingUpdate(BaseModel):
     provider_symbol: Optional[str] = None
 
 
+class HoldingBuy(BaseModel):
+    symbol: str
+    provider_symbol: Optional[str] = None
+    quantity: Decimal = Field(gt=0)
+    instrument_type: Literal["equity", "etf"]
+    currency: str
+    price: Decimal = Field(gt=0)
+    as_of_date: Optional[_date_date] = None
+
+
+class HoldingSell(BaseModel):
+    quantity: Decimal = Field(gt=0)
+    price: Decimal = Field(gt=0)
+    as_of_date: Optional[_date_date] = None
+
+
 class HoldingResponse(BaseModel):
     id: UUID
     account_id: UUID

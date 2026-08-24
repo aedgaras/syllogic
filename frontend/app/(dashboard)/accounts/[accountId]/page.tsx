@@ -1,4 +1,3 @@
-import { t as translate } from "@/i18n/translate";
 import { notFound } from "next/navigation";
 import { AccountDetail } from "@/features/accounts/public";
 import {
@@ -11,7 +10,7 @@ import {
 } from "@/lib/actions/transactions";
 import { getUserCategories } from "@/lib/actions/categories";
 import { listHoldings, type Holding } from "@/lib/api/investments";
-import { HoldingsTable } from "@/components/investments/HoldingsTable";
+import { InvestmentHoldingsSection } from "@/components/investments/InvestmentHoldingsSection";
 import { AccruedInterestCard } from "@/components/accounts/accrued-interest-card";
 import { INVESTMENT_ACCOUNT_TYPES } from "@/lib/constants/account-types";
 
@@ -63,8 +62,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
       />
       {isInvestmentAccount && (
         <section className="rounded-xl border p-4">
-          <h2 className="font-medium mb-3">{translate("holdings")}</h2>
-          <HoldingsTable holdings={holdings} />
+          <InvestmentHoldingsSection accountId={accountId} holdings={holdings} />
         </section>
       )}
       {isSavingsAccount && (

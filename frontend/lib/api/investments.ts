@@ -257,6 +257,45 @@ export async function syncAllInvestments(): Promise<{ count: number }> {
   return readJsonOrThrow<{ count: number }>(resp);
 }
 
+export async function buyHolding(
+  accountId: string,
+  payload: {
+    symbol: string;
+    quantity: string;
+    instrument_type: "equity" | "etf";
+    currency: string;
+    price: string;
+    provider_symbol?: string;
+    as_of_date?: string;
+  },
+): Promise<{
+  holding_id: string;
+  quantity: string;
+  avg_cost: string;
+  cash_remaining: string;
+}> {
+  await assertNotDemoRestricted();
+  const resp = await signedFetch(
+    "POST",
+    `/api/investments/manual-accounts/${accountId}/holdings/buy`,
+    { body: payload },
+  );
+  return readJsonOrThrow(resp);
+}
+
+export async function sellHolding(
+  holdingId: string,
+  payload: { quantity: string; price: string; as_of_date?: string },
+): Promise<{ holding_id: string; sold_out: boolean; remaining_quantity: string; cash_balance: string }> {
+  await assertNotDemoRestricted();
+  const resp = await signedFetch(
+    "POST",
+    `/api/investments/holdings/${holdingId}/sell`,
+    { body: payload },
+  );
+  return readJsonOrThrow(resp);
+}
+
 export async function updateHolding(
   holdingId: string,
   payload: {

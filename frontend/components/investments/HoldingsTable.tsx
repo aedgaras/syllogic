@@ -6,10 +6,13 @@ import type { Holding } from "@/lib/api/investments";
 export function HoldingsTable({
   holdings,
   onDelete,
+  onSell,
 }: {
   holdings: Holding[];
   onDelete?: (id: string) => void;
+  onSell?: (holding: Holding) => void;
 }) {
+  const canSell = (h: Holding) => h.source === "manual" && h.instrument_type !== "cash";
   return (
     <>
       <div className="space-y-2 md:hidden">
@@ -45,7 +48,16 @@ export function HoldingsTable({
                   {h.current_price ?? "—"} {h.currency}
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-right space-x-2">
+                {onSell && canSell(h) && (
+                  <button
+                    type="button"
+                    className="text-xs text-primary"
+                    onClick={() => onSell(h)}
+                  >
+                    {translate("sell")}
+                  </button>
+                )}
                 {onDelete && h.source === "manual" && (
                   <button
                     type="button"
@@ -88,7 +100,16 @@ export function HoldingsTable({
               >
                 {h.current_value_user_currency ?? "—"}
               </td>
-              <td className="text-right">
+              <td className="text-right space-x-2">
+                {onSell && canSell(h) && (
+                  <button
+                    type="button"
+                    className="text-xs text-primary"
+                    onClick={() => onSell(h)}
+                  >
+                    {translate("sell")}
+                  </button>
+                )}
                 {onDelete && h.source === "manual" && (
                   <button
                     type="button"
