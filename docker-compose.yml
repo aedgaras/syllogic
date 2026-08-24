@@ -62,6 +62,23 @@ services:
         condition: service_healthy
     restart: "no"
 
+  backend-migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: finance_backend_migrate
+    command: python postgres_migration/run_all.py
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql+psycopg://financeuser:financepass@db:5432/finance_db
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
   backend:
     build:
       context: ./backend
@@ -98,6 +115,8 @@ services:
       redis:
         condition: service_healthy
       migrate:
+        condition: service_completed_successfully
+      backend-migrate:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()\""]
@@ -141,6 +160,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      backend-migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   celery-beat:
@@ -177,6 +198,8 @@ services:
       redis:
         condition: service_healthy
       migrate:
+        condition: service_completed_successfully
+      backend-migrate:
         condition: service_completed_successfully
     restart: unless-stopped
 
