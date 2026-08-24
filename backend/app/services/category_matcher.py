@@ -786,6 +786,31 @@ class CategoryMatcher:
 
         return None
 
+    def _check_merchant_alias(self, merchant: Optional[str]) -> Optional[Category]:
+        """
+        Check merchant_aliases for a default category tied to this merchant.
+
+        Runs after user overrides but before deterministic keyword rules, so a
+        seeded/known merchant (e.g. "Netflix" -> Entertainment) gets a sensible
+        default even for a user with no override history yet.
+        """
+        if not merchant:
+            return None
+
+        from app.models import MerchantAlias
+
+        merchant_lower = merchant.lower()
+        aliases = (
+            self.db.query(MerchantAlias).filter(MerchantAlias.category_id.isnot(None)).all()
+        )
+        for alias in aliases:
+            if re.search(rf"\b{re.escape(alias.pattern.lower())}\b", merchant_lower):
+                category = self.db.query(Category).filter(Category.id == alias.category_id).first()
+                if category:
+                    return category
+
+        return None
+
     @staticmethod
     def _normalize_text(text: Optional[str]) -> str:
         """
@@ -1460,6 +1485,11 @@ Category name:"""
         override_category = self._check_user_override(description, merchant, amount)
         if override_category:
             return override_category
+
+        # Then a merchant_aliases default category, if the merchant is known
+        alias_category = self._check_merchant_alias(merchant)
+        if alias_category:
+            return alias_category
 
         # Try deterministic matching
         category = self.match_category_deterministic(

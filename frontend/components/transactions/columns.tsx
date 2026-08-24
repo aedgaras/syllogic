@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { AccountLogo } from "@/components/ui/account-logo";
+import { CompanyLogo } from "@/components/ui/company-logo";
 import { parseGlobalFiltersFromSearchParams } from "@/lib/filters/global-filters";
 import { buildCategorySpendingQuery } from "@/lib/category-spending/query-params";
 import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
@@ -260,11 +261,17 @@ export const transactionColumns: ColumnDef<TransactionWithRelations>[] = [
       const columnSize = column.getSize();
       return merchant ? (
         <div
-          className="truncate"
+          className="flex items-center gap-1.5"
           style={{ maxWidth: `${columnSize}px` }}
           title={merchant}
         >
-          {merchant}
+          <CompanyLogo
+            name={merchant}
+            logoUrl={row.original.merchantLogo?.logoUrl}
+            size="sm"
+            className="!size-4"
+          />
+          <span className="truncate">{merchant}</span>
         </div>
       ) : (
         <span className="text-muted-foreground">-</span>

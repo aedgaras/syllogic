@@ -1,13 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload, aliased
-from sqlalchemy import func, or_, and_, asc, desc, case, select, false
+from sqlalchemy import func, or_, and_, asc, desc, case, select, false, update as sa_update
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 
 from app.database import get_db
-from app.models import Transaction, Account, Category, InternalTransfer, TransactionLink, User
+from app.models import (
+    Transaction,
+    Account,
+    Category,
+    InternalTransfer,
+    RecurringTransaction,
+    TransactionLink,
+    User,
+)
 from app.db_helpers import get_user_id, get_current_user_id
 from app.schemas import (
     AccountDeleteImpact,
@@ -38,6 +46,8 @@ from app.schemas import (
     TransactionConvertToTransferRequest,
     TransactionCreate,
     TransactionPageResponse,
+    TransactionLogoSetRequest,
+    TransactionLogoSetResponse,
     TransactionResponse,
     TransactionUpdate,
     TransactionWithDetails,
@@ -52,10 +62,11 @@ _DETAIL_RELATIONS = (
     joinedload(Transaction.account).joinedload(Account.logo),
     joinedload(Transaction.category),
     joinedload(Transaction.category_system),
-    joinedload(Transaction.recurring_transaction),
+    joinedload(Transaction.recurring_transaction).joinedload(RecurringTransaction.logo),
     joinedload(Transaction.transaction_link),
     joinedload(Transaction.internal_transfer).joinedload(InternalTransfer.source_account),
     joinedload(Transaction.internal_transfer).joinedload(InternalTransfer.pocket_account),
+    joinedload(Transaction.logo),
 )
 
 
@@ -82,6 +93,8 @@ def _serialize_transaction(txn: Transaction) -> TransactionWithDetails:
         pending=txn.pending,
         categorization_instructions=txn.categorization_instructions,
         enrichment_data=txn.enrichment_data,
+        logo_id=txn.logo_id,
+        logo=txn.logo,
         created_at=txn.created_at,
         updated_at=txn.updated_at,
         category_name=txn.category.name if txn.category else None,
@@ -877,6 +890,38 @@ def get_transaction(
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
     return transaction
+
+
+@router.patch("/{transaction_id}/logo", response_model=TransactionLogoSetResponse)
+def set_transaction_logo_if_missing(
+    transaction_id: UUID,
+    payload: TransactionLogoSetRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    """Persist a resolved company logo onto a transaction without ever
+    overwriting one that's already set. Mirrors the accounts.py logo
+    endpoint: a conditional `UPDATE ... WHERE logo_id IS NULL` enforces the
+    write-once guard atomically at the DB layer."""
+    transaction = (
+        db.query(Transaction)
+        .filter(Transaction.id == transaction_id, Transaction.user_id == user_id)
+        .first()
+    )
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    result = db.execute(
+        sa_update(Transaction)
+        .where(Transaction.id == transaction_id, Transaction.logo_id.is_(None))
+        .values(logo_id=payload.logo_id)
+    )
+    applied = result.rowcount > 0
+    db.commit()
+    db.refresh(transaction)
+    return TransactionLogoSetResponse(
+        applied=applied, logo_id=transaction.logo_id, logo=transaction.logo
+    )
 
 
 @router.post("/", response_model=TransactionResponse, status_code=201)

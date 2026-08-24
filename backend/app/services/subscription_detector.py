@@ -27,7 +27,7 @@ from sqlalchemy import func
 from app.models import Transaction, RecurringTransaction, SubscriptionSuggestion
 from app.db_helpers import get_user_id
 from app.services.text_similarity import TextSimilarity
-from app.services.merchant_extractor import MerchantExtractor
+from app.services.merchant_extractor import MerchantExtractor, resolve_company_logo_id
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +153,7 @@ class SubscriptionDetector:
         self.db = db
         self.user_id = user_id if user_id else get_user_id(user_id)
         self.text_similarity = TextSimilarity()
-        self.merchant_extractor = MerchantExtractor()
+        self.merchant_extractor = MerchantExtractor(db=db)
         self._existing_subscriptions: Optional[List[RecurringTransaction]] = None
 
     def _load_existing_subscriptions(self) -> List[RecurringTransaction]:
@@ -1188,6 +1188,9 @@ class SubscriptionDetector:
         if not pattern_account_uuid:
             raise ValueError(f"Invalid account_id in detected pattern: {pattern.account_id}")
 
+        logo_domain = self.merchant_extractor.find_alias_logo_domain(pattern.suggested_merchant)
+        logo_id = resolve_company_logo_id(self.db, logo_domain)
+
         if existing:
             existing.account_id = pattern_account_uuid
             existing.amount = pattern.suggested_amount
@@ -1197,6 +1200,8 @@ class SubscriptionDetector:
             existing.is_active = True
             if not existing.merchant and pattern.suggested_merchant:
                 existing.merchant = pattern.suggested_merchant
+            if not existing.logo_id and logo_id:
+                existing.logo_id = logo_id
             if pattern_category_uuid:
                 existing.category_id = pattern_category_uuid
             self.db.add(existing)
@@ -1208,6 +1213,7 @@ class SubscriptionDetector:
             account_id=pattern_account_uuid,
             name=pattern.suggested_name,
             merchant=pattern.suggested_merchant,
+            logo_id=logo_id,
             amount=pattern.suggested_amount,
             is_variable_amount=pattern.is_variable_amount,
             currency=pattern.currency,

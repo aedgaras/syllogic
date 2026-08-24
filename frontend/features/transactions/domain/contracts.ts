@@ -51,6 +51,12 @@ export interface TransactionListItem {
   } | null;
   description: string | null;
   merchant: string | null;
+  merchantLogoId: string | null;
+  merchantLogo: {
+    id: string;
+    logoUrl: string | null;
+    updatedAt?: Date | null;
+  } | null;
   creditor: string | null;
   debtor: string | null;
   amount: number;

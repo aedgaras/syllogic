@@ -19,11 +19,19 @@ interface BackendCategorySummary {
   icon: string | null;
 }
 
+interface BackendLogoSummary {
+  id: string;
+  logo_url: string | null;
+  updated_at: string | null;
+}
+
 interface BackendRecurringTransactionSummary {
   id: string;
   name: string;
   merchant: string | null;
   frequency: string;
+  logo_id: string | null;
+  logo: BackendLogoSummary | null;
 }
 
 interface BackendTransactionLinkSummary {
@@ -61,6 +69,8 @@ export interface BackendTransactionWithDetails {
   pending: boolean | null;
   transaction_type: string | null;
   include_in_analytics: boolean;
+  logo_id: string | null;
+  logo: BackendLogoSummary | null;
   account: BackendAccountSummary | null;
   category: BackendCategorySummary | null;
   category_system: BackendCategorySummary | null;
@@ -87,6 +97,14 @@ export function mapBackendTransaction(row: BackendTransactionWithDetails): Trans
     pending: row.pending,
     transactionType: row.transaction_type,
     includeInAnalytics: row.include_in_analytics,
+    logoId: row.logo_id,
+    logo: row.logo
+      ? {
+          id: row.logo.id,
+          logoUrl: row.logo.logo_url,
+          updatedAt: row.logo.updated_at ? new Date(row.logo.updated_at) : null,
+        }
+      : null,
     account: row.account
       ? {
           id: row.account.id,

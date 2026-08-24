@@ -64,7 +64,7 @@ class SubscriptionMatcher:
         self.user_id = user_id if user_id else get_user_id(user_id)
         self._subscription_cache: Dict[Optional[str], List[RecurringTransaction]] = {}
         self._text_similarity = TextSimilarity()
-        self._merchant_extractor = MerchantExtractor()
+        self._merchant_extractor = MerchantExtractor(db=db)
 
     def _load_subscriptions(self, account_id: Optional[str] = None) -> List[RecurringTransaction]:
         """

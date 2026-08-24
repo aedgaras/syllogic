@@ -433,6 +433,9 @@ export const transactions = pgTable(
     pending: boolean("pending").default(false),
     categorizationInstructions: text("categorization_instructions"), // User instructions for AI categorization
     enrichmentData: jsonb("enrichment_data"), // Enriched merchant info, logos, etc.
+    logoId: uuid("logo_id").references(() => companyLogos.id, {
+      onDelete: "set null",
+    }),
     recurringTransactionId: uuid("recurring_transaction_id").references(
       () => recurringTransactions.id,
       { onDelete: "set null" },
@@ -462,6 +465,7 @@ export const transactions = pgTable(
       table.bookedAt,
     ),
     index("idx_transactions_merchant").on(table.merchant),
+    index("idx_transactions_logo").on(table.logoId),
     index("idx_transactions_csv_import").on(table.csvImportId),
     unique("transactions_account_external_id").on(
       table.accountId,
@@ -1134,6 +1138,10 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
     fields: [transactions.internalTransferId],
     references: [internalTransfers.id],
   }),
+  logo: one(companyLogos, {
+    fields: [transactions.logoId],
+    references: [companyLogos.id],
+  }),
 }));
 
 export const internalTransfersRelations = relations(
@@ -1290,6 +1298,7 @@ export const transactionLinksRelations = relations(
 export const companyLogosRelations = relations(companyLogos, ({ many }) => ({
   accounts: many(accounts),
   recurringTransactions: many(recurringTransactions),
+  transactions: many(transactions),
 }));
 
 export const peopleRelations = relations(people, ({ one, many }) => ({

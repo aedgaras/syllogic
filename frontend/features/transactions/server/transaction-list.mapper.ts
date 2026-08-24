@@ -17,6 +17,8 @@ export interface TransactionListRow {
   pending: boolean | null;
   transactionType: string | null;
   includeInAnalytics: boolean;
+  logoId: string | null;
+  logo: { id: string; logoUrl: string | null; updatedAt: Date | null } | null;
   account: {
     id: string;
     name: string;
@@ -77,6 +79,14 @@ export function mapTransactionListRow(
     },
     description: row.description,
     merchant: row.merchant,
+    merchantLogoId: row.logoId,
+    merchantLogo: row.logo
+      ? {
+          id: row.logo.id,
+          logoUrl: row.logo.logoUrl,
+          updatedAt: row.logo.updatedAt,
+        }
+      : null,
     creditor: row.creditor,
     debtor: row.debtor,
     amount: Number.parseFloat(row.amount),

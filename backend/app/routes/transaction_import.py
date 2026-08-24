@@ -37,6 +37,7 @@ from app.services.exchange_rate_service import ExchangeRateService
 from app.services.account_balance_service import AccountBalanceService
 from app.services.subscription_matcher import SubscriptionMatcher
 from app.services.subscription_detector import SubscriptionDetector
+from app.services.merchant_extractor import extract_merchant_full, resolve_company_logo_id
 
 logger = logging.getLogger(__name__)
 
@@ -493,6 +494,15 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
                         skipped_count += 1
                         continue
 
+                # Canonicalize merchant via the same extractor/alias-table
+                # path bank sync uses, so CSV-imported merchants aren't left
+                # as raw, un-normalized strings.
+                merchant_extraction = extract_merchant_full(
+                    txn_data["description"], txn_data.get("merchant"), db=db
+                )
+                resolved_merchant = merchant_extraction.merchant or txn_data.get("merchant")
+                resolved_logo_id = resolve_company_logo_id(db, merchant_extraction.logo_domain)
+
                 # Create transaction
                 # If category was pre-selected, set both category_id and category_system_id to it
                 # If category was AI-assigned, set category_id = category_system_id initially (user can override later)
@@ -504,7 +514,8 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
                     amount=txn_data["amount"],
                     currency=txn_data["currency"],
                     description=txn_data["description"],
-                    merchant=txn_data["merchant"],
+                    merchant=resolved_merchant,
+                    logo_id=resolved_logo_id,
                     booked_at=txn_data["booked_at"],
                     category_id=category_id,
                     category_system_id=category_id

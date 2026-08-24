@@ -16,7 +16,7 @@ from app.integrations.base import BankAdapter, TransactionData
 from app.services.category_matcher import CategoryMatcher
 from app.services.subscription_matcher import SubscriptionMatcher
 from app.services.subscription_detector import SubscriptionDetector
-from app.services.merchant_extractor import extract_merchant
+from app.services.merchant_extractor import extract_merchant_full, resolve_company_logo_id
 from app.db_helpers import get_user_id
 from app.security.data_encryption import (
     blind_index,
@@ -277,19 +277,23 @@ class SyncService:
         updated_transaction_ids: List[str] = []
 
         for transaction_data in transaction_data_list:
+            # Resolve merchant first (extractor fallback + merchant_aliases
+            # canonicalization) so categorization below sees the cleaned-up
+            # name rather than a raw/noisy bank string.
+            extraction = extract_merchant_full(
+                transaction_data.description, transaction_data.merchant, db=self.db
+            )
+            merchant = extraction.merchant or transaction_data.merchant
+            logo_id = resolve_company_logo_id(self.db, extraction.logo_domain)
+
             # Try to auto-categorize the transaction
             category = self.category_matcher.match_category(
                 description=transaction_data.description,
-                merchant=transaction_data.merchant,
+                merchant=merchant,
                 amount=transaction_data.amount,
                 transaction_type=transaction_data.transaction_type,
                 use_llm=self.use_llm_categorization,
             )
-
-            # Try to extract/improve merchant from description if empty
-            merchant = transaction_data.merchant
-            if not merchant and transaction_data.description:
-                merchant = extract_merchant(transaction_data.description)
 
             # Try to auto-match to subscription (only for expenses without existing link)
             matched_subscription = None
@@ -319,6 +323,8 @@ class SyncService:
                 if transaction_data.description:
                     existing_transaction.description = transaction_data.description
                 existing_transaction.merchant = merchant or transaction_data.merchant
+                if not existing_transaction.logo_id and logo_id:
+                    existing_transaction.logo_id = logo_id
                 existing_transaction.creditor = transaction_data.creditor
                 existing_transaction.debtor = transaction_data.debtor
                 existing_transaction.booked_at = transaction_data.booked_at
@@ -360,6 +366,8 @@ class SyncService:
                     if transaction_data.description:
                         pending_match.description = transaction_data.description
                     pending_match.merchant = merchant or transaction_data.merchant
+                    if not pending_match.logo_id and logo_id:
+                        pending_match.logo_id = logo_id
                     pending_match.creditor = transaction_data.creditor
                     pending_match.debtor = transaction_data.debtor
                     if transaction_data.counterparty_iban:
@@ -418,6 +426,7 @@ class SyncService:
                 currency=transaction_data.currency,
                 description=transaction_data.description,
                 merchant=merchant or transaction_data.merchant,
+                logo_id=logo_id,
                 creditor=transaction_data.creditor,
                 debtor=transaction_data.debtor,
                 booked_at=transaction_data.booked_at,
@@ -633,19 +642,22 @@ class SyncService:
         if not account:
             raise ValueError(f"Account {account_id} not found for user {self.user_id}")
 
+        # Resolve merchant first (extractor fallback + merchant_aliases
+        # canonicalization) so categorization below sees the cleaned-up name.
+        extraction = extract_merchant_full(
+            transaction_data.description, transaction_data.merchant, db=self.db
+        )
+        merchant = extraction.merchant or transaction_data.merchant
+        logo_id = resolve_company_logo_id(self.db, extraction.logo_domain)
+
         # Try to auto-categorize the transaction
         category = self.category_matcher.match_category(
             description=transaction_data.description,
-            merchant=transaction_data.merchant,
+            merchant=merchant,
             amount=transaction_data.amount,
             transaction_type=transaction_data.transaction_type,
             use_llm=self.use_llm_categorization,
         )
-
-        # Try to extract/improve merchant from description if empty
-        merchant = transaction_data.merchant
-        if not merchant and transaction_data.description:
-            merchant = extract_merchant(transaction_data.description)
 
         # Try to auto-match to subscription (only for expenses)
         matched_subscription = None
@@ -676,6 +688,8 @@ class SyncService:
             if transaction_data.description:
                 existing_transaction.description = transaction_data.description
             existing_transaction.merchant = merchant or transaction_data.merchant
+            if not existing_transaction.logo_id and logo_id:
+                existing_transaction.logo_id = logo_id
             existing_transaction.booked_at = transaction_data.booked_at
             existing_transaction.transaction_type = transaction_data.transaction_type
             existing_transaction.pending = transaction_data.pending
@@ -721,6 +735,7 @@ class SyncService:
                 currency=transaction_data.currency,
                 description=transaction_data.description,
                 merchant=merchant or transaction_data.merchant,
+                logo_id=logo_id,
                 booked_at=transaction_data.booked_at,
                 pending=transaction_data.pending,
                 category_system_id=category.id if category else None,

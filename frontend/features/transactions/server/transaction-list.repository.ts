@@ -1,4 +1,5 @@
 import { resolveMissingAccountLogos } from "@/lib/actions/account-logos";
+import { resolveMissingMerchantLogos } from "@/lib/actions/transaction-logos";
 import { hasActiveTransactionFilters } from "../query-state";
 import type { TransactionsQueryState } from "../domain/contracts";
 import type { TransactionListRepository } from "../application/get-transaction-page";
@@ -51,6 +52,38 @@ export async function hydrateResolvedAccountLogos(rows: TransactionListRow[]) {
   });
 }
 
+export async function hydrateResolvedMerchantLogos(rows: TransactionListRow[]) {
+  const candidates = rows
+    .filter((row) => row.merchant)
+    .map((row) => ({
+      id: row.id,
+      merchant: row.merchant,
+      logoId: row.logoId,
+      logo: row.logo,
+    }));
+
+  if (candidates.length === 0) return rows;
+
+  const resolved = await resolveMissingMerchantLogos(candidates);
+  const resolvedById = new Map(resolved.map((item) => [item.id, item]));
+
+  return rows.map((row) => {
+    const match = resolvedById.get(row.id);
+    if (!match) return row;
+    return {
+      ...row,
+      logoId: match.logoId,
+      logo: match.logo
+        ? {
+            id: match.logo.id,
+            logoUrl: match.logo.logoUrl,
+            updatedAt: match.logo.updatedAt ?? null,
+          }
+        : null,
+    };
+  });
+}
+
 /**
  * Totals for the current filter/date-range, computed unconditionally (unlike
  * getPage's filteredTotals, which is gated behind hasActiveTransactionFilters
@@ -86,7 +119,8 @@ export const transactionListRepository: TransactionListRepository = {
     const result = await fetchTransactionPageViaBackend(userId, input, {
       includeFilteredTotals: shouldComputeFilteredTotals,
     });
-    const rows = await hydrateResolvedAccountLogos(result.rows);
+    const rowsWithAccountLogos = await hydrateResolvedAccountLogos(result.rows);
+    const rows = await hydrateResolvedMerchantLogos(rowsWithAccountLogos);
     return {
       rows: mapTransactionListRows(rows, (row) =>
         logger.warn(

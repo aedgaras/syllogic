@@ -245,6 +245,9 @@ class Transaction(Base):
     pending = Column(Boolean, default=False)
     categorization_instructions = Column(Text)  # User instructions for AI categorization
     enrichment_data = Column(JSONB)  # Enriched merchant info, logos, etc.
+    logo_id = Column(
+        UUID(as_uuid=True), ForeignKey("company_logos.id", ondelete="SET NULL"), nullable=True
+    )
     recurring_transaction_id = Column(
         UUID(as_uuid=True),
         ForeignKey("recurring_transactions.id", ondelete="SET NULL"),
@@ -283,6 +286,7 @@ class Transaction(Base):
     csv_import = relationship("CsvImport", back_populates="transactions")
     receipt_scan = relationship("ReceiptScan", back_populates="transactions")
     internal_transfer = relationship("InternalTransfer", foreign_keys=[internal_transfer_id])
+    logo = relationship("CompanyLogo", back_populates="transactions")
 
     # Indexes and constraints
     __table_args__ = (
@@ -292,6 +296,7 @@ class Transaction(Base):
         Index("idx_transactions_category", "category_id"),
         Index("idx_transactions_category_system", "category_system_id"),
         Index("idx_transactions_recurring", "recurring_transaction_id"),
+        Index("idx_transactions_logo", "logo_id"),
         Index("idx_transactions_csv_import", "csv_import_id"),
         Index("idx_transactions_receipt_scan", "receipt_scan_id"),
         UniqueConstraint("account_id", "external_id", name="transactions_account_external_id"),
@@ -863,12 +868,42 @@ class CompanyLogo(Base):
     # Relationships
     accounts = relationship("Account", back_populates="logo")
     recurring_transactions = relationship("RecurringTransaction", back_populates="logo")
+    transactions = relationship("Transaction", back_populates="logo")
 
     # Indexes and constraints
     __table_args__ = (
         Index("idx_company_logos_domain", "domain"),
         Index("idx_company_logos_name", "company_name"),
         UniqueConstraint("domain", name="company_logos_domain_unique"),
+    )
+
+
+class MerchantAlias(Base):
+    """
+    Maps a raw merchant/description pattern to a canonical merchant name plus
+    optional default category and logo domain hints. Seeded from
+    MerchantExtractor.KNOWN_MERCHANTS (see postgres_migration/add_merchant_aliases_table.py)
+    and consulted by MerchantExtractor/CategoryMatcher during ingestion so
+    that merchant variants collapse to one consistent name/category/logo.
+    """
+
+    __tablename__ = "merchant_aliases"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pattern = Column(String(255), nullable=False)  # lowercase match key, e.g. "netflix"
+    canonical_name = Column(String(255), nullable=False)  # e.g. "Netflix"
+    category_id = Column(
+        UUID(as_uuid=True), ForeignKey("categories.id", ondelete="SET NULL"), nullable=True
+    )
+    logo_domain = Column(String(255), nullable=True)  # e.g. "netflix.com"
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+
+    category = relationship("Category")
+
+    __table_args__ = (
+        Index("idx_merchant_aliases_pattern", "pattern"),
+        UniqueConstraint("pattern", name="merchant_aliases_pattern_unique"),
     )
 
 

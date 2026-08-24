@@ -80,6 +80,16 @@ class AccountLogoSetResponse(AccountLogoResponse):
     applied: bool
 
 
+class TransactionLogoSetRequest(BaseModel):
+    logo_id: UUID
+
+
+class TransactionLogoSetResponse(BaseModel):
+    applied: bool
+    logo_id: Optional[UUID] = None
+    logo: Optional[AccountLogoSchema] = None
+
+
 class AccountHardDeleteResponse(BaseModel):
     deleted_balances: int
     deleted_transactions: int
@@ -200,6 +210,8 @@ class TransactionResponse(TransactionBase):
     pending: bool
     categorization_instructions: Optional[str] = None
     enrichment_data: Optional[dict] = None
+    logo_id: Optional[UUID] = None
+    logo: Optional[AccountLogoSchema] = None
     created_at: datetime
     updated_at: datetime
 
@@ -211,6 +223,8 @@ class RecurringTransactionSummary(BaseModel):
     name: str
     merchant: Optional[str] = None
     frequency: str
+    logo_id: Optional[UUID] = None
+    logo: Optional[AccountLogoSchema] = None
 
     model_config = ConfigDict(from_attributes=True)
 

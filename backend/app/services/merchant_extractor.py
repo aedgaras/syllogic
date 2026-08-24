@@ -6,8 +6,13 @@ contains identifiable merchant information.
 """
 
 import re
-from typing import Optional
+import logging
+from typing import Dict, Optional
 from dataclasses import dataclass
+
+from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -16,7 +21,16 @@ class MerchantExtractionResult:
 
     merchant: Optional[str]
     confidence: float  # 0-100
-    method: str  # 'known_pattern', 'capitalized_sequence', 'none'
+    method: str  # 'alias_table', 'existing', 'known_pattern', 'capitalized_sequence', 'first_word', 'none'
+    category_id: Optional[str] = None  # merchant_aliases.category_id, when method == 'alias_table'
+    logo_domain: Optional[str] = None  # merchant_aliases.logo_domain, when method == 'alias_table'
+
+
+@dataclass
+class _AliasHint:
+    canonical_name: str
+    category_id: Optional[str]
+    logo_domain: Optional[str]
 
 
 class MerchantExtractor:
@@ -221,10 +235,54 @@ class MerchantExtractor:
         r"\b[A-Z]{2,3}\d{10,}\b",  # IBAN-like patterns
     ]
 
-    def __init__(self):
+    def __init__(self, db: Optional[Session] = None):
         # Compile regex patterns for performance
         self._noise_pattern = re.compile("|".join(self.NOISE_PATTERNS), re.IGNORECASE)
         self._date_pattern = re.compile("|".join(self.DATE_PATTERNS))
+        self.db = db
+        self._alias_cache: Optional[Dict[str, _AliasHint]] = None
+
+    def _load_aliases(self) -> Dict[str, _AliasHint]:
+        """Load merchant_aliases into memory once per extractor instance."""
+        if self._alias_cache is not None:
+            return self._alias_cache
+
+        self._alias_cache = {}
+        if self.db is None:
+            return self._alias_cache
+
+        try:
+            from app.models import MerchantAlias
+
+            for row in self.db.query(MerchantAlias).all():
+                self._alias_cache[row.pattern.lower()] = _AliasHint(
+                    canonical_name=row.canonical_name,
+                    category_id=str(row.category_id) if row.category_id else None,
+                    logo_domain=row.logo_domain,
+                )
+        except Exception:
+            logger.warning("Failed to load merchant_aliases from database", exc_info=True)
+
+        return self._alias_cache
+
+    def _find_alias(self, text: str) -> Optional[_AliasHint]:
+        """Check if text matches a known merchant_aliases pattern (word-boundary match)."""
+        aliases = self._load_aliases()
+        if not aliases or not text:
+            return None
+
+        text_lower = text.lower()
+        for pattern, hint in aliases.items():
+            if re.search(rf"\b{re.escape(pattern)}\b", text_lower):
+                return hint
+
+        return None
+
+    def find_alias_logo_domain(self, text: Optional[str]) -> Optional[str]:
+        """Public accessor for callers (e.g. SubscriptionDetector) that only
+        need the logo_domain hint for an already-resolved merchant string."""
+        hint = self._find_alias(text) if text else None
+        return hint.logo_domain if hint else None
 
     def _clean_description(self, description: str) -> str:
         """
@@ -339,9 +397,12 @@ class MerchantExtractor:
         Extract merchant name from transaction description.
 
         Priority:
-        1. If existing_merchant is provided and non-empty, return it
-        2. Look for known merchant patterns
-        3. Extract first capitalized word sequence
+        1. Look up the merchant_aliases table (against existing_merchant if
+           present, else description) -- canonicalizes known variants like
+           "UBER *EATS8291" -> "Uber Eats" even when a merchant is already set
+        2. If existing_merchant is provided and non-empty, return it as-is
+        3. Look for known merchant patterns (static KNOWN_MERCHANTS dict)
+        4. Extract first capitalized word sequence
 
         Args:
             description: Transaction description
@@ -350,6 +411,17 @@ class MerchantExtractor:
         Returns:
             MerchantExtractionResult with extracted merchant, confidence, and method
         """
+        alias_source = existing_merchant.strip() if existing_merchant and existing_merchant.strip() else description
+        alias_hint = self._find_alias(alias_source) if alias_source else None
+        if alias_hint:
+            return MerchantExtractionResult(
+                merchant=alias_hint.canonical_name,
+                confidence=98.0,
+                method="alias_table",
+                category_id=alias_hint.category_id,
+                logo_domain=alias_hint.logo_domain,
+            )
+
         # If merchant already exists, return it
         if existing_merchant and existing_merchant.strip():
             return MerchantExtractionResult(
@@ -400,7 +472,9 @@ class MerchantExtractor:
 
 
 def extract_merchant(
-    description: Optional[str], existing_merchant: Optional[str] = None
+    description: Optional[str],
+    existing_merchant: Optional[str] = None,
+    db: Optional[Session] = None,
 ) -> Optional[str]:
     """
     Convenience function to extract merchant from description.
@@ -408,10 +482,43 @@ def extract_merchant(
     Args:
         description: Transaction description
         existing_merchant: Existing merchant field
+        db: Optional DB session -- when provided, canonicalizes against the
+            merchant_aliases table (see MerchantExtractor._find_alias)
 
     Returns:
         Extracted merchant name or None
     """
-    extractor = MerchantExtractor()
+    extractor = MerchantExtractor(db=db)
     result = extractor.extract(description, existing_merchant)
     return result.merchant
+
+
+def extract_merchant_full(
+    description: Optional[str],
+    existing_merchant: Optional[str] = None,
+    db: Optional[Session] = None,
+) -> MerchantExtractionResult:
+    """Same as extract_merchant, but returns the full result (including any
+    alias-provided category_id/logo_domain hints) instead of just the name."""
+    extractor = MerchantExtractor(db=db)
+    return extractor.extract(description, existing_merchant)
+
+
+def resolve_company_logo_id(db: Optional[Session], domain: Optional[str]):
+    """Look up an existing CompanyLogo id by domain.
+
+    Read-only: this backend never creates CompanyLogo rows -- the frontend's
+    logo.dev pipeline owns populating that cache. Returns None until the
+    frontend has resolved a logo for the domain at least once.
+    """
+    if not domain or db is None:
+        return None
+
+    from app.models import CompanyLogo
+
+    logo = (
+        db.query(CompanyLogo)
+        .filter(CompanyLogo.domain == domain, CompanyLogo.status == "found")
+        .first()
+    )
+    return logo.id if logo else None

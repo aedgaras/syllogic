@@ -21,6 +21,8 @@ const row: TransactionListRow = {
   pending: false,
   transactionType: "debit",
   includeInAnalytics: true,
+  logoId: null,
+  logo: null,
   account: {
     id: "account-1",
     name: "Daily",
