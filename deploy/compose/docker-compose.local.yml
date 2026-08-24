@@ -33,6 +33,11 @@ services:
       additional_contexts:
         - frontend=../../frontend
 
+  backend-migrate:
+    # Use the locally-built backend image
+    image: syllogic-backend:local
+    pull_policy: never
+
   mcp:
     # Use the locally-built backend image
     image: syllogic-backend:local
