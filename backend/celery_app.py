@@ -22,6 +22,7 @@ celery_app = Celery(
         "tasks.investment_tasks",
         "tasks.report_tasks",
         "tasks.recurring_transaction_tasks",
+        "tasks.rate_limit_tasks",
     ],
     set_as_current=True,
 )
@@ -108,6 +109,11 @@ def _build_beat_schedule() -> dict:
     schedule["check-due-recurring-transactions"] = {
         "task": "tasks.recurring_transaction_tasks.check_due_recurring_transactions",
         "schedule": crontab(minute=0, hour=5),
+    }
+
+    schedule["prune-rate-limit-counters"] = {
+        "task": "tasks.rate_limit_tasks.prune_rate_limit_counters",
+        "schedule": crontab(minute=0),
     }
 
     return schedule

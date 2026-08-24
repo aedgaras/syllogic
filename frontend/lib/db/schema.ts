@@ -1397,6 +1397,17 @@ export const reportRuns = pgTable(
   ],
 );
 
+// Fixed-window counters backing the backend's IP/identity rate limiter
+// (backend/app/rate_limit.py). One row per key; window_start tracks which
+// bucket the count belongs to. UNLOGGED in Postgres (see
+// 0042_rate_limit_counters.manual.sql) -- disposable state, not represented
+// here since drizzle-orm has no UNLOGGED modifier.
+export const rateLimitCounters = pgTable("rate_limit_counters", {
+  key: text("key").primaryKey(),
+  windowStart: bigint("window_start", { mode: "number" }).notNull(),
+  count: integer("count").notNull().default(1),
+});
+
 // ============================================================================
 // Type Exports
 // ============================================================================
@@ -1468,3 +1479,6 @@ export type NewReport = typeof reports.$inferInsert;
 
 export type ReportRun = typeof reportRuns.$inferSelect;
 export type NewReportRun = typeof reportRuns.$inferInsert;
+
+export type RateLimitCounter = typeof rateLimitCounters.$inferSelect;
+export type NewRateLimitCounter = typeof rateLimitCounters.$inferInsert;
