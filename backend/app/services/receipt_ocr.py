@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import List, Optional
 
+import pillow_heif
 import pytesseract
 from PIL import Image
 from sqlalchemy.orm import Session
@@ -20,6 +21,10 @@ from app.services.category_matcher import CategoryMatcher
 from app.services.llm_client import create_llm_clients, is_fallback_worthy_error
 
 logger = logging.getLogger(__name__)
+
+# iOS "Live Photo" / default camera uploads arrive as HEIC/HEIF, which Pillow
+# can't decode without this opener registered.
+pillow_heif.register_heif_opener()
 
 # Lines containing these words are treated as receipt-total candidates, not
 # purchasable line items (a "Total" line still ends in a price and would

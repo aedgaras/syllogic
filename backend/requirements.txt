@@ -20,3 +20,4 @@ resend==2.37.0
 requests==2.34.2
 pytesseract==0.3.13
 Pillow==12.3.0
+pillow-heif==1.1.1
