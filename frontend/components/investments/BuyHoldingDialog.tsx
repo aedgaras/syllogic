@@ -31,18 +31,27 @@ export function BuyHoldingDialog({
   onOpenChange,
   accountId,
   cashHoldings,
+  initialSymbol,
+  initialInstrumentType,
+  initialCurrency,
   onDone,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   accountId: string;
   cashHoldings: Holding[];
+  initialSymbol?: string;
+  initialInstrumentType?: Inst;
+  initialCurrency?: string;
   onDone: () => void;
 }) {
-  const [currency, setCurrency] = useState(cashHoldings[0]?.currency ?? "EUR");
-  const [symbol, setSymbol] = useState("");
-  const [providerSymbol, setProviderSymbol] = useState("");
-  const [instrumentType, setInstrumentType] = useState<Inst>("etf");
+  const [currency, setCurrency] = useState(
+    initialCurrency ?? cashHoldings[0]?.currency ?? "EUR",
+  );
+  const [symbol, setSymbol] = useState(initialSymbol ?? "");
+  const [instrumentType, setInstrumentType] = useState<Inst>(
+    initialInstrumentType ?? "etf",
+  );
   const [qty, setQty] = useState("");
   const [price, setPrice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -79,7 +88,6 @@ export function BuyHoldingDialog({
         instrument_type: instrumentType,
         currency,
         price,
-        provider_symbol: providerSymbol || undefined,
       });
       onDone();
     } catch (e) {

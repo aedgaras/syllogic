@@ -63,6 +63,8 @@ export function HoldingsTableHF({
   portfolioCurrencySymbol,
   onAddClick,
   onDelete,
+  onBuy,
+  onSell,
   readOnly = false,
 }: {
   holdings: Holding[];
@@ -71,6 +73,8 @@ export function HoldingsTableHF({
   portfolioCurrencySymbol: string;
   onAddClick?: () => void;
   onDelete?: (id: string) => void;
+  onBuy?: (holding: Holding) => void;
+  onSell?: (holding: Holding) => void;
   readOnly?: boolean;
 }) {
   const router = useRouter();
@@ -330,7 +334,32 @@ export function HoldingsTableHF({
                             </div>
                           </div>
                           {!readOnly && h.source === "manual" && (
-                            <div className="flex justify-end gap-2">
+                            <div className="flex flex-wrap justify-end gap-2">
+                              {onBuy && (
+                                <Button
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onBuy(h);
+                                  }}
+                                >
+                                  {translate("buy")}
+                                </Button>
+                              )}
+                              {onSell &&
+                                h.instrument_type !== "cash" &&
+                                h._qty > 0 && (
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onSell(h);
+                                    }}
+                                  >
+                                    {translate("sell")}
+                                  </Button>
+                                )}
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -560,12 +589,28 @@ export function HoldingsTableHF({
                             </DropdownMenuItem>
                             {!readOnly && h.source === "manual" && (
                               <>
+                                <DropdownMenuSeparator />
+                                {onBuy && (
+                                  <DropdownMenuItem onClick={() => onBuy(h)}>
+                                    {translate("buy")}
+                                  </DropdownMenuItem>
+                                )}
+                                {onSell &&
+                                  h.instrument_type !== "cash" &&
+                                  h._qty > 0 && (
+                                    <DropdownMenuItem
+                                      onClick={() => onSell(h)}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      {translate("sell")}
+                                    </DropdownMenuItem>
+                                  )}
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   onClick={() => setEditingId(h.id)}
                                 >
                                   {translate("edit")}
                                 </DropdownMenuItem>
-                                <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   onClick={() => setDeletingId(h.id)}
                                   className="text-destructive focus:text-destructive"

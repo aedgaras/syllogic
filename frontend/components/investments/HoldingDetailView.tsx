@@ -25,6 +25,8 @@ import { MaskableAmount } from "@/components/hide-balances/maskable-amount";
 import { PortfolioChart } from "./PortfolioChart";
 import { TypeBadge } from "./HoldingsTableHF";
 import { EditHoldingDialog } from "./EditHoldingDialog";
+import { BuyHoldingDialog } from "./BuyHoldingDialog";
+import { SellHoldingDialog } from "./SellHoldingDialog";
 
 const RANGES: Range[] = ["1W", "1M", "3M", "1Y", "ALL"];
 
@@ -42,6 +44,7 @@ export function HoldingDetailView({
   trades = [],
   lots = [],
   isDemoRestricted = false,
+  accountHoldings = [],
 }: {
   holding: Holding;
   portfolio: PortfolioSummary;
@@ -49,14 +52,20 @@ export function HoldingDetailView({
   trades?: HoldingTrade[];
   lots?: HoldingLot[];
   isDemoRestricted?: boolean;
+  accountHoldings?: Holding[];
 }) {
   const router = useRouter();
   const [range, setRange] = useState<Range>("1M");
   const [history, setHistory] = useState<ValuationPoint[]>(initialHistory);
   const [pending, startTransition] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
+  const [buyOpen, setBuyOpen] = useState(false);
+  const [sellOpen, setSellOpen] = useState(false);
   const [chartErr, setChartErr] = useState<string | null>(null);
   const activeRangeRef = useRef<Range>("1M");
+  const cashHoldings = accountHoldings.filter(
+    (h) => h.instrument_type === "cash",
+  );
 
   const series = history
     .map((p) => Number(p.value))
@@ -175,14 +184,29 @@ export function HoldingDetailView({
             {accountName}
           </Badge>
           {!isDemoRestricted && holding.source === "manual" && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setEditOpen(true)}
-            >
-              <RiEditLine className="size-4" />
-              {translate("edit")}
-            </Button>
+            <>
+              <Button size="sm" onClick={() => setBuyOpen(true)}>
+                {translate("buy")}
+              </Button>
+              {holding.instrument_type !== "cash" &&
+                Number(holding.quantity) > 0 && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => setSellOpen(true)}
+                  >
+                    {translate("sell")}
+                  </Button>
+                )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setEditOpen(true)}
+              >
+                <RiEditLine className="size-4" />
+                {translate("edit")}
+              </Button>
+            </>
           )}
         </CardContent>
       </Card>
@@ -570,6 +594,40 @@ export function HoldingDetailView({
           open={editOpen}
           onOpenChange={setEditOpen}
           holding={holding}
+        />
+      )}
+
+      {buyOpen && (
+        <BuyHoldingDialog
+          open={buyOpen}
+          onOpenChange={setBuyOpen}
+          accountId={holding.account_id}
+          cashHoldings={cashHoldings}
+          initialSymbol={
+            holding.instrument_type !== "cash" ? holding.symbol : undefined
+          }
+          initialInstrumentType={
+            holding.instrument_type !== "cash"
+              ? (holding.instrument_type as "etf" | "equity")
+              : undefined
+          }
+          initialCurrency={holding.currency}
+          onDone={() => {
+            setBuyOpen(false);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {sellOpen && (
+        <SellHoldingDialog
+          open={sellOpen}
+          onOpenChange={setSellOpen}
+          holding={holding}
+          onDone={() => {
+            setSellOpen(false);
+            router.push("/investments");
+          }}
         />
       )}
     </div>

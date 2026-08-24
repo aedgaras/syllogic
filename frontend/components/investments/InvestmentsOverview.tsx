@@ -25,6 +25,8 @@ import { PortfolioChart } from "./PortfolioChart";
 import { PortfolioStatsStrip, computeBestDay } from "./PortfolioStatsStrip";
 import { AllocationRow } from "./AllocationRow";
 import { HoldingsTableHF } from "./HoldingsTableHF";
+import { BuyHoldingDialog } from "./BuyHoldingDialog";
+import { SellHoldingDialog } from "./SellHoldingDialog";
 
 export function InvestmentsOverview({
   portfolio,
@@ -45,6 +47,8 @@ export function InvestmentsOverview({
   const [pending, startTransition] = useTransition();
   const activeRangeRef = useRef<Range>(initialRange);
   const [syncing, setSyncing] = useState(false);
+  const [buyTarget, setBuyTarget] = useState<Holding | null>(null);
+  const [sellTarget, setSellTarget] = useState<Holding | null>(null);
 
   const series = useMemo(
     () => history.map((p) => Number(p.value)).filter((v) => Number.isFinite(v)),
@@ -217,8 +221,48 @@ export function InvestmentsOverview({
             : () => router.push("/investments/connect")
         }
         onDelete={isDemoRestricted ? undefined : onDelete}
+        onBuy={isDemoRestricted ? undefined : setBuyTarget}
+        onSell={isDemoRestricted ? undefined : setSellTarget}
         readOnly={isDemoRestricted}
       />
+
+      {buyTarget && (
+        <BuyHoldingDialog
+          open={true}
+          onOpenChange={(o) => !o && setBuyTarget(null)}
+          accountId={buyTarget.account_id}
+          cashHoldings={holdings.filter(
+            (h) =>
+              h.account_id === buyTarget.account_id &&
+              h.instrument_type === "cash",
+          )}
+          initialSymbol={
+            buyTarget.instrument_type !== "cash" ? buyTarget.symbol : undefined
+          }
+          initialInstrumentType={
+            buyTarget.instrument_type !== "cash"
+              ? (buyTarget.instrument_type as "etf" | "equity")
+              : undefined
+          }
+          initialCurrency={buyTarget.currency}
+          onDone={() => {
+            setBuyTarget(null);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {sellTarget && (
+        <SellHoldingDialog
+          open={true}
+          onOpenChange={(o) => !o && setSellTarget(null)}
+          holding={sellTarget}
+          onDone={() => {
+            setSellTarget(null);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

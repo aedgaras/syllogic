@@ -49,6 +49,9 @@ export default async function HoldingDetailPage({
           trades={trades}
           lots={lots}
           isDemoRestricted={isDemoRestricted}
+          accountHoldings={holdings.filter(
+            (h) => h.account_id === holding.account_id,
+          )}
         />
       </div>
     </>
