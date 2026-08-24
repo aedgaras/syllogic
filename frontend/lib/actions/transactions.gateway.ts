@@ -174,8 +174,6 @@ export async function updateTransactionViaBackend(
   transactionId: string,
   input: UpdateTransactionBackendInput,
 ): Promise<void> {
-  const signedAmount =
-    input.transactionType === "debit" ? -Math.abs(input.amount) : Math.abs(input.amount);
   const response = await backendFetch(
     "PATCH",
     `/api/transactions/${transactionId}`,
@@ -185,7 +183,7 @@ export async function updateTransactionViaBackend(
       merchant: input.merchant,
       category_id: input.categoryId,
       account_id: input.accountId,
-      amount: signedAmount,
+      amount: Math.abs(input.amount),
       transaction_type: input.transactionType,
       booked_at: input.bookedAt.toISOString(),
     },

@@ -406,127 +406,128 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
             category_id = categorization_results.get(idx)
 
             try:
-                # Skip if external_id already exists in database OR in current batch
-                external_id = txn_data.get("external_id")
-                if external_id:
-                    # Check if already in database
-                    if external_id in duplicate_external_ids:
-                        logger.info(
-                            f"[IMPORT] Skipping duplicate transaction {idx}: "
-                            f"external_id={external_id}, "
-                            f"description='{txn_data.get('description', '')[:50]}', "
-                            f"amount={txn_data.get('amount')} "
-                            f"(already exists in database)"
+                with db.begin_nested():
+                    # Skip if external_id already exists in database OR in current batch
+                    external_id = txn_data.get("external_id")
+                    if external_id:
+                        # Check if already in database
+                        if external_id in duplicate_external_ids:
+                            logger.info(
+                                f"[IMPORT] Skipping duplicate transaction {idx}: "
+                                f"external_id={external_id}, "
+                                f"description='{txn_data.get('description', '')[:50]}', "
+                                f"amount={txn_data.get('amount')} "
+                                f"(already exists in database)"
+                            )
+                            skipped_count += 1
+                            continue
+
+                        # Check if already added in this batch
+                        if external_id in seen_external_ids_in_batch:
+                            logger.warning(
+                                f"[IMPORT] Skipping duplicate transaction {idx}: "
+                                f"external_id={external_id}, "
+                                f"description='{txn_data.get('description', '')[:50]}', "
+                                f"amount={txn_data.get('amount')} "
+                                f"(duplicate within same import batch - hash collision)"
+                            )
+                            skipped_count += 1
+                            continue
+
+                        # Mark this external_id as seen in this batch
+                        seen_external_ids_in_batch.add(external_id)
+
+                        logger.debug(f"[IMPORT] Transaction {idx} is new (external_id={external_id})")
+
+                    # Check 2: By amount, description, and booked_at
+                    # Use date comparison (not exact datetime) to handle microsecond differences
+                    if txn_data.get("description") and txn_data.get("booked_at"):
+                        # Normalize description for comparison (strip whitespace, case-insensitive)
+                        normalized_description = (
+                            txn_data["description"].strip() if txn_data["description"] else None
                         )
-                        skipped_count += 1
-                        continue
 
-                    # Check if already added in this batch
-                    if external_id in seen_external_ids_in_batch:
-                        logger.warning(
-                            f"[IMPORT] Skipping duplicate transaction {idx}: "
-                            f"external_id={external_id}, "
-                            f"description='{txn_data.get('description', '')[:50]}', "
-                            f"amount={txn_data.get('amount')} "
-                            f"(duplicate within same import batch - hash collision)"
+                        # Extract date from booked_at (handle both datetime and date objects)
+                        if isinstance(txn_data["booked_at"], datetime):
+                            booked_date = txn_data["booked_at"].date()
+                        elif hasattr(txn_data["booked_at"], "date"):
+                            booked_date = txn_data["booked_at"].date()
+                        else:
+                            booked_date = txn_data["booked_at"]
+
+                        # Query using date comparison and normalized description
+                        from sqlalchemy import func, cast, Date
+
+                        query = db.query(Transaction).filter(
+                            Transaction.account_id == txn_data["account_id"],
+                            Transaction.user_id == user_id,
+                            Transaction.amount == txn_data["amount"],
                         )
-                        skipped_count += 1
-                        continue
 
-                    # Mark this external_id as seen in this batch
-                    seen_external_ids_in_batch.add(external_id)
+                        # Add description filter (case-insensitive, trimmed)
+                        if normalized_description:
+                            query = query.filter(
+                                func.lower(func.trim(Transaction.description))
+                                == normalized_description.lower().strip()
+                            )
 
-                    logger.debug(f"[IMPORT] Transaction {idx} is new (external_id={external_id})")
+                        # Add date filter (compare dates, not exact datetime)
+                        query = query.filter(cast(Transaction.booked_at, Date) == booked_date)
 
-                # Check 2: By amount, description, and booked_at
-                # Use date comparison (not exact datetime) to handle microsecond differences
-                if txn_data.get("description") and txn_data.get("booked_at"):
-                    # Normalize description for comparison (strip whitespace, case-insensitive)
-                    normalized_description = (
-                        txn_data["description"].strip() if txn_data["description"] else None
+                        # Execute query and log what we found
+                        existing_by_details = query.first()
+
+                        # Log the query for debugging
+                        logger.debug(
+                            f"[IMPORT] Checking for duplicate transaction {idx}: "
+                            f"account_id={txn_data['account_id']}, "
+                            f"amount={txn_data['amount']}, "
+                            f"description='{normalized_description}', "
+                            f"booked_date={booked_date}"
+                        )
+
+                        if existing_by_details:
+                            logger.warning(
+                                f"[IMPORT] Skipping duplicate transaction {idx} "
+                                f"(matching amount={txn_data['amount']}, description='{normalized_description}', "
+                                f"booked_at={booked_date})"
+                            )
+                            skipped_count += 1
+                            continue
+
+                    # Canonicalize merchant via the same extractor/alias-table
+                    # path bank sync uses, so CSV-imported merchants aren't left
+                    # as raw, un-normalized strings.
+                    merchant_extraction = extract_merchant_full(
+                        txn_data["description"], txn_data.get("merchant"), db=db
+                    )
+                    resolved_merchant = merchant_extraction.merchant or txn_data.get("merchant")
+                    resolved_logo_id = resolve_company_logo_id(db, merchant_extraction.logo_domain)
+
+                    # Create transaction
+                    # If category was pre-selected, set both category_id and category_system_id to it
+                    # If category was AI-assigned, set category_id = category_system_id initially (user can override later)
+                    transaction = Transaction(
+                        user_id=user_id,
+                        account_id=txn_data["account_id"],  # Already a UUID from the request
+                        external_id=txn_data.get("external_id"),
+                        transaction_type=txn_data["transaction_type"],
+                        amount=txn_data["amount"],
+                        currency=txn_data["currency"],
+                        description=txn_data["description"],
+                        merchant=resolved_merchant,
+                        logo_id=resolved_logo_id,
+                        booked_at=txn_data["booked_at"],
+                        category_id=category_id,
+                        category_system_id=category_id
+                        if not txn_data.get("category_id")
+                        else None,  # Only set if AI-categorized
+                        pending=False,
                     )
 
-                    # Extract date from booked_at (handle both datetime and date objects)
-                    if isinstance(txn_data["booked_at"], datetime):
-                        booked_date = txn_data["booked_at"].date()
-                    elif hasattr(txn_data["booked_at"], "date"):
-                        booked_date = txn_data["booked_at"].date()
-                    else:
-                        booked_date = txn_data["booked_at"]
-
-                    # Query using date comparison and normalized description
-                    from sqlalchemy import func, cast, Date
-
-                    query = db.query(Transaction).filter(
-                        Transaction.account_id == txn_data["account_id"],
-                        Transaction.user_id == user_id,
-                        Transaction.amount == txn_data["amount"],
-                    )
-
-                    # Add description filter (case-insensitive, trimmed)
-                    if normalized_description:
-                        query = query.filter(
-                            func.lower(func.trim(Transaction.description))
-                            == normalized_description.lower().strip()
-                        )
-
-                    # Add date filter (compare dates, not exact datetime)
-                    query = query.filter(cast(Transaction.booked_at, Date) == booked_date)
-
-                    # Execute query and log what we found
-                    existing_by_details = query.first()
-
-                    # Log the query for debugging
-                    logger.debug(
-                        f"[IMPORT] Checking for duplicate transaction {idx}: "
-                        f"account_id={txn_data['account_id']}, "
-                        f"amount={txn_data['amount']}, "
-                        f"description='{normalized_description}', "
-                        f"booked_date={booked_date}"
-                    )
-
-                    if existing_by_details:
-                        logger.warning(
-                            f"[IMPORT] Skipping duplicate transaction {idx} "
-                            f"(matching amount={txn_data['amount']}, description='{normalized_description}', "
-                            f"booked_at={booked_date})"
-                        )
-                        skipped_count += 1
-                        continue
-
-                # Canonicalize merchant via the same extractor/alias-table
-                # path bank sync uses, so CSV-imported merchants aren't left
-                # as raw, un-normalized strings.
-                merchant_extraction = extract_merchant_full(
-                    txn_data["description"], txn_data.get("merchant"), db=db
-                )
-                resolved_merchant = merchant_extraction.merchant or txn_data.get("merchant")
-                resolved_logo_id = resolve_company_logo_id(db, merchant_extraction.logo_domain)
-
-                # Create transaction
-                # If category was pre-selected, set both category_id and category_system_id to it
-                # If category was AI-assigned, set category_id = category_system_id initially (user can override later)
-                transaction = Transaction(
-                    user_id=user_id,
-                    account_id=txn_data["account_id"],  # Already a UUID from the request
-                    external_id=txn_data.get("external_id"),
-                    transaction_type=txn_data["transaction_type"],
-                    amount=txn_data["amount"],
-                    currency=txn_data["currency"],
-                    description=txn_data["description"],
-                    merchant=resolved_merchant,
-                    logo_id=resolved_logo_id,
-                    booked_at=txn_data["booked_at"],
-                    category_id=category_id,
-                    category_system_id=category_id
-                    if not txn_data.get("category_id")
-                    else None,  # Only set if AI-categorized
-                    pending=False,
-                )
-
-                db.add(transaction)
-                inserted_transactions.append(transaction)  # Store for later ID retrieval
-                inserted_count += 1
+                    db.add(transaction)
+                    inserted_transactions.append(transaction)  # Store for later ID retrieval
+                    inserted_count += 1
             except Exception as e:
                 logger.error(f"[IMPORT] Error creating transaction {idx}: {e}")
                 import traceback
