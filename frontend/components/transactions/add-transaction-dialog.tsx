@@ -35,6 +35,7 @@ import {
   convertTransactionToTransfer,
   createTransaction,
   createTransferTransaction,
+  getMerchantSuggestions,
   getUserAccounts,
   updateTransaction,
 } from "@/lib/actions/transactions";
@@ -43,6 +44,14 @@ import type { TransactionWithRelations } from "@/features/transactions/public";
 import { getUserCategories } from "@/lib/actions/categories";
 import { CategorySelect } from "@/components/categories/category-select";
 import { AccountSelect } from "@/components/accounts/account-select";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
 type Account = {
   id: string;
   name: string;
@@ -89,6 +98,9 @@ export function AddTransactionDialog({
   const [categoryId, setCategoryId] = useState<string>("");
   const [bookedAt, setBookedAt] = useState<Date>(new Date());
   const [merchant, setMerchant] = useState<string>("");
+  const [merchantSuggestions, setMerchantSuggestions] = useState<string[]>(
+    [],
+  );
   const [markAsRecurring, setMarkAsRecurring] = useState(false);
   const [pendingRecurringTransaction, setPendingRecurringTransaction] =
     useState<{ id: string; categoryId: string | null } | null>(null);
@@ -96,11 +108,14 @@ export function AddTransactionDialog({
   useEffect(() => {
     if (open) {
       const loadData = async () => {
-        const [accountsData, defaultAccountId] = await Promise.all([
-          getUserAccounts(),
-          transaction ? Promise.resolve(null) : getDefaultAccountId(),
-        ]);
+        const [accountsData, defaultAccountId, merchantSuggestionsData] =
+          await Promise.all([
+            getUserAccounts(),
+            transaction ? Promise.resolve(null) : getDefaultAccountId(),
+            getMerchantSuggestions(),
+          ]);
         setAccounts(accountsData);
+        setMerchantSuggestions(merchantSuggestionsData);
 
         // Use prop categories if available, otherwise fetch
         if (propCategories && propCategories.length > 0) {
@@ -591,12 +606,34 @@ export function AddTransactionDialog({
                   <Label htmlFor="merchant">
                     {translate("merchantOptional")}
                   </Label>
-                  <Input
-                    id="merchant"
-                    placeholder={translate("eGAmazonStarbucks")}
-                    value={merchant}
-                    onChange={(e) => setMerchant(e.target.value)}
-                  />
+                  <Combobox<string>
+                    items={merchantSuggestions}
+                    inputValue={merchant}
+                    onInputValueChange={(value) => setMerchant(value)}
+                    onValueChange={(value) => {
+                      if (value) setMerchant(value);
+                    }}
+                    autoHighlight
+                  >
+                    <ComboboxInput
+                      id="merchant"
+                      placeholder={translate("eGAmazonStarbucks")}
+                      showTrigger={false}
+                      className="w-full"
+                    />
+                    <ComboboxContent>
+                      <ComboboxEmpty>
+                        {translate("noResultsFound")}
+                      </ComboboxEmpty>
+                      <ComboboxList>
+                        {(item: string) => (
+                          <ComboboxItem key={item} value={item}>
+                            {item}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
                 </div>
               )}
 

@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, asc, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { transactions, users } from "@/lib/db/schema";
 import { requireAuth, getAuthenticatedSession } from "@/lib/auth-helpers";
 import {
   isDemoRestrictedUserEmail,
@@ -503,6 +503,30 @@ import { getUserAccounts as _dashboardGetUserAccounts } from "@/lib/actions/dash
 
 export async function getUserAccounts() {
   return _dashboardGetUserAccounts();
+}
+
+/**
+ * Distinct merchant names the user has previously entered, for
+ * autocomplete suggestions on the merchant field.
+ */
+export async function getMerchantSuggestions(): Promise<string[]> {
+  const userId = await requireAuth();
+
+  if (!userId) {
+    return [];
+  }
+
+  const rows = await db
+    .selectDistinct({ merchant: transactions.merchant })
+    .from(transactions)
+    .where(
+      and(eq(transactions.userId, userId), isNotNull(transactions.merchant)),
+    )
+    .orderBy(asc(transactions.merchant));
+
+  return rows
+    .map((row) => row.merchant?.trim())
+    .filter((merchant): merchant is string => Boolean(merchant));
 }
 
 // Note: getUserCategories has been consolidated in lib/actions/categories.ts
