@@ -88,6 +88,7 @@ def _serialize_transaction(txn: Transaction) -> TransactionWithDetails:
         internal_transfer_id=txn.internal_transfer_id,
         recurring_transaction_id=txn.recurring_transaction_id,
         include_in_analytics=txn.include_in_analytics,
+        auto_generated=txn.auto_generated,
         csv_import_id=txn.csv_import_id,
         booked_at=txn.booked_at,
         pending=txn.pending,

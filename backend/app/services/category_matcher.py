@@ -341,12 +341,23 @@ class CategoryMatcher:
         """
         Load all categories from database into a cache, filtered by user_id.
 
+        Rows hidden from selection (category groups such as "Needs"/"Wants",
+        and system-assigned-only rows such as "Balancing Transfer") are never
+        candidates for categorization.
+
         Returns:
             Dictionary mapping category name (lowercase) to Category object
         """
         if self._category_cache is None:
             logger.debug(f"[CATEGORY_MATCHER] Loading categories for user_id: {self.user_id}")
-            categories = self.db.query(Category).filter(Category.user_id == self.user_id).all()
+            categories = (
+                self.db.query(Category)
+                .filter(
+                    Category.user_id == self.user_id,
+                    Category.hide_from_selection.isnot(True),
+                )
+                .all()
+            )
             logger.debug(
                 f"[CATEGORY_MATCHER] Found {len(categories)} categories for user_id: {self.user_id}"
             )

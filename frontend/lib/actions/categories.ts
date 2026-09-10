@@ -16,6 +16,8 @@ import { getCachedUserCategories, CACHE_TAGS } from "@/lib/data/cached";
 import {
   DEFAULT_TRANSFER_CATEGORIES,
   DEFAULT_INTEREST_CATEGORIES,
+  DEFAULT_CATEGORY_GROUPS,
+  type DefaultCategory,
 } from "@/lib/constants/default-categories";
 
 export type Category = BackendCategory;
@@ -27,6 +29,10 @@ export interface CategoryCreateInput {
   icon: string;
   description?: string;
   categorizationInstructions?: string;
+  /** Group this category belongs to; null/undefined means ungrouped. */
+  parentId?: string | null;
+  /** True when creating a group itself (never selectable on a transaction). */
+  isGroup?: boolean;
 }
 
 export interface CategoryInput {
@@ -39,6 +45,11 @@ export interface CategoryInput {
   isSystem?: boolean;
   hideFromSelection?: boolean;
   systemKey?: string;
+  isGroup?: boolean;
+  /** `systemKey` of the group this category is filed under, if any. */
+  groupKey?: string;
+  /** Id of the group this category is filed under (persisted categories). */
+  parentId?: string | null;
 }
 
 export interface CategoryUpdateInput {
@@ -47,6 +58,7 @@ export interface CategoryUpdateInput {
   icon?: string;
   description?: string;
   categorizationInstructions?: string;
+  parentId?: string | null;
 }
 
 export async function createCategory(
@@ -59,7 +71,11 @@ export async function createCategory(
   }
 
   try {
-    const created = await createCategoryViaBackend(userId, input);
+    const created = await createCategoryViaBackend(userId, {
+      ...input,
+      parentId: input.parentId ?? null,
+      hideFromSelection: input.isGroup ?? false,
+    });
 
     revalidatePath("/");
     revalidatePath("/settings");
@@ -69,7 +85,8 @@ export async function createCategory(
     logger.error("Failed to create category", { error });
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to create category",
+      error:
+        error instanceof Error ? error.message : "Failed to create category",
     };
   }
 }
@@ -95,7 +112,8 @@ export async function updateCategory(
     logger.error("Failed to update category", { error });
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to update category",
+      error:
+        error instanceof Error ? error.message : "Failed to update category",
     };
   }
 }
@@ -121,7 +139,8 @@ export async function deleteCategory(
     logger.error("Failed to delete category", { error });
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to delete category",
+      error:
+        error instanceof Error ? error.message : "Failed to delete category",
     };
   }
 }
@@ -167,20 +186,43 @@ export async function getCategoryByName(
  * touching any of their existing categories. Safe to call on every transfer
  * creation - a no-op after the first call for a given user.
  */
+function toSeeds(defaults: DefaultCategory[]) {
+  return defaults
+    .filter(
+      (category): category is DefaultCategory & { key: string } =>
+        !!category.key,
+    )
+    .map((category) => ({
+      key: category.key,
+      name: category.name,
+      categoryType: category.categoryType,
+      color: category.color,
+      icon: category.icon,
+      description: category.description,
+      hideFromSelection: category.hideFromSelection,
+      groupKey: category.groupKey,
+    }));
+}
+
+/**
+ * Groups referenced by `defaults`, so the backend can parent the seeds it
+ * inserts. Groups are listed first - the backend resolves parents after
+ * inserting every seed in the request, but ordering keeps the intent clear.
+ */
+function withReferencedGroups(defaults: DefaultCategory[]): DefaultCategory[] {
+  const referenced = new Set(
+    defaults.map((category) => category.groupKey).filter(Boolean),
+  );
+  const groups = DEFAULT_CATEGORY_GROUPS.filter(
+    (group) => group.key && referenced.has(group.key),
+  );
+  return [...groups, ...defaults];
+}
+
 export async function ensureSystemTransferCategories(
   userId: string,
 ): Promise<void> {
-  const seeds = DEFAULT_TRANSFER_CATEGORIES.filter(
-    (category): category is typeof category & { key: string } => !!category.key,
-  ).map((category) => ({
-    key: category.key,
-    name: category.name,
-    categoryType: category.categoryType,
-    color: category.color,
-    icon: category.icon,
-    description: category.description,
-    hideFromSelection: category.hideFromSelection,
-  }));
+  const seeds = toSeeds(withReferencedGroups(DEFAULT_TRANSFER_CATEGORIES));
 
   // The backend performs the same additive/idempotent check (by systemKey,
   // falling back to name for pre-migration categories) before inserting.
@@ -191,18 +233,10 @@ export async function ensureSystemTransferCategories(
  * Additive, idempotent backfill for the "Interest" system category, mirroring
  * ensureSystemTransferCategories above. Safe to call on every interest entry.
  */
-export async function ensureSystemInterestCategory(userId: string): Promise<void> {
-  const seeds = DEFAULT_INTEREST_CATEGORIES.filter(
-    (category): category is typeof category & { key: string } => !!category.key,
-  ).map((category) => ({
-    key: category.key,
-    name: category.name,
-    categoryType: category.categoryType,
-    color: category.color,
-    icon: category.icon,
-    description: category.description,
-    hideFromSelection: category.hideFromSelection,
-  }));
+export async function ensureSystemInterestCategory(
+  userId: string,
+): Promise<void> {
+  const seeds = toSeeds(withReferencedGroups(DEFAULT_INTEREST_CATEGORIES));
 
   await ensureSystemTransferCategoriesViaBackend(userId, seeds);
 }
@@ -239,7 +273,12 @@ export async function getCategoryTransactionCount(
 export async function deleteCategoryWithReassignment(
   categoryId: string,
   reassignToCategoryId: string | null,
-): Promise<{ success: boolean; error?: string; reassignedCount?: number }> {
+): Promise<{
+  success: boolean;
+  error?: string;
+  reassignedCount?: number;
+  ungroupedCount?: number;
+}> {
   const userId = await requireAuth();
 
   if (!userId) {
@@ -247,7 +286,7 @@ export async function deleteCategoryWithReassignment(
   }
 
   try {
-    const { reassignedCount } = await deleteCategoryViaBackend(
+    const { reassignedCount, ungroupedCount } = await deleteCategoryViaBackend(
       userId,
       categoryId,
       reassignToCategoryId,
@@ -258,12 +297,13 @@ export async function deleteCategoryWithReassignment(
     revalidatePath("/transactions");
     updateTag(CACHE_TAGS.categories(userId));
 
-    return { success: true, reassignedCount };
+    return { success: true, reassignedCount, ungroupedCount };
   } catch (error) {
     logger.error("Failed to delete category", { error });
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to delete category",
+      error:
+        error instanceof Error ? error.message : "Failed to delete category",
     };
   }
 }

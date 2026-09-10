@@ -3,7 +3,7 @@ import { t as translate } from "@/i18n/translate";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { RiAddLine } from "@remixicon/react";
+import { RiAddLine, RiFolderAddLine } from "@remixicon/react";
 import { toast } from "sonner";
 import {
   Card,
@@ -31,6 +31,8 @@ import { categoryToFormInput } from "@/features/settings/domain/category-mapping
 import {
   groupCategoriesByType,
   getCategoryTypeLabel,
+  isCategoryGroup,
+  splitCategoriesIntoSections,
   type CategoryType,
 } from "@/lib/utils/category-utils";
 
@@ -55,12 +57,22 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
   const [deleteTransactionCount, setDeleteTransactionCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Group being added to, and whether the dialog is creating a group itself.
+  const [addingParentId, setAddingParentId] = useState<string | null>(null);
+  const [creatingGroup, setCreatingGroup] = useState(false);
+
   const groupedCategories = groupCategoriesByType(categories);
 
   const getCategoriesByType = (type: CategoryType) => groupedCategories[type];
 
+  const groupsByType = (type: CategoryType) =>
+    groupedCategories[type].filter((category) =>
+      isCategoryGroup(category, categories),
+    );
+
   const handleEdit = (category: SettingsCategory) => {
     setEditingCategory(category);
+    setCreatingGroup(false);
     setDialogOpen(true);
   };
 
@@ -94,7 +106,13 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
         reassignToCategoryId,
       );
       if (result.success) {
-        setCategories(categories.filter((c) => c.id !== deletingCategory.id));
+        setCategories(
+          categories
+            .filter((c) => c.id !== deletingCategory.id)
+            .map((c) =>
+              c.parentId === deletingCategory.id ? { ...c, parentId: null } : c,
+            ),
+        );
         const message =
           result.reassignedCount && result.reassignedCount > 0
             ? translate("categoryDeletedTransaction", {
@@ -105,7 +123,12 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
                   : "set to uncategorized",
               })
             : translate("categoryDeleted");
-        toast.success(message);
+        toast.success(message, {
+          description:
+            result.ungroupedCount && result.ungroupedCount > 0
+              ? translate("deletingAGroupLeavesItsCategoriesUngrouped")
+              : undefined,
+        });
         router.refresh();
         setDeleteDialogOpen(false);
       } else {
@@ -118,9 +141,15 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
     }
   };
 
-  const handleAddClick = (type: "expense" | "income" | "transfer") => {
+  const handleAddClick = (
+    type: "expense" | "income" | "transfer",
+    parentId: string | null = null,
+    asGroup = false,
+  ) => {
     setEditingCategory(null);
     setActiveTab(type);
+    setAddingParentId(parentId);
+    setCreatingGroup(asGroup);
     setDialogOpen(true);
   };
 
@@ -135,6 +164,9 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
           icon: categoryInput.icon,
           description: categoryInput.description,
           categorizationInstructions: categoryInput.categorizationInstructions,
+          ...(categoryInput.isGroup
+            ? {}
+            : { parentId: categoryInput.parentId ?? null }),
         };
 
         const result = await updateCategory(editingCategory.id, updateData);
@@ -151,6 +183,9 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
                     description: categoryInput.description || null,
                     categorizationInstructions:
                       categoryInput.categorizationInstructions || null,
+                    parentId: categoryInput.isGroup
+                      ? null
+                      : (categoryInput.parentId ?? null),
                   }
                 : c,
             ),
@@ -169,6 +204,10 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
           icon: categoryInput.icon,
           description: categoryInput.description,
           categorizationInstructions: categoryInput.categorizationInstructions,
+          parentId: categoryInput.isGroup
+            ? null
+            : (categoryInput.parentId ?? null),
+          isGroup: categoryInput.isGroup,
         };
 
         const result = await createCategory(createData);
@@ -178,7 +217,9 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
             id: result.categoryId,
             userId: "", // Will be filled by server
             name: categoryInput.name,
-            parentId: null,
+            parentId: categoryInput.isGroup
+              ? null
+              : (categoryInput.parentId ?? null),
             categoryType: categoryInput.categoryType,
             color: categoryInput.color,
             icon: categoryInput.icon,
@@ -186,11 +227,16 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
             categorizationInstructions:
               categoryInput.categorizationInstructions || null,
             isSystem: false,
-            hideFromSelection: false,
+            hideFromSelection: categoryInput.isGroup ?? false,
+            systemKey: null,
             createdAt: new Date(),
           };
           setCategories([...categories, newCategory]);
-          toast.success(translate("categoryCreated"));
+          toast.success(
+            categoryInput.isGroup
+              ? translate("categoryGroupCreated")
+              : translate("categoryCreated"),
+          );
           router.refresh();
         } else {
           toast.error(result.error || translate("failedToCreateCategory"));
@@ -206,14 +252,32 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
 
   const categoryToInput = categoryToFormInput;
 
+  const renderCategoryRow = (category: SettingsCategory) => {
+    const input = categoryToInput(
+      category,
+      isCategoryGroup(category, categories),
+    );
+    if (!input) return null;
+    return (
+      <CategoryRow
+        key={category.id}
+        category={input}
+        onEdit={() => handleEdit(category)}
+        onDelete={() => handleDelete(category)}
+      />
+    );
+  };
+
   const renderCategoryList = (
     categoryList: SettingsCategory[],
     categoryType: "expense" | "income" | "transfer",
   ) => {
+    const sections = splitCategoriesIntoSections(categoryList);
+
     return (
       <div className="flex flex-col">
-        {/* Category list */}
-        <div className="space-y-1 min-h-[200px] max-h-[400px] overflow-y-auto">
+        {/* Grouped category list: one block per group, then the ungrouped rest */}
+        <div className="space-y-4 min-h-[200px] max-h-[400px] overflow-y-auto">
           {categoryList.length === 0 ? (
             <div className="flex h-24 items-center justify-center rounded border border-dashed">
               <p className="text-sm text-muted-foreground">
@@ -221,34 +285,82 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
               </p>
             </div>
           ) : (
-            categoryList.map((category) => {
-              const input = categoryToInput(category);
-              if (!input) return null;
-              return (
-                <CategoryRow
-                  key={category.id}
-                  category={input}
-                  onEdit={() => handleEdit(category)}
-                  onDelete={() => handleDelete(category)}
-                />
-              );
-            })
+            sections.map((section) => (
+              <div key={section.group?.id ?? "ungrouped"}>
+                <div className="mb-1 flex items-center gap-2 border-b pb-1">
+                  {section.group && (
+                    <div
+                      className="h-3 w-3 shrink-0 rounded-full"
+                      style={{
+                        backgroundColor: section.group.color ?? "#6b7280",
+                      }}
+                    />
+                  )}
+                  <h3 className="flex-1 truncate text-sm font-semibold">
+                    {section.group?.name ?? translate("ungrouped")}{" "}
+                    <span className="font-normal text-muted-foreground">
+                      ({section.categories.length})
+                    </span>
+                  </h3>
+                  {section.group && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() =>
+                        handleAddClick(categoryType, section.group?.id ?? null)
+                      }
+                      disabled={isLoading}
+                    >
+                      <RiAddLine className="mr-1 h-3 w-3" />
+                      {translate("add")}
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  {section.group && renderCategoryRow(section.group)}
+                  {section.categories.length === 0 ? (
+                    <p className="px-1 py-2 text-sm text-muted-foreground">
+                      {translate("noCategories")}
+                    </p>
+                  ) : (
+                    <div className="space-y-1 sm:pl-6">
+                      {section.categories.map((category) =>
+                        renderCategoryRow(category),
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
           )}
         </div>
 
-        {/* Add button */}
-        <div className="pt-4">
+        {/* Add buttons */}
+        <div className="flex flex-col gap-2 pt-4 sm:flex-row">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="w-full"
+            className="flex-1"
             onClick={() => handleAddClick(categoryType)}
             disabled={isLoading}
           >
             <RiAddLine className="mr-2 h-4 w-4" />
             {translate("add")} {getCategoryTypeLabel(categoryType)}{" "}
             {translate("category")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => handleAddClick(categoryType, null, true)}
+            disabled={isLoading}
+          >
+            <RiFolderAddLine className="mr-2 h-4 w-4" />
+            {translate("addGroup")}
           </Button>
         </div>
       </div>
@@ -302,9 +414,20 @@ export function CategoryManager({ initialCategories }: CategoryManagerProps) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         categoryType={activeTab}
-        category={categoryToInput(editingCategory)}
+        category={categoryToInput(
+          editingCategory,
+          editingCategory
+            ? isCategoryGroup(editingCategory, categories)
+            : false,
+        )}
         onSave={handleSaveCategory}
         existingCount={getCategoriesByType(activeTab).length}
+        groups={groupsByType(activeTab).map((group) => ({
+          id: group.id,
+          name: group.name,
+        }))}
+        defaultParentId={addingParentId}
+        createGroup={creatingGroup}
       />
 
       <DeleteCategoryDialog

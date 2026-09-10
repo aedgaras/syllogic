@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getUserAccounts } from "@/lib/actions/transactions";
 import { getUserCategories } from "@/lib/actions/categories";
-import { filterCategoriesByType } from "@/lib/utils/category-utils";
+import {
+  filterSelectableCategories,
+  filterCategoriesByType,
+} from "@/lib/utils/category-utils";
 import type { CategoryDisplay } from "@/shared/domain/display-contracts";
 import { confirmReceiptScan, uploadAndExtractReceipt } from "../server/actions";
 import type { ReceiptLineItem, ReceiptScanAccount } from "../domain/contracts";
@@ -54,7 +57,9 @@ export function useReceiptScanController() {
       if (data[0]) setSelectedAccountId(data[0].id);
     });
     void getUserCategories().then((data) => {
-      setCategories(filterCategoriesByType(data, "expense"));
+      setCategories(
+        filterSelectableCategories(filterCategoriesByType(data, "expense")),
+      );
     });
   }, []);
 

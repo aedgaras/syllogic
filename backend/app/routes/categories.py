@@ -53,6 +53,35 @@ def get_category(category_id: UUID, user_id: Optional[str] = None, db: Session =
     return category
 
 
+def _validate_parent(
+    db: Session,
+    user_id: str,
+    parent_id: Optional[UUID],
+    category_type: Optional[str],
+    self_id: Optional[UUID] = None,
+) -> None:
+    """Validate a category's group (parent). Groups are exactly one level deep:
+    a parent must belong to the user, share the child's category_type, and not
+    itself be nested."""
+    if parent_id is None:
+        return
+
+    if self_id is not None and parent_id == self_id:
+        raise HTTPException(status_code=400, detail="A category cannot be its own group")
+
+    parent = (
+        db.query(Category).filter(Category.id == parent_id, Category.user_id == user_id).first()
+    )
+    if not parent:
+        raise HTTPException(status_code=404, detail="Category group not found")
+    if parent.parent_id is not None:
+        raise HTTPException(status_code=400, detail="Category groups cannot be nested")
+    if category_type is not None and parent.category_type != category_type:
+        raise HTTPException(
+            status_code=400, detail="Category group must have the same category type"
+        )
+
+
 @router.post("/", response_model=CategoryResponse, status_code=201)
 def create_category(
     category: CategoryCreate, user_id: Optional[str] = None, db: Session = Depends(get_db)
@@ -61,12 +90,14 @@ def create_category(
     user_id = get_user_id(user_id)
 
     name = category.name.strip()
+    _validate_parent(db, user_id, category.parent_id, category.category_type)
     duplicate = (
         db.query(Category)
         .filter(
             Category.user_id == user_id,
             Category.name == name,
             Category.category_type == category.category_type,
+            Category.parent_id == category.parent_id,
         )
         .first()
     )
@@ -119,19 +150,44 @@ def update_category(
         update_data = {
             field: value for field, value in update_data.items() if field not in _STRUCTURAL_FIELDS
         }
-    elif "name" in update_data and update_data["name"] != category.name:
-        duplicate = (
-            db.query(Category)
-            .filter(
-                Category.user_id == user_id,
-                Category.name == update_data["name"],
-                Category.category_type == category.category_type,
-                Category.id != category_id,
+    else:
+        if "parent_id" in update_data and update_data["parent_id"] != category.parent_id:
+            new_parent_id = update_data["parent_id"]
+            _validate_parent(
+                db,
+                user_id,
+                new_parent_id,
+                update_data.get("category_type") or category.category_type,
+                self_id=category_id,
             )
-            .first()
-        )
-        if duplicate:
-            raise HTTPException(status_code=409, detail="A category with this name already exists")
+            if new_parent_id is not None:
+                has_children = (
+                    db.query(Category.id).filter(Category.parent_id == category_id).first()
+                )
+                if has_children:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="A category group cannot be moved into another group",
+                    )
+
+        target_name = update_data.get("name", category.name)
+        target_parent_id = update_data.get("parent_id", category.parent_id)
+        if target_name != category.name or target_parent_id != category.parent_id:
+            duplicate = (
+                db.query(Category)
+                .filter(
+                    Category.user_id == user_id,
+                    Category.name == target_name,
+                    Category.category_type == category.category_type,
+                    Category.parent_id == target_parent_id,
+                    Category.id != category_id,
+                )
+                .first()
+            )
+            if duplicate:
+                raise HTTPException(
+                    status_code=409, detail="A category with this name already exists"
+                )
 
     for field, value in update_data.items():
         setattr(category, field, value)
@@ -191,9 +247,18 @@ def delete_category(
         Transaction.user_id == user_id, Transaction.category_system_id == category_id
     ).update({"category_system_id": reassign_to_id}, synchronize_session=False)
 
+    # Deleting a group leaves its members in place, ungrouped.
+    ungrouped_count = (
+        db.query(Category)
+        .filter(Category.user_id == user_id, Category.parent_id == category_id)
+        .update({"parent_id": None}, synchronize_session=False)
+    )
+
     db.delete(category)
     db.commit()
-    return CategoryDeleteResponse(reassigned_count=reassigned_count)
+    return CategoryDeleteResponse(
+        reassigned_count=reassigned_count, ungrouped_count=ungrouped_count
+    )
 
 
 class SystemTransferCategoryInput(BaseModel):
@@ -204,6 +269,7 @@ class SystemTransferCategoryInput(BaseModel):
     icon: str
     description: Optional[str] = None
     hide_from_selection: bool = False
+    group_key: Optional[str] = None
 
 
 class EnsureSystemTransferCategoriesRequest(BaseModel):
@@ -232,6 +298,7 @@ def ensure_system_transfer_categories(
             icon=item.icon,
             description=item.description,
             hide_from_selection=item.hide_from_selection,
+            group_key=item.group_key,
         )
         for item in request.categories
     ]

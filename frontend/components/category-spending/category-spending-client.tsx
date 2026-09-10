@@ -18,6 +18,8 @@ import type { CategorySpendingData } from "@/lib/actions/category-spending";
 import type { TransactionWithRelations } from "@/features/transactions/public";
 import type { ParsedCategorySpendingQueryParams } from "@/lib/category-spending/query-params";
 import { buildCategorySpendingQuery } from "@/lib/category-spending/query-params";
+import { rollUpCategorySpendingByGroup } from "@/lib/category-spending/rollup";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { TransactionsQueryState } from "@/features/transactions/public";
 import type {
   AccountDisplay,
@@ -91,6 +93,9 @@ export function CategorySpendingClient({
   >(initialSelectedCategoryIds);
   const [tableTransactions, setTableTransactions] =
     React.useState(transactions);
+  const [viewMode, setViewMode] = React.useState<"category" | "group">(
+    "category",
+  );
 
   React.useEffect(() => {
     setSelectedCategoryIds(initialSelectedCategoryIds);
@@ -185,6 +190,40 @@ export function CategorySpendingClient({
     [selectedCategories],
   );
 
+  // Group ("Needs", "Wants", ...) rollup of the same spending rows. Clicking a
+  // group row selects every category folded into it.
+  const sections = React.useMemo(
+    () => rollUpCategorySpendingByGroup(data.categories, categories),
+    [data.categories, categories],
+  );
+
+  const hasGroups = React.useMemo(
+    () => sections.some((section) => section.isGroup),
+    [sections],
+  );
+
+  const isGroupView = viewMode === "group" && hasGroups;
+
+  const displayRows = React.useMemo(
+    () =>
+      isGroupView ? sections.map((section) => section.row) : data.categories,
+    [isGroupView, sections, data.categories],
+  );
+
+  const memberIdsByRowId = React.useMemo(
+    () =>
+      new Map(sections.map((section) => [section.row.id, section.memberIds])),
+    [sections],
+  );
+
+  const selectedRowIds = React.useMemo(() => {
+    if (!isGroupView) return selectedCategoryIds;
+    const selected = new Set(selectedCategoryIds);
+    return sections
+      .filter((section) => section.memberIds.every((id) => selected.has(id)))
+      .map((section) => section.row.id);
+  }, [isGroupView, sections, selectedCategoryIds]);
+
   const handleToggleCategory = React.useCallback(
     (categoryId: string) => {
       const nextCategoryIds = selectedCategoryIds.includes(categoryId)
@@ -195,6 +234,36 @@ export function CategorySpendingClient({
       navigateWithCategories(nextCategoryIds, { resetPage: true });
     },
     [navigateWithCategories, selectedCategoryIds],
+  );
+
+  const handleToggleRow = React.useCallback(
+    (rowId: string) => {
+      const memberIds = isGroupView
+        ? (memberIdsByRowId.get(rowId) ?? [rowId])
+        : [rowId];
+      if (memberIds.length === 1) {
+        handleToggleCategory(memberIds[0]);
+        return;
+      }
+
+      const selected = new Set(selectedCategoryIds);
+      const nextCategoryIds = memberIds.every((id) => selected.has(id))
+        ? selectedCategoryIds.filter((id) => !memberIds.includes(id))
+        : [
+            ...selectedCategoryIds,
+            ...memberIds.filter((id) => !selected.has(id)),
+          ];
+
+      setSelectedCategoryIds(nextCategoryIds);
+      navigateWithCategories(nextCategoryIds, { resetPage: true });
+    },
+    [
+      handleToggleCategory,
+      isGroupView,
+      memberIdsByRowId,
+      navigateWithCategories,
+      selectedCategoryIds,
+    ],
   );
 
   const handleUpdateTransaction = React.useCallback(
@@ -275,7 +344,10 @@ export function CategorySpendingClient({
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   <MaskableAmount
-                    value={formatCurrency(selectedAverageMonthly, data.currency)}
+                    value={formatCurrency(
+                      selectedAverageMonthly,
+                      data.currency,
+                    )}
                   />
                   {translate("mo")}
                 </p>
@@ -329,28 +401,47 @@ export function CategorySpendingClient({
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-12">
         <div className="flex min-h-0 flex-col gap-4 lg:col-span-4">
           <CategorySpendingDonutChart
-            data={data.categories}
+            data={displayRows}
             total={data.summary.totalSpend}
             currency={data.currency}
-            selectedCategoryIds={selectedCategoryIds}
+            selectedCategoryIds={selectedRowIds}
             selectedTotal={selectedTotal}
-            onToggleCategory={handleToggleCategory}
+            onToggleCategory={handleToggleRow}
           />
 
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
               <CardTitle className="text-sm font-medium">
                 {translate("categoryBreakdown")}
               </CardTitle>
+              {hasGroups && (
+                <ToggleGroup
+                  multiple={false}
+                  variant="outline"
+                  size="sm"
+                  value={[viewMode]}
+                  onValueChange={(value) => {
+                    const next = value[0];
+                    if (next) setViewMode(next as "category" | "group");
+                  }}
+                >
+                  <ToggleGroupItem value="category" className="text-xs">
+                    {translate("categories")}
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="group" className="text-xs">
+                    {translate("groups")}
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              )}
             </CardHeader>
             <CardContent className="space-y-3">
-              {data.categories.length === 0 ? (
+              {displayRows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   {translate("noCategorySpendingForThisPeriod")}
                 </p>
               ) : (
-                data.categories.map((category) => {
-                  const isSelected = selectedCategoryIds.includes(category.id);
+                displayRows.map((category) => {
+                  const isSelected = selectedRowIds.includes(category.id);
                   const deltaPositive = category.deltaAmount > 0;
                   const deltaNegative = category.deltaAmount < 0;
 
@@ -364,7 +455,7 @@ export function CategorySpendingClient({
                           ? "border-foreground bg-muted/50"
                           : "border-border hover:bg-muted/30",
                       )}
-                      onClick={() => handleToggleCategory(category.id)}
+                      onClick={() => handleToggleRow(category.id)}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-2">
@@ -378,7 +469,10 @@ export function CategorySpendingClient({
                         </div>
                         <span className="shrink-0 font-mono text-sm text-muted-foreground">
                           <MaskableAmount
-                            value={formatCurrency(category.amount, data.currency)}
+                            value={formatCurrency(
+                              category.amount,
+                              data.currency,
+                            )}
                           />
                         </span>
                       </div>

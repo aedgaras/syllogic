@@ -13,6 +13,7 @@ interface CategoryRowProps {
 
 export function CategoryRow({ category, onEdit, onDelete }: CategoryRowProps) {
   const isSystem = category.isSystem ?? false;
+  const isGroup = category.isGroup ?? false;
 
   return (
     <div className="flex flex-col gap-2 rounded px-1 py-2 hover:bg-muted/50 sm:flex-row sm:items-center sm:gap-3">
@@ -26,6 +27,11 @@ export function CategoryRow({ category, onEdit, onDelete }: CategoryRowProps) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-medium truncate">{category.name}</span>
+          {isGroup && (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+              {translate("group")}
+            </span>
+          )}
           {isSystem && (
             <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
               {translate("system")}

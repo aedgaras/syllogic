@@ -6,6 +6,8 @@ export interface CategoryDisplay {
   icon: string | null;
   categoryType: string | null;
   hideFromSelection: boolean | null;
+  /** Group this category belongs to, when the producer carries it. */
+  parentId?: string | null;
 }
 
 export interface AccountDisplay {

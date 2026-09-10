@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CategorySelect } from "@/components/categories/category-select";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -41,6 +42,7 @@ import type {
   SubscriptionDetectionResult,
   SubscriptionFrequency,
 } from "@/features/subscriptions/public";
+import { nextDueDateAfter } from "@/features/subscriptions/domain/rules";
 import { logger } from "@/lib/logger";
 
 interface SubscriptionDetectionDialogProps {
@@ -67,6 +69,22 @@ const frequencyColors: Record<string, string> = {
   biweekly: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400",
 };
 
+/**
+ * Where the schedule should start: one period after the latest charge the
+ * detector found, falling back to one period from today.
+ */
+function suggestNextDueDate(
+  matched: { bookedAt: Date }[],
+  frequency: SubscriptionFrequency,
+): string {
+  const latest = matched.reduce<Date | null>((newest, txn) => {
+    const bookedAt = new Date(txn.bookedAt);
+    if (Number.isNaN(bookedAt.getTime())) return newest;
+    return !newest || bookedAt > newest ? bookedAt : newest;
+  }, null);
+  return nextDueDateAfter(latest ?? new Date(), frequency) ?? "";
+}
+
 export function SubscriptionDetectionDialog({
   transaction,
   open,
@@ -84,6 +102,9 @@ export function SubscriptionDetectionDialog({
   const [frequency, setFrequency] = useState<SubscriptionFrequency>("monthly");
   const [categoryId, setCategoryId] = useState<string>("");
   const [importance, setImportance] = useState(2);
+  const [autoGenerate, setAutoGenerate] = useState(false);
+  const [nextDueDate, setNextDueDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<
     Set<string>
   >(new Set());
@@ -103,10 +124,18 @@ export function SubscriptionDetectionDialog({
 
       if (result.success) {
         // Set form defaults from detection result
+        const detectedFrequency = result.detectedFrequency || "monthly";
         setName(result.suggestedName);
-        setFrequency(result.detectedFrequency || "monthly");
+        setFrequency(detectedFrequency);
         setCategoryId(transaction.categoryId || "");
         setImportance(2);
+        setAutoGenerate(false);
+        setEndDate("");
+        // Pre-fill the schedule one period after the most recent charge, so
+        // turning auto-generation on does not immediately backfill.
+        setNextDueDate(
+          suggestNextDueDate(result.matchedTransactions, detectedFrequency),
+        );
 
         // Select all matched transactions by default
         setSelectedTransactionIds(
@@ -127,6 +156,18 @@ export function SubscriptionDetectionDialog({
       return;
     }
 
+    if (autoGenerate && !nextDueDate) {
+      toast.error(
+        translate("nextDueDateIsRequiredToAutoGenerateTransactions"),
+      );
+      return;
+    }
+
+    if (autoGenerate && endDate && endDate < nextDueDate) {
+      toast.error(translate("endDateMustBeAfterNextDueDate"));
+      return;
+    }
+
     setIsCreating(true);
     try {
       const result = await createSubscriptionFromTransaction({
@@ -136,6 +177,9 @@ export function SubscriptionDetectionDialog({
         categoryId: categoryId || undefined,
         importance,
         matchedTransactionIds: Array.from(selectedTransactionIds),
+        autoGenerate,
+        nextDueDate: autoGenerate ? nextDueDate : null,
+        endDate: autoGenerate ? endDate || null : null,
       });
 
       if (result.success) {
@@ -315,6 +359,55 @@ export function SubscriptionDetectionDialog({
                   </span>
                 </div>
               </div>
+            </div>
+
+            {/* Auto-generate future occurrences */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="grid gap-0.5">
+                  <Label htmlFor="detect-auto-generate">
+                    {translate("autoCreateTransactions")}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {translate("automaticallyAddATransactionOnEachDueDate")}
+                  </p>
+                </div>
+                <Switch
+                  id="detect-auto-generate"
+                  checked={autoGenerate}
+                  onCheckedChange={setAutoGenerate}
+                />
+              </div>
+
+              {autoGenerate && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="detect-next-due-date">
+                      {translate("nextDueDate")}{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="detect-next-due-date"
+                      type="date"
+                      value={nextDueDate}
+                      onChange={(e) => setNextDueDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="detect-end-date">
+                      {translate("endDateOptional")}
+                    </Label>
+                    <Input
+                      id="detect-end-date"
+                      type="date"
+                      min={nextDueDate || undefined}
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <Separator />

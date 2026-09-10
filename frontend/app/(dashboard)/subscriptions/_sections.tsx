@@ -5,6 +5,7 @@ import {
   getPendingSuggestions,
 } from "@/features/subscriptions/server";
 import { getUserCategories } from "@/lib/actions/categories";
+import { filterSelectableCategories } from "@/lib/utils/category-utils";
 import { getAccounts } from "@/features/accounts/server";
 
 export async function SubscriptionsSection() {
@@ -21,7 +22,7 @@ export async function SubscriptionsSection() {
     <SubscriptionList
       initialSubscriptions={subscriptions}
       accounts={accounts}
-      categories={categories}
+      categories={filterSelectableCategories(categories)}
       suggestions={suggestions}
       kpis={kpis}
     />

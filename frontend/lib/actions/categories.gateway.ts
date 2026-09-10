@@ -32,7 +32,10 @@ interface CategoryApiResponse {
   created_at: string;
 }
 
-function mapCategory(userId: string, data: CategoryApiResponse): BackendCategory {
+function mapCategory(
+  userId: string,
+  data: CategoryApiResponse,
+): BackendCategory {
   return {
     id: data.id,
     userId,
@@ -50,7 +53,10 @@ function mapCategory(userId: string, data: CategoryApiResponse): BackendCategory
   };
 }
 
-async function extractErrorDetail(response: Response, fallback: string): Promise<string> {
+async function extractErrorDetail(
+  response: Response,
+  fallback: string,
+): Promise<string> {
   const data = await response.json().catch(() => ({ detail: fallback }));
   const detail = Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail;
   return typeof detail === "string" ? detail : fallback;
@@ -83,7 +89,9 @@ export async function fetchCategoriesViaBackend(
 ): Promise<BackendCategory[]> {
   const response = await backendFetch("GET", "/api/categories/", userId);
   if (!response.ok) {
-    throw new Error(await extractErrorDetail(response, "Failed to fetch categories"));
+    throw new Error(
+      await extractErrorDetail(response, "Failed to fetch categories"),
+    );
   }
   const data: CategoryApiResponse[] = await response.json();
   return data.map((item) => mapCategory(userId, item));
@@ -96,6 +104,10 @@ export interface CreateCategoryPayload {
   icon: string;
   description?: string;
   categorizationInstructions?: string;
+  /** Group (parent category) this category belongs to, or null for ungrouped. */
+  parentId?: string | null;
+  /** Groups are never offered when picking a category for a transaction. */
+  hideFromSelection?: boolean;
 }
 
 export async function createCategoryViaBackend(
@@ -109,9 +121,13 @@ export async function createCategoryViaBackend(
     icon: input.icon,
     description: input.description,
     categorization_instructions: input.categorizationInstructions,
+    parent_id: input.parentId ?? null,
+    hide_from_selection: input.hideFromSelection ?? false,
   });
   if (!response.ok) {
-    throw new Error(await extractErrorDetail(response, "Failed to create category"));
+    throw new Error(
+      await extractErrorDetail(response, "Failed to create category"),
+    );
   }
   return mapCategory(userId, await response.json());
 }
@@ -122,6 +138,7 @@ export interface UpdateCategoryPayload {
   icon?: string;
   description?: string;
   categorizationInstructions?: string;
+  parentId?: string | null;
 }
 
 export async function updateCategoryViaBackend(
@@ -139,10 +156,13 @@ export async function updateCategoryViaBackend(
       icon: input.icon,
       description: input.description,
       categorization_instructions: input.categorizationInstructions,
+      ...(input.parentId !== undefined ? { parent_id: input.parentId } : {}),
     },
   );
   if (!response.ok) {
-    throw new Error(await extractErrorDetail(response, "Failed to update category"));
+    throw new Error(
+      await extractErrorDetail(response, "Failed to update category"),
+    );
   }
   return mapCategory(userId, await response.json());
 }
@@ -151,7 +171,7 @@ export async function deleteCategoryViaBackend(
   userId: string,
   categoryId: string,
   reassignToCategoryId?: string | null,
-): Promise<{ reassignedCount: number }> {
+): Promise<{ reassignedCount: number; ungroupedCount: number }> {
   const response = await backendFetch(
     "DELETE",
     `/api/categories/${categoryId}`,
@@ -159,10 +179,16 @@ export async function deleteCategoryViaBackend(
     { reassign_to_category_id: reassignToCategoryId ?? null },
   );
   if (!response.ok) {
-    throw new Error(await extractErrorDetail(response, "Failed to delete category"));
+    throw new Error(
+      await extractErrorDetail(response, "Failed to delete category"),
+    );
   }
-  const data: { reassigned_count: number } = await response.json();
-  return { reassignedCount: data.reassigned_count };
+  const data: { reassigned_count: number; ungrouped_count?: number } =
+    await response.json();
+  return {
+    reassignedCount: data.reassigned_count,
+    ungroupedCount: data.ungrouped_count ?? 0,
+  };
 }
 
 export async function getCategoryStatsViaBackend(
@@ -175,7 +201,9 @@ export async function getCategoryStatsViaBackend(
     userId,
   );
   if (!response.ok) {
-    throw new Error(await extractErrorDetail(response, "Failed to count transactions"));
+    throw new Error(
+      await extractErrorDetail(response, "Failed to count transactions"),
+    );
   }
   const data: { transaction_count: number } = await response.json();
   return { transactionCount: data.transaction_count };
@@ -189,6 +217,8 @@ export interface SystemTransferCategorySeed {
   icon: string;
   description?: string;
   hideFromSelection?: boolean;
+  /** `key` of the group this category is filed under, if any. */
+  groupKey?: string;
 }
 
 export async function ensureSystemTransferCategoriesViaBackend(
@@ -208,12 +238,16 @@ export async function ensureSystemTransferCategoriesViaBackend(
         icon: c.icon,
         description: c.description,
         hide_from_selection: c.hideFromSelection ?? false,
+        group_key: c.groupKey ?? null,
       })),
     },
   );
   if (!response.ok) {
     throw new Error(
-      await extractErrorDetail(response, "Failed to backfill system transfer categories"),
+      await extractErrorDetail(
+        response,
+        "Failed to backfill system transfer categories",
+      ),
     );
   }
   const data: CategoryApiResponse[] = await response.json();

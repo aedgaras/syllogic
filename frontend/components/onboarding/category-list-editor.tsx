@@ -93,6 +93,50 @@ export function CategoryListEditor({
     ? groups.filter((group) => group.type === activeType)
     : groups;
 
+  /**
+   * Nest a type's categories under their group. Nothing is persisted yet at
+   * this point, so members point at their group by `groupKey`/`systemKey`
+   * rather than by id.
+   */
+  const toSections = (typeCategories: CategoryInput[]) => {
+    const groupRows = typeCategories.filter((category) => category.isGroup);
+    const groupKeys = new Set(
+      groupRows.map((groupRow) => groupRow.systemKey).filter(Boolean),
+    );
+    const sections: {
+      group: CategoryInput | null;
+      categories: CategoryInput[];
+    }[] = groupRows.map((groupRow) => ({
+      group: groupRow,
+      categories: typeCategories.filter(
+        (category) =>
+          !category.isGroup && category.groupKey === groupRow.systemKey,
+      ),
+    }));
+
+    const ungrouped = typeCategories.filter(
+      (category) =>
+        !category.isGroup &&
+        (!category.groupKey || !groupKeys.has(category.groupKey)),
+    );
+    if (ungrouped.length > 0) {
+      sections.push({ group: null, categories: ungrouped });
+    }
+    return sections;
+  };
+
+  const renderRow = (category: CategoryInput) => {
+    const globalIndex = categories.indexOf(category);
+    return (
+      <CategoryRow
+        key={`${category.name}-${globalIndex}`}
+        category={category}
+        onEdit={() => handleEdit(category, globalIndex)}
+        onDelete={() => handleDelete(category)}
+      />
+    );
+  };
+
   return (
     <>
       <div className="flex-1 min-h-0 h-full overflow-y-auto pr-2">
@@ -122,17 +166,19 @@ export function CategoryListEditor({
                     </p>
                   </div>
                 ) : (
-                  group.categories.map((category) => {
-                    const globalIndex = categories.indexOf(category);
-                    return (
-                      <CategoryRow
-                        key={`${category.name}-${globalIndex}`}
-                        category={category}
-                        onEdit={() => handleEdit(category, globalIndex)}
-                        onDelete={() => handleDelete(category)}
-                      />
-                    );
-                  })
+                  toSections(group.categories).map((section) => (
+                    <div
+                      key={section.group?.systemKey ?? "ungrouped"}
+                      className="space-y-1"
+                    >
+                      {section.group && renderRow(section.group)}
+                      <div className="space-y-1 sm:pl-6">
+                        {section.categories.map((category) =>
+                          renderRow(category),
+                        )}
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             </div>

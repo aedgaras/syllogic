@@ -21,6 +21,7 @@ from app.db_helpers import set_request_user_id, clear_request_user_id
 from app.models import Transaction, User
 from app.services.exchange_rate_service import ExchangeRateService
 from app.services.account_balance_service import AccountBalanceService
+from app.services.recurring_transaction_dedupe import supersede_generated_duplicates
 from app.services.subscription_matcher import SubscriptionMatcher
 from app.services.subscription_detector import SubscriptionDetector
 from app.services.category_matcher import CategoryMatcher
@@ -287,6 +288,24 @@ def _detect_subscriptions(
 # ---------------------------------------------------------------------------
 
 
+def _reconcile_recurring_placeholders(
+    db, user_id: str, transaction_ids: Optional[List[str]]
+) -> None:
+    """Remove auto-generated placeholders superseded by the imported rows."""
+    outcome = supersede_generated_duplicates(db, user_id, transaction_ids=transaction_ids)
+    if not (outcome["deleted"] or outcome["demoted"]):
+        return
+
+    logger.info(
+        "[POST_IMPORT_PIPELINE] Recurring placeholders reconciled: %d deleted, %d excluded",
+        outcome["deleted"],
+        outcome["demoted"],
+    )
+    # Balances were computed in steps 5/6 with the placeholders still in place.
+    _calculate_balances(db, user_id, outcome["account_ids"])
+    _calculate_timeseries(db, user_id, outcome["account_ids"])
+
+
 def _run_post_import_pipeline(
     user_id: str,
     account_ids: List[str],
@@ -343,6 +362,11 @@ def _run_post_import_pipeline(
         # For initial sync, pass None so the detector scans ALL user transactions
         effective_txn_ids = None if is_initial_sync else transaction_ids
         _detect_subscriptions(db, user_id, effective_txn_ids, account_ids)
+
+        # Step 8: Drop recurring placeholders the imported rows have now
+        # covered. Runs after step 7 because that is what links the incoming
+        # rows to their recurring definition in the first place.
+        _reconcile_recurring_placeholders(db, user_id, effective_txn_ids)
 
         logger.info("[POST_IMPORT_PIPELINE] Completed for user=%s", user_id)
 

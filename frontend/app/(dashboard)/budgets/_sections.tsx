@@ -1,6 +1,7 @@
 import { BudgetManagement } from "@/features/budgets/public";
 import { getBudgetKpis, getBudgets } from "@/features/budgets/server";
 import { getUserCategories } from "@/lib/actions/categories";
+import { filterSelectableCategories } from "@/lib/utils/category-utils";
 
 export async function BudgetsSection() {
   const [budgets, categories, kpis] = await Promise.all([
@@ -12,7 +13,7 @@ export async function BudgetsSection() {
   return (
     <BudgetManagement
       initialBudgets={budgets}
-      categories={categories}
+      categories={filterSelectableCategories(categories)}
       kpis={kpis}
     />
   );

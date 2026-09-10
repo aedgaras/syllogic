@@ -14,9 +14,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CategoryColorPicker } from "./category-color-picker";
 import { CATEGORY_COLORS } from "@/lib/constants";
 import { type CategoryInput } from "@/lib/actions/categories";
+
+export interface CategoryGroupOption {
+  id: string;
+  name: string;
+}
+
+const NO_GROUP_VALUE = "__none__";
 
 interface CategoryFormDialogProps {
   open: boolean;
@@ -25,6 +39,15 @@ interface CategoryFormDialogProps {
   category?: CategoryInput | null;
   onSave: (category: CategoryInput) => void;
   existingCount?: number;
+  /**
+   * Groups of the same category type this category can be filed under. Omit to
+   * hide the group picker entirely (onboarding, where nothing has an id yet).
+   */
+  groups?: CategoryGroupOption[];
+  /** Preselected group for a new category. */
+  defaultParentId?: string | null;
+  /** When true, the dialog creates a group instead of a plain category. */
+  createGroup?: boolean;
 }
 
 export function CategoryFormDialog({
@@ -34,15 +57,21 @@ export function CategoryFormDialog({
   category,
   onSave,
   existingCount = 0,
+  groups,
+  defaultParentId = null,
+  createGroup = false,
 }: CategoryFormDialogProps) {
   const isEditing = !!category;
   const isSystem = !!category?.isSystem;
+  const isGroup = createGroup || !!category?.isGroup;
+  const showGroupPicker = !!groups && !isGroup && !isSystem;
 
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(CATEGORY_COLORS[0].value);
   const [description, setDescription] = useState("");
   const [categorizationInstructions, setCategorizationInstructions] =
     useState("");
+  const [parentId, setParentId] = useState<string | null>(null);
 
   // Reset form when dialog opens or category changes
   useEffect(() => {
@@ -54,15 +83,17 @@ export function CategoryFormDialog({
         setCategorizationInstructions(
           category.categorizationInstructions || "",
         );
+        setParentId(category.parentId ?? null);
       } else {
         // New category - reset form with default color based on existing count
         setName("");
         setColor(CATEGORY_COLORS[existingCount % CATEGORY_COLORS.length].value);
         setDescription("");
         setCategorizationInstructions("");
+        setParentId(defaultParentId);
       }
     }
-  }, [open, category, existingCount]);
+  }, [open, category, existingCount, defaultParentId]);
 
   const handleSave = () => {
     if (!name.trim() || !description.trim()) return;
@@ -76,6 +107,8 @@ export function CategoryFormDialog({
       categorizationInstructions:
         categorizationInstructions.trim() || undefined,
       isSystem: category?.isSystem,
+      isGroup,
+      parentId: isGroup ? null : parentId,
     };
 
     onSave(updatedCategory);
@@ -100,16 +133,20 @@ export function CategoryFormDialog({
           <DialogTitle>
             {isEditing
               ? translate("editCategory")
-              : translate("addCategory", { value1: getCategoryTypeLabel() })}
+              : isGroup
+                ? translate("addGroup")
+                : translate("addCategory", { value1: getCategoryTypeLabel() })}
           </DialogTitle>
           <DialogDescription>
-            {isSystem
-              ? translate(
-                  "systemCategoryOnlyDescriptionAndCategorizationInstructionsCanBe",
-                )
-              : isEditing
-                ? translate("updateTheCategoryDetailsBelow")
-                : translate("createANewCategoryToOrganizeYourTransactions")}
+            {isGroup
+              ? translate("categoryGroupHelp")
+              : isSystem
+                ? translate(
+                    "systemCategoryOnlyDescriptionAndCategorizationInstructionsCanBe",
+                  )
+                : isEditing
+                  ? translate("updateTheCategoryDetailsBelow")
+                  : translate("createANewCategoryToOrganizeYourTransactions")}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -147,7 +184,33 @@ export function CategoryFormDialog({
             />
           </div>
 
-          <div className="space-y-2">
+          {showGroupPicker && (
+            <div className="space-y-2">
+              <Label htmlFor="categoryGroup">{translate("group")}</Label>
+              <Select
+                value={parentId ?? NO_GROUP_VALUE}
+                onValueChange={(value) =>
+                  setParentId(value === NO_GROUP_VALUE ? null : value)
+                }
+              >
+                <SelectTrigger id="categoryGroup">
+                  <SelectValue placeholder={translate("noGroup")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_GROUP_VALUE}>
+                    {translate("noGroup")}
+                  </SelectItem>
+                  {groups?.map((group) => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="space-y-2" hidden={isGroup}>
             <Label htmlFor="categorizationInstructions">
               {translate("categorizationInstructions")}
             </Label>

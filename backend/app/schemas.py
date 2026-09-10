@@ -148,6 +148,7 @@ class CategoryDeleteRequest(BaseModel):
 
 class CategoryDeleteResponse(BaseModel):
     reassigned_count: int
+    ungrouped_count: int = 0
 
 
 class CategoryResponse(CategoryBase):
@@ -206,6 +207,7 @@ class TransactionResponse(TransactionBase):
     internal_transfer_id: Optional[UUID] = None
     recurring_transaction_id: Optional[UUID] = None
     include_in_analytics: bool = True
+    auto_generated: bool = False
     csv_import_id: Optional[UUID] = None
     pending: bool
     categorization_instructions: Optional[str] = None

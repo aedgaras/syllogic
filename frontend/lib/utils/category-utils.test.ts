@@ -5,6 +5,8 @@ import {
   groupCategoriesByType,
   getCategoriesForTransactionType,
   getCategoryTypeLabel,
+  isCategoryGroup,
+  splitCategoriesIntoSections,
 } from "./category-utils";
 
 const categories = [
@@ -60,5 +62,93 @@ describe("getCategoryTypeLabel", () => {
     expect(getCategoryTypeLabel("expense")).toBe("Expense");
     expect(getCategoryTypeLabel("income")).toBe("Income");
     expect(getCategoryTypeLabel("transfer")).toBe("Transfer");
+  });
+});
+
+const needs = {
+  id: "g1",
+  parentId: null,
+  hideFromSelection: true,
+  systemKey: "group_needs",
+};
+const emptyCustomGroup = {
+  id: "g2",
+  parentId: null,
+  hideFromSelection: true,
+  systemKey: null,
+};
+const groceries = {
+  id: "c1",
+  parentId: "g1",
+  hideFromSelection: false,
+  systemKey: null,
+};
+const loose = {
+  id: "c2",
+  parentId: null,
+  hideFromSelection: false,
+  systemKey: null,
+};
+const balancingTransfer = {
+  id: "c3",
+  parentId: null,
+  hideFromSelection: true,
+  systemKey: "balancing_transfer",
+};
+
+describe("isCategoryGroup", () => {
+  it("treats a hidden top-level row with a group systemKey as a group", () => {
+    expect(isCategoryGroup(needs)).toBe(true);
+  });
+
+  it("treats a hidden top-level row without a systemKey as a group", () => {
+    expect(isCategoryGroup(emptyCustomGroup)).toBe(true);
+  });
+
+  it("does not treat other hidden system rows as groups", () => {
+    expect(isCategoryGroup(balancingTransfer)).toBe(false);
+  });
+
+  it("treats any row that has children as a group", () => {
+    expect(
+      isCategoryGroup(balancingTransfer, [
+        balancingTransfer,
+        { ...groceries, parentId: "c3" },
+      ]),
+    ).toBe(true);
+  });
+
+  it("never treats a nested category as a group", () => {
+    expect(isCategoryGroup(groceries, [needs, groceries])).toBe(false);
+  });
+});
+
+describe("splitCategoriesIntoSections", () => {
+  it("nests categories under their group and collects the rest", () => {
+    const sections = splitCategoriesIntoSections([
+      needs,
+      groceries,
+      loose,
+      balancingTransfer,
+    ]);
+
+    expect(sections).toHaveLength(2);
+    expect(sections[0].group?.id).toBe("g1");
+    expect(sections[0].categories.map((c) => c.id)).toEqual(["c1"]);
+    expect(sections[1].group).toBeNull();
+    expect(sections[1].categories.map((c) => c.id)).toEqual(["c2", "c3"]);
+  });
+
+  it("keeps empty groups and omits an empty ungrouped bucket", () => {
+    const sections = splitCategoriesIntoSections([needs, groceries]);
+
+    expect(sections).toHaveLength(1);
+    expect(sections[0].group?.id).toBe("g1");
+  });
+
+  it("keeps a category whose group is missing in the ungrouped bucket", () => {
+    const sections = splitCategoriesIntoSections([groceries]);
+
+    expect(sections).toEqual([{ group: null, categories: [groceries] }]);
   });
 });

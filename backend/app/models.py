@@ -257,6 +257,10 @@ class Transaction(Base):
     include_in_analytics = Column(
         Boolean, default=True, nullable=False
     )  # Whether to include in analytics (charts, KPIs, etc.)
+    # True while this row is a placeholder materialized from a
+    # RecurringTransaction schedule. Cleared when a bank/CSV row is adopted
+    # onto it (see services/recurring_transaction_dedupe.py).
+    auto_generated = Column(Boolean, default=False, nullable=False, server_default="false")
     csv_import_id = Column(
         UUID(as_uuid=True),
         ForeignKey("csv_imports.id", ondelete="SET NULL"),

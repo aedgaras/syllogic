@@ -8,10 +8,15 @@ export interface CategoryFormInput {
   description?: string;
   categorizationInstructions?: string;
   isSystem: boolean;
+  /** Group this category is filed under, null when ungrouped. */
+  parentId?: string | null;
+  /** True when the category is itself a group. */
+  isGroup?: boolean;
 }
 
 export function categoryToFormInput(
   category: SettingsCategory | null,
+  isGroup = false,
 ): CategoryFormInput | null {
   if (!category) return null;
   return {
@@ -23,5 +28,7 @@ export function categoryToFormInput(
     categorizationInstructions:
       category.categorizationInstructions || undefined,
     isSystem: category.isSystem || false,
+    parentId: category.parentId,
+    isGroup,
   };
 }

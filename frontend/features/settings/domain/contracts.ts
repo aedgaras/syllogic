@@ -21,5 +21,6 @@ export interface SettingsCategory {
   categorizationInstructions: string | null;
   isSystem: boolean | null;
   hideFromSelection: boolean | null;
+  systemKey?: string | null;
   createdAt: Date | null;
 }

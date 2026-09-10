@@ -173,10 +173,15 @@ export async function saveOnboardingCategories(
     // Delete existing categories
     await db.delete(categories).where(eq(categories.userId, userId));
 
-    // Insert new categories
-    const newCategories: NewCategory[] = categoryInputs.map((cat) => ({
+    // Insert new categories. Groups go in first so their members can be
+    // parented to them by systemKey in the second pass.
+    const toRow = (
+      cat: CategoryInput,
+      parentId: string | null,
+    ): NewCategory => ({
       userId,
       name: cat.name,
+      parentId,
       categoryType: cat.categoryType,
       color: cat.color,
       icon: cat.icon,
@@ -185,10 +190,35 @@ export async function saveOnboardingCategories(
       isSystem: cat.isSystem || false,
       hideFromSelection: cat.hideFromSelection || false,
       systemKey: cat.systemKey || null,
-    }));
+    });
 
-    if (newCategories.length > 0) {
-      await db.insert(categories).values(newCategories);
+    const groupInputs = categoryInputs.filter((cat) => cat.isGroup);
+    const memberInputs = categoryInputs.filter((cat) => !cat.isGroup);
+
+    const groupIdBySystemKey = new Map<string, string>();
+    if (groupInputs.length > 0) {
+      const insertedGroups = await db
+        .insert(categories)
+        .values(groupInputs.map((cat) => toRow(cat, null)))
+        .returning({ id: categories.id, systemKey: categories.systemKey });
+      for (const group of insertedGroups) {
+        if (group.systemKey) {
+          groupIdBySystemKey.set(group.systemKey, group.id);
+        }
+      }
+    }
+
+    if (memberInputs.length > 0) {
+      await db
+        .insert(categories)
+        .values(
+          memberInputs.map((cat) =>
+            toRow(
+              cat,
+              (cat.groupKey && groupIdBySystemKey.get(cat.groupKey)) || null,
+            ),
+          ),
+        );
     }
 
     // Update onboarding status

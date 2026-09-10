@@ -50,3 +50,48 @@ export function validateSubscriptionInput(input: {
   }
   return null;
 }
+
+const stepDays: Partial<Record<SubscriptionFrequency, number>> = {
+  weekly: 7,
+  biweekly: 14,
+};
+
+const stepMonths: Partial<Record<SubscriptionFrequency, number>> = {
+  monthly: 1,
+  quarterly: 3,
+  yearly: 12,
+};
+
+/**
+ * Next occurrence strictly after `from`, as a `YYYY-MM-DD` string.
+ *
+ * Mirrors the backend's `compute_next_due_date`
+ * (backend/app/services/recurring_transaction_schedule_service.py), including
+ * its month-end clamping: Jan 31 + 1 month is Feb 28/29, not Mar 3. Used to
+ * pre-fill a schedule from a transaction the user is turning into a recurring
+ * entry; the backend stays the authority once the entry exists.
+ */
+export function nextDueDateAfter(
+  from: Date,
+  frequency: string,
+): string | null {
+  const days = stepDays[frequency as SubscriptionFrequency];
+  const months = stepMonths[frequency as SubscriptionFrequency];
+  if (days === undefined && months === undefined) return null;
+
+  const next = new Date(
+    Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()),
+  );
+  if (days !== undefined) {
+    next.setUTCDate(next.getUTCDate() + days);
+  } else {
+    const targetDay = next.getUTCDate();
+    next.setUTCDate(1);
+    next.setUTCMonth(next.getUTCMonth() + (months as number));
+    const daysInMonth = new Date(
+      Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0),
+    ).getUTCDate();
+    next.setUTCDate(Math.min(targetDay, daysInMonth));
+  }
+  return next.toISOString().slice(0, 10);
+}

@@ -202,3 +202,218 @@ def test_delete_category_reassigns_transactions(user_id, db_session):
         assert txn.category_system_id == new_cat.id
     finally:
         _cleanup(category_ids=[old_cat.id, new_cat.id], account_ids=[account.id])
+
+
+def test_create_category_accepts_a_group_parent(user_id, db_session):
+    group = _seed_category(db_session, user_id, name=_unique("Needs"), hide_from_selection=True)
+    created = None
+    try:
+        created = create_category(
+            CategoryCreate(
+                name=_unique("Groceries"),
+                category_type="expense",
+                color="#fff",
+                icon="x",
+                parent_id=group.id,
+            ),
+            db=db_session,
+        )
+        assert created.parent_id == group.id
+    finally:
+        ids = [group.id] + ([created.id] if created else [])
+        _cleanup(category_ids=ids)
+
+
+def test_create_category_rejects_parent_of_a_different_type(user_id, db_session):
+    group = _seed_category(db_session, user_id, name=_unique("Income"), category_type="income")
+    try:
+        with pytest.raises(HTTPException) as exc_info:
+            create_category(
+                CategoryCreate(
+                    name=_unique("Groceries"),
+                    category_type="expense",
+                    color="#fff",
+                    icon="x",
+                    parent_id=group.id,
+                ),
+                db=db_session,
+            )
+        assert exc_info.value.status_code == 400
+    finally:
+        _cleanup(category_ids=[group.id])
+
+
+def test_create_category_rejects_nested_groups(user_id, db_session):
+    group = _seed_category(db_session, user_id, name=_unique("Needs"))
+    child = _seed_category(db_session, user_id, name=_unique("Groceries"), parent_id=group.id)
+    try:
+        with pytest.raises(HTTPException) as exc_info:
+            create_category(
+                CategoryCreate(
+                    name=_unique("Supermarket"),
+                    category_type="expense",
+                    color="#fff",
+                    icon="x",
+                    parent_id=child.id,
+                ),
+                db=db_session,
+            )
+        assert exc_info.value.status_code == 400
+    finally:
+        _cleanup(category_ids=[child.id, group.id])
+
+
+def test_create_category_allows_same_name_in_two_groups(user_id, db_session):
+    name = _unique("Subscriptions")
+    needs = _seed_category(db_session, user_id, name=_unique("Needs"))
+    wants = _seed_category(db_session, user_id, name=_unique("Wants"))
+    first = second = None
+    try:
+        first = create_category(
+            CategoryCreate(
+                name=name,
+                category_type="expense",
+                color="#fff",
+                icon="x",
+                parent_id=needs.id,
+            ),
+            db=db_session,
+        )
+        second = create_category(
+            CategoryCreate(
+                name=name,
+                category_type="expense",
+                color="#fff",
+                icon="x",
+                parent_id=wants.id,
+            ),
+            db=db_session,
+        )
+        assert first.parent_id == needs.id
+        assert second.parent_id == wants.id
+    finally:
+        ids = [needs.id, wants.id]
+        ids += [c.id for c in (first, second) if c]
+        _cleanup(category_ids=ids)
+
+
+def test_update_category_moves_a_category_between_groups(user_id, db_session):
+    needs = _seed_category(db_session, user_id, name=_unique("Needs"))
+    wants = _seed_category(db_session, user_id, name=_unique("Wants"))
+    child = _seed_category(db_session, user_id, name=_unique("Gym"), parent_id=needs.id)
+    try:
+        result = update_category(child.id, CategoryUpdate(parent_id=wants.id), db=db_session)
+        assert result.parent_id == wants.id
+    finally:
+        _cleanup(category_ids=[child.id, needs.id, wants.id])
+
+
+def test_update_category_rejects_moving_a_group_into_another_group(user_id, db_session):
+    group = _seed_category(db_session, user_id, name=_unique("Needs"))
+    other = _seed_category(db_session, user_id, name=_unique("Wants"))
+    child = _seed_category(db_session, user_id, name=_unique("Gym"), parent_id=group.id)
+    try:
+        with pytest.raises(HTTPException) as exc_info:
+            update_category(group.id, CategoryUpdate(parent_id=other.id), db=db_session)
+        assert exc_info.value.status_code == 400
+    finally:
+        _cleanup(category_ids=[child.id, group.id, other.id])
+
+
+def test_delete_group_leaves_its_categories_ungrouped(user_id, db_session):
+    group = _seed_category(db_session, user_id, name=_unique("Needs"))
+    child = _seed_category(db_session, user_id, name=_unique("Groceries"), parent_id=group.id)
+    try:
+        result = delete_category(group.id, db=db_session)
+        assert result.ungrouped_count == 1
+
+        db_session.refresh(child)
+        assert child.parent_id is None
+    finally:
+        _cleanup(category_ids=[child.id])
+
+
+def test_ensure_system_categories_parents_seeds_to_their_group(user_id, db_session):
+    from app.services.system_categories import SystemCategorySeed, ensure_system_categories
+
+    group_key = _unique("group_test")
+    child_key = _unique("child_test")
+    seeds = [
+        SystemCategorySeed(
+            key=group_key,
+            name=_unique("Savings Group"),
+            category_type="transfer",
+            color="#047857",
+            icon="RiSafe2Line",
+            hide_from_selection=True,
+        ),
+        SystemCategorySeed(
+            key=child_key,
+            name=_unique("Savings Transfer"),
+            category_type="transfer",
+            color="#047857",
+            icon="RiSafe2Line",
+            group_key=group_key,
+        ),
+    ]
+
+    inserted = ensure_system_categories(db_session, user_id, seeds)
+    db_session.commit()
+    ids = [category.id for category in inserted]
+    try:
+        assert len(inserted) == 2
+        group = next(c for c in inserted if c.system_key == group_key)
+        child = next(c for c in inserted if c.system_key == child_key)
+        assert group.parent_id is None
+        assert child.parent_id == group.id
+
+        # Idempotent: a second call inserts nothing and leaves parents intact.
+        assert ensure_system_categories(db_session, user_id, seeds) == []
+        db_session.refresh(child)
+        assert child.parent_id == group.id
+    finally:
+        _cleanup(category_ids=ids)
+
+
+def test_ensure_system_categories_adopts_an_existing_ungrouped_category(user_id, db_session):
+    from app.services.system_categories import SystemCategorySeed, ensure_system_categories
+
+    group_key = _unique("group_test")
+    child_key = _unique("child_test")
+    child = _seed_category(
+        db_session,
+        user_id,
+        name=_unique("Savings Transfer"),
+        category_type="transfer",
+        is_system=True,
+        system_key=child_key,
+    )
+    seeds = [
+        SystemCategorySeed(
+            key=group_key,
+            name=_unique("Savings Group"),
+            category_type="transfer",
+            color="#047857",
+            icon="RiSafe2Line",
+            hide_from_selection=True,
+        ),
+        SystemCategorySeed(
+            key=child_key,
+            name=child.name,
+            category_type="transfer",
+            color="#047857",
+            icon="RiSafe2Line",
+            group_key=group_key,
+        ),
+    ]
+
+    inserted = ensure_system_categories(db_session, user_id, seeds)
+    db_session.commit()
+    ids = [child.id] + [category.id for category in inserted]
+    try:
+        # Only the group is new; the pre-existing category is moved into it.
+        assert [category.system_key for category in inserted] == [group_key]
+        db_session.refresh(child)
+        assert child.parent_id == inserted[0].id
+    finally:
+        _cleanup(category_ids=ids)
