@@ -41,6 +41,7 @@ import {
 } from "@/lib/actions/transactions";
 import { getDefaultAccountId } from "@/lib/actions/settings";
 import type { TransactionWithRelations } from "@/features/transactions/public";
+import { useTransactionProcessingWatcher } from "@/features/transactions/hooks/use-transaction-processing-watcher";
 import { getUserCategories } from "@/lib/actions/categories";
 import { CategorySelect } from "@/components/categories/category-select";
 import { AccountSelect } from "@/components/accounts/account-select";
@@ -81,6 +82,7 @@ export function AddTransactionDialog({
   onTransactionUpdated,
 }: AddTransactionDialogProps) {
   const router = useRouter();
+  const watchTransactionProcessing = useTransactionProcessingWatcher();
   const isEditing = Boolean(transaction);
   const isLinkedTransfer = Boolean(transaction?.internalTransferId);
   const [isLoading, setIsLoading] = useState(false);
@@ -328,9 +330,14 @@ export function AddTransactionDialog({
           toast.success(translate("transactionUpdated"));
         } else {
           toast.success(translate("transactionAdded"));
-          // Not editing, so `result` came from createTransaction() and carries transactionId.
-          const newTransactionId = (result as { transactionId?: string })
-            .transactionId;
+          // Not editing, so `result` came from createTransaction() and carries
+          // transactionId plus the id of the worker task finishing the row
+          // (category, FX amount, balances). Refresh again when it lands.
+          const { transactionId: newTransactionId, taskId } = result as {
+            transactionId?: string;
+            taskId?: string;
+          };
+          watchTransactionProcessing(taskId);
           if (markAsRecurring && newTransactionId) {
             setPendingRecurringTransaction({
               id: newTransactionId,

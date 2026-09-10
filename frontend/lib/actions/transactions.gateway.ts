@@ -367,3 +367,29 @@ export async function deleteTransactionsViaBackend(
     deletedCount: data.deleted_count,
   };
 }
+
+export interface ImportTaskStatus {
+  state: string;
+  done: boolean;
+  error?: string;
+}
+
+/**
+ * Polls the worker pipeline queued by a deferred transaction import so the UI
+ * knows when categories, FX amounts and balances have settled.
+ */
+export async function getImportTaskStatusViaBackend(
+  userId: string,
+  taskId: string,
+): Promise<ImportTaskStatus> {
+  const response = await backendFetch(
+    "GET",
+    `/api/transactions/import-status/${encodeURIComponent(taskId)}`,
+    userId,
+  );
+  if (!response.ok) {
+    throw new Error(await extractErrorDetail(response, "Failed to read import status"));
+  }
+  const data = await response.json();
+  return { state: data.state, done: Boolean(data.done), error: data.error ?? undefined };
+}

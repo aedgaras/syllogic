@@ -42,6 +42,7 @@ import {
   createOrUpdateBalancingTransactionViaBackend,
   getDeleteImpactViaBackend,
   deleteTransactionsViaBackend,
+  getImportTaskStatusViaBackend,
 } from "@/lib/actions/transactions.gateway";
 import { logger } from "@/lib/logger";
 
@@ -57,7 +58,12 @@ export type {
 
 export async function createTransaction(
   input: CreateTransactionInput,
-): Promise<{ success: boolean; error?: string; transactionId?: string }> {
+): Promise<{
+  success: boolean;
+  error?: string;
+  transactionId?: string;
+  taskId?: string;
+}> {
   const userId = await requireAuth();
 
   if (!userId) {
@@ -91,6 +97,11 @@ export async function createTransaction(
       sync_exchange_rates: true,
       update_functional_amounts: true,
       calculate_balances: true,
+      // Insert the row synchronously, then let a Celery worker do the slow
+      // part (AI categorization, FX fetches, balance/timeseries recalculation,
+      // subscription detection). The caller polls `taskId` to know when to
+      // refresh with the settled values.
+      defer_processing: true,
     });
     const response = await fetch(`${backendUrl}${pathWithQuery}`, {
       method: "POST",
@@ -132,10 +143,32 @@ export async function createTransaction(
     return {
       success: true,
       transactionId: backendResponse.transaction_ids?.[0] || undefined,
+      taskId: backendResponse.task_id || undefined,
     };
   } catch (error) {
     logger.error("Failed to create transaction", { error });
     return { success: false, error: "Failed to create transaction" };
+  }
+}
+
+/**
+ * Reports whether the worker pipeline queued by a deferred transaction import
+ * has finished, so callers know when it is worth refreshing the page to pick
+ * up the assigned category, functional amount and recalculated balances.
+ */
+export async function getTransactionProcessingStatus(
+  taskId: string,
+): Promise<{ done: boolean; state?: string; error?: string }> {
+  const userId = await requireAuth();
+  if (!userId) return { done: true, error: "Not authenticated" };
+
+  try {
+    const status = await getImportTaskStatusViaBackend(userId, taskId);
+    return { done: status.done, state: status.state, error: status.error };
+  } catch (error) {
+    logger.error("Failed to read transaction processing status", { error });
+    // Treat an unreadable status as terminal so callers stop polling.
+    return { done: true, error: "Failed to read processing status" };
   }
 }
 

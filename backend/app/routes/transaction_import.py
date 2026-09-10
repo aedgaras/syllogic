@@ -67,6 +67,7 @@ class TransactionImportRequest(BaseModel):
     update_functional_amounts: bool = True
     calculate_balances: bool = True
     detect_subscriptions: bool = True
+    defer_processing: bool = False  # Insert rows, run the pipeline on a Celery worker
     daily_balances: Optional[List[DailyBalanceImport]] = None  # Daily balances from CSV
     starting_balance: Optional[Decimal] = None  # Starting balance from CSV to update account
 
@@ -85,6 +86,8 @@ class TransactionImportResponse(BaseModel):
     functional_amounts_updated: Optional[dict] = None
     balances_calculated: Optional[dict] = None
     timeseries_calculated: Optional[dict] = None
+    deferred: bool = False  # True when post-processing was handed to a worker
+    task_id: Optional[str] = None  # Celery task id of the deferred pipeline
 
 
 def _get_user_overrides_from_db(db: Session, user_id: str) -> List[dict]:
@@ -168,6 +171,14 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
 
         if not request.transactions:
             raise HTTPException(status_code=400, detail="No transactions provided")
+
+        # The worker pipeline has no notion of authoritative CSV daily balances,
+        # so those imports have to stay synchronous.
+        if request.defer_processing and request.daily_balances:
+            raise HTTPException(
+                status_code=400,
+                detail="defer_processing cannot be combined with daily_balances",
+            )
 
         logger.info(
             f"[IMPORT] Starting import of {len(request.transactions)} transactions for user {user_id}"
@@ -264,8 +275,17 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
 
         categorization_results = {}  # Maps normalized_transactions index to category_id
 
-        # Only run categorization if there are transactions without categories
-        if transactions_needing_categorization:
+        # Only run categorization if there are transactions without categories.
+        # When deferring, the worker's post-import pipeline does the batch LLM
+        # call instead -- that request is what makes an inline import slow.
+        if request.defer_processing:
+            logger.info(
+                "[IMPORT] Deferred mode: skipping inline AI categorization "
+                "(%d transaction(s) will be categorized by the worker)",
+                len(transactions_needing_categorization),
+            )
+            categorization_result = None
+        elif transactions_needing_categorization:
             logger.info(
                 f"[IMPORT] Categorizing {len(transactions_needing_categorization)} transactions (AI)..."
             )
@@ -598,7 +618,7 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
 
         # Step 5: Match transactions to subscriptions
         subscription_matches_result = None
-        if inserted_transactions:
+        if inserted_transactions and not request.defer_processing:
             logger.info(
                 f"[IMPORT] Matching {len(inserted_transactions)} transactions to subscriptions..."
             )
@@ -648,7 +668,7 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
 
         # Step 5b: Detect and auto-apply monthly subscription patterns from full history
         subscription_detection_result = None
-        if request.detect_subscriptions:
+        if request.detect_subscriptions and not request.defer_processing:
             logger.info(
                 "[IMPORT] Detecting subscription patterns (new transactions: %s)...",
                 len(inserted_ids),
@@ -692,7 +712,8 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
                 }
         else:
             subscription_detection_result = {
-                "enabled": False,
+                "enabled": request.detect_subscriptions,
+                "deferred": request.defer_processing and request.detect_subscriptions,
                 "detected_count": 0,
                 "created_count": 0,
                 "updated_count": 0,
@@ -703,7 +724,7 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
 
         # Step 6: Sync exchange rates (renumbered from 5)
         exchange_rates_result = None
-        if request.sync_exchange_rates:
+        if request.sync_exchange_rates and not request.defer_processing:
             logger.info("[IMPORT] Syncing exchange rates...")
             try:
                 # Get unique account IDs from imported transactions
@@ -803,7 +824,27 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
 
         # Step 7: Update functional amounts for newly imported transactions only
         functional_amounts_result = None
-        if request.update_functional_amounts and inserted_transactions:
+        if request.defer_processing and request.update_functional_amounts and inserted_transactions:
+            # No network calls here: only same-currency rows get their
+            # functional amount inline so the new row renders correctly right
+            # away. Foreign-currency rows are filled in by the worker once it
+            # has fetched the rate.
+            user = db.query(User).filter(User.id == user_id).first()
+            functional_currency = user.functional_currency if user else "EUR"
+            same_currency_count = 0
+            for txn in inserted_transactions:
+                if txn.currency == functional_currency:
+                    txn.functional_amount = txn.amount
+                    same_currency_count += 1
+            if same_currency_count:
+                db.commit()
+            functional_amounts_result = {
+                "updated": 0,
+                "skipped": same_currency_count,
+                "failed": 0,
+                "deferred": len(inserted_transactions) - same_currency_count,
+            }
+        elif request.update_functional_amounts and inserted_transactions:
             logger.info(
                 f"[IMPORT] Updating functional amounts for {len(inserted_transactions)} newly imported transactions..."
             )
@@ -879,7 +920,7 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
         balances_result = None
         balance_service = None
 
-        if request.calculate_balances and affected_account_ids:
+        if request.calculate_balances and affected_account_ids and not request.defer_processing:
             logger.info(
                 f"[IMPORT] Calculating account balances for {len(affected_account_ids)} affected account(s)..."
             )
@@ -893,7 +934,7 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
         skip_dates_by_account: Dict[str, set] = {}
         daily_balances_result = None
 
-        if request.daily_balances and affected_account_ids:
+        if request.daily_balances and affected_account_ids and not request.defer_processing:
             logger.info(
                 f"[IMPORT] Importing {len(request.daily_balances)} daily balances from CSV..."
             )
@@ -932,7 +973,7 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
         # Step 9: Calculate and store account timeseries for affected accounts only
         # Skip dates that already have authoritative balance data from CSV
         timeseries_result = None
-        if affected_account_ids:
+        if affected_account_ids and not request.defer_processing:
             logger.info(
                 f"[IMPORT] Calculating account timeseries for {len(affected_account_ids)} affected account(s)..."
             )
@@ -944,8 +985,44 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
                 skip_dates=skip_dates_by_account if skip_dates_by_account else None,
             )
 
+        # Hand the expensive work (LLM categorization, FX fetches, balance and
+        # timeseries recalculation, subscription detection) to a Celery worker
+        # so the caller gets its transaction id back immediately.
+        deferred = False
+        task_id = None
+        if request.defer_processing and inserted_ids:
+            try:
+                from tasks.post_import_pipeline import post_import_pipeline
+
+                async_result = post_import_pipeline.delay(
+                    user_id=user_id,
+                    account_ids=[str(account_id) for account_id in affected_account_ids],
+                    transaction_ids=inserted_ids,
+                    is_initial_sync=False,
+                )
+                deferred = True
+                task_id = async_result.id
+                logger.info(
+                    "[IMPORT] Queued post-import pipeline task %s for %d transaction(s)",
+                    task_id,
+                    len(inserted_ids),
+                )
+            except Exception as e:
+                # Broker down: the rows are already committed, so fall back to
+                # running the pipeline inline rather than losing the processing.
+                logger.error("[IMPORT] Failed to queue post-import pipeline: %s", e)
+                from tasks.post_import_pipeline import _run_post_import_pipeline
+
+                _run_post_import_pipeline(
+                    user_id=user_id,
+                    account_ids=[str(account_id) for account_id in affected_account_ids],
+                    transaction_ids=inserted_ids,
+                )
+
         return TransactionImportResponse(
             success=True,
+            deferred=deferred,
+            task_id=task_id,
             message=f"Successfully imported {inserted_count} transactions",
             transactions_inserted=inserted_count,
             transaction_ids=inserted_ids if inserted_ids else None,
@@ -984,3 +1061,35 @@ def import_transactions(request: TransactionImportRequest, db: Session = Depends
 
         logger.error(f"[IMPORT] Traceback:\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
+
+
+class ImportTaskStatusResponse(BaseModel):
+    """Progress of a deferred post-import pipeline run."""
+
+    task_id: str
+    state: str  # PENDING | STARTED | SUCCESS | FAILURE | RETRY
+    done: bool
+    error: Optional[str] = None
+
+
+@router.get("/import-status/{task_id}", response_model=ImportTaskStatusResponse)
+def get_import_task_status(task_id: str) -> ImportTaskStatusResponse:
+    """Report whether a deferred import's worker pipeline has finished.
+
+    Callers poll this after an import made with ``defer_processing`` so the UI
+    knows when categories, balances and FX amounts are settled and it can
+    refresh. Only the Celery state is exposed -- never task payloads.
+    """
+    from celery.result import AsyncResult
+    from celery_app import celery_app
+
+    result = AsyncResult(task_id, app=celery_app)
+    state = result.state
+    done = state in ("SUCCESS", "FAILURE", "REVOKED")
+
+    return ImportTaskStatusResponse(
+        task_id=task_id,
+        state=state,
+        done=done,
+        error=str(result.info) if state == "FAILURE" else None,
+    )
