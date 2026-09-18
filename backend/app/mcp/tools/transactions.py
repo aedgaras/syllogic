@@ -279,6 +279,17 @@ def get_transaction(user_id: str, transaction_id: str) -> dict | None:
         }
 
 
+# Regex metacharacters, escaped so a search term is always matched literally.
+# Without this a query like "(a+)+b" would be compiled as a pattern: wrong
+# results at best, and catastrophic backtracking inside Postgres at worst.
+_REGEX_METACHARS = frozenset(r"\.^$*+?()[]{}|")
+
+
+def escape_regex(value: str) -> str:
+    """Escape `value` so Postgres matches it as a literal string."""
+    return "".join("\\" + ch if ch in _REGEX_METACHARS else ch for ch in value)
+
+
 def _build_search_filter(query_str: str, match_mode: MatchMode):
     """
     Build SQLAlchemy filter based on match mode.
@@ -297,22 +308,16 @@ def _build_search_filter(query_str: str, match_mode: MatchMode):
             Transaction.merchant.ilike(pattern),
         )
     elif match_mode == "word":
-        # Word boundary matching - match whole words only
-        # We use regex-like patterns: look for word at start, end, or surrounded by non-word chars
-        # PostgreSQL ILIKE doesn't support regex, so we approximate with multiple conditions
-        patterns = [
-            f"{query_str}",  # Exact match
-            f"{query_str} %",  # Word at start
-            f"% {query_str}",  # Word at end
-            f"% {query_str} %",  # Word in middle
-            f"{query_str},%",  # Word before comma
-            f"%,{query_str}",  # Word after comma
-            f"{query_str}.%",  # Word before period
-            f"%.{query_str}",  # Word after period
-        ]
-        description_conditions = [Transaction.description.ilike(p) for p in patterns]
-        merchant_conditions = [Transaction.merchant.ilike(p) for p in patterns]
-        return or_(*description_conditions, *merchant_conditions)
+        # `\y` is Postgres' word-boundary assertion, so a single case-insensitive
+        # regex replaces the sixteen ILIKE patterns this used to emit. It is also
+        # more correct: the old version enumerated a handful of delimiters
+        # (space, comma, period), so "Action" missed "Action-Store" and
+        # "(Action)". `\y` treats every non-word character as a boundary.
+        pattern = rf"\y{escape_regex(query_str)}\y"
+        return or_(
+            Transaction.description.op("~*")(pattern),
+            Transaction.merchant.op("~*")(pattern),
+        )
     else:  # contains (default)
         pattern = f"%{query_str}%"
         return or_(
@@ -362,7 +367,9 @@ def search_transactions(
         - page: Current page number (None when cursor-paginated)
         - limit: Results per page
         - has_more: Boolean - if true, more results exist
-        - total_count: Total number of matching transactions across all pages
+        - total_count: Total matches across all pages. None while paging
+          by cursor, where `has_more` comes from `next_cursor` instead
+          and the count would re-scan on every page.
         - next_cursor: Opaque cursor for the next page (None when exhausted)
     """
     page = max(1, page)
@@ -392,8 +399,11 @@ def search_transactions(
         if account_uuid:
             base_filter = and_(base_filter, Transaction.account_id == account_uuid)
 
-        # Get total count first
-        total_count = db.query(func.count(Transaction.id)).filter(base_filter).scalar()
+        # Paging by cursor derives `has_more` from whether a next cursor
+        # exists, so the total is only worth its scan on the first request.
+        total_count = (
+            None if cursor else db.query(func.count(Transaction.id)).filter(base_filter).scalar()
+        )
 
         # Build base query object
         query_obj = db.query(Transaction).filter(base_filter)
@@ -497,7 +507,7 @@ def search_transactions_multi(
     Returns:
         Dict with:
         - transactions (or transaction_ids if ids_only): All matching transactions
-        - total_count: Total matches found
+        - total_count: Total matches found (None while paging by cursor)
         - capped: True if results were limited by max_results
         - query_counts: Dict mapping each query to its match count
         - next_cursor: Opaque cursor for next page (only present in cursor mode)
@@ -536,8 +546,12 @@ def search_transactions_multi(
         if account_uuid:
             combined_filter = and_(combined_filter, Transaction.account_id == account_uuid)
 
-        # Get total count
-        total_count = db.query(func.count(Transaction.id)).filter(combined_filter).scalar()
+        # Same reasoning as search_transactions: no total while cursor paging.
+        total_count = (
+            None
+            if cursor
+            else db.query(func.count(Transaction.id)).filter(combined_filter).scalar()
+        )
 
         # Build query object
         query_obj = db.query(Transaction).filter(combined_filter)
@@ -562,25 +576,37 @@ def search_transactions_multi(
             _build_next_cursor(transactions_rows, sort_by, max_results) if cursor_mode else None
         )
 
-        # Count matches per query (for transparency)
-        query_counts = {}
+        # Count matches per query (for transparency). One aggregate per term
+        # in a single scan -- this used to issue a separate full COUNT per
+        # query, so searching ten merchants cost ten extra scans.
+        scope_filter = Transaction.user_id == user_id
+        if account_uuid:
+            scope_filter = and_(scope_filter, Transaction.account_id == account_uuid)
+        if exclude_cat_uuid:
+            scope_filter = and_(
+                scope_filter,
+                or_(
+                    Transaction.category_id != exclude_cat_uuid,
+                    Transaction.category_id.is_(None),
+                ),
+            )
+
+        counted_queries = []
+        seen_queries = set()
         for q in queries:
             q_str = q[:500] if q else ""
-            if q_str:
-                q_filter = and_(
-                    Transaction.user_id == user_id, _build_search_filter(q_str, match_mode)
-                )
-                if account_uuid:
-                    q_filter = and_(q_filter, Transaction.account_id == account_uuid)
-                if exclude_cat_uuid:
-                    q_filter = and_(
-                        q_filter,
-                        or_(
-                            Transaction.category_id != exclude_cat_uuid,
-                            Transaction.category_id.is_(None),
-                        ),
-                    )
-                query_counts[q] = db.query(func.count(Transaction.id)).filter(q_filter).scalar()
+            if q_str and q_str not in seen_queries:
+                seen_queries.add(q_str)
+                counted_queries.append(q_str)
+
+        query_counts = {}
+        if counted_queries:
+            count_columns = [
+                func.count().filter(_build_search_filter(q_str, match_mode)).label(f"q{i}")
+                for i, q_str in enumerate(counted_queries)
+            ]
+            counts_row = db.query(*count_columns).filter(scope_filter).one()
+            query_counts = dict(zip(counted_queries, counts_row))
 
         result = {
             "total_count": total_count,

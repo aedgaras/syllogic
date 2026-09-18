@@ -16,21 +16,23 @@ param(
     [switch]$Help,
     [switch]$Lite,
     [switch]$Local,
-    [switch]$Caddy
+    [switch]$Caddy,
+    [switch]$Mcp
 )
 
 $ErrorActionPreference = "Stop"
 
 function Show-Usage {
-    Write-Host "Usage: prod-up.ps1 [-Local] [-Lite] [-Caddy]"
+    Write-Host "Usage: prod-up.ps1 [-Local] [-Lite] [-Caddy] [-Mcp]"
     Write-Host ""
     Write-Host "Starts the production Docker Compose stack."
     Write-Host ""
     Write-Host "Options:"
     Write-Host "  -Help    Show this help message"
     Write-Host "  -Local   Build production images from the current checkout"
-    Write-Host "  -Lite    Use one worker/scheduler and omit the MCP container"
+    Write-Host "  -Lite    Use one worker/scheduler; omits MCP unless -Mcp is passed"
     Write-Host "  -Caddy   Enable the optional Caddy reverse proxy"
+    Write-Host "  -Mcp     Also start the MCP container in lite mode"
 }
 
 function New-RandomHexSecret {
@@ -199,7 +201,7 @@ if (-not $Local -and $AppVersion -eq "edge") {
 }
 
 # Build Compose arguments. Lite mode names services explicitly so the separate
-# Beat and MCP services are not started.
+# Beat service is not started, and MCP only when -Mcp is passed.
 $ComposeArgs = @("compose", "--env-file", $EnvFile, "-f", $ComposeFile)
 if ($Caddy) {
     $ComposeArgs += @("--profile", "caddy")
@@ -212,6 +214,9 @@ $ModeName = "full"
 if ($Lite) {
     $ComposeArgs += @("-f", $LiteComposeFile)
     $Services = @("postgres", "redis", "uploads-init", "migrate", "backend", "worker", "app")
+    if ($Mcp) {
+        $Services += "mcp"
+    }
     if ($Caddy) {
         $Services += "caddy"
     }
@@ -230,9 +235,15 @@ if (-not $Local) {
 
 if ($Lite) {
     # Avoid duplicate schedules when switching an existing full stack to lite.
-    & docker compose --env-file $EnvFile -f $ComposeFile rm -s -f beat mcp
+    # MCP is only torn down when it was not requested -- otherwise it is
+    # restarted below with the lite override applied.
+    $StaleServices = @("beat")
+    if (-not $Mcp) {
+        $StaleServices += "mcp"
+    }
+    & docker compose --env-file $EnvFile -f $ComposeFile rm -s -f @StaleServices
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "Failed to remove full-mode Beat/MCP containers." -ForegroundColor Red
+        Write-Host "Failed to remove stale full-mode containers." -ForegroundColor Red
         exit 1
     }
 }

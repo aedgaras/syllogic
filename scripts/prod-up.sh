@@ -6,18 +6,20 @@ ENV_FILE="$ROOT_DIR/deploy/compose/.env"
 
 usage() {
   cat <<'EOF'
-Usage: prod-up.sh [--local] [--lite] [--caddy]
+Usage: prod-up.sh [--local] [--lite] [--caddy] [--mcp]
 
 Options:
   --local  Build production images from the current checkout instead of GHCR
-  --lite  Use the resource-constrained single-host stack (no separate Beat or MCP)
+  --lite  Use the resource-constrained single-host stack (no separate Beat, no MCP unless --mcp)
   --caddy  Enable the optional Caddy reverse proxy
+  --mcp  Also start the MCP server in lite mode (full mode always starts it)
 EOF
 }
 
 MODE="full"
 SOURCE="prebuilt"
 ENABLE_CADDY="false"
+ENABLE_MCP="false"
 
 for arg in "$@"; do
   case "$arg" in
@@ -29,6 +31,9 @@ for arg in "$@"; do
       ;;
     --caddy)
       ENABLE_CADDY="true"
+      ;;
+    --mcp)
+      ENABLE_MCP="true"
       ;;
     -h|--help)
       usage
@@ -168,6 +173,9 @@ SERVICES=()
 if [ "$MODE" = "lite" ]; then
   COMPOSE_ARGS+=(-f "$ROOT_DIR/deploy/compose/docker-compose.lite.yml")
   SERVICES=(postgres redis uploads-init migrate backend-migrate backend worker app)
+  if [ "$ENABLE_MCP" = "true" ]; then
+    SERVICES+=(mcp)
+  fi
   if [ "$ENABLE_CADDY" = "true" ]; then
     SERVICES+=(caddy)
   fi
@@ -180,8 +188,14 @@ fi
 
 if [ "$MODE" = "lite" ]; then
   # Prevent duplicate schedules and retain the lite memory target when
-  # switching an existing full installation to lite mode.
-  docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/deploy/compose/docker-compose.yml" rm -s -f beat mcp
+  # switching an existing full installation to lite mode. MCP is only torn
+  # down when it was not requested -- otherwise it is restarted below with
+  # the lite override applied.
+  STALE_SERVICES=(beat)
+  if [ "$ENABLE_MCP" != "true" ]; then
+    STALE_SERVICES+=(mcp)
+  fi
+  docker compose --env-file "$ENV_FILE" -f "$ROOT_DIR/deploy/compose/docker-compose.yml" rm -s -f "${STALE_SERVICES[@]}"
 fi
 
 echo "Starting production stack in $MODE mode from $SOURCE images..."

@@ -4,6 +4,7 @@
   <p>
     <a href="#quick-start">Quick start</a> ·
     <a href="deploy/compose/README.md">Deployment guide</a> ·
+    <a href="docs/mcp.md">MCP setup</a> ·
     <a href="CONTRIBUTING.md">Contributing</a> ·
     <a href="ROADMAP.md">Roadmap</a>
   </p>
@@ -132,7 +133,8 @@ code 0; the other services should be running or healthy. The first registered
 user becomes the administrator.
 
 See [`deploy/compose/README.md`](deploy/compose/README.md) for TLS, updates,
-backups, MCP configuration, and troubleshooting.
+backups, and troubleshooting, and [`docs/mcp.md`](docs/mcp.md) for MCP client
+configuration.
 
 ## Lightweight mode
 
@@ -144,6 +146,14 @@ omits the MCP service.
 ./scripts/prod-up.sh --lite
 ```
 
+Add `--mcp` to start the MCP server alongside the lite stack. It needs only
+PostgreSQL and runs from the same backend image, so it costs one extra ~256 MB
+container and no extra image pull:
+
+```bash
+./scripts/prod-up.sh --lite --mcp
+```
+
 When building the current checkout locally:
 
 ```bash
@@ -152,6 +162,28 @@ When building the current checkout locally:
 
 Lite mode disables Redis persistence. Interrupted imports or syncs may need to
 be retried, but PostgreSQL data and uploaded files remain persistent.
+
+## MCP server
+
+An MCP server lets Claude Desktop, Claude Code, or any MCP-capable client read
+your accounts, transactions, budgets, and analytics, and recategorize
+transactions. It runs as the `mcp` service on port `8001`, bound to
+`127.0.0.1` by default, and is started automatically in full mode.
+
+1. Generate an API key in **Settings → API Keys** (shown once, format `pf_...`).
+2. Point your client at `http://localhost:8001/mcp` over streamable HTTP with
+   an `Authorization: Bearer pf_...` header. For Claude Code:
+
+   ```bash
+   claude mcp add --transport http syllogic http://localhost:8001/mcp \
+     --header "Authorization: Bearer pf_your_key_here"
+   ```
+
+The settings screen also shows a ready-made Claude Desktop config snippet with
+your deployment's URL filled in.
+
+See [`docs/mcp.md`](docs/mcp.md) for Claude Desktop setup, remote/LAN access,
+OAuth clients, rate limits, and troubleshooting.
 
 ## Configuration
 
@@ -209,6 +241,7 @@ encryption key makes stored provider credentials unreadable.
 | `backend/` | FastAPI endpoints, integrations, Celery jobs, and SQLAlchemy models |
 | `deploy/compose/` | Full, local-build, and lightweight Compose definitions |
 | `scripts/` | Development, production, smoke-test, and validation helpers |
+| `docs/` | Deployment matrix and MCP server guide |
 
 The frontend and backend share PostgreSQL. The frontend handles interactive
 application workflows; the backend performs enrichment, synchronization,

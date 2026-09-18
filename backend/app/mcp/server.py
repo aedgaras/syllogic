@@ -4,13 +4,17 @@ Registers all tools from the tools modules.
 """
 
 from fastmcp import FastMCP
+from fastmcp.dependencies import Depends
+from fastmcp.exceptions import ToolError
 from fastmcp.server.auth import RemoteAuthProvider
 from pydantic import AnyHttpUrl
 
 from app.db_helpers import get_mcp_user_id
 from app.mcp.auth import CompositeAuthProvider, AS_ISSUER, MCP_PUBLIC_URL
+from app.mcp.middleware import PerUserRateLimit, ToolCallLogger
 from app.mcp.tools import (
     accounts,
+    budgets as budget_tools,
     categories,
     transactions,
     analytics,
@@ -19,6 +23,25 @@ from app.mcp.tools import (
     people as people_tools,
     reports as report_tools,
 )
+
+
+def authenticated_user_id() -> str:
+    """Resolve the calling user from the bearer token.
+
+    Injected into every tool rather than accepted as an argument. The
+    parameter was only ever allowed to equal the authenticated user, so
+    carrying it in 35 tool schemas cost the client tokens on every session
+    without offering a real choice.
+    """
+    try:
+        return get_mcp_user_id()
+    except ValueError as exc:
+        # FastMCP wraps any non-FastMCPError raised during dependency
+        # resolution into "Failed to resolve dependency 'user_id'" and logs a
+        # full traceback. ToolError passes through untouched, so the caller
+        # gets told what's actually wrong.
+        raise ToolError(str(exc)) from exc
+
 
 _auth = RemoteAuthProvider(
     token_verifier=CompositeAuthProvider(),
@@ -42,7 +65,7 @@ types are accepted:
 - OAuth 2.1 access tokens (JWTs) issued by the Syllogic authorization server
   for Claude on the web, iOS, Android, and any other custom connector.
 
-The `user_id` parameter is optional on all tools but must match the authenticated user.
+The calling user is taken from that token; no tool takes a user identifier.
 
 ## Available functionality
 - **Accounts**: List, view, and check balance history
@@ -55,6 +78,34 @@ The `user_id` parameter is optional on all tools but must match the authenticate
 - **Reports**: Create, list, view, update, delete, and send-test scheduled
   email newsletters (account balances + transaction digest, on a
   daily/weekly/biweekly/monthly cadence)
+- **Budgets**: Report on, inspect, create, adjust, reorganize, and delete
+  spending budgets (limits across one or more categories, per period)
+
+## Budgets
+
+`get_budget_summary()` is the cheapest starting point: totals across every
+active budget plus a `needs_attention` list (over limit, near limit, or
+projected to bust). From there:
+
+- `list_budgets()` — every budget with current-period spend, status, and a
+  pace projection. `include_categories=False` for a compact overview.
+- `get_budget(budget_id)` — one budget with its per-category breakdown,
+  sub-limit usage, days remaining, and daily allowance.
+- `get_budget_transactions(budget_id)` — the actual transactions driving the
+  spend, largest first; `period_offset=1` looks at the previous period.
+- `get_budget_history(budget_id)` — spend per period over the last N periods,
+  with `average_spent_completed` and a `suggested_amount` (average + 10%).
+- `update_budget(budget_id, amount=...)` — adjust a limit; only the fields
+  you pass are changed.
+- `set_budget_categories(budget_id, categories, mode=...)` — reorganize
+  membership. `mode="add"` inserts or re-limits, `mode="remove"` drops,
+  `mode="replace"` makes the list the entire membership.
+
+Spend counts debit transactions whose effective category (user override,
+else AI-assigned) belongs to the budget, excluding transfers unless the
+category is a savings/investment transfer. A budget's amount and sub-limits
+are in the budget's own currency; spend is converted into it before any
+comparison.
 
 ## Bulk recategorization workflow (recommended)
 
@@ -92,7 +143,8 @@ Use `match_mode="word"` for merchant names to avoid false positives!
 
 When using `search_transactions`, ALWAYS check `has_more` in the response.
 If true, you MUST call again with page=2, 3, etc. until has_more=false.
-The `total_count` field tells you how many total results exist.
+The `total_count` field tells you how many total results exist; it is None
+once you are paging by cursor, so read it from the first response.
 
 ## Pagination & sort
 
@@ -129,9 +181,9 @@ happened.
 # ============================================================================
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def list_accounts(
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
     include_inactive: bool = False,
     asset_class: str | None = None,
     person_ids: list[str] | None = None,
@@ -140,7 +192,6 @@ def list_accounts(
     List all accounts for a user.
 
     Args:
-        user_id: The user's ID (optional, defaults to configured user)
         include_inactive: Whether to include inactive accounts (default: False)
         asset_class: Optional asset-class filter, one of "cash", "savings",
             "investment", "crypto", "property", "vehicle", "other".
@@ -153,32 +204,29 @@ def list_accounts(
         List of account dictionaries with id, name, account_type, asset_class,
         institution, currency, balance, etc.
     """
-    return accounts.list_accounts(
-        get_mcp_user_id(user_id), include_inactive, asset_class, person_ids
-    )
+    return accounts.list_accounts(user_id, include_inactive, asset_class, person_ids)
 
 
-@mcp.tool
-def get_account(account_id: str, user_id: str | None = None) -> dict | None:
+@mcp.tool(annotations={"readOnlyHint": True})
+def get_account(account_id: str, user_id: str = Depends(authenticated_user_id)) -> dict | None:
     """
     Get a single account by ID.
 
     Args:
         account_id: The account's ID
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         Account dictionary (with asset_class derived from account_type) or None if not found
     """
-    return accounts.get_account(get_mcp_user_id(user_id), account_id)
+    return accounts.get_account(user_id, account_id)
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def get_account_balance_history(
     account_id: str,
     from_date: str | None = None,
     to_date: str | None = None,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
     person_ids: list[str] | None = None,
 ) -> list[dict]:
     """
@@ -188,16 +236,13 @@ def get_account_balance_history(
         account_id: The account's ID
         from_date: Start date (ISO format YYYY-MM-DD, optional)
         to_date: End date (ISO format YYYY-MM-DD, optional)
-        user_id: The user's ID (optional, defaults to configured user)
         person_ids: Optional list of person UUIDs. When provided, returns an
             empty list if the account is not owned by any of those people.
 
     Returns:
         List of balance snapshots with date, balance in account currency, and functional currency
     """
-    return accounts.get_account_balance_history(
-        get_mcp_user_id(user_id), account_id, from_date, to_date, person_ids
-    )
+    return accounts.get_account_balance_history(user_id, account_id, from_date, to_date, person_ids)
 
 
 # ============================================================================
@@ -205,42 +250,42 @@ def get_account_balance_history(
 # ============================================================================
 
 
-@mcp.tool
-def list_categories(user_id: str | None = None, category_type: str | None = None) -> list[dict]:
+@mcp.tool(annotations={"readOnlyHint": True})
+def list_categories(
+    user_id: str = Depends(authenticated_user_id), category_type: str | None = None
+) -> list[dict]:
     """
     List all categories for a user.
 
     Args:
-        user_id: The user's ID (optional, defaults to configured user)
         category_type: Filter by type (expense, income, transfer) - optional
 
     Returns:
         List of category dictionaries with id, name, type, color, icon, parent info
     """
-    return categories.list_categories(get_mcp_user_id(user_id), category_type)
+    return categories.list_categories(user_id, category_type)
 
 
-@mcp.tool
-def get_category(category_id: str, user_id: str | None = None) -> dict | None:
+@mcp.tool(annotations={"readOnlyHint": True})
+def get_category(category_id: str, user_id: str = Depends(authenticated_user_id)) -> dict | None:
     """
     Get a single category by ID.
 
     Args:
         category_id: The category's ID
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         Category dictionary or None if not found
     """
-    return categories.get_category(get_mcp_user_id(user_id), category_id)
+    return categories.get_category(user_id, category_id)
 
 
-@mcp.tool
+@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
 def update_category(
     category_id: str,
     description: str | None = None,
     categorization_instructions: str | None = None,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
 ) -> dict:
     """
     Update a category's description and/or categorization_instructions.
@@ -259,31 +304,29 @@ def update_category(
         description: New human-readable description for this category (optional)
         categorization_instructions: Instructions the AI should follow when
             deciding whether a transaction belongs in this category (optional)
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         Dict with success status and updated category, or error message
     """
     return categories.update_category(
-        get_mcp_user_id(user_id),
+        user_id,
         category_id,
         description,
         categorization_instructions,
     )
 
 
-@mcp.tool
-def get_category_tree(user_id: str | None = None) -> list[dict]:
+@mcp.tool(annotations={"readOnlyHint": True})
+def get_category_tree(user_id: str = Depends(authenticated_user_id)) -> list[dict]:
     """
     Get categories in a hierarchical tree structure.
 
     Args:
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         List of root categories, each with nested 'children' list
     """
-    return categories.get_category_tree(get_mcp_user_id(user_id))
+    return categories.get_category_tree(user_id)
 
 
 # ============================================================================
@@ -291,7 +334,7 @@ def get_category_tree(user_id: str | None = None) -> list[dict]:
 # ============================================================================
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def list_transactions(
     account_id: str | None = None,
     category_id: str | None = None,
@@ -304,7 +347,7 @@ def list_transactions(
     sort_by: str = "booked_at_desc",
     uncategorized: bool = False,
     category_type: str | None = None,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
 ) -> dict:
     """
     List transactions with optional filtering, cursor pagination, and sort.
@@ -317,18 +360,16 @@ def list_transactions(
         search: Search in description/merchant (optional)
         limit: Max results per page (default: 50, max: 100)
         page: Page number (default: 1) - ignored when cursor is provided
-        cursor: Opaque cursor from previous response for stable pagination
-        sort_by: Sort order - booked_at_desc (default), booked_at_asc,
-            amount_desc, amount_asc, abs_amount_desc
+        cursor: Opaque cursor from a previous response
+        sort_by: See "Pagination & sort" in the server instructions
         uncategorized: If True, return only transactions with no category
         category_type: Filter by resolved category type (expense, income, transfer)
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         Dict with transactions list, limit, page (or None), and next_cursor
     """
     return transactions.list_transactions(
-        get_mcp_user_id(user_id),
+        user_id,
         account_id,
         category_id,
         from_date,
@@ -343,22 +384,23 @@ def list_transactions(
     )
 
 
-@mcp.tool
-def get_transaction(transaction_id: str, user_id: str | None = None) -> dict | None:
+@mcp.tool(annotations={"readOnlyHint": True})
+def get_transaction(
+    transaction_id: str, user_id: str = Depends(authenticated_user_id)
+) -> dict | None:
     """
     Get a single transaction by ID.
 
     Args:
         transaction_id: The transaction's ID
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         Transaction dictionary or None if not found
     """
-    return transactions.get_transaction(get_mcp_user_id(user_id), transaction_id)
+    return transactions.get_transaction(user_id, transaction_id)
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def search_transactions(
     query: str,
     exclude_category_id: str | None = None,
@@ -369,50 +411,31 @@ def search_transactions(
     cursor: str | None = None,
     sort_by: str = "booked_at_desc",
     account_id: str | None = None,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
 ) -> dict:
     """
     Search transactions by description or merchant name.
 
-    ⚠️ PAGINATION WARNING: Always check `has_more` in the response!
-    If true, you MUST call again with page=2, page=3, etc. until has_more=false.
-    Prefer `cursor`/`next_cursor` for stable pagination over large result sets.
+    Prefer `search_transactions_multi` when searching for more than one term.
 
     Args:
         query: Search query string (case-insensitive)
-        exclude_category_id: Skip transactions already in this category (useful for recategorization)
-        match_mode: How to match the query:
-            - "contains" (default): Substring match - "Action" matches "Transaction"
-            - "starts_with": Must start with query - "Action" won't match "Transaction"
-            - "word": Word boundary match - "Action" matches "Action Store" but NOT "Transaction"
-        ids_only: If True, return only transaction IDs (faster, less tokens for bulk ops)
+        exclude_category_id: Skip transactions already in this category
+        match_mode: "contains" (default), "starts_with", or "word".
+            Use "word" for merchant names.
+        ids_only: If True, return only transaction IDs
         limit: Max results per page (default: 50, max: 100)
         page: Page number (default: 1) - ignored when cursor is provided
-        cursor: Opaque cursor from previous response for stable pagination
-        sort_by: Sort order - booked_at_desc (default), booked_at_asc,
-            amount_desc, amount_asc, abs_amount_desc
+        cursor: Opaque cursor from a previous response
+        sort_by: See "Pagination & sort" in the server instructions
         account_id: Filter results to a single account (optional)
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
-        Dict with:
-        - transactions: List of matching transactions (or transaction_ids if ids_only=True)
-        - page: Current page number (None when cursor-paginated)
-        - limit: Results per page
-        - has_more: Boolean - KEEP PAGINATING until this is false!
-        - total_count: Total matches across all pages (use to plan pagination)
-        - next_cursor: Opaque cursor for next page (None when exhausted)
-
-    Example - find transactions to recategorize:
-        search_transactions(
-            query="Jumbo",
-            exclude_category_id="<groceries-uuid>",  # Skip already-categorized
-            match_mode="word",  # Avoid matching "Jumbo" in unrelated text
-            ids_only=True  # Just need IDs for bulk update
-        )
+        Dict with transactions (or transaction_ids), page, limit, has_more,
+        total_count, and next_cursor. Keep paginating while has_more is true.
     """
     return transactions.search_transactions(
-        get_mcp_user_id(user_id),
+        user_id,
         query,
         exclude_category_id,
         match_mode,
@@ -425,7 +448,7 @@ def search_transactions(
     )
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def search_transactions_multi(
     queries: list[str],
     exclude_category_id: str | None = None,
@@ -435,57 +458,33 @@ def search_transactions_multi(
     cursor: str | None = None,
     sort_by: str = "booked_at_desc",
     account_id: str | None = None,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
 ) -> dict:
     """
     Search transactions matching ANY of multiple queries in a single call.
 
-    Use this instead of multiple search_transactions calls when you need to find
-    transactions from several merchants at once (e.g., for bulk recategorization).
-
-    Pass `cursor=""` (or a real cursor from `next_cursor`) to enable cursor
-    pagination. Without a cursor, all results up to `max_results` are returned
-    in one shot.
+    Preferred over repeated `search_transactions` calls. See the bulk
+    recategorization workflow in the server instructions.
 
     Args:
-        queries: List of search terms (e.g., ["Jumbo", "Albert Heijn", "ALDI", "LIDL"])
+        queries: List of search terms, e.g. ["Jumbo", "Albert Heijn", "ALDI"]
         exclude_category_id: Skip transactions already in this category
-        match_mode: How to match queries:
-            - "contains" (default): Substring match
-            - "starts_with": Must start with query
-            - "word": Word boundary match (recommended for merchant names)
-        ids_only: If True, return only transaction IDs (recommended for bulk updates)
+        match_mode: "contains" (default), "starts_with", or "word".
+            Use "word" for merchant names.
+        ids_only: If True, return only transaction IDs
         max_results: Maximum results to return (default: 500, max: 1000)
-        cursor: Opaque cursor; pass "" or a real cursor to enable cursor pagination
-        sort_by: Sort order - booked_at_desc (default), booked_at_asc,
-            amount_desc, amount_asc, abs_amount_desc
+        cursor: Pass "" or a cursor from `next_cursor` to page; omit to get
+            everything up to max_results in one shot
+        sort_by: See "Pagination & sort" in the server instructions
         account_id: Filter results to a single account (optional)
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
-        Dict with:
-        - transactions (or transaction_ids): All matching transactions
-        - total_count: Total matches found
-        - capped: True if results hit max_results limit
-        - query_counts: Matches per query (e.g., {"Jumbo": 127, "ALDI": 45})
-        - next_cursor: Opaque cursor for next page (only in cursor mode)
-
-    Example - recategorize grocery store transactions:
-        # Step 1: Find all grocery transactions not yet categorized
-        result = search_transactions_multi(
-            queries=["Jumbo", "Albert Heijn", "ALDI", "LIDL", "Action"],
-            exclude_category_id="<groceries-uuid>",
-            match_mode="word",
-            ids_only=True
-        )
-        # Step 2: Bulk update
-        bulk_update_transaction_categories(
-            category_id="<groceries-uuid>",
-            transaction_ids=result["transaction_ids"]
-        )
+        Dict with transactions (or transaction_ids), total_count, capped
+        (True if max_results was hit), query_counts (matches per query), and
+        next_cursor (cursor mode only).
     """
     return transactions.search_transactions_multi(
-        get_mcp_user_id(user_id),
+        user_id,
         queries,
         exclude_category_id,
         match_mode,
@@ -497,9 +496,9 @@ def search_transactions_multi(
     )
 
 
-@mcp.tool
+@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
 def update_transaction_category(
-    transaction_id: str, category_id: str, user_id: str | None = None
+    transaction_id: str, category_id: str, user_id: str = Depends(authenticated_user_id)
 ) -> dict:
     """
     Update the category of a transaction (user override).
@@ -510,22 +509,19 @@ def update_transaction_category(
     Args:
         transaction_id: The transaction's ID
         category_id: The new category ID to assign
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         Dict with success status and updated transaction, or error message
     """
-    return transactions.update_transaction_category(
-        get_mcp_user_id(user_id), transaction_id, category_id
-    )
+    return transactions.update_transaction_category(user_id, transaction_id, category_id)
 
 
-@mcp.tool
+@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
 def bulk_update_transaction_categories(
     category_id: str,
     transaction_ids: list[str],
     dry_run: bool = False,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
 ) -> dict:
     """
     Bulk update category for multiple transactions.
@@ -534,7 +530,6 @@ def bulk_update_transaction_categories(
         category_id: The category ID to assign to all transactions
         transaction_ids: List of transaction IDs to update (max 2000)
         dry_run: If True, preview what would change without committing (default: False)
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         Dict with success status and:
@@ -563,7 +558,7 @@ def bulk_update_transaction_categories(
         )
     """
     return transactions.bulk_update_transaction_categories(
-        get_mcp_user_id(user_id), category_id, transaction_ids, dry_run
+        user_id, category_id, transaction_ids, dry_run
     )
 
 
@@ -572,13 +567,13 @@ def bulk_update_transaction_categories(
 # ============================================================================
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def get_spending_by_category(
     from_date: str | None = None,
     to_date: str | None = None,
     account_id: str | None = None,
     include_uncategorized: bool = False,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
     person_ids: list[str] | None = None,
 ) -> list[dict]:
     """
@@ -590,7 +585,6 @@ def get_spending_by_category(
         account_id: Filter by account ID (optional)
         include_uncategorized: If True, include an "Uncategorized" bucket for
             transactions with no category assigned (default: False)
-        user_id: The user's ID (optional, defaults to configured user)
         person_ids: Optional list of person UUIDs. When provided, only includes
             transactions from accounts owned by any of those people.
 
@@ -599,16 +593,16 @@ def get_spending_by_category(
         merchant_count
     """
     return analytics.get_spending_by_category(
-        get_mcp_user_id(user_id), from_date, to_date, account_id, include_uncategorized, person_ids
+        user_id, from_date, to_date, account_id, include_uncategorized, person_ids
     )
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def get_income_by_category(
     from_date: str | None = None,
     to_date: str | None = None,
     account_id: str | None = None,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
     person_ids: list[str] | None = None,
 ) -> list[dict]:
     """
@@ -618,23 +612,20 @@ def get_income_by_category(
         from_date: Start date in ISO format YYYY-MM-DD (optional)
         to_date: End date in ISO format YYYY-MM-DD (optional)
         account_id: Filter by account ID (optional)
-        user_id: The user's ID (optional, defaults to configured user)
         person_ids: Optional list of person UUIDs. When provided, only includes
             transactions from accounts owned by any of those people.
 
     Returns:
         List of categories with total income amount and transaction count
     """
-    return analytics.get_income_by_category(
-        get_mcp_user_id(user_id), from_date, to_date, account_id, person_ids
-    )
+    return analytics.get_income_by_category(user_id, from_date, to_date, account_id, person_ids)
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def get_monthly_cashflow(
     from_date: str | None = None,
     to_date: str | None = None,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
     person_ids: list[str] | None = None,
 ) -> list[dict]:
     """
@@ -643,21 +634,20 @@ def get_monthly_cashflow(
     Args:
         from_date: Start date in ISO format YYYY-MM-DD (optional)
         to_date: End date in ISO format YYYY-MM-DD (optional)
-        user_id: The user's ID (optional, defaults to configured user)
         person_ids: Optional list of person UUIDs. When provided, only includes
             transactions from accounts owned by any of those people.
 
     Returns:
         List of monthly data with income, expenses, and net for each month
     """
-    return analytics.get_monthly_cashflow(get_mcp_user_id(user_id), from_date, to_date, person_ids)
+    return analytics.get_monthly_cashflow(user_id, from_date, to_date, person_ids)
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def get_financial_summary(
     from_date: str | None = None,
     to_date: str | None = None,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
     person_ids: list[str] | None = None,
 ) -> dict:
     """
@@ -666,7 +656,6 @@ def get_financial_summary(
     Args:
         from_date: Start date in ISO format YYYY-MM-DD (optional)
         to_date: End date in ISO format YYYY-MM-DD (optional)
-        user_id: The user's ID (optional, defaults to configured user)
         person_ids: Optional list of person UUIDs. When provided, only includes
             transactions and balances from accounts owned by any of those people.
             When exactly one person_id is given, account balances are
@@ -675,17 +664,17 @@ def get_financial_summary(
     Returns:
         Summary with total income, total expenses, net, savings rate, and account balances
     """
-    return analytics.get_financial_summary(get_mcp_user_id(user_id), from_date, to_date, person_ids)
+    return analytics.get_financial_summary(user_id, from_date, to_date, person_ids)
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def get_top_merchants(
     from_date: str | None = None,
     to_date: str | None = None,
     limit: int = 10,
     category_id: str | None = None,
     uncategorized: bool = False,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
 ) -> list[dict]:
     """
     Get top merchants by total spending.
@@ -698,13 +687,12 @@ def get_top_merchants(
             Mutually exclusive with uncategorized.
         uncategorized: If True, return only transactions with no category.
             Mutually exclusive with category_id.
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         List of merchants with total spending and transaction count
     """
     return analytics.get_top_merchants(
-        get_mcp_user_id(user_id), from_date, to_date, limit, category_id, uncategorized
+        user_id, from_date, to_date, limit, category_id, uncategorized
     )
 
 
@@ -713,50 +701,49 @@ def get_top_merchants(
 # ============================================================================
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def list_recurring_transactions(
-    is_active: bool | None = None, user_id: str | None = None
+    is_active: bool | None = None, user_id: str = Depends(authenticated_user_id)
 ) -> list[dict]:
     """
     List recurring transactions (subscriptions/bills) for a user.
 
     Args:
         is_active: Filter by active status (optional, defaults to showing all)
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         List of recurring transactions with details
     """
-    return recurring.list_recurring_transactions(get_mcp_user_id(user_id), is_active)
+    return recurring.list_recurring_transactions(user_id, is_active)
 
 
-@mcp.tool
-def get_recurring_transaction(recurring_id: str, user_id: str | None = None) -> dict | None:
+@mcp.tool(annotations={"readOnlyHint": True})
+def get_recurring_transaction(
+    recurring_id: str, user_id: str = Depends(authenticated_user_id)
+) -> dict | None:
     """
     Get a single recurring transaction by ID.
 
     Args:
         recurring_id: The recurring transaction's ID
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         Recurring transaction dictionary or None if not found
     """
-    return recurring.get_recurring_transaction(get_mcp_user_id(user_id), recurring_id)
+    return recurring.get_recurring_transaction(user_id, recurring_id)
 
 
-@mcp.tool
-def get_recurring_summary(user_id: str | None = None) -> dict:
+@mcp.tool(annotations={"readOnlyHint": True})
+def get_recurring_summary(user_id: str = Depends(authenticated_user_id)) -> dict:
     """
     Get a summary of recurring transactions (subscriptions/bills).
 
     Args:
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         Summary with totals by frequency, importance groups, and monthly/yearly costs
     """
-    return recurring.get_recurring_summary(get_mcp_user_id(user_id))
+    return recurring.get_recurring_summary(user_id)
 
 
 # ============================================================================
@@ -764,10 +751,10 @@ def get_recurring_summary(user_id: str | None = None) -> dict:
 # ============================================================================
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def list_holdings(
     account_id: str | None = None,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
     person_ids: list[str] | None = None,
 ) -> list[dict]:
     """
@@ -775,7 +762,6 @@ def list_holdings(
 
     Args:
         account_id: Filter to a single investment account (optional)
-        user_id: The user's ID (optional, defaults to configured user)
         person_ids: Optional list of person UUIDs. When provided, only returns
             holdings from accounts owned by any of those people. When exactly
             one person_id is given, current_value_user_currency is
@@ -785,12 +771,12 @@ def list_holdings(
         List of holdings with symbol, quantity, latest price, and current value
         in the user's functional currency.
     """
-    return investments.list_holdings(get_mcp_user_id(user_id), account_id, person_ids)
+    return investments.list_holdings(user_id, account_id, person_ids)
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def get_portfolio_summary(
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
     person_ids: list[str] | None = None,
 ) -> dict:
     """
@@ -800,7 +786,6 @@ def get_portfolio_summary(
     accounts (manual + brokerage).
 
     Args:
-        user_id: The user's ID (optional, defaults to configured user)
         person_ids: Optional list of person UUIDs. When provided, only includes
             investment accounts owned by any of those people. When exactly one
             person_id is given, values are share-weighted by that person's
@@ -810,14 +795,14 @@ def get_portfolio_summary(
         Dict with currency, total_value, holdings_count, stale_valuations,
         and a per-account breakdown.
     """
-    return investments.get_portfolio_summary(get_mcp_user_id(user_id), person_ids)
+    return investments.get_portfolio_summary(user_id, person_ids)
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def get_portfolio_history(
     from_date: str | None = None,
     to_date: str | None = None,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
     person_ids: list[str] | None = None,
 ) -> list[dict]:
     """
@@ -827,7 +812,6 @@ def get_portfolio_history(
     Args:
         from_date: Start date (ISO YYYY-MM-DD, optional)
         to_date: End date (ISO YYYY-MM-DD, optional)
-        user_id: The user's ID (optional, defaults to configured user)
         person_ids: Optional list of person UUIDs. When provided, only includes
             investment accounts owned by any of those people. When exactly one
             person_id is given, daily values are share-weighted.
@@ -835,30 +819,27 @@ def get_portfolio_history(
     Returns:
         List of {date, value_user_currency} entries sorted by date.
     """
-    return investments.get_portfolio_history(
-        get_mcp_user_id(user_id), from_date, to_date, person_ids
-    )
+    return investments.get_portfolio_history(user_id, from_date, to_date, person_ids)
 
 
-@mcp.tool
-def search_symbol(query: str, user_id: str | None = None) -> list[dict]:
+@mcp.tool(annotations={"readOnlyHint": True})
+def search_symbol(query: str, user_id: str = Depends(authenticated_user_id)) -> list[dict]:
     """
     Search the user's existing holdings by symbol or name (case-insensitive).
 
     Args:
         query: Substring to match against holding symbol or name
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         List of matching {symbol, name, currency, instrument_type} entries.
     """
-    return investments.search_symbol(get_mcp_user_id(user_id), query)
+    return investments.search_symbol(user_id, query)
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def get_holding_trades(
     holding_id: str,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
 ) -> list[dict]:
     """
     Return trade-level history behind a single holding.
@@ -868,9 +849,8 @@ def get_holding_trades(
 
     Args:
         holding_id: UUID of the holding (must belong to the authenticated user).
-        user_id: Optional, defaults to authenticated user.
     """
-    return investments.get_holding_trades(get_mcp_user_id(user_id), holding_id)
+    return investments.get_holding_trades(user_id, holding_id)
 
 
 # ============================================================================
@@ -878,24 +858,23 @@ def get_holding_trades(
 # ============================================================================
 
 
-@mcp.tool
-def list_people(user_id: str | None = None) -> list[dict]:
+@mcp.tool(annotations={"readOnlyHint": True})
+def list_people(user_id: str = Depends(authenticated_user_id)) -> list[dict]:
     """
     List all people in the user's household.
 
     Args:
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         List of person dicts with id, name, kind (self|member), color.
     """
-    return people_tools.list_people(get_mcp_user_id(user_id))
+    return people_tools.list_people(user_id)
 
 
-@mcp.tool
+@mcp.tool(annotations={"readOnlyHint": True})
 def get_household_summary(
     person_ids: list[str] | None = None,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
 ) -> dict:
     """
     Per-person net worth breakdown across cash, investments, properties, vehicles.
@@ -903,13 +882,12 @@ def get_household_summary(
     Args:
         person_ids: Optional list of person UUIDs. When provided, only returns
             entries for those specific people.
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         Dict with a ``people`` list; each entry has person_id, name, cash,
         investments, properties, vehicles, total (all share-attributed).
     """
-    return people_tools.get_household_summary(get_mcp_user_id(user_id), person_ids)
+    return people_tools.get_household_summary(user_id, person_ids)
 
 
 # ============================================================================
@@ -917,37 +895,35 @@ def get_household_summary(
 # ============================================================================
 
 
-@mcp.tool
-def list_reports(user_id: str | None = None) -> list[dict]:
+@mcp.tool(annotations={"readOnlyHint": True})
+def list_reports(user_id: str = Depends(authenticated_user_id)) -> list[dict]:
     """
     List all scheduled report newsletters for the user.
 
     Args:
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         List of report dicts (id, name, frequency, schedule fields,
         recipient_emails, next_run_at, is_active, etc.)
     """
-    return report_tools.list_reports(get_mcp_user_id(user_id))
+    return report_tools.list_reports(user_id)
 
 
-@mcp.tool
-def get_report(report_id: str, user_id: str | None = None) -> dict | None:
+@mcp.tool(annotations={"readOnlyHint": True})
+def get_report(report_id: str, user_id: str = Depends(authenticated_user_id)) -> dict | None:
     """
     Get a single scheduled report by ID.
 
     Args:
         report_id: The report's ID
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         Report dict, or None if not found / not owned by this user.
     """
-    return report_tools.get_report(get_mcp_user_id(user_id), report_id)
+    return report_tools.get_report(user_id, report_id)
 
 
-@mcp.tool
+@mcp.tool(annotations={"destructiveHint": False})
 def create_report(
     name: str,
     frequency: str,
@@ -961,7 +937,7 @@ def create_report(
     send_day_of_month: int | None = None,
     timezone: str = "UTC",
     is_active: bool = True,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
 ) -> dict:
     """
     Create a new scheduled report newsletter.
@@ -982,7 +958,6 @@ def create_report(
         send_day_of_month: Required if frequency is MONTHLY. 1-28
         timezone: IANA timezone name, e.g. "Europe/Brussels" (default "UTC")
         is_active: Whether the report is active/scheduled (default True)
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         {"success": True, "report": {...}} on success, or
@@ -991,7 +966,7 @@ def create_report(
         unowned account_id).
     """
     return report_tools.create_report(
-        user_id=get_mcp_user_id(user_id),
+        user_id=user_id,
         name=name,
         frequency=frequency,
         recipient_emails=recipient_emails,
@@ -1007,7 +982,7 @@ def create_report(
     )
 
 
-@mcp.tool
+@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
 def update_report(
     report_id: str,
     name: str | None = None,
@@ -1022,7 +997,7 @@ def update_report(
     timezone: str | None = None,
     recipient_emails: list[str] | None = None,
     is_active: bool | None = None,
-    user_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
 ) -> dict:
     """
     Update a scheduled report. Only provided (non-None) fields are changed;
@@ -1035,14 +1010,13 @@ def update_report(
     Args:
         report_id: The report's ID
         (see create_report for the meaning of each other field)
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         {"success": True, "report": {...}} on success, or
         {"success": False, "error": "<message>"} if not found or invalid.
     """
     return report_tools.update_report(
-        user_id=get_mcp_user_id(user_id),
+        user_id=user_id,
         report_id=report_id,
         name=name,
         account_ids=account_ids,
@@ -1059,51 +1033,296 @@ def update_report(
     )
 
 
-@mcp.tool
-def delete_report(report_id: str, user_id: str | None = None) -> dict:
+@mcp.tool(annotations={"idempotentHint": True})
+def delete_report(report_id: str, user_id: str = Depends(authenticated_user_id)) -> dict:
     """
     Permanently delete a scheduled report (and its run history).
 
     Args:
         report_id: The report's ID
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         {"success": True, "error": None} on success, or
         {"success": False, "error": "<message>"} if not found.
     """
-    return report_tools.delete_report(get_mcp_user_id(user_id), report_id)
+    return report_tools.delete_report(user_id, report_id)
 
 
-@mcp.tool
-def send_test_report(report_id: str, user_id: str | None = None) -> dict:
+@mcp.tool(annotations={"destructiveHint": False})
+def send_test_report(report_id: str, user_id: str = Depends(authenticated_user_id)) -> dict:
     """
     Trigger an immediate test send of a report, bypassing its schedule.
 
     Args:
         report_id: The report's ID
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         {"success": True, "run": {...}} with the created (SCHEDULED,
         then asynchronously RUNNING/SUCCEEDED/FAILED) run record, or
         {"success": False, "error": "<message>"} if the report isn't found.
     """
-    return report_tools.send_test_report(get_mcp_user_id(user_id), report_id)
+    return report_tools.send_test_report(user_id, report_id)
 
 
-@mcp.tool
-def list_report_runs(report_id: str, user_id: str | None = None) -> list[dict]:
+@mcp.tool(annotations={"readOnlyHint": True})
+def list_report_runs(report_id: str, user_id: str = Depends(authenticated_user_id)) -> list[dict]:
     """
     List scheduled and executed send history for a report.
 
     Args:
         report_id: The report's ID
-        user_id: The user's ID (optional, defaults to configured user)
 
     Returns:
         List of run dicts (status, scheduled_for, started_at, finished_at,
         error_message, is_test), most recent first. Empty list if the
         report isn't found.
     """
-    return report_tools.list_report_runs(get_mcp_user_id(user_id), report_id)
+    return report_tools.list_report_runs(user_id, report_id)
+
+
+# ============================================================================
+# Budget Tools
+# ============================================================================
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+def list_budgets(
+    include_inactive: bool = True,
+    include_categories: bool = True,
+    user_id: str = Depends(authenticated_user_id),
+) -> list[dict]:
+    """
+    List budgets with current-period spend, status, and pace projection.
+
+    Each budget reports `spent`, `remaining`, `percentage`, `status`
+    (on_track / near_limit / over_budget), `projected_spend` and
+    `projected_status` (today's daily rate extrapolated to the period end),
+    plus the period window and `daily_allowance_remaining`.
+
+    Args:
+        include_inactive: Include budgets marked inactive (default True)
+        include_categories: Include the per-category breakdown on each
+            budget. Pass False for a compact overview (returns
+            `category_count` instead).
+
+    Returns:
+        List of budget dicts, newest first.
+    """
+    return budget_tools.list_budgets(user_id, include_inactive, include_categories)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+def get_budget(budget_id: str, user_id: str = Depends(authenticated_user_id)) -> dict | None:
+    """
+    Get a single budget with its full per-category breakdown.
+
+    Each category entry carries its `sub_limit` (may be null — no cap of its
+    own), `spent`, `remaining`, `status`, and `weight` (the share of the
+    overall budget amount that sub-limit represents).
+
+    Args:
+        budget_id: The budget's ID
+
+    Returns:
+        Budget dict, or None if not found.
+    """
+    return budget_tools.get_budget(user_id, budget_id)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+def get_budget_summary(user_id: str = Depends(authenticated_user_id)) -> dict:
+    """
+    Portfolio-level view of every active budget, in the user's functional currency.
+
+    The cheapest way to answer "how are my budgets doing?" — totals,
+    over/near-limit counts, a compact row per budget, and a
+    `needs_attention` list of budgets that are over, near their limit, or
+    projected to bust by the end of the period.
+
+    Returns:
+        Dict with total_budgeted, total_spent, total_remaining, counts,
+        `budgets`, and `needs_attention`.
+    """
+    return budget_tools.get_budget_summary(user_id)
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+def get_budget_transactions(
+    budget_id: str,
+    limit: int = 50,
+    period_offset: int = 0,
+    category_id: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
+    """
+    The transactions that make up a budget's spend, largest first.
+
+    Use this to explain *why* a budget is over: it returns the same rows the
+    spend total is computed from, so the numbers always reconcile.
+
+    Args:
+        budget_id: The budget's ID
+        limit: Max transactions to return (1-200, default 50)
+        period_offset: 0 = current period (default), 1 = previous period, etc.
+        category_id: Restrict to one of the budget's categories (optional)
+
+    Returns:
+        Dict with the period window, `transactions`, `total_spent`,
+        `total_count` and `has_more`, or {"error": "<message>"}.
+    """
+    return budget_tools.get_budget_transactions(
+        user_id, budget_id, limit, period_offset, category_id
+    )
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
+def get_budget_history(
+    budget_id: str, periods: int = 6, user_id: str = Depends(authenticated_user_id)
+) -> dict:
+    """
+    Spend for a budget over the last N periods, measured against its limit.
+
+    Averages and the breach count cover completed periods only — the current
+    period is partial and is flagged with `is_current`. `suggested_amount`
+    is the completed-period average plus 10% headroom: a starting point for
+    resizing the budget, not an automatic change.
+
+    Historical limit changes are not versioned in the schema, so earlier
+    periods are compared against the budget's *current* amount.
+
+    Args:
+        budget_id: The budget's ID
+        periods: How many periods back to include, counting the current one (1-24)
+
+    Returns:
+        Dict with `periods` (most recent first), `average_spent_completed`,
+        `over_budget_period_count` and `suggested_amount`, or
+        {"error": "<message>"}.
+    """
+    return budget_tools.get_budget_history(user_id, budget_id, periods)
+
+
+@mcp.tool(annotations={"destructiveHint": False})
+def create_budget(
+    name: str,
+    amount: float,
+    categories: list[dict] | None = None,
+    currency: str = "EUR",
+    period: str = "monthly",
+    start_date: str | None = None,
+    is_active: bool = True,
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
+    """
+    Create a spending budget across one or more categories.
+
+    Args:
+        name: Budget name
+        amount: Overall limit for one period, in `currency`. Must be > 0.
+        categories: List of {"category_id": str, "sub_limit": float | None}.
+            `sub_limit` is an optional per-category cap inside this budget;
+            omit it or pass null for no cap of its own. Category IDs come
+            from list_categories().
+        currency: ISO code that amount and sub_limits are expressed in (default EUR)
+        period: monthly (default), weekly, or yearly
+        start_date: YYYY-MM-DD anchor. Only meaningful for weekly budgets,
+            where it fixes the weekday the week rolls over on; monthly and
+            yearly budgets always run calendar month / calendar year.
+        is_active: Whether the budget counts toward summaries (default True)
+
+    Returns:
+        {"success": True, "budget": {...}} or {"success": False, "error": "<message>"}
+    """
+    return budget_tools.create_budget(
+        user_id, name, amount, categories, currency, period, start_date, is_active
+    )
+
+
+@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
+def update_budget(
+    budget_id: str,
+    name: str | None = None,
+    amount: float | None = None,
+    currency: str | None = None,
+    period: str | None = None,
+    start_date: str | None = None,
+    is_active: bool | None = None,
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
+    """
+    Adjust a budget. Only the fields you pass are changed.
+
+    Category membership is not touched here — use set_budget_categories.
+    To pause or resume a budget, pass is_active.
+
+    Args:
+        budget_id: The budget's ID
+        name: New name (optional)
+        amount: New overall limit, must be > 0 (optional)
+        currency: New ISO currency code (optional). This re-denominates the
+            budget — amount and sub_limits are reinterpreted in the new
+            currency as-is, they are not converted.
+        period: monthly, weekly, or yearly (optional)
+        start_date: YYYY-MM-DD anchor, or "" to clear it (optional)
+        is_active: Activate (True) or deactivate (False) the budget (optional)
+
+    Returns:
+        {"success": True, "budget": {...}} with freshly recomputed spend, or
+        {"success": False, "error": "<message>"}
+    """
+    return budget_tools.update_budget(
+        user_id, budget_id, name, amount, currency, period, start_date, is_active
+    )
+
+
+@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
+def set_budget_categories(
+    budget_id: str,
+    categories: list[dict],
+    mode: str = "replace",
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
+    """
+    Reorganize which categories a budget covers, and their sub-limits.
+
+    Args:
+        budget_id: The budget's ID
+        categories: List of {"category_id": str, "sub_limit": float | null}.
+            For mode="remove" only category_id is read.
+        mode: How to apply the list —
+            "replace" (default): the list becomes the entire membership;
+                categories not listed are dropped.
+            "add": insert the listed categories, and update the sub_limit of
+                any already present. Everything else is left alone.
+            "remove": drop the listed categories from the budget.
+
+    Returns:
+        {"success": True, "added": [...], "removed": [...], "updated": [...],
+         "budget": {...}} or {"success": False, "error": "<message>"}
+    """
+    return budget_tools.set_budget_categories(user_id, budget_id, categories, mode)
+
+
+@mcp.tool(annotations={"idempotentHint": True})
+def delete_budget(budget_id: str, user_id: str = Depends(authenticated_user_id)) -> dict:
+    """
+    Permanently delete a budget and its category memberships.
+
+    Transactions are untouched — a budget is only a lens over them. To stop
+    a budget counting without losing it, use update_budget(is_active=False).
+
+    Args:
+        budget_id: The budget's ID
+
+    Returns:
+        {"success": True, "deleted_budget": {...}} or
+        {"success": False, "error": "<message>"}
+    """
+    return budget_tools.delete_budget(user_id, budget_id)
+
+
+# Throttle before doing the work, then log what actually ran. Registration
+# order is call order, so the limiter sees a request the logger never records
+# as a completed call.
+mcp.add_middleware(PerUserRateLimit())
+mcp.add_middleware(ToolCallLogger())

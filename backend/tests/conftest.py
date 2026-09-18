@@ -49,6 +49,7 @@ import pytest  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
 from app.database import Base, SessionLocal, engine  # noqa: E402
+from app.mcp.auth import invalidate_api_key_cache  # noqa: E402
 from app.security.data_encryption import reset_encryption_config_cache  # noqa: E402
 import app.models  # noqa: E402, F401 -- registers every table on Base.metadata
 
@@ -66,6 +67,10 @@ def _clean_db():
     try:
         yield
     finally:
+        # The MCP auth cache is process-local, so truncating api_keys isn't
+        # enough on its own: a key verified in one test would keep resolving
+        # in the next one, against a row that no longer exists.
+        invalidate_api_key_cache()
         if not _ALL_TABLES:
             return
         with engine.begin() as conn:

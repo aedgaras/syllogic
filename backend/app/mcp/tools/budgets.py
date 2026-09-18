@@ -1,0 +1,1120 @@
+"""Budget tools for the MCP server.
+
+Budgets are user-defined spending limits spanning one or more categories,
+evaluated against the *current* period (monthly/weekly/yearly). The spend
+math here deliberately mirrors the web app's implementation
+(`frontend/features/budgets/domain/*` + `frontend/lib/actions/budgets.ts`)
+so an agent and the UI never disagree about how much of a budget is used:
+
+- Spend counts debit transactions whose effective category (user override
+  `category_id`, else AI-assigned `category_system_id`) is in the budget.
+- Transfers are excluded from spend via `include_in_analytics=False`, except
+  for the `savings_transfer` / `investment_transfer` system categories: a
+  budget built on those is explicitly meant to track outgoing transfers.
+- Transaction spend is summed in the user's functional currency, then
+  converted into the budget's own currency before any comparison, because a
+  budget's `amount`/`sub_limit` are entered in the budget's currency.
+
+All mutation tools return {"success": bool, ...} rather than raising,
+following the pattern in categories.py/reports.py -- get_db() does not
+auto-rollback, so every mutation path rolls back explicitly on failure.
+"""
+
+from __future__ import annotations
+
+from calendar import monthrange
+from datetime import date, datetime, timedelta
+from decimal import Decimal
+from typing import Optional
+from uuid import UUID
+
+from sqlalchemy import func, or_
+from sqlalchemy.orm import Session, joinedload
+
+from app.mcp.dependencies import get_db, validate_uuid
+from app.models import (
+    Budget,
+    BudgetCategory,
+    Category,
+    ExchangeRate,
+    Transaction,
+    User,
+)
+
+# Thresholds mirror frontend/features/budgets/domain/status.ts
+NEAR_LIMIT_THRESHOLD = 80.0
+OVER_THRESHOLD = 100.0
+
+VALID_PERIODS = ("monthly", "weekly", "yearly")
+
+# Mirrors TRANSFER_SPEND_BYPASS_KEYS in frontend/lib/actions/budgets.ts.
+TRANSFER_SPEND_BYPASS_KEYS = ("savings_transfer", "investment_transfer")
+
+# Hard cap on how many categories one budget may carry, so a runaway agent
+# call can't insert thousands of rows in a single mutation.
+MAX_BUDGET_CATEGORIES = 100
+
+
+# ============================================================================
+# Period math (mirrors frontend/features/budgets/domain/period.ts)
+# ============================================================================
+
+
+def _start_of_month(moment: datetime) -> datetime:
+    return moment.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+def _add_months(moment: datetime, months: int) -> datetime:
+    total = moment.month - 1 + months
+    year = moment.year + total // 12
+    month = total % 12 + 1
+    day = min(moment.day, monthrange(year, month)[1])
+    return moment.replace(year=year, month=month, day=day)
+
+
+def _period_range(
+    period: str,
+    start_date: Optional[date],
+    now: datetime,
+    offset: int = 0,
+) -> tuple[datetime, datetime]:
+    """Half-open range [start, end) for a budget period.
+
+    `offset` shifts whole periods backwards (0 = current, 1 = previous, ...),
+    which is what get_budget_history walks over.
+    """
+    if period == "weekly":
+        # Anchor the week on start_date's weekday, else Monday -- date-fns
+        # `weekStartsOn` is 0=Sunday, Python's weekday() is 0=Monday, so the
+        # comparison is done in Python's own numbering throughout.
+        week_starts_on = start_date.weekday() if start_date else 0
+        midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        delta = (midnight.weekday() - week_starts_on) % 7
+        start = midnight - timedelta(days=delta + 7 * offset)
+        return start, start + timedelta(days=7)
+
+    if period == "yearly":
+        start = now.replace(
+            year=now.year - offset, month=1, day=1, hour=0, minute=0, second=0, microsecond=0
+        )
+        return start, start.replace(year=start.year + 1)
+
+    # monthly (default)
+    start = _add_months(_start_of_month(now), -offset)
+    return start, _add_months(start, 1)
+
+
+def _days_in_range(start: datetime, end: datetime) -> int:
+    return (end.date() - start.date()).days
+
+
+def _days_elapsed(start: datetime, end: datetime, now: datetime) -> int:
+    """Days elapsed so far, inclusive of today, clamped to the period length."""
+    return min((now.date() - start.date()).days + 1, _days_in_range(start, end))
+
+
+# ============================================================================
+# Status / pace (mirrors domain/status.ts and domain/pace.ts)
+# ============================================================================
+
+
+def _status(spent: float, amount: float) -> str:
+    percentage = (spent / amount) * 100 if amount > 0 else 0.0
+    if percentage > OVER_THRESHOLD:
+        return "over_budget"
+    if percentage >= NEAR_LIMIT_THRESHOLD:
+        return "near_limit"
+    return "on_track"
+
+
+def _project_pace(
+    spent_so_far: float, days_elapsed: int, days_in_period: int, amount: float
+) -> tuple[float, str]:
+    """Extrapolate today's daily spend rate to the end of the period."""
+    if days_elapsed <= 0 or days_in_period <= 0:
+        return spent_so_far, _status(spent_so_far, amount)
+    projected = (spent_so_far / days_elapsed) * days_in_period
+    return projected, _status(projected, amount)
+
+
+# ============================================================================
+# Currency
+# ============================================================================
+
+
+def _user_currency(db: Session, user_id: str) -> str:
+    currency = db.query(User.functional_currency).filter(User.id == user_id).scalar()
+    return currency or "EUR"
+
+
+def _convert(db: Session, amount: float, from_currency: str, to_currency: str) -> float:
+    """Convert using the most recent rate, falling back to the inverse pair.
+
+    With no rate on record the amount is returned unconverted rather than
+    raising -- same fallback the web app uses, so a missing rate degrades a
+    number instead of breaking the whole budget read.
+    """
+    if amount == 0 or from_currency == to_currency:
+        return amount
+
+    rate = (
+        db.query(ExchangeRate.rate)
+        .filter(
+            ExchangeRate.base_currency == from_currency,
+            ExchangeRate.target_currency == to_currency,
+        )
+        .order_by(ExchangeRate.date.desc())
+        .first()
+    )
+    if rate:
+        return amount * float(rate[0])
+
+    inverse = (
+        db.query(ExchangeRate.rate)
+        .filter(
+            ExchangeRate.base_currency == to_currency,
+            ExchangeRate.target_currency == from_currency,
+        )
+        .order_by(ExchangeRate.date.desc())
+        .first()
+    )
+    if inverse and float(inverse[0]) != 0:
+        return amount / float(inverse[0])
+
+    return amount
+
+
+# ============================================================================
+# Spend queries
+# ============================================================================
+
+
+def _spend_eligibility():
+    """Transfers are excluded from spend unless the category is a savings or
+    investment transfer, which a budget may legitimately track."""
+    return or_(
+        Transaction.include_in_analytics.is_(True),
+        Category.system_key.in_(TRANSFER_SPEND_BYPASS_KEYS),
+    )
+
+
+def _effective_category_id():
+    """User override wins over the AI-assigned category."""
+    return func.coalesce(Transaction.category_id, Transaction.category_system_id)
+
+
+def _spend_by_category(
+    db: Session,
+    user_id: str,
+    budget_ids: list[UUID],
+    start: datetime,
+    end: datetime,
+) -> dict[tuple[UUID, UUID], float]:
+    """Spend per (budget_id, category_id) over one period range."""
+    if not budget_ids:
+        return {}
+
+    rows = (
+        db.query(
+            BudgetCategory.budget_id,
+            BudgetCategory.category_id,
+            func.coalesce(func.sum(func.abs(Transaction.functional_amount)), 0).label("spent"),
+        )
+        .join(Transaction, _effective_category_id() == BudgetCategory.category_id)
+        .join(Category, Category.id == BudgetCategory.category_id)
+        .filter(
+            BudgetCategory.budget_id.in_(budget_ids),
+            Transaction.user_id == user_id,
+            Transaction.transaction_type == "debit",
+            _spend_eligibility(),
+            Transaction.booked_at >= start,
+            Transaction.booked_at < end,
+        )
+        .group_by(BudgetCategory.budget_id, BudgetCategory.category_id)
+        .all()
+    )
+    return {(row[0], row[1]): float(row[2]) for row in rows}
+
+
+def _spend_for_budgets(
+    db: Session, user_id: str, budgets: list[Budget], now: datetime
+) -> dict[UUID, dict[UUID, float]]:
+    """Per-budget, per-category spend for each budget's own current period.
+
+    Budgets sharing a period range are queried together, so N budgets cost
+    one query per distinct range rather than one query per budget.
+    """
+    groups: dict[tuple[datetime, datetime], list[UUID]] = {}
+    for budget in budgets:
+        key = _period_range(budget.period or "monthly", budget.start_date, now)
+        groups.setdefault(key, []).append(budget.id)
+
+    result: dict[UUID, dict[UUID, float]] = {b.id: {} for b in budgets}
+    for (start, end), budget_ids in groups.items():
+        for (budget_id, category_id), spent in _spend_by_category(
+            db, user_id, budget_ids, start, end
+        ).items():
+            result[budget_id][category_id] = spent
+    return result
+
+
+# ============================================================================
+# Serialization
+# ============================================================================
+
+
+def _to_float(value) -> Optional[float]:
+    return float(value) if value is not None else None
+
+
+def _serialize_budget(
+    db: Session,
+    budget: Budget,
+    spend_by_category: dict[UUID, float],
+    functional_currency: str,
+    now: datetime,
+    include_categories: bool = True,
+) -> dict:
+    budget_currency = budget.currency or "EUR"
+    amount = float(budget.amount)
+    period = budget.period or "monthly"
+    start, end = _period_range(period, budget.start_date, now)
+    days_total = _days_in_range(start, end)
+    days_elapsed = _days_elapsed(start, end, now)
+
+    spent = _convert(db, sum(spend_by_category.values()), functional_currency, budget_currency)
+    percentage = (spent / amount) * 100 if amount > 0 else 0.0
+    projected, projected_status = _project_pace(spent, days_elapsed, days_total, amount)
+    remaining = amount - spent
+    days_remaining = max(days_total - days_elapsed, 0)
+
+    payload = {
+        "id": str(budget.id),
+        "name": budget.name,
+        "amount": amount,
+        "currency": budget_currency,
+        "period": period,
+        "start_date": budget.start_date.isoformat() if budget.start_date else None,
+        "is_active": budget.is_active if budget.is_active is not None else True,
+        "spent": round(spent, 2),
+        "remaining": round(remaining, 2),
+        "percentage": round(percentage, 2),
+        "status": _status(spent, amount),
+        "projected_spend": round(projected, 2),
+        "projected_status": projected_status,
+        "period_start": start.isoformat(),
+        "period_end": end.isoformat(),
+        "days_elapsed": days_elapsed,
+        "days_remaining": days_remaining,
+        # What the user can spend per remaining day and still land on budget.
+        # None once the period is over, where "per day" has no meaning.
+        "daily_allowance_remaining": (
+            round(remaining / days_remaining, 2) if days_remaining > 0 else None
+        ),
+        "created_at": budget.created_at.isoformat() if budget.created_at else None,
+        "updated_at": budget.updated_at.isoformat() if budget.updated_at else None,
+    }
+
+    if include_categories:
+        payload["categories"] = [
+            _serialize_budget_category(
+                db, bc, spend_by_category, functional_currency, budget_currency, amount
+            )
+            for bc in sorted(budget.budget_categories, key=lambda bc: bc.category.name or "")
+        ]
+    else:
+        payload["category_count"] = len(budget.budget_categories)
+
+    return payload
+
+
+def _serialize_budget_category(
+    db: Session,
+    bc: BudgetCategory,
+    spend_by_category: dict[UUID, float],
+    functional_currency: str,
+    budget_currency: str,
+    budget_amount: float,
+) -> dict:
+    spent = _convert(
+        db, spend_by_category.get(bc.category_id, 0.0), functional_currency, budget_currency
+    )
+    sub_limit = _to_float(bc.sub_limit)
+    percentage = (spent / sub_limit) * 100 if sub_limit and sub_limit > 0 else 0.0
+    weight = (
+        (sub_limit / budget_amount) * 100 if sub_limit is not None and budget_amount > 0 else None
+    )
+
+    return {
+        "category_id": str(bc.category_id),
+        "category_name": bc.category.name if bc.category else None,
+        "color": bc.category.color if bc.category else None,
+        "sub_limit": sub_limit,
+        "spent": round(spent, 2),
+        "remaining": round(sub_limit - spent, 2) if sub_limit is not None else None,
+        "percentage": round(percentage, 2),
+        "status": "no_limit" if sub_limit is None else _status(spent, sub_limit),
+        # Share of the parent budget this sub-limit represents.
+        "weight": round(weight, 2) if weight is not None else None,
+    }
+
+
+def _load_budgets(db: Session, user_id: str, include_inactive: bool) -> list[Budget]:
+    query = (
+        db.query(Budget)
+        .options(joinedload(Budget.budget_categories).joinedload(BudgetCategory.category))
+        .filter(Budget.user_id == user_id)
+    )
+    if not include_inactive:
+        query = query.filter(Budget.is_active.is_(True))
+    return query.order_by(Budget.created_at.desc()).all()
+
+
+def _load_budget(db: Session, user_id: str, budget_uuid: UUID) -> Optional[Budget]:
+    return (
+        db.query(Budget)
+        .options(joinedload(Budget.budget_categories).joinedload(BudgetCategory.category))
+        .filter(Budget.id == budget_uuid, Budget.user_id == user_id)
+        .first()
+    )
+
+
+# ============================================================================
+# Validation helpers
+# ============================================================================
+
+
+def _validate_period(period: str) -> Optional[str]:
+    if period not in VALID_PERIODS:
+        return f"period must be one of {', '.join(VALID_PERIODS)}"
+    return None
+
+
+def _validate_amount(amount: float) -> Optional[str]:
+    if amount is None or amount <= 0:
+        return "amount must be greater than 0"
+    return None
+
+
+def _parse_start_date(value: Optional[str]) -> tuple[Optional[date], Optional[str]]:
+    if not value:
+        return None, None
+    try:
+        return date.fromisoformat(value), None
+    except (ValueError, TypeError):
+        return None, f"Invalid start_date '{value}' (expected YYYY-MM-DD)"
+
+
+def _normalize_category_inputs(
+    db: Session, user_id: str, entries: list[dict]
+) -> tuple[list[tuple[UUID, Optional[Decimal]]], Optional[str]]:
+    """Validate {category_id, sub_limit} entries and confirm ownership.
+
+    Returns (normalized, error). Ownership is checked in one query rather
+    than per entry, and duplicates are rejected outright because
+    budget_categories is keyed on (budget_id, category_id) -- silently
+    collapsing them would lose whichever sub_limit came second.
+    """
+    if entries is None:
+        return [], None
+    if len(entries) > MAX_BUDGET_CATEGORIES:
+        return [], f"At most {MAX_BUDGET_CATEGORIES} categories per budget"
+
+    normalized: list[tuple[UUID, Optional[Decimal]]] = []
+    seen: set[UUID] = set()
+
+    for entry in entries:
+        if isinstance(entry, str):
+            entry = {"category_id": entry}
+        if not isinstance(entry, dict):
+            return [], f"Invalid category entry: {entry!r}"
+
+        raw_id = entry.get("category_id")
+        category_uuid = validate_uuid(raw_id) if raw_id else None
+        if not category_uuid:
+            return [], f"Invalid category ID format: {raw_id!r}"
+        if category_uuid in seen:
+            return [], f"Duplicate category_id: {raw_id}"
+        seen.add(category_uuid)
+
+        sub_limit = entry.get("sub_limit")
+        if sub_limit is None:
+            normalized.append((category_uuid, None))
+            continue
+        try:
+            sub_limit_value = Decimal(str(sub_limit))
+        except (ValueError, ArithmeticError):
+            return [], f"Invalid sub_limit for category {raw_id}: {sub_limit!r}"
+        if sub_limit_value <= 0:
+            return [], f"sub_limit for category {raw_id} must be greater than 0"
+        normalized.append((category_uuid, sub_limit_value))
+
+    if normalized:
+        owned = {
+            row[0]
+            for row in db.query(Category.id)
+            .filter(Category.id.in_([c for c, _ in normalized]), Category.user_id == user_id)
+            .all()
+        }
+        missing = [str(c) for c, _ in normalized if c not in owned]
+        if missing:
+            return [], f"Category not found: {', '.join(missing)}"
+
+    return normalized, None
+
+
+# ============================================================================
+# Read tools
+# ============================================================================
+
+
+def list_budgets(
+    user_id: str,
+    include_inactive: bool = True,
+    include_categories: bool = True,
+) -> list[dict]:
+    """
+    List budgets with current-period spend, status, and pace projection.
+
+    Args:
+        user_id: The user's ID
+        include_inactive: Include budgets marked inactive (default True)
+        include_categories: Include the per-category breakdown on each budget.
+            Set False for a compact overview.
+
+    Returns:
+        List of budget dicts, newest first.
+    """
+    now = datetime.now()
+    with get_db() as db:
+        budgets = _load_budgets(db, user_id, include_inactive)
+        if not budgets:
+            return []
+        functional_currency = _user_currency(db, user_id)
+        spend = _spend_for_budgets(db, user_id, budgets, now)
+        return [
+            _serialize_budget(
+                db, b, spend.get(b.id, {}), functional_currency, now, include_categories
+            )
+            for b in budgets
+        ]
+
+
+def get_budget(user_id: str, budget_id: str) -> dict | None:
+    """
+    Get one budget with its full per-category breakdown.
+
+    Args:
+        user_id: The user's ID
+        budget_id: The budget's ID
+
+    Returns:
+        Budget dict, or None if not found.
+    """
+    budget_uuid = validate_uuid(budget_id)
+    if not budget_uuid:
+        return None
+
+    now = datetime.now()
+    with get_db() as db:
+        budget = _load_budget(db, user_id, budget_uuid)
+        if not budget:
+            return None
+        functional_currency = _user_currency(db, user_id)
+        spend = _spend_for_budgets(db, user_id, [budget], now)
+        return _serialize_budget(
+            db, budget, spend.get(budget.id, {}), functional_currency, now, True
+        )
+
+
+def get_budget_summary(user_id: str) -> dict:
+    """
+    Portfolio-level view of every active budget, in the user's functional currency.
+
+    Args:
+        user_id: The user's ID
+
+    Returns:
+        Dict with totals, counts, the attention list (over/near limit or
+        projected to bust), and a compact row per active budget.
+    """
+    now = datetime.now()
+    with get_db() as db:
+        functional_currency = _user_currency(db, user_id)
+        budgets = _load_budgets(db, user_id, include_inactive=False)
+        if not budgets:
+            return {
+                "currency": functional_currency,
+                "total_budgeted": 0.0,
+                "total_spent": 0.0,
+                "total_remaining": 0.0,
+                "active_count": 0,
+                "over_budget_count": 0,
+                "near_limit_count": 0,
+                "projected_over_count": 0,
+                "budgets": [],
+                "needs_attention": [],
+            }
+
+        spend = _spend_for_budgets(db, user_id, budgets, now)
+        rows = [
+            _serialize_budget(
+                db, b, spend.get(b.id, {}), functional_currency, now, include_categories=False
+            )
+            for b in budgets
+        ]
+
+        # Each budget carries its own currency; totals are a single aggregate,
+        # so convert every side into the functional currency before summing.
+        total_budgeted = sum(
+            _convert(db, r["amount"], r["currency"], functional_currency) for r in rows
+        )
+        total_spent = sum(
+            _convert(db, r["spent"], r["currency"], functional_currency) for r in rows
+        )
+
+        compact = [
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "amount": r["amount"],
+                "currency": r["currency"],
+                "period": r["period"],
+                "spent": r["spent"],
+                "remaining": r["remaining"],
+                "percentage": r["percentage"],
+                "status": r["status"],
+                "projected_status": r["projected_status"],
+            }
+            for r in rows
+        ]
+
+        return {
+            "currency": functional_currency,
+            "total_budgeted": round(total_budgeted, 2),
+            "total_spent": round(total_spent, 2),
+            "total_remaining": round(total_budgeted - total_spent, 2),
+            "active_count": len(rows),
+            "over_budget_count": sum(1 for r in rows if r["status"] == "over_budget"),
+            "near_limit_count": sum(1 for r in rows if r["status"] == "near_limit"),
+            "projected_over_count": sum(1 for r in rows if r["projected_status"] == "over_budget"),
+            "budgets": compact,
+            "needs_attention": [
+                b
+                for b in compact
+                if b["status"] in ("over_budget", "near_limit")
+                or b["projected_status"] == "over_budget"
+            ],
+        }
+
+
+def get_budget_transactions(
+    user_id: str,
+    budget_id: str,
+    limit: int = 50,
+    period_offset: int = 0,
+    category_id: Optional[str] = None,
+) -> dict:
+    """
+    The transactions that make up a budget's spend, largest first.
+
+    Args:
+        user_id: The user's ID
+        budget_id: The budget's ID
+        limit: Max transactions to return (1-200, default 50)
+        period_offset: 0 = current period, 1 = previous, etc.
+        category_id: Restrict to one of the budget's categories (optional)
+
+    Returns:
+        Dict with the period range, the transactions, and totals, or
+        {"error": ...} if the budget or category isn't usable.
+    """
+    budget_uuid = validate_uuid(budget_id)
+    if not budget_uuid:
+        return {"error": "Invalid budget ID format"}
+    if period_offset < 0:
+        return {"error": "period_offset must be >= 0"}
+    limit = max(1, min(limit, 200))
+
+    category_uuid = None
+    if category_id:
+        category_uuid = validate_uuid(category_id)
+        if not category_uuid:
+            return {"error": "Invalid category ID format"}
+
+    now = datetime.now()
+    with get_db() as db:
+        budget = _load_budget(db, user_id, budget_uuid)
+        if not budget:
+            return {"error": "Budget not found"}
+
+        budget_category_ids = [bc.category_id for bc in budget.budget_categories]
+        if category_uuid is not None:
+            if category_uuid not in budget_category_ids:
+                return {"error": "Category is not part of this budget"}
+            budget_category_ids = [category_uuid]
+
+        start, end = _period_range(
+            budget.period or "monthly", budget.start_date, now, period_offset
+        )
+        if not budget_category_ids:
+            return {
+                "budget_id": str(budget.id),
+                "budget_name": budget.name,
+                "period_start": start.isoformat(),
+                "period_end": end.isoformat(),
+                "transactions": [],
+                "returned_count": 0,
+                "total_count": 0,
+                "total_spent": 0.0,
+                "currency": budget.currency or "EUR",
+                "has_more": False,
+            }
+
+        base = (
+            db.query(Transaction)
+            .join(Category, _effective_category_id() == Category.id)
+            .filter(
+                Transaction.user_id == user_id,
+                Transaction.transaction_type == "debit",
+                _effective_category_id().in_(budget_category_ids),
+                _spend_eligibility(),
+                Transaction.booked_at >= start,
+                Transaction.booked_at < end,
+            )
+        )
+
+        total_count = base.count()
+        rows = (
+            base.options(joinedload(Transaction.account))
+            .order_by(func.abs(Transaction.functional_amount).desc().nullslast(), Transaction.id)
+            .limit(limit)
+            .all()
+        )
+
+        functional_currency = _user_currency(db, user_id)
+        budget_currency = budget.currency or "EUR"
+        spent_functional = sum(_spend_by_category(db, user_id, [budget.id], start, end).values())
+
+        return {
+            "budget_id": str(budget.id),
+            "budget_name": budget.name,
+            "period_start": start.isoformat(),
+            "period_end": end.isoformat(),
+            "currency": budget_currency,
+            "total_spent": round(
+                _convert(db, spent_functional, functional_currency, budget_currency), 2
+            ),
+            "total_count": total_count,
+            "returned_count": len(rows),
+            "has_more": total_count > len(rows),
+            "transactions": [
+                {
+                    "id": str(t.id),
+                    "account_id": str(t.account_id),
+                    "account_name": t.account.name if t.account else None,
+                    "amount": float(t.amount),
+                    "currency": t.currency,
+                    "functional_amount": _to_float(t.functional_amount),
+                    "description": t.description,
+                    "merchant": t.merchant,
+                    "category_id": str(t.category_id or t.category_system_id)
+                    if (t.category_id or t.category_system_id)
+                    else None,
+                    "booked_at": t.booked_at.isoformat() if t.booked_at else None,
+                }
+                for t in rows
+            ],
+        }
+
+
+def get_budget_history(user_id: str, budget_id: str, periods: int = 6) -> dict:
+    """
+    Spend for this budget over the last N periods, against its current limit.
+
+    The limit compared against is today's `amount` -- historical limit
+    changes are not versioned in the schema, so earlier periods are measured
+    against what the budget costs now, not what it was set to then.
+
+    Args:
+        user_id: The user's ID
+        budget_id: The budget's ID
+        periods: How many periods back to include, including the current one (1-24)
+
+    Returns:
+        Dict with one entry per period (most recent first) plus averages,
+        or {"error": ...} if not found.
+    """
+    budget_uuid = validate_uuid(budget_id)
+    if not budget_uuid:
+        return {"error": "Invalid budget ID format"}
+    periods = max(1, min(periods, 24))
+
+    now = datetime.now()
+    with get_db() as db:
+        budget = _load_budget(db, user_id, budget_uuid)
+        if not budget:
+            return {"error": "Budget not found"}
+
+        functional_currency = _user_currency(db, user_id)
+        budget_currency = budget.currency or "EUR"
+        amount = float(budget.amount)
+        period = budget.period or "monthly"
+
+        entries = []
+        for offset in range(periods):
+            start, end = _period_range(period, budget.start_date, now, offset)
+            spent = _convert(
+                db,
+                sum(_spend_by_category(db, user_id, [budget.id], start, end).values()),
+                functional_currency,
+                budget_currency,
+            )
+            entries.append(
+                {
+                    "period_start": start.isoformat(),
+                    "period_end": end.isoformat(),
+                    "is_current": offset == 0,
+                    "spent": round(spent, 2),
+                    "amount": amount,
+                    "remaining": round(amount - spent, 2),
+                    "percentage": round((spent / amount) * 100, 2) if amount > 0 else 0.0,
+                    "status": _status(spent, amount),
+                }
+            )
+
+        # The current period is partial, so it would drag any average down.
+        # Averages and the breach count are computed over completed periods
+        # only; the current period is still returned in `periods` for context.
+        completed = [e for e in entries if not e["is_current"]]
+        average_spent = (
+            round(sum(e["spent"] for e in completed) / len(completed), 2) if completed else None
+        )
+
+        return {
+            "budget_id": str(budget.id),
+            "budget_name": budget.name,
+            "period": period,
+            "currency": budget_currency,
+            "amount": amount,
+            "periods": entries,
+            "completed_period_count": len(completed),
+            "average_spent_completed": average_spent,
+            "over_budget_period_count": sum(1 for e in completed if e["status"] == "over_budget"),
+            "suggested_amount": (
+                # Average plus 10% headroom, rounded to whole units -- a
+                # starting point for "what should this budget actually be?",
+                # not an automatic change.
+                float(round(average_spent * 1.1)) if average_spent else None
+            ),
+        }
+
+
+# ============================================================================
+# Mutation tools
+# ============================================================================
+
+
+def create_budget(
+    user_id: str,
+    name: str,
+    amount: float,
+    categories: Optional[list[dict]] = None,
+    currency: str = "EUR",
+    period: str = "monthly",
+    start_date: Optional[str] = None,
+    is_active: bool = True,
+) -> dict:
+    """
+    Create a budget.
+
+    Args:
+        user_id: The user's ID
+        name: Budget name
+        amount: Overall limit for the period, in `currency`
+        categories: List of {"category_id": str, "sub_limit": float | None}
+        currency: ISO currency code for amount/sub_limit (default EUR)
+        period: monthly, weekly, or yearly
+        start_date: YYYY-MM-DD anchor; only meaningful for weekly budgets,
+            where it fixes which weekday the week rolls over on
+        is_active: Whether the budget counts toward summaries (default True)
+
+    Returns:
+        {"success": True, "budget": {...}} or {"success": False, "error": ...}
+    """
+    if not name or not name.strip():
+        return {"success": False, "error": "Name is required"}
+    error = _validate_amount(amount) or _validate_period(period)
+    if error:
+        return {"success": False, "error": error}
+    parsed_start, error = _parse_start_date(start_date)
+    if error:
+        return {"success": False, "error": error}
+
+    now = datetime.now()
+    with get_db() as db:
+        normalized, error = _normalize_category_inputs(db, user_id, categories or [])
+        if error:
+            return {"success": False, "error": error}
+
+        try:
+            budget = Budget(
+                user_id=user_id,
+                name=name.strip(),
+                amount=Decimal(str(amount)),
+                currency=(currency or "EUR").upper(),
+                period=period,
+                start_date=parsed_start,
+                is_active=is_active,
+            )
+            db.add(budget)
+            db.flush()
+            for category_uuid, sub_limit in normalized:
+                db.add(
+                    BudgetCategory(
+                        budget_id=budget.id, category_id=category_uuid, sub_limit=sub_limit
+                    )
+                )
+            db.commit()
+        except Exception as e:  # noqa: BLE001
+            db.rollback()
+            return {"success": False, "error": f"Database error: {str(e)}"}
+
+        reloaded = _load_budget(db, user_id, budget.id)
+        spend = _spend_for_budgets(db, user_id, [reloaded], now)
+        return {
+            "success": True,
+            "budget": _serialize_budget(
+                db, reloaded, spend.get(reloaded.id, {}), _user_currency(db, user_id), now
+            ),
+        }
+
+
+def update_budget(
+    user_id: str,
+    budget_id: str,
+    name: Optional[str] = None,
+    amount: Optional[float] = None,
+    currency: Optional[str] = None,
+    period: Optional[str] = None,
+    start_date: Optional[str] = None,
+    is_active: Optional[bool] = None,
+) -> dict:
+    """
+    Update a budget's own fields. Omitted fields keep their current value.
+
+    Category membership is not touched here -- use set_budget_categories.
+
+    Args:
+        user_id: The user's ID
+        budget_id: The budget's ID
+        name: New name (optional)
+        amount: New overall limit, must be > 0 (optional)
+        currency: New ISO currency code (optional). This re-denominates the
+            budget: amount and sub_limits are interpreted in the new currency
+            as-is, they are not converted.
+        period: monthly, weekly, or yearly (optional)
+        start_date: YYYY-MM-DD anchor, or "" to clear it (optional)
+        is_active: Activate or deactivate the budget (optional)
+
+    Returns:
+        {"success": True, "budget": {...}} or {"success": False, "error": ...}
+    """
+    budget_uuid = validate_uuid(budget_id)
+    if not budget_uuid:
+        return {"success": False, "error": "Invalid budget ID format"}
+
+    if all(v is None for v in (name, amount, currency, period, start_date, is_active)):
+        return {"success": False, "error": "No fields to update"}
+
+    if name is not None and not name.strip():
+        return {"success": False, "error": "Name is required"}
+    if amount is not None:
+        error = _validate_amount(amount)
+        if error:
+            return {"success": False, "error": error}
+    if period is not None:
+        error = _validate_period(period)
+        if error:
+            return {"success": False, "error": error}
+
+    parsed_start = None
+    if start_date:
+        parsed_start, error = _parse_start_date(start_date)
+        if error:
+            return {"success": False, "error": error}
+
+    now = datetime.now()
+    with get_db() as db:
+        budget = _load_budget(db, user_id, budget_uuid)
+        if not budget:
+            return {"success": False, "error": "Budget not found"}
+
+        try:
+            if name is not None:
+                budget.name = name.strip()
+            if amount is not None:
+                budget.amount = Decimal(str(amount))
+            if currency is not None:
+                budget.currency = currency.upper()
+            if period is not None:
+                budget.period = period
+            if start_date is not None:
+                # "" clears the anchor, a date sets it.
+                budget.start_date = parsed_start
+            if is_active is not None:
+                budget.is_active = is_active
+            db.commit()
+        except Exception as e:  # noqa: BLE001
+            db.rollback()
+            return {"success": False, "error": f"Database error: {str(e)}"}
+
+        reloaded = _load_budget(db, user_id, budget_uuid)
+        spend = _spend_for_budgets(db, user_id, [reloaded], now)
+        return {
+            "success": True,
+            "budget": _serialize_budget(
+                db, reloaded, spend.get(reloaded.id, {}), _user_currency(db, user_id), now
+            ),
+        }
+
+
+def set_budget_categories(
+    user_id: str,
+    budget_id: str,
+    categories: list[dict],
+    mode: str = "replace",
+) -> dict:
+    """
+    Reorganize which categories a budget covers, and their sub-limits.
+
+    Args:
+        user_id: The user's ID
+        budget_id: The budget's ID
+        categories: For replace/add, a list of
+            {"category_id": str, "sub_limit": float | None}. For remove, the
+            sub_limit is ignored and only category_id is read.
+        mode: "replace" (the list becomes the whole membership), "add"
+            (insert new categories, update sub_limits of ones already
+            present), or "remove" (drop the listed categories).
+
+    Returns:
+        {"success": True, "budget": {...}, "added": [...], "removed": [...],
+         "updated": [...]} or {"success": False, "error": ...}
+    """
+    budget_uuid = validate_uuid(budget_id)
+    if not budget_uuid:
+        return {"success": False, "error": "Invalid budget ID format"}
+    if mode not in ("replace", "add", "remove"):
+        return {"success": False, "error": "mode must be replace, add, or remove"}
+    if categories is None:
+        return {"success": False, "error": "categories is required"}
+    if not categories and mode != "replace":
+        return {"success": False, "error": f"categories must not be empty for mode={mode}"}
+
+    now = datetime.now()
+    with get_db() as db:
+        budget = _load_budget(db, user_id, budget_uuid)
+        if not budget:
+            return {"success": False, "error": "Budget not found"}
+
+        normalized, error = _normalize_category_inputs(db, user_id, categories)
+        if error:
+            return {"success": False, "error": error}
+
+        existing = {bc.category_id: bc for bc in budget.budget_categories}
+        requested = {category_uuid: sub_limit for category_uuid, sub_limit in normalized}
+        added, removed, updated = [], [], []
+
+        try:
+            if mode == "remove":
+                for category_uuid in requested:
+                    bc = existing.get(category_uuid)
+                    if bc is not None:
+                        db.delete(bc)
+                        removed.append(str(category_uuid))
+            else:
+                if mode == "replace":
+                    for category_uuid, bc in existing.items():
+                        if category_uuid not in requested:
+                            db.delete(bc)
+                            removed.append(str(category_uuid))
+                    if len(requested) > MAX_BUDGET_CATEGORIES:
+                        db.rollback()
+                        return {
+                            "success": False,
+                            "error": f"At most {MAX_BUDGET_CATEGORIES} categories per budget",
+                        }
+                elif len(set(existing) | set(requested)) > MAX_BUDGET_CATEGORIES:
+                    db.rollback()
+                    return {
+                        "success": False,
+                        "error": f"At most {MAX_BUDGET_CATEGORIES} categories per budget",
+                    }
+
+                for category_uuid, sub_limit in requested.items():
+                    bc = existing.get(category_uuid)
+                    if bc is None:
+                        db.add(
+                            BudgetCategory(
+                                budget_id=budget.id,
+                                category_id=category_uuid,
+                                sub_limit=sub_limit,
+                            )
+                        )
+                        added.append(str(category_uuid))
+                    elif bc.sub_limit != sub_limit:
+                        bc.sub_limit = sub_limit
+                        updated.append(str(category_uuid))
+
+            db.commit()
+        except Exception as e:  # noqa: BLE001
+            db.rollback()
+            return {"success": False, "error": f"Database error: {str(e)}"}
+
+        reloaded = _load_budget(db, user_id, budget_uuid)
+        spend = _spend_for_budgets(db, user_id, [reloaded], now)
+        return {
+            "success": True,
+            "added": added,
+            "removed": removed,
+            "updated": updated,
+            "budget": _serialize_budget(
+                db, reloaded, spend.get(reloaded.id, {}), _user_currency(db, user_id), now
+            ),
+        }
+
+
+def delete_budget(user_id: str, budget_id: str) -> dict:
+    """
+    Permanently delete a budget and its category memberships.
+
+    Transactions are untouched -- a budget is only a lens over them.
+
+    Args:
+        user_id: The user's ID
+        budget_id: The budget's ID
+
+    Returns:
+        {"success": True, "deleted_budget": {...}} or {"success": False, "error": ...}
+    """
+    budget_uuid = validate_uuid(budget_id)
+    if not budget_uuid:
+        return {"success": False, "error": "Invalid budget ID format"}
+
+    with get_db() as db:
+        budget = (
+            db.query(Budget).filter(Budget.id == budget_uuid, Budget.user_id == user_id).first()
+        )
+        if not budget:
+            return {"success": False, "error": "Budget not found"}
+
+        snapshot = {"id": str(budget.id), "name": budget.name, "amount": float(budget.amount)}
+        try:
+            db.delete(budget)
+            db.commit()
+        except Exception as e:  # noqa: BLE001
+            db.rollback()
+            return {"success": False, "error": f"Database error: {str(e)}"}
+
+        return {"success": True, "deleted_budget": snapshot}

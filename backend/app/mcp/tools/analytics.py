@@ -1,8 +1,17 @@
 """
 Analytics tools for the MCP server.
+
+The aggregate queries here are hand-written SQL rather than ORM constructs
+because they lean on Postgres-specific shapes (CTEs, FILTER, nested CASE over
+linked-transaction net amounts). Every *value* in them is bound as a
+parameter; only structural fragments chosen by this module -- a join type, a
+fixed predicate -- are ever interpolated into the string.
 """
 
+from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from sqlalchemy import func, or_, and_, text
 
@@ -11,19 +20,76 @@ from app.models import Transaction, Account
 from app.services.ownership_service import attribute_amount, entity_ids_for_people, get_owners
 
 
-def _get_link_group_nets_cte(user_id: str) -> str:
-    """Generate SQL CTE for calculating net amounts per link group."""
-    return f"""
+# Net amount per link group, so a group of linked transactions contributes its
+# net rather than each leg's gross. Scoped to the caller via a bound parameter.
+_LINK_GROUP_NETS_CTE = """
     WITH link_group_nets AS (
         SELECT
             tl.group_id,
             SUM(t.amount) as net_amount
         FROM transactions t
         JOIN transaction_links tl ON t.id = tl.transaction_id
-        WHERE t.user_id = '{user_id}'
+        WHERE t.user_id = :user_id
         GROUP BY tl.group_id
     )
     """
+
+
+@dataclass
+class _Filters:
+    """SQL fragments and the values they bind to.
+
+    The fragments contain only placeholders, never data, so they are safe to
+    interpolate into a query string.
+    """
+
+    date: str = ""
+    account: str = ""
+    person: str = ""
+    params: dict = field(default_factory=dict)
+
+
+def _allowed_account_ids_for(person_ids: Optional[list[str]]) -> Optional[list[str]]:
+    """Account ids owned by any of `person_ids`.
+
+    Returns None when no person filter was requested. An empty list means the
+    named people own no accounts at all -- callers must return an empty result
+    for that rather than treating it as "no filter".
+    """
+    if not person_ids:
+        return None
+    with get_db() as db:
+        return [str(uid) for uid in entity_ids_for_people(db, "account", person_ids)]
+
+
+def _build_filters(
+    user_id: str,
+    from_dt: Optional[datetime] = None,
+    to_dt: Optional[datetime] = None,
+    account_uuid: Optional[UUID] = None,
+    allowed_account_ids: Optional[list[str]] = None,
+) -> _Filters:
+    """Assemble the WHERE fragments shared by the aggregate queries."""
+    filters = _Filters(params={"user_id": user_id})
+
+    if from_dt:
+        filters.date += " AND t.booked_at >= :from_dt"
+        filters.params["from_dt"] = from_dt
+    if to_dt:
+        filters.date += " AND t.booked_at <= :to_dt"
+        filters.params["to_dt"] = to_dt
+
+    if account_uuid:
+        filters.account = " AND t.account_id = :account_id"
+        filters.params["account_id"] = account_uuid
+
+    if allowed_account_ids is not None:
+        # ANY over an array keeps this one placeholder regardless of how many
+        # accounts the people own, instead of an IN list built by hand.
+        filters.person = " AND t.account_id = ANY(CAST(:person_account_ids AS uuid[]))"
+        filters.params["person_account_ids"] = allowed_account_ids
+
+    return filters
 
 
 def get_spending_by_category(
@@ -58,26 +124,10 @@ def get_spending_by_category(
     to_dt = validate_date(to_date)
     account_uuid = validate_uuid(account_id) if account_id else None
 
-    # Build filters
-    date_filter = ""
-    if from_dt:
-        date_filter += f" AND t.booked_at >= '{from_dt.isoformat()}'"
-    if to_dt:
-        date_filter += f" AND t.booked_at <= '{to_dt.isoformat()}'"
-
-    account_filter = ""
-    if account_uuid:
-        account_filter = f" AND t.account_id = '{account_uuid}'"
-
-    # person_ids ownership filter — builds an IN clause over allowed account ids
-    _person_ids_filter_spending = ""
-    if person_ids is not None and len(person_ids) > 0:
-        with get_db() as _db:
-            _allowed = [str(uid) for uid in entity_ids_for_people(_db, "account", person_ids)]
-        if not _allowed:
-            return []
-        _ids_literal = ", ".join(f"'{a}'" for a in _allowed)
-        _person_ids_filter_spending = f" AND t.account_id IN ({_ids_literal})"
+    allowed_account_ids = _allowed_account_ids_for(person_ids)
+    if allowed_account_ids is not None and not allowed_account_ids:
+        return []
+    filters = _build_filters(user_id, from_dt, to_dt, account_uuid, allowed_account_ids)
 
     join_type = "LEFT JOIN" if include_uncategorized else "INNER JOIN"
     # With INNER JOIN we already exclude null-category rows, so restrict to
@@ -92,7 +142,7 @@ def get_spending_by_category(
 
     with get_db() as db:
         sql = text(f"""
-            {_get_link_group_nets_cte(user_id)}
+            {_LINK_GROUP_NETS_CTE}
             SELECT
                 COALESCE(t.category_id, t.category_system_id) as category_id,
                 COALESCE(c.name, 'Uncategorized') as category_name,
@@ -111,18 +161,18 @@ def get_spending_by_category(
             {join_type} categories c ON c.id = COALESCE(t.category_id, t.category_system_id)
             LEFT JOIN transaction_links tl ON t.id = tl.transaction_id
             LEFT JOIN link_group_nets lgn ON tl.group_id = lgn.group_id
-            WHERE t.user_id = '{user_id}'
+            WHERE t.user_id = :user_id
                 AND t.transaction_type = 'debit'
                 AND t.include_in_analytics = true
                 {uncategorized_filter}
-                {date_filter}
-                {account_filter}
-                {_person_ids_filter_spending}
+                {filters.date}
+                {filters.account}
+                {filters.person}
             GROUP BY COALESCE(t.category_id, t.category_system_id), c.name, c.color
             ORDER BY total DESC
         """)
 
-        results = db.execute(sql).fetchall()
+        results = db.execute(sql, filters.params).fetchall()
 
         return [
             {
@@ -165,30 +215,14 @@ def get_income_by_category(
     to_dt = validate_date(to_date)
     account_uuid = validate_uuid(account_id) if account_id else None
 
-    # Build filters
-    date_filter = ""
-    if from_dt:
-        date_filter += f" AND t.booked_at >= '{from_dt.isoformat()}'"
-    if to_dt:
-        date_filter += f" AND t.booked_at <= '{to_dt.isoformat()}'"
-
-    account_filter = ""
-    if account_uuid:
-        account_filter = f" AND t.account_id = '{account_uuid}'"
-
-    # person_ids ownership filter
-    _person_ids_filter_income = ""
-    if person_ids is not None and len(person_ids) > 0:
-        with get_db() as _db:
-            _allowed = [str(uid) for uid in entity_ids_for_people(_db, "account", person_ids)]
-        if not _allowed:
-            return []
-        _ids_literal = ", ".join(f"'{a}'" for a in _allowed)
-        _person_ids_filter_income = f" AND t.account_id IN ({_ids_literal})"
+    allowed_account_ids = _allowed_account_ids_for(person_ids)
+    if allowed_account_ids is not None and not allowed_account_ids:
+        return []
+    filters = _build_filters(user_id, from_dt, to_dt, account_uuid, allowed_account_ids)
 
     with get_db() as db:
         sql = text(f"""
-            {_get_link_group_nets_cte(user_id)}
+            {_LINK_GROUP_NETS_CTE}
             SELECT
                 COALESCE(t.category_id, t.category_system_id) as category_id,
                 c.name as category_name,
@@ -206,18 +240,18 @@ def get_income_by_category(
             INNER JOIN categories c ON c.id = COALESCE(t.category_id, t.category_system_id)
             LEFT JOIN transaction_links tl ON t.id = tl.transaction_id
             LEFT JOIN link_group_nets lgn ON tl.group_id = lgn.group_id
-            WHERE t.user_id = '{user_id}'
+            WHERE t.user_id = :user_id
                 AND t.transaction_type = 'credit'
                 AND t.include_in_analytics = true
                 AND c.category_type = 'income'
-                {date_filter}
-                {account_filter}
-                {_person_ids_filter_income}
+                {filters.date}
+                {filters.account}
+                {filters.person}
             GROUP BY COALESCE(t.category_id, t.category_system_id), c.name, c.color
             ORDER BY total DESC
         """)
 
-        results = db.execute(sql).fetchall()
+        results = db.execute(sql, filters.params).fetchall()
 
         return [
             {
@@ -259,26 +293,14 @@ def get_monthly_cashflow(
     from_dt = validate_date(from_date)
     to_dt = validate_date(to_date)
 
-    # Build date filter
-    date_filter = ""
-    if from_dt:
-        date_filter += f" AND t.booked_at >= '{from_dt.isoformat()}'"
-    if to_dt:
-        date_filter += f" AND t.booked_at <= '{to_dt.isoformat()}'"
-
-    # person_ids ownership filter
-    _person_ids_filter_cashflow = ""
-    if person_ids is not None and len(person_ids) > 0:
-        with get_db() as _db:
-            _allowed = [str(uid) for uid in entity_ids_for_people(_db, "account", person_ids)]
-        if not _allowed:
-            return []
-        _ids_literal = ", ".join(f"'{a}'" for a in _allowed)
-        _person_ids_filter_cashflow = f" AND t.account_id IN ({_ids_literal})"
+    allowed_account_ids = _allowed_account_ids_for(person_ids)
+    if allowed_account_ids is not None and not allowed_account_ids:
+        return []
+    filters = _build_filters(user_id, from_dt, to_dt, allowed_account_ids=allowed_account_ids)
 
     with get_db() as db:
         sql = text(f"""
-            {_get_link_group_nets_cte(user_id)}
+            {_LINK_GROUP_NETS_CTE}
             SELECT
                 EXTRACT(YEAR FROM t.booked_at)::int as year,
                 EXTRACT(MONTH FROM t.booked_at)::int as month,
@@ -310,15 +332,15 @@ def get_monthly_cashflow(
             INNER JOIN categories c ON c.id = COALESCE(t.category_id, t.category_system_id)
             LEFT JOIN transaction_links tl ON t.id = tl.transaction_id
             LEFT JOIN link_group_nets lgn ON tl.group_id = lgn.group_id
-            WHERE t.user_id = '{user_id}'
+            WHERE t.user_id = :user_id
                 AND t.include_in_analytics = true
-                {date_filter}
-                {_person_ids_filter_cashflow}
+                {filters.date}
+                {filters.person}
             GROUP BY EXTRACT(YEAR FROM t.booked_at), EXTRACT(MONTH FROM t.booked_at)
             ORDER BY EXTRACT(YEAR FROM t.booked_at), EXTRACT(MONTH FROM t.booked_at)
         """)
 
-        results = db.execute(sql).fetchall()
+        results = db.execute(sql, filters.params).fetchall()
 
         return [
             {
@@ -361,39 +383,24 @@ def get_financial_summary(
     from_dt = validate_date(from_date)
     to_dt = validate_date(to_date)
 
-    # Build date filter
-    date_filter = ""
-    if from_dt:
-        date_filter += f" AND t.booked_at >= '{from_dt.isoformat()}'"
-    if to_dt:
-        date_filter += f" AND t.booked_at <= '{to_dt.isoformat()}'"
+    single_person = person_ids is not None and len(person_ids) == 1
 
-    # person_ids ownership filter
-    filter_by_person = person_ids is not None and len(person_ids) > 0
-    single_person = filter_by_person and len(person_ids) == 1
-    _allowed_account_ids: list[str] = []
-    _person_ids_filter_summary = ""
-    if filter_by_person:
-        with get_db() as _db:
-            _allowed_account_ids = [
-                str(uid) for uid in entity_ids_for_people(_db, "account", person_ids)
-            ]
-        if not _allowed_account_ids:
-            return {
-                "period": {"from_date": from_date, "to_date": to_date},
-                "total_income": 0,
-                "total_expenses": 0,
-                "net_cashflow": 0,
-                "savings_rate": 0,
-                "total_balance": 0,
-                "accounts": [],
-            }
-        _ids_literal = ", ".join(f"'{a}'" for a in _allowed_account_ids)
-        _person_ids_filter_summary = f" AND t.account_id IN ({_ids_literal})"
+    allowed_account_ids = _allowed_account_ids_for(person_ids)
+    if allowed_account_ids is not None and not allowed_account_ids:
+        return {
+            "period": {"from_date": from_date, "to_date": to_date},
+            "total_income": 0,
+            "total_expenses": 0,
+            "net_cashflow": 0,
+            "savings_rate": 0,
+            "total_balance": 0,
+            "accounts": [],
+        }
+    filters = _build_filters(user_id, from_dt, to_dt, allowed_account_ids=allowed_account_ids)
 
     with get_db() as db:
         sql = text(f"""
-            {_get_link_group_nets_cte(user_id)}
+            {_LINK_GROUP_NETS_CTE}
             SELECT
                 COALESCE(SUM(
                     CASE
@@ -423,13 +430,13 @@ def get_financial_summary(
             INNER JOIN categories c ON c.id = COALESCE(t.category_id, t.category_system_id)
             LEFT JOIN transaction_links tl ON t.id = tl.transaction_id
             LEFT JOIN link_group_nets lgn ON tl.group_id = lgn.group_id
-            WHERE t.user_id = '{user_id}'
+            WHERE t.user_id = :user_id
                 AND t.include_in_analytics = true
-                {date_filter}
-                {_person_ids_filter_summary}
+                {filters.date}
+                {filters.person}
         """)
 
-        result = db.execute(sql).fetchone()
+        result = db.execute(sql, filters.params).fetchone()
 
         total_income = float(result.total_income or 0)
         total_expenses = float(result.total_expenses or 0)
@@ -438,8 +445,8 @@ def get_financial_summary(
         accounts_query = db.query(Account).filter(
             Account.user_id == user_id, Account.is_active == True
         )
-        if filter_by_person and _allowed_account_ids:
-            accounts_query = accounts_query.filter(Account.id.in_(_allowed_account_ids))
+        if allowed_account_ids:
+            accounts_query = accounts_query.filter(Account.id.in_(allowed_account_ids))
         accounts = accounts_query.all()
 
         # Cache owners for share-weighted attribution

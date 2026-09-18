@@ -309,6 +309,10 @@ class Transaction(Base):
         # transactions, newest first, optionally narrowed by account or
         # category -- covers list_transactions/get_transaction_page without
         # Postgres having to combine separate single-column indexes or sort.
+        #
+        # The GIN/pg_trgm indexes backing MCP transaction search are declared
+        # only in migration 0046, not here: they need the pg_trgm extension,
+        # and create_all() in tests must not depend on it being installed.
         Index("idx_transactions_user_booked_at", "user_id", booked_at.desc()),
         Index("idx_transactions_user_account_booked_at", "user_id", "account_id", booked_at.desc()),
         Index(
@@ -1142,9 +1146,7 @@ class BrokerTrade(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
 
     __table_args__ = (
-        UniqueConstraint(
-            "account_id", "external_id", name="broker_trades_account_external_uq"
-        ),
+        UniqueConstraint("account_id", "external_id", name="broker_trades_account_external_uq"),
     )
 
 

@@ -144,6 +144,17 @@ services:
       PORT: "8001"
       APP_URL: ${APP_URL:-http://localhost:8080}
       MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-http://localhost:8001}
+      MCP_API_KEY_CACHE_TTL: ${MCP_API_KEY_CACHE_TTL:-60}
+      MCP_API_KEY_REVOCATION_CHECK_INTERVAL: ${MCP_API_KEY_REVOCATION_CHECK_INTERVAL:-0}
+      MCP_API_KEY_LAST_USED_INTERVAL: ${MCP_API_KEY_LAST_USED_INTERVAL:-60}
+      MCP_USER_RATE_LIMIT: ${MCP_USER_RATE_LIMIT:-240}
+      MCP_USER_RATE_LIMIT_WINDOW: ${MCP_USER_RATE_LIMIT_WINDOW:-60}
+      MCP_IP_RATE_LIMIT: ${MCP_IP_RATE_LIMIT:-60}
+      MCP_IP_RATE_LIMIT_WINDOW: ${MCP_IP_RATE_LIMIT_WINDOW:-60}
+      # Empty means "throttle by TCP peer". Behind a reverse proxy that is
+      # the proxy, so set this to the proxy's address/CIDR to throttle by
+      # the real client instead. See .env.example.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       DATABASE_URL: ${DATABASE_URL}
       DATA_ENCRYPTION_KEY_CURRENT: ${DATA_ENCRYPTION_KEY_CURRENT:-}
       DATA_ENCRYPTION_KEY_PREVIOUS: ${DATA_ENCRYPTION_KEY_PREVIOUS:-}

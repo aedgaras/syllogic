@@ -73,8 +73,8 @@ All containers should show `Up` status. The `migrate` container will exit after 
 Lite mode layers `docker-compose.lite.yml` over the production stack and runs
 only PostgreSQL, Redis, migrations, FastAPI, one Celery worker, and Next.js.
 The worker embeds Celery Beat, so scheduled jobs continue to work while the
-separate Beat process is removed. MCP is not started. Add `--caddy` if the
-bundled reverse proxy is wanted.
+separate Beat process is removed. MCP is not started unless `--mcp` is passed.
+Add `--caddy` if the bundled reverse proxy is wanted.
 
 The override also:
 
@@ -84,6 +84,39 @@ The override also:
 - runs Redis without AOF to reduce SD-card writes;
 - increases health-check intervals to 30 seconds;
 - applies configurable memory limits suitable for a 2 GB ARM64 host.
+
+### MCP in lite mode
+
+MCP is off by default in lite mode because it is a second Python process, not
+because it needs anything lite mode removes: it talks only to PostgreSQL (no
+Redis, no Celery) and runs from the same backend image, so enabling it costs
+no extra image pull. To start it:
+
+```bash
+./scripts/prod-up.sh --lite --mcp
+```
+
+The lite override gives it a two-connection database pool and a
+`MCP_MEMORY_LIMIT` of `256m`. Budget before enabling it: the steady-state lite
+stack (after `migrate` and `uploads-init` exit) is already 1600 MB of limits,
+plus 64 MB with `--caddy`. On a 2 GB Pi that leaves roughly 350 MB, so MCP
+fits but is tight -- also lower `WORKER_MEMORY_LIMIT` to `384m`. On a 4 GB or
+larger Pi no adjustment is needed.
+
+Without `--mcp`, every `--lite` run tears the MCP container down, so a
+manually started one will not survive the next deploy.
+
+Reaching MCP from another machine on the LAN means unencrypted bearer tokens
+on the wire -- `MCP_BIND_ADDR=0.0.0.0` is for a trusted network or a VPN only,
+and the bundled Caddyfile has no `/mcp` route:
+
+```env
+MCP_BIND_ADDR=0.0.0.0
+MCP_PUBLIC_URL=http://<pi-host>:8001
+MCP_SERVER_URL=http://<pi-host>:8001/mcp
+```
+
+See [`docs/mcp.md`](../../docs/mcp.md) for the full remote-access notes.
 
 Use a 64-bit Raspberry Pi OS. Published release images include `linux/arm64`.
 Building the images on the Pi is not recommended; pull the prebuilt release
@@ -169,10 +202,15 @@ docker compose \
 ## MCP Server (Full Mode)
 
 This bundle includes an **MCP HTTP server** (FastMCP) and starts it by default.
-It is intentionally omitted by `prod-up.sh --lite`.
+`prod-up.sh --lite` omits it unless `--mcp` is passed.
+
+Client configuration (Claude Code, Claude Desktop, other MCP clients), remote
+access, OAuth, and troubleshooting are covered in
+[`docs/mcp.md`](../../docs/mcp.md). The short version:
 
 1. Generate an API key in the app UI (Settings -> API Keys).
-2. Configure your MCP client to send `Authorization: Bearer pf_...`.
+2. Configure your MCP client to reach `http://localhost:8001/mcp` over
+   streamable HTTP and send `Authorization: Bearer pf_...`.
 3. Start (or restart) normally:
 
 ```bash
@@ -186,6 +224,8 @@ MCP port contract:
 - Health endpoint is exposed at `http://localhost:${MCP_PORT:-8001}/health`.
 
 Security note: the MCP service is currently best treated as **single-user**. It is bound to loopback by default; set `MCP_BIND_ADDR=0.0.0.0` only if you're deliberately exposing it to a trusted network (LAN/VPN) or fronting it with an auth layer.
+
+Tunables (`MCP_API_KEY_CACHE_TTL`, `MCP_API_KEY_REVOCATION_CHECK_INTERVAL`, `MCP_USER_RATE_LIMIT`, `MCP_IP_RATE_LIMIT`, `TRUSTED_PROXIES`, OAuth dynamic registration) are documented in [`docs/mcp.md`](../../docs/mcp.md) and [`.env.example`](.env.example).
 
 ## Making GHCR Images Public
 
@@ -233,6 +273,7 @@ From repository root:
 - Local production stack built from this checkout: `./scripts/prod-up.sh --local`
 - Full prebuilt self-host stack: `./scripts/prod-up.sh`
 - Lightweight ARM64/small-server stack: `./scripts/prod-up.sh --lite`
+- Lightweight stack including MCP: `./scripts/prod-up.sh --lite --mcp`
 - Local source-compose smoke validation: `./scripts/local-smoke.sh`
 - VPS post-install verification: `deploy/install/post-install-check.sh /opt/syllogic`
 - Back up the database + uploads volume: `./scripts/backup.sh`
