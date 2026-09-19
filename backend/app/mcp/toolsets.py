@@ -69,6 +69,16 @@ HEADER = "x-syllogic-toolsets"
 #: Query parameter on the MCP URL.
 QUERY_PARAM = "toolsets"
 
+#: Deployment-wide default, for when neither of the above is reachable. A
+#: client whose connection URL is not editable (a hosted connector, say) and
+#: which ignores `notifications/tools/list_changed` cannot get at the optional
+#: toolsets at all: `load_toolset` widens the server's surface, but the client
+#: never re-lists, so the agent calls a tool its own client refuses to send.
+#: Setting this to e.g. "all" or "edit_transactions" on the deployment gives
+#: every session that surface from connect, and a per-connection selection
+#: still overrides it.
+ENV_VAR = "MCP_DEFAULT_TOOLSETS"
+
 
 class UnknownToolset(ValueError):
     """A toolset name that does not exist, with the valid ones in the message."""

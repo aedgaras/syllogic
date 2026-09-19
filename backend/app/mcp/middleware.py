@@ -283,7 +283,13 @@ class ToolsetSelection(Middleware):
 
     @staticmethod
     def _requested_raw() -> str | None:
-        """The selection from the query string, else the header, else None."""
+        """The selection: query string, else header, else deployment default.
+
+        The env default is last so a connection that states what it wants
+        always wins over it, and it is read on every call rather than at
+        import so a deployment can change it with a restart of the process
+        and nothing else.
+        """
         try:
             request = get_http_request()
         except RuntimeError:
@@ -297,8 +303,8 @@ class ToolsetSelection(Middleware):
         try:
             headers = get_http_headers()
         except RuntimeError:  # pragma: no cover - no HTTP context
-            return None
-        return headers.get(toolsets.HEADER) or None
+            headers = {}
+        return headers.get(toolsets.HEADER) or os.getenv(toolsets.ENV_VAR) or None
 
     async def on_list_tools(self, context, call_next):
         await self._apply(context)

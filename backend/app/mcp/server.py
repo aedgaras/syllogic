@@ -1859,6 +1859,15 @@ load_toolset.__doc__ = f"""Load a group of tools that is not visible yet.
         toolset this session has, not only the ones this call added. The new
         tools also arrive as a tools/list_changed notification;
         `now_available` is there for clients that do not act on one.
+
+        If a call to a tool in `now_available` comes back from your own client
+        as an unknown tool, the client is not re-listing on that notification
+        and this call cannot help you: the tool exists and the server will
+        run it, but your client will not send the request. Tell the user to
+        select the toolsets on the connection itself -- `?toolsets=all` (or a
+        comma-separated list) on the MCP URL, or an `X-Syllogic-Toolsets`
+        header -- or to set MCP_DEFAULT_TOOLSETS on the deployment. Repeating
+        the call will not change the outcome.
     """
 
 load_toolset = mcp.tool(tags={toolsets.CORE, "read"}, annotations={"readOnlyHint": True})(

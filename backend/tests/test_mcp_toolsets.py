@@ -394,3 +394,69 @@ async def test_enable_is_idempotent():
 
     assert ctx.enabled == [{"budgets"}, {"reports"}]
     assert await toolsets.already_loaded(ctx) == {"budgets", "reports"}
+
+
+# ---------------------------------------------------------------------------
+# Where the selection comes from
+# ---------------------------------------------------------------------------
+#
+# A hosted client whose connection URL and headers the user cannot edit, and
+# which ignores tools/list_changed, can reach nothing outside `core`:
+# load_toolset widens the server's surface, but the client never re-lists, so
+# the call it then makes is refused by the client itself. MCP_DEFAULT_TOOLSETS
+# is the deployment's way to hand those sessions a wider surface at connect.
+
+
+class _StubRequest:
+    def __init__(self, params: dict):
+        self.query_params = params
+
+
+@pytest.fixture
+def selection_source(monkeypatch):
+    """Drive _requested_raw with a chosen query string, headers and env."""
+
+    def configure(*, query=None, header=None, env=None):
+        def get_http_request():
+            if query is None:
+                raise RuntimeError("no HTTP request")
+            return _StubRequest({toolsets.QUERY_PARAM: query})
+
+        def get_http_headers():
+            if header is None:
+                return {}
+            return {toolsets.HEADER: header}
+
+        monkeypatch.setattr("app.mcp.middleware.get_http_request", get_http_request)
+        monkeypatch.setattr("app.mcp.middleware.get_http_headers", get_http_headers)
+        monkeypatch.delenv(toolsets.ENV_VAR, raising=False)
+        if env is not None:
+            monkeypatch.setenv(toolsets.ENV_VAR, env)
+
+    return configure
+
+
+def test_env_default_applies_when_the_connection_says_nothing(selection_source):
+    selection_source(env="all")
+    assert ToolsetSelection._requested_raw() == "all"
+
+
+def test_env_default_survives_a_request_without_http_context(selection_source):
+    """stdio has neither a request nor headers; the env default still stands."""
+    selection_source(query=None, header=None, env="budgets")
+    assert ToolsetSelection._requested_raw() == "budgets"
+
+
+def test_query_string_beats_the_env_default(selection_source):
+    selection_source(query="recurring", env="all")
+    assert ToolsetSelection._requested_raw() == "recurring"
+
+
+def test_header_beats_the_env_default(selection_source):
+    selection_source(header="investments", env="all")
+    assert ToolsetSelection._requested_raw() == "investments"
+
+
+def test_no_selection_anywhere_is_none(selection_source):
+    selection_source()
+    assert ToolsetSelection._requested_raw() is None

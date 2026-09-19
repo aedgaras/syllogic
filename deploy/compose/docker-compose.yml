@@ -156,6 +156,14 @@ services:
       MCP_USER_RATE_LIMIT_WINDOW: ${MCP_USER_RATE_LIMIT_WINDOW:-60}
       MCP_IP_RATE_LIMIT: ${MCP_IP_RATE_LIMIT:-60}
       MCP_IP_RATE_LIMIT_WINDOW: ${MCP_IP_RATE_LIMIT_WINDOW:-60}
+      # Which toolsets every session starts with, beyond `core`. Empty keeps
+      # the connect-time listing small and leaves the rest to `load_toolset`,
+      # which only works on a client that acts on tools/list_changed. Set to
+      # `all` (or e.g. `edit_transactions,budgets`) for a client that does
+      # not re-list -- otherwise those tools are listed as loaded and then
+      # refused by the client as unknown. A `?toolsets=` on the MCP URL still
+      # overrides this per connection.
+      MCP_DEFAULT_TOOLSETS: ${MCP_DEFAULT_TOOLSETS:-}
       # Empty means "throttle by TCP peer". Behind a reverse proxy that is
       # the proxy, so set this to the proxy's address/CIDR to throttle by
       # the real client instead. See .env.example.
