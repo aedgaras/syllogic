@@ -783,6 +783,243 @@ def get_recurring_summary(user_id: str = Depends(authenticated_user_id)) -> dict
     return recurring.get_recurring_summary(user_id)
 
 
+@mcp.tool(annotations={"destructiveHint": False})
+def create_recurring_transaction(
+    name: str,
+    amount: float,
+    account_id: str,
+    frequency: str,
+    merchant: str | None = None,
+    currency: str = "EUR",
+    category_id: str | None = None,
+    importance: int = 3,
+    description: str | None = None,
+    is_variable_amount: bool = False,
+    next_due_date: str | None = None,
+    end_date: str | None = None,
+    auto_generate: bool = False,
+    is_active: bool = True,
+    dry_run: bool = False,
+    idempotency_key: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
+    """
+    Create a recurring transaction (subscription or bill).
+
+    Two kinds of definition come out of this tool, and `next_due_date`
+    decides which. Without it you get a label: it groups matching
+    transactions and counts toward the subscription totals, and nothing is
+    ever written. With it plus `auto_generate=True`, a real transaction is
+    booked on every due date by the daily 05:00 UTC job.
+
+    Args:
+        name: What the subscription is called. Unique per account.
+        amount: The typical charge, as a positive number. The sign of the
+            booked transaction comes from the category type -- an income
+            category produces a credit, anything else a debit.
+        account_id: Account the charge lands on, from list_accounts()
+        frequency: weekly, biweekly, monthly, quarterly, or yearly
+        merchant: Merchant name, used when matching real bank rows (optional)
+        currency: ISO code for `amount` (default EUR)
+        category_id: Category from list_categories() (optional)
+        importance: 1 (nice to have) to 3 (essential), default 3
+        description: Free-text note (optional)
+        is_variable_amount: True when the charge varies month to month.
+            `amount` becomes an estimate, and duplicate detection stops
+            comparing amounts. (default False)
+        next_due_date: YYYY-MM-DD of the next charge (optional)
+        end_date: YYYY-MM-DD after which the schedule stops (optional)
+        auto_generate: Book a transaction on every due date. Requires
+            next_due_date. (default False)
+        is_active: Whether it counts toward subscription totals (default True)
+        dry_run: Preview the change and roll it back, without writing (default False)
+        idempotency_key: Caller-chosen id that makes a retry safe. The same
+            key with the same arguments replays the first response instead of
+            writing again; the same key with different arguments is rejected.
+
+    Returns:
+        {"recurring_transaction": {...}, "dry_run": bool, "committed": bool}
+    """
+    return recurring.create_recurring_transaction(
+        user_id,
+        name,
+        amount,
+        account_id,
+        frequency,
+        merchant,
+        currency,
+        category_id,
+        importance,
+        description,
+        is_variable_amount,
+        next_due_date,
+        end_date,
+        auto_generate,
+        is_active,
+        dry_run,
+        idempotency_key,
+    )
+
+
+@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
+def update_recurring_transaction(
+    recurring_id: str,
+    name: str | None = None,
+    amount: float | None = None,
+    account_id: str | None = None,
+    frequency: str | None = None,
+    merchant: str | None = None,
+    currency: str | None = None,
+    category_id: str | None = None,
+    importance: int | None = None,
+    description: str | None = None,
+    is_variable_amount: bool | None = None,
+    next_due_date: str | None = None,
+    end_date: str | None = None,
+    auto_generate: bool | None = None,
+    is_active: bool | None = None,
+    dry_run: bool = False,
+    idempotency_key: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
+    """
+    Update a recurring transaction. Omitted fields keep their current value.
+
+    This is also how a subscription is cancelled: `is_active=False` stops
+    the totals and `auto_generate=False` stops the booking, both without
+    losing the history. Deleting is the destructive option.
+
+    Args:
+        recurring_id: The recurring transaction's ID
+        name: New name (optional)
+        amount: New typical charge, must be > 0 (optional)
+        account_id: Move it to another account (optional)
+        frequency: weekly, biweekly, monthly, quarterly, yearly (optional)
+        merchant: New merchant, or "" to clear it (optional)
+        currency: New ISO code (optional). Re-denominates, does not convert.
+        category_id: New category, or "" to clear it (optional)
+        importance: 1-3 (optional)
+        description: New note, or "" to clear it (optional)
+        is_variable_amount: Whether the charge varies (optional)
+        next_due_date: YYYY-MM-DD, or "" to clear the schedule (optional)
+        end_date: YYYY-MM-DD, or "" to remove the end (optional)
+        auto_generate: Turn automatic booking on or off (optional). Turning
+            it on needs a next_due_date, here or already on file.
+        is_active: Activate or deactivate (optional)
+        dry_run: Preview the change and roll it back, without writing (default False)
+        idempotency_key: Caller-chosen id that makes a retry safe
+
+    Returns:
+        {"changed", "before", "after", "fields_changed",
+        "recurring_transaction", "dry_run", "committed"}. `changed` is False
+        when every field already held the value asked for.
+    """
+    return recurring.update_recurring_transaction(
+        user_id,
+        recurring_id,
+        name,
+        amount,
+        account_id,
+        frequency,
+        merchant,
+        currency,
+        category_id,
+        importance,
+        description,
+        is_variable_amount,
+        next_due_date,
+        end_date,
+        auto_generate,
+        is_active,
+        dry_run,
+        idempotency_key,
+    )
+
+
+@mcp.tool(annotations={"idempotentHint": True})
+def delete_recurring_transaction(
+    recurring_id: str,
+    dry_run: bool = False,
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
+    """
+    Permanently delete a recurring transaction definition.
+
+    The transactions it booked are kept but unlinked, so they stay in the
+    ledger with no subscription attached. For "I cancelled this
+    subscription", prefer update_recurring_transaction(is_active=False):
+    the history and the totals for past months stay correct.
+
+    Args:
+        recurring_id: The recurring transaction's ID
+        dry_run: Report what would be destroyed without destroying it
+            (default False). The count of transactions that would be
+            unlinked is in the response.
+
+    Returns:
+        {"deleted_recurring_transaction": {...}, "dry_run": bool, "committed": bool}
+    """
+    return recurring.delete_recurring_transaction(user_id, recurring_id, dry_run)
+
+
+@mcp.tool(annotations={"destructiveHint": False})
+def generate_recurring_occurrence(
+    recurring_id: str,
+    dry_run: bool = False,
+    idempotency_key: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
+    """
+    Book the next scheduled occurrence now, ahead of its due date.
+
+    Runs the same generator the daily job runs -- same sign, same currency
+    conversion, same account balance recalculation -- and advances the
+    definition to the following occurrence.
+
+    `created_count` of 0 means that date was already covered: a real bank
+    row within 7 days and 15% of the expected amount counts as the charge
+    having already happened.
+
+    Args:
+        recurring_id: The recurring transaction's ID
+        dry_run: Generate it, report it, then roll it back (default False)
+        idempotency_key: Caller-chosen id that makes a retry safe. Worth
+            passing here: without one, a retry after a lost response books
+            a second transaction and advances the schedule twice.
+
+    Returns:
+        {"created_count", "transactions", "skipped_existing",
+        "next_due_date", "dry_run", "committed"}
+    """
+    return recurring.generate_recurring_occurrence(user_id, recurring_id, dry_run, idempotency_key)
+
+
+@mcp.tool(annotations={"destructiveHint": False})
+def skip_recurring_occurrence(
+    recurring_id: str,
+    dry_run: bool = False,
+    idempotency_key: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
+    """
+    Advance the schedule by one period without booking anything.
+
+    For a month the subscription is paused, a bill is waived, or the charge
+    was already captured by a transaction nobody linked.
+
+    Args:
+        recurring_id: The recurring transaction's ID
+        dry_run: Advance it, report it, then roll it back (default False)
+        idempotency_key: Caller-chosen id that makes a retry safe. Without
+            one, a retry after a lost response skips two periods.
+
+    Returns:
+        {"skipped_date", "next_due_date", "auto_generate", "dry_run",
+        "committed"}
+    """
+    return recurring.skip_recurring_occurrence(user_id, recurring_id, dry_run, idempotency_key)
+
+
 # ============================================================================
 # Investment Tools
 # ============================================================================

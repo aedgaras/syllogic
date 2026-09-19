@@ -21,6 +21,11 @@ _STEP_MONTHS = {
     "yearly": 12,
 }
 
+# The frequencies `compute_next_due_date` can actually step. Exported so
+# validation (the MCP write tools) rejects exactly what this module would
+# raise on, rather than keeping a second list that can drift from it.
+VALID_FREQUENCIES: tuple[str, ...] = tuple(_STEP_DAYS) + tuple(_STEP_MONTHS)
+
 
 def compute_next_due_date(frequency: str, after: date) -> date:
     """Return the next due date strictly after `after` for `frequency`."""

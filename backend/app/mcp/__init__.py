@@ -35,4 +35,9 @@ Tools available:
         - list_recurring_transactions
         - get_recurring_transaction
         - get_recurring_summary
+        - create_recurring_transaction (WRITE)
+        - update_recurring_transaction (WRITE)
+        - delete_recurring_transaction (WRITE)
+        - generate_recurring_occurrence (WRITE)
+        - skip_recurring_occurrence (WRITE)
 """

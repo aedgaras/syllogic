@@ -21,7 +21,7 @@ instead of claiming an edit it did not make.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -30,6 +30,7 @@ from fastmcp.exceptions import ToolError
 
 from app.mcp.tools import budgets as budget_tools
 from app.mcp.tools import categories as category_tools
+from app.mcp.tools import recurring as recurring_tools
 from app.mcp.tools import reports as report_tools
 from app.mcp.tools import transactions as tx_tools
 from app.models import (
@@ -38,6 +39,7 @@ from app.models import (
     BudgetCategory,
     Category,
     MCPIdempotencyKey,
+    RecurringTransaction,
     Report,
     Transaction,
     User,
@@ -97,7 +99,22 @@ def seeded(db_session):
         timezone="UTC",
         is_active=True,
     )
-    db_session.add(report)
+    # Scheduled rather than label-only: generate/skip only operate on a
+    # definition that actually books transactions.
+    recurring = RecurringTransaction(
+        user_id=user.id,
+        account_id=account.id,
+        name="Streaming",
+        amount=Decimal("15.00"),
+        currency="EUR",
+        frequency="monthly",
+        importance=3,
+        is_active=True,
+        category_id=groceries.id,
+        next_due_date=date(2026, 9, 1),
+        auto_generate=True,
+    )
+    db_session.add_all([report, recurring])
     db_session.commit()
     return {
         "user": user,
@@ -107,6 +124,7 @@ def seeded(db_session):
         "txn": txn,
         "budget": budget,
         "report": report,
+        "recurring": recurring,
     }
 
 
@@ -184,6 +202,46 @@ WRITES = [
         "delete_report",
         lambda s, dry: report_tools.delete_report(USER_ID, str(s["report"].id), dry_run=dry),
         Report,
+    ),
+    (
+        "create_recurring_transaction",
+        lambda s, dry: recurring_tools.create_recurring_transaction(
+            USER_ID,
+            "Gym",
+            30.0,
+            str(s["account"].id),
+            "monthly",
+            dry_run=dry,
+        ),
+        RecurringTransaction,
+    ),
+    (
+        "update_recurring_transaction",
+        lambda s, dry: recurring_tools.update_recurring_transaction(
+            USER_ID, str(s["recurring"].id), amount=19.0, dry_run=dry
+        ),
+        RecurringTransaction,
+    ),
+    (
+        "generate_recurring_occurrence",
+        lambda s, dry: recurring_tools.generate_recurring_occurrence(
+            USER_ID, str(s["recurring"].id), dry_run=dry
+        ),
+        Transaction,
+    ),
+    (
+        "skip_recurring_occurrence",
+        lambda s, dry: recurring_tools.skip_recurring_occurrence(
+            USER_ID, str(s["recurring"].id), dry_run=dry
+        ),
+        RecurringTransaction,
+    ),
+    (
+        "delete_recurring_transaction",
+        lambda s, dry: recurring_tools.delete_recurring_transaction(
+            USER_ID, str(s["recurring"].id), dry_run=dry
+        ),
+        RecurringTransaction,
     ),
 ]
 
@@ -325,24 +383,42 @@ def test_transaction_category_no_op_reports_itself_as_one(seeded):
 # ---------------------------------------------------------------------------
 
 
+# (name, call, call_with_other_arguments, row_model) -- both calls take the
+# seeded fixture and a key, because a write that needs an id of its own
+# cannot be spelled without one.
 KEYED = [
     (
         "create_budget",
-        lambda key: budget_tools.create_budget(USER_ID, "Keyed", 100.0, idempotency_key=key),
-        lambda key: budget_tools.create_budget(
+        lambda s, key: budget_tools.create_budget(USER_ID, "Keyed", 100.0, idempotency_key=key),
+        lambda s, key: budget_tools.create_budget(
             USER_ID, "Keyed but different", 100.0, idempotency_key=key
         ),
         Budget,
     ),
     (
         "create_report",
-        lambda key: report_tools.create_report(
+        lambda s, key: report_tools.create_report(
             USER_ID, "Keyed", "DAILY", ["me@example.com"], idempotency_key=key
         ),
-        lambda key: report_tools.create_report(
+        lambda s, key: report_tools.create_report(
             USER_ID, "Keyed but different", "DAILY", ["me@example.com"], idempotency_key=key
         ),
         Report,
+    ),
+    (
+        "create_recurring_transaction",
+        lambda s, key: recurring_tools.create_recurring_transaction(
+            USER_ID, "Keyed", 10.0, str(s["account"].id), "monthly", idempotency_key=key
+        ),
+        lambda s, key: recurring_tools.create_recurring_transaction(
+            USER_ID,
+            "Keyed but different",
+            10.0,
+            str(s["account"].id),
+            "monthly",
+            idempotency_key=key,
+        ),
+        RecurringTransaction,
     ),
 ]
 
@@ -353,8 +429,8 @@ KEYED_IDS = [name for name, _, _, _ in KEYED]
 def test_the_same_key_twice_writes_once(name, call, other_call, model, seeded, db_session):
     before = db_session.query(model).count()
 
-    first = call("key-1")
-    second = call("key-1")
+    first = call(seeded, "key-1")
+    second = call(seeded, "key-1")
 
     db_session.expire_all()
     assert db_session.query(model).count() == before + 1
@@ -364,8 +440,8 @@ def test_the_same_key_twice_writes_once(name, call, other_call, model, seeded, d
 
 @pytest.mark.parametrize("name,call,other_call,model", KEYED, ids=KEYED_IDS)
 def test_the_replay_is_the_first_response(name, call, other_call, model, seeded):
-    first = call("key-2")
-    second = call("key-2")
+    first = call(seeded, "key-2")
+    second = call(seeded, "key-2")
 
     assert {k: v for k, v in second.items() if k != "idempotent_replay"} == first
 
@@ -376,11 +452,11 @@ def test_the_same_key_with_different_arguments_is_rejected(
 ):
     """Replaying would misreport what was asked for; executing would defeat
     the key. Both hide a client bug the caller can fix."""
-    call("key-3")
+    call(seeded, "key-3")
     before = db_session.query(model).count()
 
     with pytest.raises(ToolError, match="different arguments"):
-        other_call("key-3")
+        other_call(seeded, "key-3")
 
     db_session.expire_all()
     assert db_session.query(model).count() == before
