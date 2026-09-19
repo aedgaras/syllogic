@@ -578,6 +578,93 @@ class TransactionMutationService:
         return total or Decimal("0")
 
     # ------------------------------------------------------------------
+    # Plain creation
+    # ------------------------------------------------------------------
+    def create_transaction(
+        self,
+        account_id: UUID,
+        amount: Decimal,
+        transaction_type: str,
+        booked_at: datetime,
+        description: str,
+        merchant: Optional[str] = None,
+        category_id: Optional[UUID] = None,
+        include_in_analytics: bool = True,
+    ) -> Transaction:
+        """Book one expense or income row, balances and all.
+
+        The sign is derived here rather than trusted from the caller:
+        `amount` is a magnitude and `transaction_type` decides the
+        direction, which is the contract `update_transaction`'s
+        full-mutation path already uses. A signed amount that arrives with
+        the wrong sign produces a ledger that balances against itself, and
+        nothing downstream can tell that from a real credit.
+
+        The plain POST /api/transactions route writes the row and stops,
+        leaving `functional_amount` null and the account's balance
+        untouched until the next sync. Every other balance-affecting
+        mutation on this service ends with a recalculation, and so does
+        this one -- a transaction the user cannot see in their balance is
+        worse than one they cannot see at all.
+        """
+        booked_at = _ensure_aware_utc(booked_at)
+        description = (description or "").strip()
+        if not description:
+            raise ValueError("Description is required")
+        if transaction_type not in ("debit", "credit"):
+            raise ValueError("A valid transaction type is required")
+        if amount is None or amount <= 0:
+            raise ValueError("Amount must be greater than zero")
+
+        account = self._get_owned_account(account_id)
+        if not account:
+            raise LookupError("Account not found")
+
+        if category_id:
+            category = (
+                self.db.query(Category)
+                .filter(Category.id == category_id, Category.user_id == self.user_id)
+                .first()
+            )
+            if not category:
+                raise LookupError("Category not found")
+
+        magnitude = abs(amount).quantize(_CENTS)
+        signed_amount = -magnitude if transaction_type == "debit" else magnitude
+        currency = account.currency or "EUR"
+        functional_rate = self._get_functional_rate(
+            currency, self._functional_currency(), booked_at.date()
+        )
+        functional_amount = (
+            None if functional_rate is None else (signed_amount * functional_rate).quantize(_CENTS)
+        )
+
+        txn = Transaction(
+            user_id=self.user_id,
+            account_id=account.id,
+            transaction_type=transaction_type,
+            amount=signed_amount,
+            currency=currency,
+            functional_amount=functional_amount,
+            description=description,
+            merchant=(merchant or "").strip() or None,
+            category_id=category_id,
+            booked_at=booked_at,
+            pending=False,
+            include_in_analytics=include_in_analytics,
+        )
+        self.db.add(txn)
+        self.db.flush()
+
+        self._recompute_functional_balance(account)
+        self.db.commit()
+
+        self._recalculate_from_date(account.id, booked_at, account.starting_balance or Decimal("0"))
+        self.db.commit()
+
+        return txn
+
+    # ------------------------------------------------------------------
     # Full update
     # ------------------------------------------------------------------
     def update_transaction(self, transaction_id: UUID, updates: Dict) -> Transaction:
@@ -635,7 +722,16 @@ class TransactionMutationService:
                     else abs(updates["amount"])
                 )
             else:
-                signed_amount = existing.amount
+                # Re-derived from the type rather than carried over, because
+                # the type may be what this call is changing. Keeping the old
+                # sign turned "this was income, not a payment" into a credit
+                # row holding a negative amount: the ledger then reads it as
+                # money out while the UI labels it money in, and the balance
+                # moves the wrong way. When the type is unchanged this is the
+                # value it already had.
+                signed_amount = (
+                    -abs(existing.amount) if transaction_type == "debit" else abs(existing.amount)
+                )
 
             booked_at = _ensure_aware_utc(updates.get("booked_at", existing.booked_at))
             currency = account.currency or "EUR"
@@ -656,7 +752,17 @@ class TransactionMutationService:
             existing.transaction_type = transaction_type
             existing.booked_at = booked_at
 
-        for field in ("description", "merchant", "categorization_instructions", "enrichment_data"):
+        # include_in_analytics has its own REST endpoint and is absent from
+        # TransactionUpdate, so no route reaches it here; the MCP edit tool
+        # sets it alongside the other fields rather than making an agent
+        # spend a second call on "and don't count this as spending".
+        for field in (
+            "description",
+            "merchant",
+            "categorization_instructions",
+            "enrichment_data",
+            "include_in_analytics",
+        ):
             if field in updates:
                 setattr(existing, field, updates[field])
         if "category_id" in updates:
@@ -820,7 +926,7 @@ class TransactionMutationService:
     # ------------------------------------------------------------------
     # Deletion
     # ------------------------------------------------------------------
-    def _include_linked_transfer_transactions(self, transaction_ids: List[UUID]) -> List[UUID]:
+    def include_linked_transfer_transactions(self, transaction_ids: List[UUID]) -> List[UUID]:
         ids = list(dict.fromkeys(transaction_ids))
         if not ids:
             return ids
@@ -844,7 +950,7 @@ class TransactionMutationService:
     def get_delete_impact(
         self, transaction_ids: List[UUID]
     ) -> Tuple[List[Dict], int, Optional[datetime]]:
-        ids_to_delete = self._include_linked_transfer_transactions(transaction_ids)
+        ids_to_delete = self.include_linked_transfer_transactions(transaction_ids)
         txns = (
             self.db.query(Transaction)
             .filter(Transaction.id.in_(ids_to_delete), Transaction.user_id == self.user_id)
@@ -908,7 +1014,7 @@ class TransactionMutationService:
         return impacts, len(txns), earliest_overall
 
     def bulk_delete(self, transaction_ids: List[UUID]) -> Tuple[List[UUID], int]:
-        ids_to_delete = self._include_linked_transfer_transactions(transaction_ids)
+        ids_to_delete = self.include_linked_transfer_transactions(transaction_ids)
         txns = (
             self.db.query(Transaction)
             .filter(Transaction.id.in_(ids_to_delete), Transaction.user_id == self.user_id)

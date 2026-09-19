@@ -564,6 +564,210 @@ def bulk_update_transaction_categories(
     )
 
 
+@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": False})
+def create_transaction(
+    account_id: str,
+    amount: float,
+    description: str,
+    transaction_type: str = "debit",
+    booked_at: str | None = None,
+    merchant: str | None = None,
+    category_id: str | None = None,
+    include_in_analytics: bool = True,
+    dry_run: bool = False,
+    idempotency_key: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
+    """
+    Record one expense or income transaction.
+
+    Books it the way the app's own "add transaction" screen does: the
+    currency conversion is derived and the account balance is recalculated
+    from its date forward. For money moving between two of the user's own
+    accounts use create_transfer, which books both sides and keeps the
+    movement out of spending totals.
+
+    Args:
+        account_id: The account it lands on, from list_accounts()
+        amount: A positive magnitude. The sign comes from
+            `transaction_type`, never from this number.
+        description: What it was. Required — it is what the user reads in
+            their ledger and what categorization matches on later.
+        transaction_type: "debit"/"expense" (money out, the default) or
+            "credit"/"income" (money in)
+        booked_at: YYYY-MM-DD, or an ISO timestamp. Defaults to today.
+        merchant: Who was paid, or who paid (optional)
+        category_id: Category from list_categories() (optional). Left unset
+            the transaction stays uncategorized; nothing assigns one later
+            on its own.
+        include_in_analytics: False keeps it out of spending charts and KPIs
+            (default True)
+        dry_run: Book it, report it, then roll it back (default False)
+        idempotency_key: Caller-chosen id making a retry safe. Without one,
+            a retry after a lost response books the expense twice.
+
+    Returns:
+        {"transaction": {...}, "dry_run": bool, "committed": bool}
+    """
+    return transactions.create_transaction(
+        user_id,
+        account_id,
+        amount,
+        description,
+        transaction_type=transaction_type,
+        booked_at=booked_at,
+        merchant=merchant,
+        category_id=category_id,
+        include_in_analytics=include_in_analytics,
+        dry_run=dry_run,
+        idempotency_key=idempotency_key,
+    )
+
+
+@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
+def update_transaction(
+    transaction_id: str,
+    amount: float | None = None,
+    transaction_type: str | None = None,
+    booked_at: str | None = None,
+    description: str | None = None,
+    merchant: str | None = None,
+    account_id: str | None = None,
+    category_id: str | None = None,
+    include_in_analytics: bool | None = None,
+    dry_run: bool = False,
+    idempotency_key: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
+) -> MutationResult:
+    """
+    Edit a transaction. Omitted fields keep their current value.
+
+    Changing the amount, type, date or account re-derives the currency
+    conversion and recalculates the account's balance from the earlier of
+    the old and the new date — both accounts, when it moves between them.
+    The other fields are a plain patch.
+
+    For the category alone, update_transaction_category is the smaller call.
+
+    Args:
+        transaction_id: The transaction's ID
+        amount: New positive magnitude; the sign follows the type (optional)
+        transaction_type: "debit"/"expense" or "credit"/"income" (optional)
+        booked_at: New YYYY-MM-DD or ISO timestamp (optional)
+        description: New description. Cannot be blanked (optional)
+        merchant: New merchant, or "" to clear it (optional)
+        account_id: Move it to another account (optional)
+        category_id: New category, or "" to clear the override (optional)
+        include_in_analytics: Whether it counts toward spending charts and
+            KPIs (optional)
+        dry_run: Apply it, report it, then roll it back (default False)
+        idempotency_key: Caller-chosen id making a retry safe
+
+    Returns:
+        {"changed", "before", "after", "fields_changed", "transaction",
+        "dry_run", "committed"}. `changed` is False when the values were
+        already what was asked for. Raises when the transaction is one side
+        of an internal transfer or a balancing entry — unlink it first.
+    """
+    return transactions.update_transaction(
+        user_id,
+        transaction_id,
+        amount=amount,
+        transaction_type=transaction_type,
+        booked_at=booked_at,
+        description=description,
+        merchant=merchant,
+        account_id=account_id,
+        category_id=category_id,
+        include_in_analytics=include_in_analytics,
+        dry_run=dry_run,
+        idempotency_key=idempotency_key,
+    )
+
+
+@mcp.tool(annotations={"destructiveHint": True, "idempotentHint": True})
+def delete_transactions(
+    transaction_ids: list[str],
+    dry_run: bool = False,
+    idempotency_key: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
+    """
+    Permanently delete transactions and recalculate the balances they moved.
+
+    There is no undo. Preview with dry_run=True and show the user the rows
+    before committing.
+
+    Both sides of an internal transfer go together: deleting one alone would
+    leave the other as unexplained income or spending, so naming either one
+    deletes the pair. `deleted_count` can therefore exceed the number of ids
+    passed.
+
+    Args:
+        transaction_ids: The transactions to delete (max 500)
+        dry_run: Report what would be destroyed without destroying it
+            (default False)
+        idempotency_key: Caller-chosen id making a retry safe
+
+    Returns:
+        {"deleted_count", "requested_count", "not_found_ids",
+        "deleted_transactions" (up to 20 rows), "linked_transfer_ids",
+        "account_impacts" (each account's balance before and after),
+        "dry_run", "committed"}
+    """
+    return transactions.delete_transactions(
+        user_id, transaction_ids, dry_run=dry_run, idempotency_key=idempotency_key
+    )
+
+
+@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": False})
+def create_transfer(
+    from_account_id: str,
+    to_account_id: str,
+    amount: float,
+    description: str,
+    booked_at: str | None = None,
+    dry_run: bool = False,
+    idempotency_key: str | None = None,
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
+    """
+    Move money between two of the user's own accounts.
+
+    Books both sides — a debit on the source, a credit on the destination —
+    links them, and keeps both out of analytics. That last part is why this
+    is not two create_transaction calls: a transfer booked as a plain pair
+    becomes the month's largest expense plus an equal windfall, and every
+    spending figure after it is wrong.
+
+    Both accounts must hold the same currency; cross-currency transfers are
+    not supported yet.
+
+    Args:
+        from_account_id: The account money leaves, from list_accounts()
+        to_account_id: The account money arrives in
+        amount: A positive magnitude
+        description: What the movement was
+        booked_at: YYYY-MM-DD or an ISO timestamp. Defaults to today.
+        dry_run: Book it, report it, then roll it back (default False)
+        idempotency_key: Caller-chosen id making a retry safe
+
+    Returns:
+        {"source_transaction", "destination_transaction", "dry_run",
+        "committed"}
+    """
+    return transactions.create_transfer(
+        user_id,
+        from_account_id,
+        to_account_id,
+        amount,
+        description,
+        booked_at=booked_at,
+        dry_run=dry_run,
+        idempotency_key=idempotency_key,
+    )
+
+
 # ============================================================================
 # Analytics Tools
 # ============================================================================

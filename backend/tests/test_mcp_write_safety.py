@@ -57,9 +57,11 @@ def seeded(db_session):
     db_session.flush()
 
     account = Account(user_id=user.id, name="Main", account_type="checking", currency="EUR")
+    # A second account, so create_transfer has somewhere to transfer to.
+    savings = Account(user_id=user.id, name="Savings", account_type="savings", currency="EUR")
     groceries = Category(user_id=user.id, name="Groceries", category_type="expense")
     dining = Category(user_id=user.id, name="Dining", category_type="expense")
-    db_session.add_all([account, groceries, dining])
+    db_session.add_all([account, savings, groceries, dining])
     db_session.flush()
 
     txn = Transaction(
@@ -119,6 +121,7 @@ def seeded(db_session):
     return {
         "user": user,
         "account": account,
+        "savings": savings,
         "groceries": groceries,
         "dining": dining,
         "txn": txn,
@@ -155,6 +158,32 @@ WRITES = [
         "bulk_update_transaction_categories",
         lambda s, dry: tx_tools.bulk_update_transaction_categories(
             USER_ID, str(s["dining"].id), [str(s["txn"].id)], dry_run=dry
+        ),
+        Transaction,
+    ),
+    (
+        "create_transaction",
+        lambda s, dry: tx_tools.create_transaction(
+            USER_ID, str(s["account"].id), 12.50, "Coffee", dry_run=dry
+        ),
+        Transaction,
+    ),
+    (
+        "update_transaction",
+        lambda s, dry: tx_tools.update_transaction(
+            USER_ID, str(s["txn"].id), amount=30.0, dry_run=dry
+        ),
+        Transaction,
+    ),
+    (
+        "delete_transactions",
+        lambda s, dry: tx_tools.delete_transactions(USER_ID, [str(s["txn"].id)], dry_run=dry),
+        Transaction,
+    ),
+    (
+        "create_transfer",
+        lambda s, dry: tx_tools.create_transfer(
+            USER_ID, str(s["account"].id), str(s["savings"].id), 40.0, "To savings", dry_run=dry
         ),
         Transaction,
     ),
@@ -387,6 +416,16 @@ def test_transaction_category_no_op_reports_itself_as_one(seeded):
 # seeded fixture and a key, because a write that needs an id of its own
 # cannot be spelled without one.
 KEYED = [
+    (
+        "create_transaction",
+        lambda s, key: tx_tools.create_transaction(
+            USER_ID, str(s["account"].id), 12.50, "Keyed", idempotency_key=key
+        ),
+        lambda s, key: tx_tools.create_transaction(
+            USER_ID, str(s["account"].id), 12.50, "Keyed but different", idempotency_key=key
+        ),
+        Transaction,
+    ),
     (
         "create_budget",
         lambda s, key: budget_tools.create_budget(USER_ID, "Keyed", 100.0, idempotency_key=key),
