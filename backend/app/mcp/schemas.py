@@ -21,9 +21,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
-MAJOR_UNITS = (
-    "Decimal amount in major units (euros, not cents). Currency is the sibling `currency` field."
-)
+MAJOR_UNITS = "In major units (euros, not cents); see the sibling `currency`."
 
 
 class TransactionOut(BaseModel):
@@ -37,28 +35,17 @@ class TransactionOut(BaseModel):
     description: str | None = None
     merchant: str | None = None
     category_id: str | None = Field(
-        default=None,
-        description=(
-            "The user's category override. Takes precedence over "
-            "`category_system_id`; null means the user has never corrected "
-            "this transaction."
-        ),
+        default=None, description="User override; takes precedence over `category_system_id`."
     )
     category_system_id: str | None = Field(
-        default=None,
-        description=(
-            "The AI's category assignment, made at import. Used only when `category_id` is null."
-        ),
+        default=None, description="AI assignment; used only when `category_id` is null."
     )
-    category_name: str | None = Field(default=None, description="Name of the effective category.")
+    category_name: str | None = Field(default=None, description="The effective category.")
     booked_at: str | None = Field(default=None, description="RFC-3339 instant.")
     pending: bool | None = None
-    transaction_type: str | None = Field(
-        default=None, description='"debit" (money out) or "credit" (money in).'
-    )
+    transaction_type: str | None = Field(default=None, description='"debit" out, "credit" in.')
     include_in_analytics: bool | None = Field(
-        default=None,
-        description="False for transfers between the user's own accounts, which are not spending.",
+        default=None, description="False for own-account transfers, which are not spending."
     )
     recurring_transaction_id: str | None = None
 
@@ -67,12 +54,10 @@ class TransactionPage(BaseModel):
     """A page of transactions, with everything needed to ask for the next."""
 
     transactions: list[TransactionOut] = Field(default_factory=list)
-    page: int | None = Field(
-        default=None, description="Null when paging by cursor rather than page number."
-    )
+    page: int | None = Field(default=None, description="Null when paging by cursor.")
     limit: int | None = None
     next_cursor: str | None = Field(
-        default=None, description="Pass as `cursor` for the next page. Null when exhausted."
+        default=None, description="Pass as `cursor` for the next page; null when exhausted."
     )
 
 
@@ -89,20 +74,14 @@ class TransactionSearchPage(BaseModel):
     transaction_ids: list[str] | None = None
     page: int | None = None
     limit: int | None = None
-    has_more: bool = Field(
-        description="True if more results exist. Keep paging while this is true."
-    )
+    has_more: bool = Field(description="Keep paging while true.")
     total_count: int | None = Field(
         default=None,
-        description=(
-            "Total matches. Null while paging by cursor, where the count "
-            "would re-scan on every page; read it from the first response."
-        ),
+        description="Total matches; null while paging by cursor. Read it from page one.",
     )
     next_cursor: str | None = None
     query_counts: dict[str, int] | None = Field(
-        default=None,
-        description="Matches per search term, when `queries` was used.",
+        default=None, description="Matches per term, when `queries` was used."
     )
 
 
@@ -113,26 +92,20 @@ class CategoryAmountOut(BaseModel):
     category_name: str
     category_color: str | None = None
     total: float = Field(description=MAJOR_UNITS + " Always positive.")
-    currency: str = Field(
-        description="The user's functional currency; totals are converted into it."
-    )
+    currency: str = Field(description="The user's functional currency; totals convert into it.")
     count: int = Field(description="Transactions behind this total.")
     unconverted_transaction_count: int = Field(
         description=(
-            "Transactions excluded from `total` because no exchange rate was "
-            "on record. Non-zero means the total is an undercount, and should "
-            "be reported as one rather than as exact."
+            "Rows left out of `total` for want of an exchange rate. Non-zero "
+            "means the total is an undercount; report it as one."
         )
     )
     merchant_count: int | None = Field(
-        default=None, description="Distinct merchants. Expenses only."
+        default=None, description="Distinct merchants; expenses only."
     )
     period: str | None = Field(
         default=None,
-        description=(
-            "Start of the bucket as YYYY-MM-DD, present only when `group_by` "
-            "was set. One row per category per period."
-        ),
+        description="Bucket start YYYY-MM-DD, only when `group_by` was set.",
     )
 
 
@@ -143,7 +116,7 @@ class AccountOut(BaseModel):
     name: str
     account_type: str | None = None
     asset_class: str | None = Field(
-        default=None, description='Derived from account_type: "cash", "investment", "property", ...'
+        default=None, description='From account_type: "cash", "investment", "property", ...'
     )
     institution: str | None = None
     currency: str | None = Field(default=None, description="The account's own currency.")
@@ -151,10 +124,7 @@ class AccountOut(BaseModel):
     balance_current: float | None = Field(default=None, description=MAJOR_UNITS)
     functional_balance: float | None = Field(
         default=None,
-        description=(
-            "Balance in the user's functional currency. Null when no exchange "
-            "rate was on record -- null is not zero."
-        ),
+        description="In the user's functional currency; null if no rate was on record, not zero.",
     )
     is_active: bool | None = None
 
@@ -166,15 +136,12 @@ class CategoryOut(BaseModel):
 
     id: str
     name: str
-    category_type: str | None = Field(
-        default=None, description='"expense", "income" or "transfer".'
-    )
+    category_type: str | None = Field(default=None, description='"expense", "income", "transfer".')
     color: str | None = None
     icon: str | None = None
     description: str | None = None
     categorization_instructions: str | None = Field(
-        default=None,
-        description="Rules the user has taught the system for this category.",
+        default=None, description="Rules the user taught the system for this category."
     )
     parent_id: str | None = None
     is_system: bool | None = None
@@ -193,7 +160,7 @@ class MutationResult(BaseModel):
     before: dict = Field(description="Tracked fields as they were.")
     after: dict = Field(description="The same fields afterwards.")
     fields_changed: list[str] = Field(default_factory=list)
-    dry_run: bool = Field(description="True if this was a preview and nothing was written.")
-    committed: bool = Field(description="False for a preview, or if the write was rolled back.")
+    dry_run: bool = Field(description="True if this was a preview; nothing was written.")
+    committed: bool = Field(description="False for a preview or a rolled-back write.")
 
     model_config = {"extra": "allow"}

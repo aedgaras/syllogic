@@ -24,6 +24,8 @@ def register(mcp) -> None:
         return f"""\
 Categorize up to {limit} uncategorized transactions{scope}.
 
+0. `load_toolset(["edit_transactions"])` -- the tools that change a
+   transaction's category are not listed until you ask for them.
 1. Read `syllogic://categories` for the available categories and the
    `categorization_instructions` the user has already written. Those
    instructions are rules the user has taught the system -- follow them rather
@@ -57,6 +59,8 @@ stick for future imports instead of needing you again next month."""
         return f"""\
 Close out {month} (YYYY-MM).
 
+0. `load_toolset(["budgets", "recurring"])` -- steps 4 and 5 need tools that
+   are not listed until you ask for them.
 1. `get_monthly_cashflow()` and `get_financial_summary(from_date="{month}-01",
    to_date=<last day of {month}>)` for the shape of the month. Both dates are
    inclusive.
@@ -84,6 +88,8 @@ Report in the user's functional currency, and say which currency that is."""
         return f"""\
 Review the budgets for {which}.
 
+0. `load_toolset(["budgets"])` -- none of the budget tools are listed until
+   you ask for them.
 1. `get_budget_summary()` first -- it is the cheapest call and its
    `needs_attention` list is usually the whole answer.
 2. For each budget in that list, `get_budget(budget_id)` for the per-category
@@ -107,6 +113,7 @@ projection and the month may still recover."""
         return f"""\
 Investigate spending in category {category_id} over the last {months} months.
 
+0. `load_toolset(["recurring"])` -- step 4 needs it.
 1. `get_amounts_by_category(direction="expense", group_by="month")` for the
    trend -- one call, one row per month. Both date bounds are inclusive.
 2. `get_top_merchants(category_id="{category_id}")` for where the money went.

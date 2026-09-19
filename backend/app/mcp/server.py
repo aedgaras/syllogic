@@ -3,15 +3,16 @@ Main FastMCP server setup for Syllogic.
 Registers all tools from the tools modules.
 """
 
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 from fastmcp.dependencies import Depends
 from fastmcp.exceptions import ToolError
 from fastmcp.server.auth import RemoteAuthProvider
+from fastmcp.server.transforms.visibility import Visibility
 from pydantic import AnyHttpUrl
 
 from app.db_helpers import get_mcp_user_id
 from app.mcp.auth import CompositeAuthProvider, AS_ISSUER, MCP_PUBLIC_URL
-from app.mcp.middleware import PerUserRateLimit, ToolCallLogger
+from app.mcp.middleware import PerUserRateLimit, ToolCallLogger, ToolsetSelection
 from app.mcp.schemas import (
     AccountOut,
     CategoryAmountOut,
@@ -23,6 +24,7 @@ from app.mcp.schemas import (
 )
 from app.mcp import prompts as mcp_prompts
 from app.mcp import resources as mcp_resources
+from app.mcp import toolsets
 from app.mcp.tools import (
     accounts,
     budgets as budget_tools,
@@ -67,12 +69,17 @@ _auth = RemoteAuthProvider(
 mcp = FastMCP(
     name="Syllogic MCP",
     instructions="""
-Syllogic MCP Server - your financial data: accounts, transactions,
-categories, analytics, budgets, recurring bills, investments and scheduled
-email reports.
+Syllogic MCP Server - your financial data: accounts, transactions, categories,
+analytics, budgets, recurring bills, investments and scheduled email reports.
 
 Auth: a bearer token, either an API key (`pf_...`) or an OAuth 2.1 access
 token. The calling user comes from that token, so no tool takes a user id.
+
+## Most of the server is not listed yet
+
+Budgets, recurring bills, investments, scheduled reports and transaction
+editing sit behind `load_toolset`. Call it the moment the user's question
+reaches one of those, rather than saying it is unsupported.
 
 ## Read these first
 
@@ -110,7 +117,7 @@ response until it comes back empty. `total_count` is only on the first page.
 # ============================================================================
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def list_accounts(
     user_id: str = Depends(authenticated_user_id),
     include_inactive: bool = False,
@@ -136,7 +143,7 @@ def list_accounts(
     return accounts.list_accounts(user_id, include_inactive, asset_class, person_ids)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def get_account(
     account_id: str, user_id: str = Depends(authenticated_user_id)
 ) -> AccountOut | None:
@@ -152,7 +159,7 @@ def get_account(
     return accounts.get_account(user_id, account_id)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def get_account_balance_history(
     account_id: str,
     from_date: str | None = None,
@@ -181,7 +188,7 @@ def get_account_balance_history(
 # ============================================================================
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def list_categories(
     user_id: str = Depends(authenticated_user_id), category_type: str | None = None
 ) -> list[CategoryOut]:
@@ -197,7 +204,7 @@ def list_categories(
     return categories.list_categories(user_id, category_type)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def get_category(
     category_id: str, user_id: str = Depends(authenticated_user_id)
 ) -> CategoryOut | None:
@@ -213,7 +220,10 @@ def get_category(
     return categories.get_category(user_id, category_id)
 
 
-@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
+@mcp.tool(
+    tags={"edit_transactions", "write"},
+    annotations={"destructiveHint": False, "idempotentHint": True},
+)
 def update_category(
     category_id: str,
     description: str | None = None,
@@ -255,7 +265,7 @@ def update_category(
     )
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def get_category_tree(user_id: str = Depends(authenticated_user_id)) -> list[dict]:
     """
     Get categories in a hierarchical tree structure.
@@ -273,7 +283,7 @@ def get_category_tree(user_id: str = Depends(authenticated_user_id)) -> list[dic
 # ============================================================================
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def list_transactions(
     account_id: str | None = None,
     category_id: str | None = None,
@@ -346,7 +356,7 @@ def list_transactions(
     )
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def get_transaction(
     transaction_id: str, user_id: str = Depends(authenticated_user_id)
 ) -> TransactionOut | None:
@@ -362,7 +372,7 @@ def get_transaction(
     return transactions.get_transaction(user_id, transaction_id)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def search_transactions(
     query: str | None = None,
     queries: list[str] | None = None,
@@ -441,55 +451,10 @@ def search_transactions(
     )
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
-def search_transactions_multi(
-    queries: list[str],
-    exclude_category_id: str | None = None,
-    match_mode: str = "contains",
-    ids_only: bool = False,
-    max_results: int = 500,
-    cursor: str | None = None,
-    sort_by: str = "booked_at_desc",
-    account_id: str | None = None,
-    user_id: str = Depends(authenticated_user_id),
-) -> TransactionSearchPage:
-    """
-    DEPRECATED — use search_transactions(queries=[...]).
-
-    The same search with different arity, which meant knowing both tools
-    before you could pick one. Kept for one release.
-
-    Args:
-        queries: List of search terms, e.g. ["Jumbo", "Albert Heijn", "ALDI"]
-        exclude_category_id: Skip transactions already in this category
-        match_mode: "contains" (default), "starts_with", or "word".
-            Use "word" for merchant names.
-        ids_only: If True, return only transaction IDs
-        max_results: Maximum results to return (default: 500, max: 1000)
-        cursor: Pass "" or a cursor from `next_cursor` to page; omit to get
-            everything up to max_results in one shot
-        sort_by: See "Pagination & sort" in the server instructions
-        account_id: Filter results to a single account (optional)
-
-    Returns:
-        Dict with transactions (or transaction_ids), total_count, capped
-        (True if max_results was hit), query_counts (matches per query), and
-        next_cursor (cursor mode only).
-    """
-    return transactions.search_transactions_multi(
-        user_id,
-        queries,
-        exclude_category_id,
-        match_mode,
-        ids_only,
-        max_results,
-        cursor,
-        sort_by,
-        account_id,
-    )
-
-
-@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
+@mcp.tool(
+    tags={"edit_transactions", "write"},
+    annotations={"destructiveHint": False, "idempotentHint": True},
+)
 def update_transaction_category(
     transaction_id: str,
     category_id: str,
@@ -518,7 +483,10 @@ def update_transaction_category(
     )
 
 
-@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
+@mcp.tool(
+    tags={"edit_transactions", "write"},
+    annotations={"destructiveHint": False, "idempotentHint": True},
+)
 def bulk_update_transaction_categories(
     category_id: str,
     transaction_ids: list[str],
@@ -526,45 +494,32 @@ def bulk_update_transaction_categories(
     user_id: str = Depends(authenticated_user_id),
 ) -> dict:
     """
-    Bulk update category for multiple transactions.
+    Recategorize many transactions in one call.
+
+    Feed it `transaction_ids` from `search_transactions(queries=[...],
+    ids_only=True)`. Run it with `dry_run=True` first and show the user
+    `sample_changes` -- the `categorize_uncategorized` prompt is this whole
+    sequence with the arguments filled in.
 
     Args:
-        category_id: The category ID to assign to all transactions
-        transaction_ids: List of transaction IDs to update (max 2000)
-        dry_run: If True, preview what would change without committing (default: False)
+        category_id: The category to assign to all of them
+        transaction_ids: Transactions to update (max 2000)
+        dry_run: Preview what would change without committing (default False)
 
     Returns:
-        Dict with:
-        - updated_count (or would_update_count if dry_run=True)
-        - requested_count, invalid_ids, not_found_ids,
-          skipped_already_in_category_ids, sample_changes (up to 10)
-
-    Recommended workflow using search_transactions_multi:
-        # Find all grocery store transactions not yet categorized
-        result = search_transactions_multi(
-            queries=["Jumbo", "Albert Heijn", "ALDI"],
-            exclude_category_id="<groceries-id>",
-            match_mode="word",
-            ids_only=True
-        )
-        # Preview first
-        bulk_update_transaction_categories(
-            category_id="<groceries-id>",
-            transaction_ids=result["transaction_ids"],
-            dry_run=True,
-        )
-        # Then commit
-        bulk_update_transaction_categories(
-            category_id="<groceries-id>",
-            transaction_ids=result["transaction_ids"]
-        )
+        {"updated_count" (or "would_update_count" when dry_run),
+        "requested_count", "invalid_ids", "not_found_ids",
+        "skipped_already_in_category_ids", "sample_changes" (up to 10)}
     """
     return transactions.bulk_update_transaction_categories(
         user_id, category_id, transaction_ids, dry_run
     )
 
 
-@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": False})
+@mcp.tool(
+    tags={"edit_transactions", "write"},
+    annotations={"destructiveHint": False, "idempotentHint": False},
+)
 def create_transaction(
     account_id: str,
     amount: float,
@@ -624,7 +579,10 @@ def create_transaction(
     )
 
 
-@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
+@mcp.tool(
+    tags={"edit_transactions", "write"},
+    annotations={"destructiveHint": False, "idempotentHint": True},
+)
 def update_transaction(
     transaction_id: str,
     amount: float | None = None,
@@ -685,7 +643,10 @@ def update_transaction(
     )
 
 
-@mcp.tool(annotations={"destructiveHint": True, "idempotentHint": True})
+@mcp.tool(
+    tags={"edit_transactions", "write"},
+    annotations={"destructiveHint": True, "idempotentHint": True},
+)
 def delete_transactions(
     transaction_ids: list[str],
     dry_run: bool = False,
@@ -720,7 +681,10 @@ def delete_transactions(
     )
 
 
-@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": False})
+@mcp.tool(
+    tags={"edit_transactions", "write"},
+    annotations={"destructiveHint": False, "idempotentHint": False},
+)
 def create_transfer(
     from_account_id: str,
     to_account_id: str,
@@ -773,7 +737,7 @@ def create_transfer(
 # ============================================================================
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def get_amounts_by_category(
     direction: str = "expense",
     from_date: str | None = None,
@@ -825,44 +789,7 @@ def get_amounts_by_category(
     )
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
-def get_spending_by_category(
-    from_date: str | None = None,
-    to_date: str | None = None,
-    account_id: str | None = None,
-    include_uncategorized: bool = False,
-    user_id: str = Depends(authenticated_user_id),
-    person_ids: list[str] | None = None,
-) -> list[CategoryAmountOut]:
-    """
-    DEPRECATED — use get_amounts_by_category(direction="expense").
-
-    Kept for one release. The replacement adds `group_by` for a
-    category-by-month breakdown.
-    """
-    return analytics.get_spending_by_category(
-        user_id, from_date, to_date, account_id, include_uncategorized, person_ids
-    )
-
-
-@mcp.tool(annotations={"readOnlyHint": True})
-def get_income_by_category(
-    from_date: str | None = None,
-    to_date: str | None = None,
-    account_id: str | None = None,
-    user_id: str = Depends(authenticated_user_id),
-    person_ids: list[str] | None = None,
-) -> list[CategoryAmountOut]:
-    """
-    DEPRECATED — use get_amounts_by_category(direction="income").
-
-    Kept for one release. The replacement adds `group_by` for a
-    category-by-month breakdown.
-    """
-    return analytics.get_income_by_category(user_id, from_date, to_date, account_id, person_ids)
-
-
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def get_monthly_cashflow(
     from_date: str | None = None,
     to_date: str | None = None,
@@ -884,7 +811,7 @@ def get_monthly_cashflow(
     return analytics.get_monthly_cashflow(user_id, from_date, to_date, person_ids)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def get_financial_summary(
     from_date: str | None = None,
     to_date: str | None = None,
@@ -908,7 +835,7 @@ def get_financial_summary(
     return analytics.get_financial_summary(user_id, from_date, to_date, person_ids)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def get_top_merchants(
     from_date: str | None = None,
     to_date: str | None = None,
@@ -942,7 +869,7 @@ def get_top_merchants(
 # ============================================================================
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"recurring", "read"}, annotations={"readOnlyHint": True})
 def list_recurring_transactions(
     is_active: bool | None = None, user_id: str = Depends(authenticated_user_id)
 ) -> list[dict]:
@@ -958,7 +885,7 @@ def list_recurring_transactions(
     return recurring.list_recurring_transactions(user_id, is_active)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"recurring", "read"}, annotations={"readOnlyHint": True})
 def get_recurring_transaction(
     recurring_id: str, user_id: str = Depends(authenticated_user_id)
 ) -> dict | None:
@@ -974,7 +901,7 @@ def get_recurring_transaction(
     return recurring.get_recurring_transaction(user_id, recurring_id)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"recurring", "read"}, annotations={"readOnlyHint": True})
 def get_recurring_summary(user_id: str = Depends(authenticated_user_id)) -> dict:
     """
     Get a summary of recurring transactions (subscriptions/bills).
@@ -987,7 +914,7 @@ def get_recurring_summary(user_id: str = Depends(authenticated_user_id)) -> dict
     return recurring.get_recurring_summary(user_id)
 
 
-@mcp.tool(annotations={"destructiveHint": False})
+@mcp.tool(tags={"recurring", "write"}, annotations={"destructiveHint": False})
 def create_recurring_transaction(
     name: str,
     amount: float,
@@ -1065,7 +992,9 @@ def create_recurring_transaction(
     )
 
 
-@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
+@mcp.tool(
+    tags={"recurring", "write"}, annotations={"destructiveHint": False, "idempotentHint": True}
+)
 def update_recurring_transaction(
     recurring_id: str,
     name: str | None = None,
@@ -1140,7 +1069,7 @@ def update_recurring_transaction(
     )
 
 
-@mcp.tool(annotations={"idempotentHint": True})
+@mcp.tool(tags={"recurring", "write"}, annotations={"idempotentHint": True})
 def delete_recurring_transaction(
     recurring_id: str,
     dry_run: bool = False,
@@ -1166,7 +1095,7 @@ def delete_recurring_transaction(
     return recurring.delete_recurring_transaction(user_id, recurring_id, dry_run)
 
 
-@mcp.tool(annotations={"destructiveHint": False})
+@mcp.tool(tags={"recurring", "write"}, annotations={"destructiveHint": False})
 def generate_recurring_occurrence(
     recurring_id: str,
     dry_run: bool = False,
@@ -1198,7 +1127,7 @@ def generate_recurring_occurrence(
     return recurring.generate_recurring_occurrence(user_id, recurring_id, dry_run, idempotency_key)
 
 
-@mcp.tool(annotations={"destructiveHint": False})
+@mcp.tool(tags={"recurring", "write"}, annotations={"destructiveHint": False})
 def skip_recurring_occurrence(
     recurring_id: str,
     dry_run: bool = False,
@@ -1229,7 +1158,7 @@ def skip_recurring_occurrence(
 # ============================================================================
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"investments", "read"}, annotations={"readOnlyHint": True})
 def list_holdings(
     account_id: str | None = None,
     user_id: str = Depends(authenticated_user_id),
@@ -1252,7 +1181,7 @@ def list_holdings(
     return investments.list_holdings(user_id, account_id, person_ids)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"investments", "read"}, annotations={"readOnlyHint": True})
 def get_portfolio_summary(
     user_id: str = Depends(authenticated_user_id),
     person_ids: list[str] | None = None,
@@ -1276,7 +1205,7 @@ def get_portfolio_summary(
     return investments.get_portfolio_summary(user_id, person_ids)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"investments", "read"}, annotations={"readOnlyHint": True})
 def get_portfolio_history(
     from_date: str | None = None,
     to_date: str | None = None,
@@ -1300,7 +1229,7 @@ def get_portfolio_history(
     return investments.get_portfolio_history(user_id, from_date, to_date, person_ids)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"investments", "read"}, annotations={"readOnlyHint": True})
 def search_symbol(query: str, user_id: str = Depends(authenticated_user_id)) -> list[dict]:
     """
     Search the user's existing holdings by symbol or name (case-insensitive).
@@ -1314,7 +1243,7 @@ def search_symbol(query: str, user_id: str = Depends(authenticated_user_id)) -> 
     return investments.search_symbol(user_id, query)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"investments", "read"}, annotations={"readOnlyHint": True})
 def get_holding_trades(
     holding_id: str,
     user_id: str = Depends(authenticated_user_id),
@@ -1336,7 +1265,7 @@ def get_holding_trades(
 # ============================================================================
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def list_people(user_id: str = Depends(authenticated_user_id)) -> list[dict]:
     """
     List all people in the user's household.
@@ -1349,7 +1278,7 @@ def list_people(user_id: str = Depends(authenticated_user_id)) -> list[dict]:
     return people_tools.list_people(user_id)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"core", "read"}, annotations={"readOnlyHint": True})
 def get_household_summary(
     person_ids: list[str] | None = None,
     user_id: str = Depends(authenticated_user_id),
@@ -1373,7 +1302,7 @@ def get_household_summary(
 # ============================================================================
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"reports", "read"}, annotations={"readOnlyHint": True})
 def list_reports(user_id: str = Depends(authenticated_user_id)) -> list[dict]:
     """
     List all scheduled report newsletters for the user.
@@ -1387,7 +1316,7 @@ def list_reports(user_id: str = Depends(authenticated_user_id)) -> list[dict]:
     return report_tools.list_reports(user_id)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"reports", "read"}, annotations={"readOnlyHint": True})
 def get_report(report_id: str, user_id: str = Depends(authenticated_user_id)) -> dict | None:
     """
     Get a single scheduled report by ID.
@@ -1401,7 +1330,7 @@ def get_report(report_id: str, user_id: str = Depends(authenticated_user_id)) ->
     return report_tools.get_report(user_id, report_id)
 
 
-@mcp.tool(annotations={"destructiveHint": False})
+@mcp.tool(tags={"reports", "write"}, annotations={"destructiveHint": False})
 def create_report(
     name: str,
     frequency: str,
@@ -1468,7 +1397,7 @@ def create_report(
     )
 
 
-@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
+@mcp.tool(tags={"reports", "write"}, annotations={"destructiveHint": False, "idempotentHint": True})
 def update_report(
     report_id: str,
     name: str | None = None,
@@ -1527,7 +1456,7 @@ def update_report(
     )
 
 
-@mcp.tool(annotations={"idempotentHint": True})
+@mcp.tool(tags={"reports", "write"}, annotations={"idempotentHint": True})
 def delete_report(
     report_id: str,
     dry_run: bool = False,
@@ -1548,7 +1477,7 @@ def delete_report(
     return report_tools.delete_report(user_id, report_id, dry_run=dry_run)
 
 
-@mcp.tool(annotations={"destructiveHint": False})
+@mcp.tool(tags={"reports", "write"}, annotations={"destructiveHint": False})
 def send_test_report(
     report_id: str,
     dry_run: bool = False,
@@ -1573,7 +1502,7 @@ def send_test_report(
     return report_tools.send_test_report(user_id, report_id, dry_run=dry_run)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"reports", "read"}, annotations={"readOnlyHint": True})
 def list_report_runs(report_id: str, user_id: str = Depends(authenticated_user_id)) -> list[dict]:
     """
     List scheduled and executed send history for a report.
@@ -1594,7 +1523,7 @@ def list_report_runs(report_id: str, user_id: str = Depends(authenticated_user_i
 # ============================================================================
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"budgets", "read"}, annotations={"readOnlyHint": True})
 def list_budgets(
     include_inactive: bool = True,
     include_categories: bool = True,
@@ -1620,7 +1549,7 @@ def list_budgets(
     return budget_tools.list_budgets(user_id, include_inactive, include_categories)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"budgets", "read"}, annotations={"readOnlyHint": True})
 def get_budget(budget_id: str, user_id: str = Depends(authenticated_user_id)) -> dict | None:
     """
     Get a single budget with its full per-category breakdown.
@@ -1638,7 +1567,7 @@ def get_budget(budget_id: str, user_id: str = Depends(authenticated_user_id)) ->
     return budget_tools.get_budget(user_id, budget_id)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"budgets", "read"}, annotations={"readOnlyHint": True})
 def get_budget_summary(user_id: str = Depends(authenticated_user_id)) -> dict:
     """
     Portfolio-level view of every active budget, in the user's functional currency.
@@ -1655,7 +1584,7 @@ def get_budget_summary(user_id: str = Depends(authenticated_user_id)) -> dict:
     return budget_tools.get_budget_summary(user_id)
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"budgets", "read"}, annotations={"readOnlyHint": True})
 def get_budget_transactions(
     budget_id: str,
     limit: int = 50,
@@ -1685,7 +1614,7 @@ def get_budget_transactions(
     )
 
 
-@mcp.tool(annotations={"readOnlyHint": True})
+@mcp.tool(tags={"budgets", "read"}, annotations={"readOnlyHint": True})
 def get_budget_history(
     budget_id: str, periods: int = 6, user_id: str = Depends(authenticated_user_id)
 ) -> dict:
@@ -1712,7 +1641,7 @@ def get_budget_history(
     return budget_tools.get_budget_history(user_id, budget_id, periods)
 
 
-@mcp.tool(annotations={"destructiveHint": False})
+@mcp.tool(tags={"budgets", "write"}, annotations={"destructiveHint": False})
 def create_budget(
     name: str,
     amount: float,
@@ -1764,7 +1693,7 @@ def create_budget(
     )
 
 
-@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
+@mcp.tool(tags={"budgets", "write"}, annotations={"destructiveHint": False, "idempotentHint": True})
 def update_budget(
     budget_id: str,
     name: str | None = None,
@@ -1817,7 +1746,7 @@ def update_budget(
     )
 
 
-@mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
+@mcp.tool(tags={"budgets", "write"}, annotations={"destructiveHint": False, "idempotentHint": True})
 def set_budget_categories(
     budget_id: str,
     categories: list[dict],
@@ -1848,7 +1777,7 @@ def set_budget_categories(
     return budget_tools.set_budget_categories(user_id, budget_id, categories, mode, dry_run=dry_run)
 
 
-@mcp.tool(annotations={"idempotentHint": True})
+@mcp.tool(tags={"budgets", "write"}, annotations={"idempotentHint": True})
 def delete_budget(
     budget_id: str,
     dry_run: bool = False,
@@ -1873,6 +1802,94 @@ def delete_budget(
     return budget_tools.delete_budget(user_id, budget_id, dry_run=dry_run)
 
 
+# ============================================================================
+# Toolsets
+# ============================================================================
+
+
+async def load_toolset(names: list[str], ctx: Context) -> dict:
+    # Docstring is assigned below so the menu of toolsets has one definition
+    # (app/mcp/toolsets.py) rather than a copy here that drifts from it.
+    try:
+        requested = toolsets.parse(",".join(names))
+    except toolsets.UnknownToolset as exc:
+        raise ToolError(str(exc)) from exc
+
+    if not requested:
+        # An empty list, or nothing but "core", which is already on. Reporting
+        # that as loaded would be a lie the agent then acts on.
+        raise ToolError(
+            "Name at least one toolset to load. Available: "
+            + ", ".join(sorted(toolsets.OPTIONAL))
+            + " (or 'all'). `core` is always loaded."
+        )
+
+    await toolsets.enable(ctx, requested)
+    loaded = await toolsets.already_loaded(ctx) or requested
+
+    return {
+        "loaded": sorted(loaded),
+        "now_available": sorted(await _visible_tool_names()),
+        "other_toolsets": {
+            name: text
+            for name, text in toolsets.TOOLSETS.items()
+            if name in toolsets.OPTIONAL and name not in loaded
+        },
+    }
+
+
+load_toolset.__doc__ = f"""Load a group of tools that is not visible yet.
+
+    The tools you can see are the ones every session starts with. Budgets,
+    recurring bills, investments, scheduled reports and transaction editing
+    are grouped behind this call so their schemas cost nothing until they are
+    wanted. Reach for it as soon as the user's request names one of those
+    areas -- before telling them it is unsupported.
+
+{chr(10).join("    " + line for line in toolsets.describe().splitlines())}
+
+    Loading is additive and lasts for the session; loading the same group
+    twice is harmless. Pass ["all"] for everything.
+
+    Args:
+        names: Toolsets to load, e.g. ["budgets", "recurring"]
+
+    Returns:
+        {{"loaded", "now_available", "other_toolsets"}}. `loaded` is every
+        toolset this session has, not only the ones this call added. The new
+        tools also arrive as a tools/list_changed notification;
+        `now_available` is there for clients that do not act on one.
+    """
+
+load_toolset = mcp.tool(tags={toolsets.CORE, "read"}, annotations={"readOnlyHint": True})(
+    load_toolset
+)
+
+
+async def _visible_tool_names() -> list[str]:
+    """Tool names visible to the session calling right now.
+
+    `run_middleware=False` because this is a read of the surface from inside a
+    tool, not a `tools/list` from the client: running the middleware chain
+    again would bill the call twice against the rate limit and log a listing
+    that never happened.
+    """
+    return [tool.name for tool in await mcp.list_tools(run_middleware=False)]
+
+
+# Everything outside `core` starts hidden. This is a *server* transform, so it
+# is the baseline every session begins from; the session rules written by
+# `toolsets.enable` -- from load_toolset, from the connect-time parameter, or
+# from ToolsetSelection autoloading on a call -- override it for that session
+# alone.
+#
+# FastMCP refuses a call to a hidden tool outright ("unknown tool"), which
+# would make this a trap for a client resuming a conversation with the tool
+# name still in its history. ToolsetSelection.on_call_tool loads the toolset
+# instead, so the listing is a default rather than a wall.
+mcp.add_transform(Visibility(False, tags=set(toolsets.OPTIONAL), components={"tool"}))
+
+
 # Resources and prompts. Both are additive -- no tool changes behaviour
 # because these exist -- but they are what lets the instructions string above
 # stay short: the field semantics live in syllogic://schema and the workflows
@@ -1881,8 +1898,10 @@ mcp_resources.register(mcp)
 mcp_prompts.register(mcp)
 
 
-# Throttle before doing the work, then log what actually ran. Registration
-# order is call order, so the limiter sees a request the logger never records
-# as a completed call.
+# Registration order is call order. ToolsetSelection is first because it
+# decides what the rest of the session can see; then throttle before doing the
+# work, then log what actually ran, so the limiter sees a request the logger
+# never records as a completed call.
+mcp.add_middleware(ToolsetSelection())
 mcp.add_middleware(PerUserRateLimit())
 mcp.add_middleware(ToolCallLogger())

@@ -1,43 +1,21 @@
 """
 MCP (Model Context Protocol) server for Syllogic.
-Provides read-only access to financial data with write operations for
-transaction categorization and category metadata.
 
 Usage:
     from app.mcp.server import mcp
 
-Tools available:
-    Accounts:
-        - list_accounts
-        - get_account
-        - get_account_balance_history
+The tools are grouped into toolsets (app/mcp/toolsets.py) and only `core` is
+listed when a session opens; the rest arrive via `load_toolset`, or via
+`?toolsets=...` on the connection. `python -c "import asyncio, app.mcp.server
+as s; print(asyncio.run(s.mcp.list_tools()))"` is the authoritative list --
+an inventory in this docstring only goes stale.
 
-    Categories:
-        - list_categories
-        - get_category
-        - get_category_tree
-        - update_category (WRITE)
-
-    Transactions:
-        - list_transactions
-        - get_transaction
-        - search_transactions
-        - update_transaction_category (WRITE)
-
-    Analytics:
-        - get_spending_by_category
-        - get_income_by_category
-        - get_monthly_cashflow
-        - get_financial_summary
-        - get_top_merchants
-
-    Recurring:
-        - list_recurring_transactions
-        - get_recurring_transaction
-        - get_recurring_summary
-        - create_recurring_transaction (WRITE)
-        - update_recurring_transaction (WRITE)
-        - delete_recurring_transaction (WRITE)
-        - generate_recurring_occurrence (WRITE)
-        - skip_recurring_occurrence (WRITE)
+Toolsets:
+    core              accounts, categories, transaction browsing and search,
+                      spending/income/cashflow analytics, people
+    edit_transactions create, edit, delete and recategorize transactions
+    budgets           budgets, their pace and their history
+    recurring         subscriptions and recurring bills
+    investments       holdings, portfolio value, trades
+    reports           scheduled email reports
 """

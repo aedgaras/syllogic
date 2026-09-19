@@ -278,20 +278,12 @@ DEPRECATED = [
 
 
 @pytest.mark.parametrize("name", DEPRECATED)
-def test_deprecated_tools_are_still_registered(name):
-    """One release of deprecation. Removing on the same day as replacing is
-    how an integration breaks between two of its own releases."""
-    assert name in _tools()
+def test_deprecated_tools_left_the_mcp_surface(name):
+    """One release of deprecation, which has now passed.
 
-
-@pytest.mark.parametrize("name", DEPRECATED)
-def test_deprecated_tools_say_so_first(name):
-    """First line, so a client truncating the description still sees it."""
-    description = _tools()[name].description or ""
-    assert description.strip().startswith("DEPRECATED")
-
-
-@pytest.mark.parametrize("name", DEPRECATED)
-def test_deprecated_tools_name_their_replacement(name):
-    description = _tools()[name].description or ""
-    assert "search_transactions(" in description or "get_amounts_by_category(" in description
+    They are gone from `tools/list` -- the replacements were shipped in the
+    release before this one, which is the point of deprecating rather than
+    removing. The module-level functions below stay: they are what the
+    analytics tests call, and they cost a caller nothing.
+    """
+    assert name not in _tools()
