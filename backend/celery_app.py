@@ -116,6 +116,11 @@ def _build_beat_schedule() -> dict:
         "schedule": crontab(minute=0),
     }
 
+    schedule["prune-mcp-idempotency-keys"] = {
+        "task": "tasks.mcp_idempotency_tasks.prune_mcp_idempotency_keys",
+        "schedule": crontab(minute=30),
+    }
+
     return schedule
 
 

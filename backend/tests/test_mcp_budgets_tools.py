@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
+from fastmcp.exceptions import ToolError
 
 from app.mcp.tools import budgets as budget_tools
 from app.mcp.tools.budgets import (
@@ -265,10 +266,14 @@ def test_get_budget_transactions_filters_to_one_category(budget_data):
     assert result["total_count"] == 2
 
     unrelated = Category(user_id=user.id, name="Rent", category_type="expense")
-    other = budget_tools.get_budget_transactions(
-        user.id, str(budget.id), category_id="00000000-0000-0000-0000-000000000000"
-    )
-    assert other["error"] == "Category is not part of this budget"
+    with pytest.raises(ToolError) as excinfo:
+        budget_tools.get_budget_transactions(
+            user.id, str(budget.id), category_id="00000000-0000-0000-0000-000000000000"
+        )
+    # The categories this budget *does* cover are named, so the agent can
+    # retry against a real one instead of guessing again.
+    message = str(excinfo.value)
+    assert "Groceries" in message and "Dining" in message
     assert unrelated.name == "Rent"  # not persisted; guards against a stray commit
 
 
@@ -294,8 +299,15 @@ def test_get_budget_history_averages_completed_periods_only(budget_data):
 
 
 def test_get_budget_history_rejects_a_missing_budget(budget_data):
-    user, *_ = budget_data
-    assert "error" in budget_tools.get_budget_history(user.id, "nope")
+    user, budget, *_ = budget_data
+    # A malformed id and an unknown one are different mistakes and say so.
+    with pytest.raises(ToolError) as malformed:
+        budget_tools.get_budget_history(user.id, "nope")
+    assert "UUID" in str(malformed.value)
+
+    with pytest.raises(ToolError) as unknown:
+        budget_tools.get_budget_history(user.id, "00000000-0000-0000-0000-000000000000")
+    assert str(budget.id) in str(unknown.value)
 
 
 # ============================================================================
@@ -313,7 +325,6 @@ def test_create_budget_with_categories_and_sub_limits(budget_data):
         period="weekly",
         start_date="2026-09-13",
     )
-    assert result["success"] is True
     created = result["budget"]
     assert created["name"] == "Groceries only"
     assert created["period"] == "weekly"
@@ -323,39 +334,52 @@ def test_create_budget_with_categories_and_sub_limits(budget_data):
 
 def test_create_budget_rejects_bad_input(budget_data):
     user, _, groceries, _ = budget_data
-    assert budget_tools.create_budget(user.id, "", 10.0)["error"] == "Name is required"
-    assert "greater than 0" in budget_tools.create_budget(user.id, "X", 0)["error"]
-    assert "period must be" in budget_tools.create_budget(user.id, "X", 10, period="daily")["error"]
-    assert (
-        "start_date"
-        in budget_tools.create_budget(user.id, "X", 10, start_date="13/09/2026")["error"]
-    )
 
-    duplicate = budget_tools.create_budget(
-        user.id,
-        "X",
-        10,
-        categories=[{"category_id": str(groceries.id)}, {"category_id": str(groceries.id)}],
-    )
-    assert "Duplicate category_id" in duplicate["error"]
+    with pytest.raises(ToolError, match="name"):
+        budget_tools.create_budget(user.id, "", 10.0)
+
+    with pytest.raises(ToolError, match="greater than 0"):
+        budget_tools.create_budget(user.id, "X", 0)
+
+    # The enum error inlines every permitted value; that is the whole point
+    # of it, since "invalid period" just prompts another guess.
+    with pytest.raises(ToolError) as period:
+        budget_tools.create_budget(user.id, "X", 10, period="daily")
+    for allowed in ("monthly", "weekly", "yearly"):
+        assert allowed in str(period.value)
+
+    with pytest.raises(ToolError) as start:
+        budget_tools.create_budget(user.id, "X", 10, start_date="13/09/2026")
+    assert "start_date" in str(start.value)
+    assert "YYYY-MM-DD" in str(start.value)
+
+    with pytest.raises(ToolError, match="once"):
+        budget_tools.create_budget(
+            user.id,
+            "X",
+            10,
+            categories=[{"category_id": str(groceries.id)}, {"category_id": str(groceries.id)}],
+        )
 
 
 def test_create_budget_rejects_a_category_the_user_does_not_own(budget_data):
-    user, *_ = budget_data
-    result = budget_tools.create_budget(
-        user.id,
-        "X",
-        10,
-        categories=[{"category_id": "00000000-0000-0000-0000-000000000000"}],
-    )
-    assert result["success"] is False
-    assert "Category not found" in result["error"]
+    user, _, groceries, _ = budget_data
+    with pytest.raises(ToolError) as excinfo:
+        budget_tools.create_budget(
+            user.id,
+            "X",
+            10,
+            categories=[{"category_id": "00000000-0000-0000-0000-000000000000"}],
+        )
+    message = str(excinfo.value)
+    assert "No category found" in message
+    # The caller's own categories are offered as the way out.
+    assert str(groceries.id) in message
 
 
 def test_update_budget_only_touches_what_it_is_given(budget_data):
     user, budget, *_ = budget_data
     result = budget_tools.update_budget(user.id, str(budget.id), amount=400.0)
-    assert result["success"] is True
     assert result["budget"]["amount"] == 400.0
     assert result["budget"]["name"] == "Food"
     assert result["budget"]["period"] == "monthly"
@@ -373,19 +397,20 @@ def test_update_budget_clears_the_start_date_with_an_empty_string(budget_data):
 
 def test_update_budget_error_shapes(budget_data):
     user, budget, *_ = budget_data
-    assert budget_tools.update_budget(user.id, str(budget.id))["error"] == "No fields to update"
-    assert budget_tools.update_budget(user.id, "nope", amount=5)["error"] == (
-        "Invalid budget ID format"
-    )
-    assert (
-        budget_tools.update_budget(user.id, "00000000-0000-0000-0000-000000000000", amount=5)[
-            "error"
-        ]
-        == "Budget not found"
-    )
-    assert (
-        "greater than 0" in budget_tools.update_budget(user.id, str(budget.id), amount=-1)["error"]
-    )
+
+    with pytest.raises(ToolError, match="at least one field"):
+        budget_tools.update_budget(user.id, str(budget.id))
+
+    with pytest.raises(ToolError, match="UUID"):
+        budget_tools.update_budget(user.id, "nope", amount=5)
+
+    with pytest.raises(ToolError) as missing:
+        budget_tools.update_budget(user.id, "00000000-0000-0000-0000-000000000000", amount=5)
+    assert "No budget found" in str(missing.value)
+    assert str(budget.id) in str(missing.value)
+
+    with pytest.raises(ToolError, match="greater than 0"):
+        budget_tools.update_budget(user.id, str(budget.id), amount=-1)
 
 
 def test_set_budget_categories_replace_swaps_the_whole_membership(budget_data):
@@ -396,7 +421,6 @@ def test_set_budget_categories_replace_swaps_the_whole_membership(budget_data):
         [{"category_id": str(dining.id), "sub_limit": 50}],
         mode="replace",
     )
-    assert result["success"] is True
     assert result["removed"] == [str(groceries.id)]
     assert result["added"] == [] or result["updated"] == [str(dining.id)]
     names = [c["category_name"] for c in result["budget"]["categories"]]
@@ -431,33 +455,34 @@ def test_set_budget_categories_remove_drops_only_what_is_listed(budget_data):
 
 def test_set_budget_categories_error_shapes(budget_data):
     user, budget, groceries, _ = budget_data
-    assert (
-        "mode must be"
-        in budget_tools.set_budget_categories(user.id, str(budget.id), [], mode="merge")["error"]
-    )
-    assert (
-        "must not be empty"
-        in budget_tools.set_budget_categories(user.id, str(budget.id), [], mode="add")["error"]
-    )
-    assert (
+
+    with pytest.raises(ToolError) as mode:
+        budget_tools.set_budget_categories(user.id, str(budget.id), [], mode="merge")
+    for allowed in ("replace", "add", "remove"):
+        assert allowed in str(mode.value)
+
+    with pytest.raises(ToolError, match="at least one entry"):
+        budget_tools.set_budget_categories(user.id, str(budget.id), [], mode="add")
+
+    with pytest.raises(ToolError) as missing:
         budget_tools.set_budget_categories(
             user.id, "00000000-0000-0000-0000-000000000000", [{"category_id": str(groceries.id)}]
-        )["error"]
-        == "Budget not found"
-    )
-    assert (
-        "sub_limit"
-        in budget_tools.set_budget_categories(
+        )
+    assert "No budget found" in str(missing.value)
+
+    with pytest.raises(ToolError, match="sub_limit"):
+        budget_tools.set_budget_categories(
             user.id, str(budget.id), [{"category_id": str(groceries.id), "sub_limit": 0}]
-        )["error"]
-    )
+        )
 
 
 def test_delete_budget_removes_it_and_leaves_transactions_alone(budget_data, db_session):
     user, budget, *_ = budget_data
     result = budget_tools.delete_budget(user.id, str(budget.id))
-    assert result["success"] is True
     assert result["deleted_budget"]["name"] == "Food"
+    # The snapshot names the currency of the amount it reports.
+    assert result["deleted_budget"]["currency"]
     assert budget_tools.list_budgets(user.id) == []
     assert db_session.query(Transaction).filter(Transaction.user_id == user.id).count() == 6
-    assert budget_tools.delete_budget(user.id, str(budget.id))["error"] == "Budget not found"
+    with pytest.raises(ToolError, match="No budget found"):
+        budget_tools.delete_budget(user.id, str(budget.id))

@@ -12,6 +12,17 @@ from pydantic import AnyHttpUrl
 from app.db_helpers import get_mcp_user_id
 from app.mcp.auth import CompositeAuthProvider, AS_ISSUER, MCP_PUBLIC_URL
 from app.mcp.middleware import PerUserRateLimit, ToolCallLogger
+from app.mcp.schemas import (
+    AccountOut,
+    CategoryAmountOut,
+    CategoryOut,
+    MutationResult,
+    TransactionOut,
+    TransactionPage,
+    TransactionSearchPage,
+)
+from app.mcp import prompts as mcp_prompts
+from app.mcp import resources as mcp_resources
 from app.mcp.tools import (
     accounts,
     budgets as budget_tools,
@@ -56,134 +67,39 @@ _auth = RemoteAuthProvider(
 mcp = FastMCP(
     name="Syllogic MCP",
     instructions="""
-Syllogic MCP Server - Access financial data and manage transactions.
+Syllogic MCP Server - your financial data: accounts, transactions,
+categories, analytics, budgets, recurring bills, investments and scheduled
+email reports.
 
-All requests require a bearer token in the Authorization header. Two token
-types are accepted:
-- API keys (`Authorization: Bearer pf_...`) for Claude Desktop / Code and
-  other local clients.
-- OAuth 2.1 access tokens (JWTs) issued by the Syllogic authorization server
-  for Claude on the web, iOS, Android, and any other custom connector.
+Auth: a bearer token, either an API key (`pf_...`) or an OAuth 2.1 access
+token. The calling user comes from that token, so no tool takes a user id.
 
-The calling user is taken from that token; no tool takes a user identifier.
+## Read these first
 
-## Available functionality
-- **Accounts**: List, view, and check balance history
-- **Categories**: List, view, get tree structure, and update description/categorization_instructions
-- **Transactions**: List, search, view, and update categories
-- **Analytics**: Spending/income by category, monthly cashflow, financial summary
-- **Recurring**: List and view subscriptions/bills
-- **Investments**: List holdings, portfolio summary/history, symbol search,
-  import broker trades (CSV/PDF/XLSX statements), realized & unrealized P&L (FIFO)
-- **Reports**: Create, list, view, update, delete, and send-test scheduled
-  email newsletters (account balances + transaction digest, on a
-  daily/weekly/biweekly/monthly cadence)
-- **Budgets**: Report on, inspect, create, adjust, reorganize, and delete
-  spending budgets (limits across one or more categories, per period)
+- `syllogic://schema` — what the fields mean: major units, how currency
+  conversion is reported, that date ranges are inclusive, and which of the
+  two category fields wins. Read it before interpreting any number.
+- `syllogic://categories` — the category tree plus the categorization rules
+  the user has already written.
+- `syllogic://accounts`, `syllogic://people` — names and ids, no balances.
 
-## Budgets
+## Prompts for the common jobs
 
-`get_budget_summary()` is the cheapest starting point: totals across every
-active budget plus a `needs_attention` list (over limit, near limit, or
-projected to bust). From there:
+`categorize_uncategorized`, `month_end_close`, `budget_review`,
+`spending_investigation`. Each one is the full tool sequence with the
+arguments filled in; reach for them before assembling your own.
 
-- `list_budgets()` — every budget with current-period spend, status, and a
-  pace projection. `include_categories=False` for a compact overview.
-- `get_budget(budget_id)` — one budget with its per-category breakdown,
-  sub-limit usage, days remaining, and daily allowance.
-- `get_budget_transactions(budget_id)` — the actual transactions driving the
-  spend, largest first; `period_offset=1` looks at the previous period.
-- `get_budget_history(budget_id)` — spend per period over the last N periods,
-  with `average_spent_completed` and a `suggested_amount` (average + 10%).
-- `update_budget(budget_id, amount=...)` — adjust a limit; only the fields
-  you pass are changed.
-- `set_budget_categories(budget_id, categories, mode=...)` — reorganize
-  membership. `mode="add"` inserts or re-limits, `mode="remove"` drops,
-  `mode="replace"` makes the list the entire membership.
+## Two things that bite
 
-Spend counts debit transactions whose effective category (user override,
-else AI-assigned) belongs to the budget, excluding transfers unless the
-category is a savings/investment transfer. A budget's amount and sub-limits
-are in the budget's own currency; spend is converted into it before any
-comparison.
+- **Always `dry_run` a write first and show the user what changes.** These
+  are their records, and they have not seen the rows you are about to touch.
+- **`match_mode="word"` when searching for a merchant name.** The default is
+  substring, so "Action" matches "Transaction".
 
-## Bulk recategorization workflow (recommended)
+## Paging
 
-Use `search_transactions_multi` for efficient bulk operations:
-
-```
-# Step 1: Get category ID
-categories = list_categories()
-groceries_id = <find groceries category id>
-
-# Step 2: Find all matching transactions in ONE call
-result = search_transactions_multi(
-    queries=["Jumbo", "Albert Heijn", "ALDI", "LIDL"],
-    exclude_category_id=groceries_id,  # Skip already-categorized
-    match_mode="word",  # Avoid false positives
-    ids_only=True  # Faster, fewer tokens
-)
-
-# Step 3: Bulk update
-bulk_update_transaction_categories(
-    category_id=groceries_id,
-    transaction_ids=result["transaction_ids"]
-)
-```
-
-## Search options
-
-- `match_mode="contains"` (default): Substring match - "Action" matches "Transaction"
-- `match_mode="starts_with"`: "Action" matches "Action Store" but not "Reaction"
-- `match_mode="word"`: Word boundary - "Action" matches "Action Store" but NOT "Transaction"
-
-Use `match_mode="word"` for merchant names to avoid false positives!
-
-## ⚠️ Pagination warning
-
-When using `search_transactions`, ALWAYS check `has_more` in the response.
-If true, you MUST call again with page=2, 3, etc. until has_more=false.
-The `total_count` field tells you how many total results exist; it is None
-once you are paging by cursor, so read it from the first response.
-
-## Pagination & sort
-
-All list/search tools accept:
-- `cursor` (opaque string) — preferred for paging through large result sets; pass
-  `next_cursor` from the previous response.
-- `sort_by`: one of `booked_at_desc` (default), `booked_at_asc`, `amount_desc`,
-  `amount_asc`, `abs_amount_desc`.
-- `account_id` — limit to a single account.
-
-## Amounts, currency and dates
-
-- Amounts are decimal numbers in **major units** (euros, not cents), never
-  minor units.
-- Every amount carries a `currency` next to it. Analytics aggregates are
-  reported in your functional currency, not per-account currency.
-- Aggregates also carry `unconverted_transaction_count`. Non-zero means some
-  transactions had no exchange rate on record and are **excluded** from the
-  total — the figure is an undercount, and worth mentioning rather than
-  reporting as exact.
-- `from_date` and `to_date` are both **inclusive**. `to_date="2026-09-30"`
-  covers all of the 30th.
-
-## Audit filters
-
-- `list_transactions(uncategorized=True)` — only rows with no category at all.
-- `list_transactions(category_type="expense"|"income"|"transfer")` — filter by type.
-- `get_spending_by_category(include_uncategorized=True)` — include an
-  "Uncategorized" bucket with `merchant_count`.
-- `get_top_merchants(category_id=...)` or `get_top_merchants(uncategorized=True)` —
-  audit miscategorized or unassigned merchants.
-
-## Safe bulk updates
-
-`bulk_update_transaction_categories(dry_run=True)` returns what *would* change
-(`would_update_count`, `sample_changes`) without mutating. Hard cap: 2000 IDs
-per call. Response also includes `invalid_ids`, `not_found_ids`, and
-`skipped_already_in_category_ids` so the agent can narrate exactly what
-happened.
+List and search tools take `cursor`; pass `next_cursor` from the previous
+response until it comes back empty. `total_count` is only on the first page.
 """,
     auth=_auth,
 )
@@ -200,7 +116,7 @@ def list_accounts(
     include_inactive: bool = False,
     asset_class: str | None = None,
     person_ids: list[str] | None = None,
-) -> list[dict]:
+) -> list[AccountOut]:
     """
     List all accounts for a user.
 
@@ -221,7 +137,9 @@ def list_accounts(
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
-def get_account(account_id: str, user_id: str = Depends(authenticated_user_id)) -> dict | None:
+def get_account(
+    account_id: str, user_id: str = Depends(authenticated_user_id)
+) -> AccountOut | None:
     """
     Get a single account by ID.
 
@@ -266,7 +184,7 @@ def get_account_balance_history(
 @mcp.tool(annotations={"readOnlyHint": True})
 def list_categories(
     user_id: str = Depends(authenticated_user_id), category_type: str | None = None
-) -> list[dict]:
+) -> list[CategoryOut]:
     """
     List all categories for a user.
 
@@ -280,7 +198,9 @@ def list_categories(
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
-def get_category(category_id: str, user_id: str = Depends(authenticated_user_id)) -> dict | None:
+def get_category(
+    category_id: str, user_id: str = Depends(authenticated_user_id)
+) -> CategoryOut | None:
     """
     Get a single category by ID.
 
@@ -298,8 +218,9 @@ def update_category(
     category_id: str,
     description: str | None = None,
     categorization_instructions: str | None = None,
+    dry_run: bool = False,
     user_id: str = Depends(authenticated_user_id),
-) -> dict:
+) -> MutationResult:
     """
     Update a category's description and/or categorization_instructions.
 
@@ -317,15 +238,20 @@ def update_category(
         description: New human-readable description for this category (optional)
         categorization_instructions: Instructions the AI should follow when
             deciding whether a transaction belongs in this category (optional)
+        dry_run: Preview the change and roll it back, without writing (default False)
 
     Returns:
-        Dict with success status and updated category, or error message
+        {"changed", "before", "after", "fields_changed", "category",
+        "dry_run", "committed"}. `changed` is False when the values were
+        already what you asked for, so you can say "already set" rather than
+        claiming an edit. Raises on invalid input or an unknown category_id.
     """
     return categories.update_category(
         user_id,
         category_id,
         description,
         categorization_instructions,
+        dry_run=dry_run,
     )
 
 
@@ -360,17 +286,35 @@ def list_transactions(
     sort_by: str = "booked_at_desc",
     uncategorized: bool = False,
     category_type: str | None = None,
+    account_ids: list[str] | None = None,
+    category_ids: list[str] | None = None,
+    min_amount: float | None = None,
+    max_amount: float | None = None,
+    merchant: str | None = None,
     user_id: str = Depends(authenticated_user_id),
-) -> dict:
+) -> TransactionPage:
     """
-    List transactions with optional filtering, cursor pagination, and sort.
+    Browse transactions by filter, newest first. No text matching.
+
+    For anything involving a search term, use search_transactions. For a
+    category breakdown rather than rows, use get_amounts_by_category.
 
     Args:
-        account_id: Filter by account ID (optional)
-        category_id: Filter by category ID (optional)
+        account_id: Filter to one account (alias for account_ids=[...])
+        category_id: Filter to one category (alias for category_ids=[...])
+        account_ids: Filter to any of these accounts (optional)
+        category_ids: Filter to any of these categories. Matched on the
+            effective category: the user override, else the AI assignment.
+        min_amount: Minimum absolute amount, so 50 means "50 or more" for an
+            expense and for an income row alike (optional)
+        max_amount: Maximum absolute amount (optional)
+        merchant: Exact merchant name, case-insensitive. For fuzzy matching
+            use search_transactions (optional)
         from_date: Start date, ISO YYYY-MM-DD, inclusive (optional)
         to_date: End date, ISO YYYY-MM-DD, inclusive of the whole day (optional)
-        search: Search in description/merchant (optional)
+        search: DEPRECATED — use search_transactions, which offers match
+            modes. This one is a bare substring match, so "Action" matches
+            "Transaction".
         limit: Max results per page (default: 50, max: 100)
         page: Page number (default: 1) - ignored when cursor is provided
         cursor: Opaque cursor from a previous response
@@ -394,13 +338,18 @@ def list_transactions(
         sort_by,
         uncategorized,
         category_type,
+        account_ids=account_ids,
+        category_ids=category_ids,
+        min_amount=min_amount,
+        max_amount=max_amount,
+        merchant=merchant,
     )
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
 def get_transaction(
     transaction_id: str, user_id: str = Depends(authenticated_user_id)
-) -> dict | None:
+) -> TransactionOut | None:
     """
     Get a single transaction by ID.
 
@@ -415,7 +364,8 @@ def get_transaction(
 
 @mcp.tool(annotations={"readOnlyHint": True})
 def search_transactions(
-    query: str,
+    query: str | None = None,
+    queries: list[str] | None = None,
     exclude_category_id: str | None = None,
     match_mode: str = "contains",
     ids_only: bool = False,
@@ -424,32 +374,55 @@ def search_transactions(
     cursor: str | None = None,
     sort_by: str = "booked_at_desc",
     account_id: str | None = None,
+    account_ids: list[str] | None = None,
+    category_ids: list[str] | None = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
+    min_amount: float | None = None,
+    max_amount: float | None = None,
+    merchant: str | None = None,
     user_id: str = Depends(authenticated_user_id),
-) -> dict:
+) -> TransactionSearchPage:
     """
-    Search transactions by description or merchant name.
+    Find transactions by text, with filters. The one to reach for when
+    matching merchant or description text.
 
-    Prefer `search_transactions_multi` when searching for more than one term.
+    Pass `queries` to search several terms at once — one call, not N, which
+    is what makes a bulk recategorization affordable. For browsing by filter
+    with no text at all, list_transactions is the plainer tool.
 
     Args:
-        query: Search query string (case-insensitive)
+        query: One search string (case-insensitive)
+        queries: Several search strings; a transaction matching ANY of them
+            is returned, e.g. ["Jumbo", "Albert Heijn", "ALDI"]. Combines
+            with `query`. The response carries `query_counts` so you can see
+            which terms actually matched.
         exclude_category_id: Skip transactions already in this category
         match_mode: "contains" (default), "starts_with", or "word".
-            Use "word" for merchant names.
+            Use "word" for merchant names — the default is a substring match,
+            so "Action" matches "Transaction".
         ids_only: If True, return only transaction IDs
         limit: Max results per page (default: 50, max: 100)
         page: Page number (default: 1) - ignored when cursor is provided
         cursor: Opaque cursor from a previous response
         sort_by: See "Pagination & sort" in the server instructions
-        account_id: Filter results to a single account (optional)
+        account_id: Filter to one account (alias for account_ids=[...])
+        account_ids: Filter to any of these accounts (optional)
+        category_ids: Filter to any of these categories, matched on the
+            effective category (user override, else AI assignment)
+        from_date / to_date: Date range, both inclusive (optional)
+        min_amount / max_amount: Absolute amount bounds (optional)
+        merchant: Exact merchant name, case-insensitive (optional)
 
     Returns:
         Dict with transactions (or transaction_ids), page, limit, has_more,
-        total_count, and next_cursor. Keep paginating while has_more is true.
+        total_count, query_counts (when `queries` was used), and next_cursor.
+        Keep paginating while has_more is true.
     """
     return transactions.search_transactions(
         user_id,
         query,
+        queries,
         exclude_category_id,
         match_mode,
         ids_only,
@@ -458,6 +431,13 @@ def search_transactions(
         cursor,
         sort_by,
         account_id,
+        account_ids=account_ids,
+        category_ids=category_ids,
+        from_date=from_date,
+        to_date=to_date,
+        min_amount=min_amount,
+        max_amount=max_amount,
+        merchant=merchant,
     )
 
 
@@ -472,12 +452,12 @@ def search_transactions_multi(
     sort_by: str = "booked_at_desc",
     account_id: str | None = None,
     user_id: str = Depends(authenticated_user_id),
-) -> dict:
+) -> TransactionSearchPage:
     """
-    Search transactions matching ANY of multiple queries in a single call.
+    DEPRECATED — use search_transactions(queries=[...]).
 
-    Preferred over repeated `search_transactions` calls. See the bulk
-    recategorization workflow in the server instructions.
+    The same search with different arity, which meant knowing both tools
+    before you could pick one. Kept for one release.
 
     Args:
         queries: List of search terms, e.g. ["Jumbo", "Albert Heijn", "ALDI"]
@@ -511,8 +491,11 @@ def search_transactions_multi(
 
 @mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
 def update_transaction_category(
-    transaction_id: str, category_id: str, user_id: str = Depends(authenticated_user_id)
-) -> dict:
+    transaction_id: str,
+    category_id: str,
+    dry_run: bool = False,
+    user_id: str = Depends(authenticated_user_id),
+) -> MutationResult:
     """
     Update the category of a transaction (user override).
 
@@ -522,11 +505,17 @@ def update_transaction_category(
     Args:
         transaction_id: The transaction's ID
         category_id: The new category ID to assign
+        dry_run: Preview the change and roll it back, without writing (default False)
 
     Returns:
-        Dict with success status and updated transaction, or error message
+        {"changed", "before", "after", "fields_changed", "transaction",
+        "dry_run", "committed"}. `changed` is False when the transaction was
+        already in that category. Raises on invalid input or an unknown
+        transaction_id/category_id.
     """
-    return transactions.update_transaction_category(user_id, transaction_id, category_id)
+    return transactions.update_transaction_category(
+        user_id, transaction_id, category_id, dry_run=dry_run
+    )
 
 
 @mcp.tool(annotations={"destructiveHint": False, "idempotentHint": True})
@@ -545,7 +534,7 @@ def bulk_update_transaction_categories(
         dry_run: If True, preview what would change without committing (default: False)
 
     Returns:
-        Dict with success status and:
+        Dict with:
         - updated_count (or would_update_count if dry_run=True)
         - requested_count, invalid_ids, not_found_ids,
           skipped_already_in_category_ids, sample_changes (up to 10)
@@ -581,6 +570,58 @@ def bulk_update_transaction_categories(
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
+def get_amounts_by_category(
+    direction: str = "expense",
+    from_date: str | None = None,
+    to_date: str | None = None,
+    account_id: str | None = None,
+    include_uncategorized: bool = False,
+    group_by: str = "none",
+    user_id: str = Depends(authenticated_user_id),
+    person_ids: list[str] | None = None,
+) -> list[CategoryAmountOut]:
+    """
+    Where the money went, or came from, by category — optionally by period.
+
+    The tool for "what do I spend on X", "how much came in from Y", and
+    "how has X moved month to month". For the transactions themselves rather
+    than the totals, use search_transactions or list_transactions.
+
+    Args:
+        direction: "expense" (money out, the default) or "income" (money in)
+        from_date: Start date, ISO YYYY-MM-DD, inclusive (optional)
+        to_date: End date, ISO YYYY-MM-DD, inclusive of the whole day (optional)
+        account_id: Filter by account ID (optional)
+        include_uncategorized: Add an "Uncategorized" bucket for transactions
+            with no category at all. Expenses only. Worth passing during any
+            review — an empty bucket is a fact, and a full one means every
+            other total here is understated.
+        group_by: "none" (default), "month", "quarter" or "year". Anything but
+            "none" returns one row per category per period, with a `period`
+            field — the cross-tab that otherwise costs one call per month.
+        person_ids: Optional list of person UUIDs. When provided, only includes
+            transactions from accounts owned by any of those people.
+
+    Returns:
+        List of rows with category_id, category_name, category_color, total,
+        currency, count, unconverted_transaction_count, merchant_count
+        (expenses only), and `period` when group_by is set. Totals are in your
+        functional currency; a non-zero unconverted_transaction_count means
+        the total is an undercount.
+    """
+    return analytics.get_amounts_by_category(
+        user_id,
+        direction=direction,
+        from_date=from_date,
+        to_date=to_date,
+        account_id=account_id,
+        include_uncategorized=include_uncategorized,
+        person_ids=person_ids,
+        group_by=group_by,
+    )
+
+
+@mcp.tool(annotations={"readOnlyHint": True})
 def get_spending_by_category(
     from_date: str | None = None,
     to_date: str | None = None,
@@ -588,22 +629,12 @@ def get_spending_by_category(
     include_uncategorized: bool = False,
     user_id: str = Depends(authenticated_user_id),
     person_ids: list[str] | None = None,
-) -> list[dict]:
+) -> list[CategoryAmountOut]:
     """
-    Get spending breakdown by category.
+    DEPRECATED — use get_amounts_by_category(direction="expense").
 
-    Args:
-        from_date: Start date, ISO YYYY-MM-DD, inclusive (optional)
-        to_date: End date, ISO YYYY-MM-DD, inclusive of the whole day (optional)
-        account_id: Filter by account ID (optional)
-        include_uncategorized: If True, include an "Uncategorized" bucket for
-            transactions with no category assigned (default: False)
-        person_ids: Optional list of person UUIDs. When provided, only includes
-            transactions from accounts owned by any of those people.
-
-    Returns:
-        List of categories with total spending amount, transaction count, and
-        merchant_count
+    Kept for one release. The replacement adds `group_by` for a
+    category-by-month breakdown.
     """
     return analytics.get_spending_by_category(
         user_id, from_date, to_date, account_id, include_uncategorized, person_ids
@@ -617,19 +648,12 @@ def get_income_by_category(
     account_id: str | None = None,
     user_id: str = Depends(authenticated_user_id),
     person_ids: list[str] | None = None,
-) -> list[dict]:
+) -> list[CategoryAmountOut]:
     """
-    Get income breakdown by category.
+    DEPRECATED — use get_amounts_by_category(direction="income").
 
-    Args:
-        from_date: Start date, ISO YYYY-MM-DD, inclusive (optional)
-        to_date: End date, ISO YYYY-MM-DD, inclusive of the whole day (optional)
-        account_id: Filter by account ID (optional)
-        person_ids: Optional list of person UUIDs. When provided, only includes
-            transactions from accounts owned by any of those people.
-
-    Returns:
-        List of categories with total income amount and transaction count
+    Kept for one release. The replacement adds `group_by` for a
+    category-by-month breakdown.
     """
     return analytics.get_income_by_category(user_id, from_date, to_date, account_id, person_ids)
 
@@ -950,6 +974,8 @@ def create_report(
     send_day_of_month: int | None = None,
     timezone: str = "UTC",
     is_active: bool = True,
+    dry_run: bool = False,
+    idempotency_key: str | None = None,
     user_id: str = Depends(authenticated_user_id),
 ) -> dict:
     """
@@ -971,12 +997,16 @@ def create_report(
         send_day_of_month: Required if frequency is MONTHLY. 1-28
         timezone: IANA timezone name, e.g. "Europe/Brussels" (default "UTC")
         is_active: Whether the report is active/scheduled (default True)
+        dry_run: Preview the change and roll it back, without writing (default False)
+        idempotency_key: Caller-chosen id that makes a retry safe. The same
+            key with the same arguments replays the first response instead of
+            writing again; the same key with different arguments is rejected.
 
     Returns:
-        {"success": True, "report": {...}} on success, or
-        {"success": False, "error": "<message>"} on validation failure
-        (e.g. bad frequency, missing required day field, invalid email,
-        unowned account_id).
+        {"report": {...}, "dry_run": bool, "committed": bool}. Raises on
+        validation failure (e.g. bad frequency, missing required day field,
+        invalid email, unowned account_id) with a message naming the
+        offending field.
     """
     return report_tools.create_report(
         user_id=user_id,
@@ -992,6 +1022,8 @@ def create_report(
         send_day_of_month=send_day_of_month,
         timezone=timezone,
         is_active=is_active,
+        dry_run=dry_run,
+        idempotency_key=idempotency_key,
     )
 
 
@@ -1010,6 +1042,8 @@ def update_report(
     timezone: str | None = None,
     recipient_emails: list[str] | None = None,
     is_active: bool | None = None,
+    dry_run: bool = False,
+    idempotency_key: str | None = None,
     user_id: str = Depends(authenticated_user_id),
 ) -> dict:
     """
@@ -1023,10 +1057,14 @@ def update_report(
     Args:
         report_id: The report's ID
         (see create_report for the meaning of each other field)
+        dry_run: Preview the change and roll it back, without writing (default False)
+        idempotency_key: Caller-chosen id that makes a retry safe. The same
+            key with the same arguments replays the first response instead of
+            writing again; the same key with different arguments is rejected.
 
     Returns:
-        {"success": True, "report": {...}} on success, or
-        {"success": False, "error": "<message>"} if not found or invalid.
+        {"changed", "before", "after", "fields_changed", "report",
+        "dry_run", "committed"}. Raises if not found or invalid.
     """
     return report_tools.update_report(
         user_id=user_id,
@@ -1043,38 +1081,55 @@ def update_report(
         timezone=timezone,
         recipient_emails=recipient_emails,
         is_active=is_active,
+        dry_run=dry_run,
+        idempotency_key=idempotency_key,
     )
 
 
 @mcp.tool(annotations={"idempotentHint": True})
-def delete_report(report_id: str, user_id: str = Depends(authenticated_user_id)) -> dict:
+def delete_report(
+    report_id: str,
+    dry_run: bool = False,
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
     """
     Permanently delete a scheduled report (and its run history).
 
     Args:
         report_id: The report's ID
+        dry_run: Report what would be destroyed without destroying it
+            (default False)
 
     Returns:
-        {"success": True, "error": None} on success, or
-        {"success": False, "error": "<message>"} if not found.
+        {"deleted_report_id", "deleted_report", "deleted_run_count",
+        "dry_run", "committed"}. Raises if not found.
     """
-    return report_tools.delete_report(user_id, report_id)
+    return report_tools.delete_report(user_id, report_id, dry_run=dry_run)
 
 
 @mcp.tool(annotations={"destructiveHint": False})
-def send_test_report(report_id: str, user_id: str = Depends(authenticated_user_id)) -> dict:
+def send_test_report(
+    report_id: str,
+    dry_run: bool = False,
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
     """
     Trigger an immediate test send of a report, bypassing its schedule.
 
     Args:
         report_id: The report's ID
+        dry_run: Report who the email would reach, what subject they would
+            see, and how much test-send quota is left — without sending
+            anything (default False). Unlike the other dry runs this one
+            writes nothing at all: a sent email cannot be rolled back.
 
     Returns:
-        {"success": True, "run": {...}} with the created (SCHEDULED,
-        then asynchronously RUNNING/SUCCEEDED/FAILED) run record, or
-        {"success": False, "error": "<message>"} if the report isn't found.
+        {"run": {...}} with the created (SCHEDULED, then asynchronously
+        RUNNING/SUCCEEDED/FAILED) run record. With dry_run:
+        {"would_send_to", "subject", "quota_remaining"}. Raises if the report
+        isn't found, or if the hourly test-send quota is already spent.
     """
-    return report_tools.send_test_report(user_id, report_id)
+    return report_tools.send_test_report(user_id, report_id, dry_run=dry_run)
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
@@ -1181,7 +1236,8 @@ def get_budget_transactions(
 
     Returns:
         Dict with the period window, `transactions`, `total_spent`,
-        `total_count` and `has_more`, or {"error": "<message>"}.
+        `total_count` and `has_more`. Raises if the budget or category
+        isn't usable.
     """
     return budget_tools.get_budget_transactions(
         user_id, budget_id, limit, period_offset, category_id
@@ -1209,8 +1265,8 @@ def get_budget_history(
 
     Returns:
         Dict with `periods` (most recent first), `average_spent_completed`,
-        `over_budget_period_count` and `suggested_amount`, or
-        {"error": "<message>"}.
+        `over_budget_period_count` and `suggested_amount`. Raises if the
+        budget isn't found.
     """
     return budget_tools.get_budget_history(user_id, budget_id, periods)
 
@@ -1224,6 +1280,8 @@ def create_budget(
     period: str = "monthly",
     start_date: str | None = None,
     is_active: bool = True,
+    dry_run: bool = False,
+    idempotency_key: str | None = None,
     user_id: str = Depends(authenticated_user_id),
 ) -> dict:
     """
@@ -1242,12 +1300,26 @@ def create_budget(
             where it fixes the weekday the week rolls over on; monthly and
             yearly budgets always run calendar month / calendar year.
         is_active: Whether the budget counts toward summaries (default True)
+        dry_run: Preview the change and roll it back, without writing (default False)
+        idempotency_key: Caller-chosen id that makes a retry safe. The same
+            key with the same arguments replays the first response instead of
+            writing again; the same key with different arguments is rejected.
 
     Returns:
-        {"success": True, "budget": {...}} or {"success": False, "error": "<message>"}
+        {"budget": {...}, "dry_run": bool, "committed": bool}. Raises on
+        invalid input.
     """
     return budget_tools.create_budget(
-        user_id, name, amount, categories, currency, period, start_date, is_active
+        user_id,
+        name,
+        amount,
+        categories,
+        currency,
+        period,
+        start_date,
+        is_active,
+        dry_run=dry_run,
+        idempotency_key=idempotency_key,
     )
 
 
@@ -1260,8 +1332,10 @@ def update_budget(
     period: str | None = None,
     start_date: str | None = None,
     is_active: bool | None = None,
+    dry_run: bool = False,
+    idempotency_key: str | None = None,
     user_id: str = Depends(authenticated_user_id),
-) -> dict:
+) -> MutationResult:
     """
     Adjust a budget. Only the fields you pass are changed.
 
@@ -1278,13 +1352,27 @@ def update_budget(
         period: monthly, weekly, or yearly (optional)
         start_date: YYYY-MM-DD anchor, or "" to clear it (optional)
         is_active: Activate (True) or deactivate (False) the budget (optional)
+        dry_run: Preview the change and roll it back, without writing (default False)
+        idempotency_key: Caller-chosen id that makes a retry safe. The same
+            key with the same arguments replays the first response instead of
+            writing again; the same key with different arguments is rejected.
 
     Returns:
-        {"success": True, "budget": {...}} with freshly recomputed spend, or
-        {"success": False, "error": "<message>"}
+        {"changed", "before", "after", "fields_changed", "budget" (with
+        freshly recomputed spend), "dry_run", "committed"}. Raises on invalid
+        input or an unknown budget_id.
     """
     return budget_tools.update_budget(
-        user_id, budget_id, name, amount, currency, period, start_date, is_active
+        user_id,
+        budget_id,
+        name,
+        amount,
+        currency,
+        period,
+        start_date,
+        is_active,
+        dry_run=dry_run,
+        idempotency_key=idempotency_key,
     )
 
 
@@ -1293,6 +1381,7 @@ def set_budget_categories(
     budget_id: str,
     categories: list[dict],
     mode: str = "replace",
+    dry_run: bool = False,
     user_id: str = Depends(authenticated_user_id),
 ) -> dict:
     """
@@ -1308,16 +1397,22 @@ def set_budget_categories(
             "add": insert the listed categories, and update the sub_limit of
                 any already present. Everything else is left alone.
             "remove": drop the listed categories from the budget.
+        dry_run: Preview the change and roll it back, without writing (default False)
 
     Returns:
-        {"success": True, "added": [...], "removed": [...], "updated": [...],
-         "budget": {...}} or {"success": False, "error": "<message>"}
+        {"changed", "added": [...], "removed": [...], "updated": [...],
+         "budget": {...}, "dry_run", "committed"}. Raises on invalid input or
+        an unknown budget_id.
     """
-    return budget_tools.set_budget_categories(user_id, budget_id, categories, mode)
+    return budget_tools.set_budget_categories(user_id, budget_id, categories, mode, dry_run=dry_run)
 
 
 @mcp.tool(annotations={"idempotentHint": True})
-def delete_budget(budget_id: str, user_id: str = Depends(authenticated_user_id)) -> dict:
+def delete_budget(
+    budget_id: str,
+    dry_run: bool = False,
+    user_id: str = Depends(authenticated_user_id),
+) -> dict:
     """
     Permanently delete a budget and its category memberships.
 
@@ -1326,12 +1421,23 @@ def delete_budget(budget_id: str, user_id: str = Depends(authenticated_user_id))
 
     Args:
         budget_id: The budget's ID
+        dry_run: Report what would be destroyed without destroying it
+            (default False)
 
     Returns:
-        {"success": True, "deleted_budget": {...}} or
-        {"success": False, "error": "<message>"}
+        {"deleted_budget": {...}, "dry_run": bool, "committed": bool}. The
+        snapshot names the budget and the category memberships that go with
+        it. Raises if the budget isn't found.
     """
-    return budget_tools.delete_budget(user_id, budget_id)
+    return budget_tools.delete_budget(user_id, budget_id, dry_run=dry_run)
+
+
+# Resources and prompts. Both are additive -- no tool changes behaviour
+# because these exist -- but they are what lets the instructions string above
+# stay short: the field semantics live in syllogic://schema and the workflows
+# live in the prompts, instead of being paid for on every session.
+mcp_resources.register(mcp)
+mcp_prompts.register(mcp)
 
 
 # Throttle before doing the work, then log what actually ran. Registration

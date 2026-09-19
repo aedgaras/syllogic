@@ -4,6 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytest
+from fastmcp.exceptions import ToolError
 
 from app.mcp.tools import transactions as tx_tools
 from app.models import Transaction, Account, Category, User
@@ -102,7 +103,6 @@ def test_bulk_update_dry_run_no_mutation(bulk_data, db_session):
         transaction_ids=ids,
         dry_run=True,
     )
-    assert result["success"] is True
     assert result["would_update_count"] == 3
     assert result["requested_count"] == 3
     assert len(result["sample_changes"]) == 3
@@ -122,7 +122,6 @@ def test_bulk_update_rich_response_categorizes_ids(bulk_data):
         category_id=str(target.id),
         transaction_ids=ids,
     )
-    assert result["success"] is True
     assert result["updated_count"] == 1  # only txns[0] is actually changed
     assert result["requested_count"] == 5
     assert result["invalid_ids"] == ["not-a-uuid"]
@@ -131,13 +130,14 @@ def test_bulk_update_rich_response_categorizes_ids(bulk_data):
 
 
 def test_bulk_update_hard_cap():
-    result = tx_tools.bulk_update_transaction_categories(
-        user_id="x",
-        category_id="00000000-0000-0000-0000-000000000001",
-        transaction_ids=[f"id-{i}" for i in range(2001)],
-    )
-    assert result["success"] is False
-    assert "2000" in result["error"]
+    with pytest.raises(ToolError) as excinfo:
+        tx_tools.bulk_update_transaction_categories(
+            user_id="x",
+            category_id="00000000-0000-0000-0000-000000000001",
+            transaction_ids=[f"id-{i}" for i in range(2001)],
+        )
+    # The cap is named, so the caller can split the batch without guessing.
+    assert "2000" in str(excinfo.value)
 
 
 def test_bulk_update_dry_run_matches_real_run(bulk_data):

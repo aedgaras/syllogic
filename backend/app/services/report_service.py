@@ -178,9 +178,8 @@ def delete_report(db: Session, user_id: str, report_id: str) -> None:
     db.commit()
 
 
-def send_test_report(db: Session, user_id: str, report_id: str) -> ReportRun:
-    report = _get_owned_report(db, user_id, report_id)
-
+def test_send_quota_remaining(db: Session, user_id: str) -> int:
+    """How many test sends this user has left in the current hour window."""
     window_start = datetime.now(timezone.utc) - _TEST_SEND_QUOTA_WINDOW
     recent_sends = (
         db.query(ReportRun)
@@ -192,7 +191,13 @@ def send_test_report(db: Session, user_id: str, report_id: str) -> ReportRun:
         )
         .count()
     )
-    if recent_sends >= _TEST_SEND_QUOTA:
+    return max(0, _TEST_SEND_QUOTA - recent_sends)
+
+
+def send_test_report(db: Session, user_id: str, report_id: str) -> ReportRun:
+    report = _get_owned_report(db, user_id, report_id)
+
+    if test_send_quota_remaining(db, user_id) <= 0:
         raise ReportQuotaExceededError(
             f"Test report send limit reached ({_TEST_SEND_QUOTA} per hour). Try again later."
         )

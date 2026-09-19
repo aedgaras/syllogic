@@ -56,15 +56,18 @@ def caller_id() -> str:
 
 
 class ToolCallLogger(Middleware):
-    """Log one line per tool call: who, what, how long, and whether it worked.
+    """Log one line per tool call or resource read: who, what, how long, ok?
 
     Arguments are deliberately never logged. They carry merchant names,
     amounts and account identifiers -- the whole point of the data this server
     guards.
+
+    Resource reads are logged on the same line shape as tool calls, because
+    they reach the same data. A resource left off this hook is a way to read
+    a user's accounts that leaves no trace.
     """
 
-    async def on_call_tool(self, context, call_next):
-        tool = getattr(context.message, "name", "<unknown>")
+    async def _observe(self, context, call_next, kind: str, name: str):
         user = caller_id()
         started = time.perf_counter()
         try:
@@ -74,8 +77,9 @@ class ToolCallLogger(Middleware):
             # The exception type alone, not str(exc): a message may quote the
             # arguments or a database row.
             logger.warning(
-                "mcp tool=%s user=%s outcome=error duration_ms=%.1f error=%s",
-                tool,
+                "mcp %s=%s user=%s outcome=error duration_ms=%.1f error=%s",
+                kind,
+                name,
                 user,
                 elapsed_ms,
                 type(exc).__name__,
@@ -83,12 +87,28 @@ class ToolCallLogger(Middleware):
             raise
         elapsed_ms = (time.perf_counter() - started) * 1000
         logger.info(
-            "mcp tool=%s user=%s outcome=ok duration_ms=%.1f",
-            tool,
+            "mcp %s=%s user=%s outcome=ok duration_ms=%.1f",
+            kind,
+            name,
             user,
             elapsed_ms,
         )
         return result
+
+    async def on_call_tool(self, context, call_next):
+        return await self._observe(
+            context, call_next, "tool", getattr(context.message, "name", "<unknown>")
+        )
+
+    async def on_read_resource(self, context, call_next):
+        return await self._observe(
+            context, call_next, "resource", str(getattr(context.message, "uri", "<unknown>"))
+        )
+
+    async def on_get_prompt(self, context, call_next):
+        return await self._observe(
+            context, call_next, "prompt", getattr(context.message, "name", "<unknown>")
+        )
 
 
 class PerUserRateLimit(Middleware):
@@ -98,6 +118,10 @@ class PerUserRateLimit(Middleware):
     The IP limiter is what stops unauthenticated key guessing; it just can't
     tell two people behind one address apart, and whichever limit is lower
     binds first.
+
+    Resource reads count against the same budget. They hit the same tables,
+    so a limiter that covered only tools would leave the cheaper path to the
+    same data wide open.
     """
 
     def __init__(self, max_requests: int | None = None, window_seconds: int | None = None):
@@ -112,24 +136,33 @@ class PerUserRateLimit(Middleware):
             else _bounded_env_int("MCP_USER_RATE_LIMIT_WINDOW", 60, 1, 3600)
         )
 
-    async def on_call_tool(self, context, call_next):
+    async def _throttle(self, context, call_next, kind: str, name: str):
         if self.max_requests <= 0:  # explicitly disabled
             return await call_next(context)
 
         user = caller_id()
         # is_rate_limited does a small synchronous UPSERT; keep it off the
         # event loop so one slow database round-trip can't stall other calls.
+        # One counter across tools and resources: they cost the same database
+        # work, and a separate resource budget would just be the way around
+        # this one.
         limited = await anyio.to_thread.run_sync(
             is_rate_limited, f"mcp-user:{user}", self.max_requests, self.window_seconds
         )
         if limited:
-            logger.warning(
-                "mcp tool=%s user=%s outcome=rate_limited",
-                getattr(context.message, "name", "<unknown>"),
-                user,
-            )
+            logger.warning("mcp %s=%s user=%s outcome=rate_limited", kind, name, user)
             raise ToolError(
                 "Rate limit exceeded. Too many tool calls in a short period; "
                 "wait a moment and try again."
             )
         return await call_next(context)
+
+    async def on_call_tool(self, context, call_next):
+        return await self._throttle(
+            context, call_next, "tool", getattr(context.message, "name", "<unknown>")
+        )
+
+    async def on_read_resource(self, context, call_next):
+        return await self._throttle(
+            context, call_next, "resource", str(getattr(context.message, "uri", "<unknown>"))
+        )

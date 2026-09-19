@@ -15,7 +15,7 @@ from celery_app import celery_app
 from app.database import SessionLocal
 from app.integrations.mail_adapter import get_mail_adapter
 from app.models import Report, ReportRun
-from app.services.report_data_service import build_report_payload
+from app.services.report_data_service import build_report_payload, render_subject
 from app.services.report_schedule_service import compute_next_run_at
 
 # In a local checkout, backend/ and frontend/ are siblings, so the TypeScript
@@ -164,7 +164,7 @@ def send_report_run(report_run_id: str) -> None:
             adapter = get_mail_adapter()
             adapter.send(
                 to=run.recipient_emails,
-                subject=f"{report.name} — {datetime.now(timezone.utc).date().isoformat()}",
+                subject=render_subject(report),
                 html=rendered["html"],
                 text=rendered["text"],
             )

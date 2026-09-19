@@ -9,6 +9,9 @@ import os
 import sys
 import uuid
 
+import pytest
+from fastmcp.exceptions import ToolError
+
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -62,7 +65,6 @@ def test_update_category_sets_both_fields() -> None:
             description="Day-to-day grocery shopping",
             categorization_instructions="Assign when merchant is a supermarket chain.",
         )
-        assert result["success"] is True, result
         assert result["category"]["description"] == "Day-to-day grocery shopping"
         assert (
             result["category"]["categorization_instructions"]
@@ -92,7 +94,6 @@ def test_update_category_partial_update_preserves_other_field() -> None:
             categorization_instructions="initial instructions",
         )
         result = update_category(user_id, cat_id, description="updated description")
-        assert result["success"] is True
         assert result["category"]["description"] == "updated description"
         # Instructions should be untouched.
         assert result["category"]["categorization_instructions"] == "initial instructions"
@@ -106,7 +107,6 @@ def test_update_category_empty_string_clears_field() -> None:
     try:
         update_category(user_id, cat_id, description="something")
         result = update_category(user_id, cat_id, description="")
-        assert result["success"] is True
         assert result["category"]["description"] is None
         print("✓ update_category clears field when passed empty string")
     finally:
@@ -116,9 +116,9 @@ def test_update_category_empty_string_clears_field() -> None:
 def test_update_category_requires_at_least_one_field() -> None:
     user_id, cat_id = _seed_category()
     try:
-        result = update_category(user_id, cat_id)
-        assert result["success"] is False
-        assert "at least one" in result["error"].lower()
+        with pytest.raises(ToolError) as excinfo:
+            update_category(user_id, cat_id)
+        assert "at least one" in str(excinfo.value).lower()
         print("✓ update_category rejects no-op calls")
     finally:
         _cleanup(cat_id)
@@ -127,9 +127,12 @@ def test_update_category_requires_at_least_one_field() -> None:
 def test_update_category_rejects_invalid_uuid() -> None:
     user_id, cat_id = _seed_category()
     try:
-        result = update_category(user_id, "not-a-uuid", description="x")
-        assert result["success"] is False
-        assert "invalid" in result["error"].lower()
+        with pytest.raises(ToolError) as excinfo:
+            update_category(user_id, "not-a-uuid", description="x")
+        message = str(excinfo.value)
+        assert "invalid" in message.lower()
+        # The typo is echoed back so the agent can see what it sent.
+        assert "not-a-uuid" in message
         print("✓ update_category rejects invalid UUID")
     finally:
         _cleanup(cat_id)
@@ -139,9 +142,14 @@ def test_update_category_rejects_foreign_user() -> None:
     user_id, cat_id = _seed_category()
     try:
         other_user = f"user_{uuid.uuid4().hex}"
-        result = update_category(other_user, cat_id, description="x")
-        assert result["success"] is False
-        assert "not found" in result["error"].lower()
+        with pytest.raises(ToolError) as excinfo:
+            update_category(other_user, cat_id, description="x")
+        message = str(excinfo.value)
+        assert "no category found" in message.lower()
+        # The id is echoed because the caller supplied it. The candidate
+        # list is the *asking* user's own categories, so a foreign caller
+        # gets none -- the message must not enumerate the owner's.
+        assert "Available:" not in message
         print("✓ update_category rejects access from foreign user")
     finally:
         _cleanup(cat_id)
@@ -159,7 +167,6 @@ def test_update_category_allows_system_category() -> None:
             description="Money moved between my accounts",
             categorization_instructions="Treat as Internal Transfer when IBAN belongs to me.",
         )
-        assert result["success"] is True, result
         assert result["category"]["is_system"] is True
         assert result["category"]["description"] == "Money moved between my accounts"
         assert (

@@ -15,9 +15,9 @@ so an agent and the UI never disagree about how much of a budget is used:
   converted into the budget's own currency before any comparison, because a
   budget's `amount`/`sub_limit` are entered in the budget's currency.
 
-All mutation tools return {"success": bool, ...} rather than raising,
-following the pattern in categories.py/reports.py -- get_db() does not
-auto-rollback, so every mutation path rolls back explicitly on failure.
+Failures raise ToolError; a returned value means the write happened.
+get_db() does not auto-rollback, so every mutation path still rolls back
+explicitly before raising.
 """
 
 from __future__ import annotations
@@ -31,9 +31,17 @@ from uuid import UUID
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
-from app.mcp.dependencies import get_db, validate_uuid
-from app.mcp.errors import database_error
+from app.mcp.dependencies import get_db, require_uuid, validate_uuid
+from app.mcp.errors import (
+    invalid_enum,
+    invalid_format,
+    missing_argument,
+    not_found,
+    out_of_range,
+    raise_database_error,
+)
 from app.mcp.tools._currency import convert as _convert, user_currency as _user_currency
+from app.mcp.tools._writes import mutation_result, preview_or_commit, remember, replay, snapshot
 from app.models import (
     Budget,
     BudgetCategory,
@@ -47,12 +55,18 @@ OVER_THRESHOLD = 100.0
 
 VALID_PERIODS = ("monthly", "weekly", "yearly")
 
+VALID_SET_MODES = ("replace", "add", "remove")
+
 # Mirrors TRANSFER_SPEND_BYPASS_KEYS in frontend/lib/actions/budgets.ts.
 TRANSFER_SPEND_BYPASS_KEYS = ("savings_transfer", "investment_transfer")
 
 # Hard cap on how many categories one budget may carry, so a runaway agent
 # call can't insert thousands of rows in a single mutation.
 MAX_BUDGET_CATEGORIES = 100
+
+# The budget's own fields, as update_budget can change them. Snapshotted
+# before and after so a write that changes nothing says so.
+EDITABLE_FIELDS = ("name", "amount", "currency", "period", "start_date", "is_active")
 
 
 # ============================================================================
@@ -379,41 +393,54 @@ def _load_budget(db: Session, user_id: str, budget_uuid: UUID) -> Optional[Budge
 # ============================================================================
 
 
-def _validate_period(period: str) -> Optional[str]:
+def _budget_candidates(db: Session, user_id: str) -> list[tuple[str, str]]:
+    """(name, id) pairs for a not_found message.
+
+    Takes the caller's session: the lookup that just missed already has one
+    open, and a failed read should not cost a second connection.
+    """
+    return [
+        (name, str(bid))
+        for bid, name in db.query(Budget.id, Budget.name)
+        .filter(Budget.user_id == user_id)
+        .order_by(Budget.name)
+        .all()
+    ]
+
+
+def _validate_period(period: str) -> None:
     if period not in VALID_PERIODS:
-        return f"period must be one of {', '.join(VALID_PERIODS)}"
-    return None
+        raise invalid_enum("period", period, VALID_PERIODS)
 
 
-def _validate_amount(amount: float) -> Optional[str]:
+def _validate_amount(amount: float) -> None:
     if amount is None or amount <= 0:
-        return "amount must be greater than 0"
-    return None
+        raise out_of_range("amount", amount, minimum="greater than 0")
 
 
-def _parse_start_date(value: Optional[str]) -> tuple[Optional[date], Optional[str]]:
+def _parse_start_date(value: Optional[str]) -> Optional[date]:
     if not value:
-        return None, None
+        return None
     try:
-        return date.fromisoformat(value), None
+        return date.fromisoformat(value)
     except (ValueError, TypeError):
-        return None, f"Invalid start_date '{value}' (expected YYYY-MM-DD)"
+        raise invalid_format("start_date", value, "a date as YYYY-MM-DD", example="2026-09-01")
 
 
 def _normalize_category_inputs(
     db: Session, user_id: str, entries: list[dict]
-) -> tuple[list[tuple[UUID, Optional[Decimal]]], Optional[str]]:
+) -> list[tuple[UUID, Optional[Decimal]]]:
     """Validate {category_id, sub_limit} entries and confirm ownership.
 
-    Returns (normalized, error). Ownership is checked in one query rather
+    Raises on the first bad entry. Ownership is checked in one query rather
     than per entry, and duplicates are rejected outright because
     budget_categories is keyed on (budget_id, category_id) -- silently
     collapsing them would lose whichever sub_limit came second.
     """
     if entries is None:
-        return [], None
+        return []
     if len(entries) > MAX_BUDGET_CATEGORIES:
-        return [], f"At most {MAX_BUDGET_CATEGORIES} categories per budget"
+        raise out_of_range("categories length", len(entries), maximum=MAX_BUDGET_CATEGORIES)
 
     normalized: list[tuple[UUID, Optional[Decimal]]] = []
     seen: set[UUID] = set()
@@ -422,14 +449,22 @@ def _normalize_category_inputs(
         if isinstance(entry, str):
             entry = {"category_id": entry}
         if not isinstance(entry, dict):
-            return [], f"Invalid category entry: {entry!r}"
+            raise invalid_format(
+                "categories entry",
+                entry,
+                'an object {"category_id": str, "sub_limit": float | null}',
+            )
 
         raw_id = entry.get("category_id")
-        category_uuid = validate_uuid(raw_id) if raw_id else None
-        if not category_uuid:
-            return [], f"Invalid category ID format: {raw_id!r}"
+        if not raw_id:
+            raise missing_argument("categories[].category_id", "every entry needs a category id")
+        category_uuid = require_uuid(raw_id, "categories[].category_id")
         if category_uuid in seen:
-            return [], f"Duplicate category_id: {raw_id}"
+            raise invalid_format(
+                "categories",
+                raw_id,
+                "each category_id to appear once; a budget holds one sub_limit per category",
+            )
         seen.add(category_uuid)
 
         sub_limit = entry.get("sub_limit")
@@ -439,9 +474,13 @@ def _normalize_category_inputs(
         try:
             sub_limit_value = Decimal(str(sub_limit))
         except (ValueError, ArithmeticError):
-            return [], f"Invalid sub_limit for category {raw_id}: {sub_limit!r}"
+            raise invalid_format(
+                f"sub_limit for category {raw_id}", sub_limit, "a number", example="150.00"
+            ) from None
         if sub_limit_value <= 0:
-            return [], f"sub_limit for category {raw_id} must be greater than 0"
+            raise out_of_range(
+                f"sub_limit for category {raw_id}", sub_limit, minimum="greater than 0"
+            )
         normalized.append((category_uuid, sub_limit_value))
 
     if normalized:
@@ -453,9 +492,20 @@ def _normalize_category_inputs(
         }
         missing = [str(c) for c, _ in normalized if c not in owned]
         if missing:
-            return [], f"Category not found: {', '.join(missing)}"
+            raise not_found(
+                "category",
+                ", ".join(missing),
+                candidates=[
+                    (name, str(cid))
+                    for cid, name in db.query(Category.id, Category.name)
+                    .filter(Category.user_id == user_id)
+                    .order_by(Category.name)
+                    .all()
+                ],
+                tool="list_categories",
+            )
 
-    return normalized, None
+    return normalized
 
 
 # ============================================================================
@@ -621,32 +671,42 @@ def get_budget_transactions(
         category_id: Restrict to one of the budget's categories (optional)
 
     Returns:
-        Dict with the period range, the transactions, and totals, or
-        {"error": ...} if the budget or category isn't usable.
+        Dict with the period range, the transactions, and totals. Raises
+        ToolError if the budget or category isn't usable.
     """
-    budget_uuid = validate_uuid(budget_id)
-    if not budget_uuid:
-        return {"error": "Invalid budget ID format"}
+    budget_uuid = require_uuid(budget_id, "budget_id")
     if period_offset < 0:
-        return {"error": "period_offset must be >= 0"}
+        raise out_of_range("period_offset", period_offset, minimum=0)
     limit = max(1, min(limit, 200))
 
-    category_uuid = None
-    if category_id:
-        category_uuid = validate_uuid(category_id)
-        if not category_uuid:
-            return {"error": "Invalid category ID format"}
+    category_uuid = require_uuid(category_id, "category_id") if category_id else None
 
     now = datetime.now()
     with get_db() as db:
         budget = _load_budget(db, user_id, budget_uuid)
         if not budget:
-            return {"error": "Budget not found"}
+            raise not_found(
+                "budget",
+                budget_id,
+                candidates=_budget_candidates(db, user_id),
+                tool="list_budgets",
+            )
 
         budget_category_ids = [bc.category_id for bc in budget.budget_categories]
         if category_uuid is not None:
             if category_uuid not in budget_category_ids:
-                return {"error": "Category is not part of this budget"}
+                raise not_found(
+                    "category on this budget",
+                    category_id,
+                    candidates=[
+                        (
+                            bc.category.name if bc.category else str(bc.category_id),
+                            str(bc.category_id),
+                        )
+                        for bc in budget.budget_categories
+                    ],
+                    tool="get_budget",
+                )
             budget_category_ids = [category_uuid]
 
         start, end = _period_range(
@@ -737,19 +797,22 @@ def get_budget_history(user_id: str, budget_id: str, periods: int = 6) -> dict:
         periods: How many periods back to include, including the current one (1-24)
 
     Returns:
-        Dict with one entry per period (most recent first) plus averages,
-        or {"error": ...} if not found.
+        Dict with one entry per period (most recent first) plus averages.
+        Raises ToolError if the budget isn't found.
     """
-    budget_uuid = validate_uuid(budget_id)
-    if not budget_uuid:
-        return {"error": "Invalid budget ID format"}
+    budget_uuid = require_uuid(budget_id, "budget_id")
     periods = max(1, min(periods, 24))
 
     now = datetime.now()
     with get_db() as db:
         budget = _load_budget(db, user_id, budget_uuid)
         if not budget:
-            return {"error": "Budget not found"}
+            raise not_found(
+                "budget",
+                budget_id,
+                candidates=_budget_candidates(db, user_id),
+                tool="list_budgets",
+            )
 
         functional_currency = _user_currency(db, user_id)
         budget_currency = budget.currency or "EUR"
@@ -819,6 +882,8 @@ def create_budget(
     period: str = "monthly",
     start_date: Optional[str] = None,
     is_active: bool = True,
+    dry_run: bool = False,
+    idempotency_key: Optional[str] = None,
 ) -> dict:
     """
     Create a budget.
@@ -833,24 +898,42 @@ def create_budget(
         start_date: YYYY-MM-DD anchor; only meaningful for weekly budgets,
             where it fixes which weekday the week rolls over on
         is_active: Whether the budget counts toward summaries (default True)
+        dry_run: Build the budget, report it, then roll it back (default False)
+        idempotency_key: Caller-chosen id making a retry safe. The same key
+            with the same arguments replays the first response instead of
+            creating a second budget; the same key with different arguments
+            is rejected.
 
     Returns:
-        {"success": True, "budget": {...}} or {"success": False, "error": ...}
+        {"budget": {...}, "dry_run": bool, "committed": bool}. Raises
+        ToolError on invalid input.
     """
     if not name or not name.strip():
-        return {"success": False, "error": "Name is required"}
-    error = _validate_amount(amount) or _validate_period(period)
-    if error:
-        return {"success": False, "error": error}
-    parsed_start, error = _parse_start_date(start_date)
-    if error:
-        return {"success": False, "error": error}
+        raise missing_argument("name", "a budget needs a non-empty name")
+    _validate_amount(amount)
+    _validate_period(period)
+    parsed_start = _parse_start_date(start_date)
+
+    arguments = {
+        "name": name,
+        "amount": amount,
+        "categories": categories,
+        "currency": currency,
+        "period": period,
+        "start_date": start_date,
+        "is_active": is_active,
+    }
 
     now = datetime.now()
     with get_db() as db:
-        normalized, error = _normalize_category_inputs(db, user_id, categories or [])
-        if error:
-            return {"success": False, "error": error}
+        # A dry run takes no key: it is a question, not a call to remember.
+        stored, digest = replay(
+            db, user_id, "create_budget", None if dry_run else idempotency_key, arguments
+        )
+        if stored is not None:
+            return stored
+
+        normalized = _normalize_category_inputs(db, user_id, categories or [])
 
         try:
             budget = Budget(
@@ -870,19 +953,24 @@ def create_budget(
                         budget_id=budget.id, category_id=category_uuid, sub_limit=sub_limit
                     )
                 )
-            db.commit()
+
+            def _built() -> dict:
+                reloaded = _load_budget(db, user_id, budget.id)
+                spend = _spend_for_budgets(db, user_id, [reloaded], now)
+                return {
+                    "budget": _serialize_budget(
+                        db, reloaded, spend.get(reloaded.id, {}), _user_currency(db, user_id), now
+                    ),
+                }
+
+            response = preview_or_commit(db, dry_run, _built)
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return database_error("create_budget", e)
+            raise_database_error("create_budget", e)
 
-        reloaded = _load_budget(db, user_id, budget.id)
-        spend = _spend_for_budgets(db, user_id, [reloaded], now)
-        return {
-            "success": True,
-            "budget": _serialize_budget(
-                db, reloaded, spend.get(reloaded.id, {}), _user_currency(db, user_id), now
-            ),
-        }
+        if not dry_run:
+            remember(db, user_id, "create_budget", idempotency_key, digest, response)
+        return response
 
 
 def update_budget(
@@ -894,6 +982,8 @@ def update_budget(
     period: Optional[str] = None,
     start_date: Optional[str] = None,
     is_active: Optional[bool] = None,
+    dry_run: bool = False,
+    idempotency_key: Optional[str] = None,
 ) -> dict:
     """
     Update a budget's own fields. Omitted fields keep their current value.
@@ -911,39 +1001,57 @@ def update_budget(
         period: monthly, weekly, or yearly (optional)
         start_date: YYYY-MM-DD anchor, or "" to clear it (optional)
         is_active: Activate or deactivate the budget (optional)
+        dry_run: Apply the change, report it, then roll it back (default False)
+        idempotency_key: Caller-chosen id making a retry safe (see create_budget)
 
     Returns:
-        {"success": True, "budget": {...}} or {"success": False, "error": ...}
+        {"changed", "before", "after", "fields_changed", "budget", "dry_run",
+        "committed"}. `changed` is False when every field was already the
+        value asked for. Raises ToolError on invalid input or an unknown
+        budget_id.
     """
-    budget_uuid = validate_uuid(budget_id)
-    if not budget_uuid:
-        return {"success": False, "error": "Invalid budget ID format"}
+    budget_uuid = require_uuid(budget_id, "budget_id")
 
     if all(v is None for v in (name, amount, currency, period, start_date, is_active)):
-        return {"success": False, "error": "No fields to update"}
+        raise missing_argument("fields to update", "pass at least one field to change")
 
     if name is not None and not name.strip():
-        return {"success": False, "error": "Name is required"}
+        raise missing_argument("name", "a budget needs a non-empty name")
     if amount is not None:
-        error = _validate_amount(amount)
-        if error:
-            return {"success": False, "error": error}
+        _validate_amount(amount)
     if period is not None:
-        error = _validate_period(period)
-        if error:
-            return {"success": False, "error": error}
+        _validate_period(period)
 
-    parsed_start = None
-    if start_date:
-        parsed_start, error = _parse_start_date(start_date)
-        if error:
-            return {"success": False, "error": error}
+    parsed_start = _parse_start_date(start_date) if start_date else None
+
+    arguments = {
+        "budget_id": budget_id,
+        "name": name,
+        "amount": amount,
+        "currency": currency,
+        "period": period,
+        "start_date": start_date,
+        "is_active": is_active,
+    }
 
     now = datetime.now()
     with get_db() as db:
+        stored, digest = replay(
+            db, user_id, "update_budget", None if dry_run else idempotency_key, arguments
+        )
+        if stored is not None:
+            return stored
+
         budget = _load_budget(db, user_id, budget_uuid)
         if not budget:
-            return {"success": False, "error": "Budget not found"}
+            raise not_found(
+                "budget",
+                budget_id,
+                candidates=_budget_candidates(db, user_id),
+                tool="list_budgets",
+            )
+
+        before = snapshot(budget, EDITABLE_FIELDS)
 
         try:
             if name is not None:
@@ -959,19 +1067,26 @@ def update_budget(
                 budget.start_date = parsed_start
             if is_active is not None:
                 budget.is_active = is_active
-            db.commit()
+
+            def _updated() -> dict:
+                reloaded = _load_budget(db, user_id, budget_uuid)
+                spend = _spend_for_budgets(db, user_id, [reloaded], now)
+                return mutation_result(
+                    before,
+                    snapshot(reloaded, EDITABLE_FIELDS),
+                    budget=_serialize_budget(
+                        db, reloaded, spend.get(reloaded.id, {}), _user_currency(db, user_id), now
+                    ),
+                )
+
+            response = preview_or_commit(db, dry_run, _updated)
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return database_error("update_budget", e)
+            raise_database_error("update_budget", e)
 
-        reloaded = _load_budget(db, user_id, budget_uuid)
-        spend = _spend_for_budgets(db, user_id, [reloaded], now)
-        return {
-            "success": True,
-            "budget": _serialize_budget(
-                db, reloaded, spend.get(reloaded.id, {}), _user_currency(db, user_id), now
-            ),
-        }
+        if not dry_run:
+            remember(db, user_id, "update_budget", idempotency_key, digest, response)
+        return response
 
 
 def set_budget_categories(
@@ -979,6 +1094,7 @@ def set_budget_categories(
     budget_id: str,
     categories: list[dict],
     mode: str = "replace",
+    dry_run: bool = False,
 ) -> dict:
     """
     Reorganize which categories a budget covers, and their sub-limits.
@@ -992,30 +1108,36 @@ def set_budget_categories(
         mode: "replace" (the list becomes the whole membership), "add"
             (insert new categories, update sub_limits of ones already
             present), or "remove" (drop the listed categories).
+        dry_run: Apply the change, report it, then roll it back (default False)
 
     Returns:
-        {"success": True, "budget": {...}, "added": [...], "removed": [...],
-         "updated": [...]} or {"success": False, "error": ...}
+        {"budget": {...}, "added": [...], "removed": [...],
+         "updated": [...]}. Raises ToolError on invalid input or an unknown
+        budget_id.
     """
-    budget_uuid = validate_uuid(budget_id)
-    if not budget_uuid:
-        return {"success": False, "error": "Invalid budget ID format"}
-    if mode not in ("replace", "add", "remove"):
-        return {"success": False, "error": "mode must be replace, add, or remove"}
+    budget_uuid = require_uuid(budget_id, "budget_id")
+    if mode not in VALID_SET_MODES:
+        raise invalid_enum("mode", mode, VALID_SET_MODES)
     if categories is None:
-        return {"success": False, "error": "categories is required"}
+        raise missing_argument("categories", "pass a list, or [] with mode='replace' to clear")
     if not categories and mode != "replace":
-        return {"success": False, "error": f"categories must not be empty for mode={mode}"}
+        raise missing_argument(
+            "categories",
+            f"mode={mode} needs at least one entry; only mode='replace' accepts an empty list",
+        )
 
     now = datetime.now()
     with get_db() as db:
         budget = _load_budget(db, user_id, budget_uuid)
         if not budget:
-            return {"success": False, "error": "Budget not found"}
+            raise not_found(
+                "budget",
+                budget_id,
+                candidates=_budget_candidates(db, user_id),
+                tool="list_budgets",
+            )
 
-        normalized, error = _normalize_category_inputs(db, user_id, categories)
-        if error:
-            return {"success": False, "error": error}
+        normalized = _normalize_category_inputs(db, user_id, categories)
 
         existing = {bc.category_id: bc for bc in budget.budget_categories}
         requested = {category_uuid: sub_limit for category_uuid, sub_limit in normalized}
@@ -1036,16 +1158,18 @@ def set_budget_categories(
                             removed.append(str(category_uuid))
                     if len(requested) > MAX_BUDGET_CATEGORIES:
                         db.rollback()
-                        return {
-                            "success": False,
-                            "error": f"At most {MAX_BUDGET_CATEGORIES} categories per budget",
-                        }
+                        raise out_of_range(
+                            "categories length",
+                            len(requested),
+                            maximum=MAX_BUDGET_CATEGORIES,
+                        )
                 elif len(set(existing) | set(requested)) > MAX_BUDGET_CATEGORIES:
                     db.rollback()
-                    return {
-                        "success": False,
-                        "error": f"At most {MAX_BUDGET_CATEGORIES} categories per budget",
-                    }
+                    raise out_of_range(
+                        "resulting category count",
+                        len(set(existing) | set(requested)),
+                        maximum=MAX_BUDGET_CATEGORIES,
+                    )
 
                 for category_uuid, sub_limit in requested.items():
                     bc = existing.get(category_uuid)
@@ -1062,25 +1186,26 @@ def set_budget_categories(
                         bc.sub_limit = sub_limit
                         updated.append(str(category_uuid))
 
-            db.commit()
+            def _membership() -> dict:
+                reloaded = _load_budget(db, user_id, budget_uuid)
+                spend = _spend_for_budgets(db, user_id, [reloaded], now)
+                return {
+                    "changed": bool(added or removed or updated),
+                    "added": added,
+                    "removed": removed,
+                    "updated": updated,
+                    "budget": _serialize_budget(
+                        db, reloaded, spend.get(reloaded.id, {}), _user_currency(db, user_id), now
+                    ),
+                }
+
+            return preview_or_commit(db, dry_run, _membership)
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return database_error("set_budget_categories", e)
-
-        reloaded = _load_budget(db, user_id, budget_uuid)
-        spend = _spend_for_budgets(db, user_id, [reloaded], now)
-        return {
-            "success": True,
-            "added": added,
-            "removed": removed,
-            "updated": updated,
-            "budget": _serialize_budget(
-                db, reloaded, spend.get(reloaded.id, {}), _user_currency(db, user_id), now
-            ),
-        }
+            raise_database_error("set_budget_categories", e)
 
 
-def delete_budget(user_id: str, budget_id: str) -> dict:
+def delete_budget(user_id: str, budget_id: str, dry_run: bool = False) -> dict:
     """
     Permanently delete a budget and its category memberships.
 
@@ -1089,27 +1214,40 @@ def delete_budget(user_id: str, budget_id: str) -> dict:
     Args:
         user_id: The user's ID
         budget_id: The budget's ID
+        dry_run: Report what would be destroyed without destroying it
+            (default False)
 
     Returns:
-        {"success": True, "deleted_budget": {...}} or {"success": False, "error": ...}
+        {"deleted_budget": {...}, "dry_run": bool, "committed": bool}. Raises
+        ToolError if the budget isn't found.
     """
-    budget_uuid = validate_uuid(budget_id)
-    if not budget_uuid:
-        return {"success": False, "error": "Invalid budget ID format"}
+    budget_uuid = require_uuid(budget_id, "budget_id")
 
     with get_db() as db:
         budget = (
             db.query(Budget).filter(Budget.id == budget_uuid, Budget.user_id == user_id).first()
         )
         if not budget:
-            return {"success": False, "error": "Budget not found"}
+            raise not_found(
+                "budget",
+                budget_id,
+                candidates=_budget_candidates(db, user_id),
+                tool="list_budgets",
+            )
 
-        snapshot = {"id": str(budget.id), "name": budget.name, "amount": float(budget.amount)}
+        # Captured before the delete, and naming the category memberships
+        # that go with it -- those cascade, and "what am I about to lose"
+        # is the whole question a dry run on a delete is asked to answer.
+        doomed = {
+            "id": str(budget.id),
+            "name": budget.name,
+            "amount": float(budget.amount),
+            "currency": budget.currency or "EUR",
+            "category_ids": [str(bc.category_id) for bc in budget.budget_categories],
+        }
         try:
             db.delete(budget)
-            db.commit()
+            return preview_or_commit(db, dry_run, lambda: {"deleted_budget": doomed})
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return database_error("delete_budget", e)
-
-        return {"success": True, "deleted_budget": snapshot}
+            raise_database_error("delete_budget", e)

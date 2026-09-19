@@ -34,12 +34,16 @@ def user_currency(db: Session, user_id: str) -> str:
     return currency or DEFAULT_CURRENCY
 
 
-def convert(db: Session, amount: float, from_currency: str, to_currency: str) -> float:
+def convert_or_none(
+    db: Session, amount: float, from_currency: str, to_currency: str
+) -> float | None:
     """Convert using the most recent rate, falling back to the inverse pair.
 
-    With no rate on record the amount is returned unconverted rather than
-    raising -- same fallback the web app uses, so a missing rate degrades a
-    number instead of breaking the whole read.
+    Returns None when no rate is on record, so a caller that is *summing*
+    can leave the row out and say how many it left out. This is the scalar
+    twin of `FUNCTIONAL_AMOUNT_SQL`, and exists because some amounts have no
+    stored `functional_amount` to fall back on -- a recurring transaction, a
+    property valuation -- so the conversion has to happen at read time.
     """
     if amount == 0 or from_currency == to_currency:
         return amount
@@ -68,7 +72,20 @@ def convert(db: Session, amount: float, from_currency: str, to_currency: str) ->
     if inverse and float(inverse[0]) != 0:
         return amount / float(inverse[0])
 
-    return amount
+    return None
+
+
+def convert(db: Session, amount: float, from_currency: str, to_currency: str) -> float:
+    """Convert, degrading to the unconverted amount when no rate is on record.
+
+    The fallback is the web app's behaviour, and budgets rely on it: a single
+    limit shown slightly wrong beats a budget page that will not load. Do not
+    reach for this inside a sum -- use `convert_or_none` and report the
+    misses, because a fallback inside a total is indistinguishable from a
+    correct total.
+    """
+    converted = convert_or_none(db, amount, from_currency, to_currency)
+    return amount if converted is None else converted
 
 
 # A transaction's amount in the user's functional currency, or NULL when it

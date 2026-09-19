@@ -12,6 +12,9 @@ import sys
 import uuid
 from unittest.mock import patch
 
+import pytest
+from fastmcp.exceptions import ToolError
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
@@ -44,7 +47,7 @@ def _cleanup(db, user_id: str) -> None:
     db.commit()
 
 
-def test_create_report_success_shape():
+def test_create_report_returns_the_report():
     db = SessionLocal()
     user = _seed_user(db)
     try:
@@ -55,7 +58,6 @@ def test_create_report_success_shape():
             send_day_of_week=0,
             recipient_emails=["me@example.com"],
         )
-        assert result["success"] is True
         assert result["report"]["name"] == "Weekly summary"
         assert result["report"]["frequency"] == "WEEKLY"
     finally:
@@ -63,18 +65,20 @@ def test_create_report_success_shape():
         db.close()
 
 
-def test_create_report_validation_error_shape():
+def test_create_report_raises_on_validation_failure():
+    """The service's own message names the offending field, so it goes
+    through as written -- unlike a database error, it is safe and useful."""
     db = SessionLocal()
     user = _seed_user(db)
     try:
-        result = report_tools.create_report(
-            user_id=user.id,
-            name="Bad",
-            frequency="YEARLY",
-            recipient_emails=["me@example.com"],
-        )
-        assert result["success"] is False
-        assert "error" in result
+        with pytest.raises(ToolError) as excinfo:
+            report_tools.create_report(
+                user_id=user.id,
+                name="Bad",
+                frequency="YEARLY",
+                recipient_emails=["me@example.com"],
+            )
+        assert "frequency" in str(excinfo.value).lower()
     finally:
         _cleanup(db, user.id)
         db.close()
@@ -110,7 +114,7 @@ def test_get_report_not_found_returns_none():
         db.close()
 
 
-def test_update_report_success_and_error_shapes():
+def test_update_report_returns_the_report_and_raises_when_missing():
     db = SessionLocal()
     user = _seed_user(db)
     try:
@@ -123,19 +127,20 @@ def test_update_report_success_and_error_shapes():
         report_id = created["report"]["id"]
 
         ok = report_tools.update_report(user_id=user.id, report_id=report_id, is_active=False)
-        assert ok["success"] is True
         assert ok["report"]["is_active"] is False
 
-        bad = report_tools.update_report(
-            user_id=user.id, report_id=str(uuid.uuid4()), is_active=False
-        )
-        assert bad["success"] is False
+        missing = str(uuid.uuid4())
+        with pytest.raises(ToolError) as excinfo:
+            report_tools.update_report(user_id=user.id, report_id=missing, is_active=False)
+        # The error names the report that does exist, so the agent can
+        # correct itself without a second round trip.
+        assert report_id in str(excinfo.value)
     finally:
         _cleanup(db, user.id)
         db.close()
 
 
-def test_delete_report_success_and_not_found():
+def test_delete_report_confirms_the_id_and_raises_the_second_time():
     db = SessionLocal()
     user = _seed_user(db)
     try:
@@ -148,10 +153,10 @@ def test_delete_report_success_and_not_found():
         report_id = created["report"]["id"]
 
         ok = report_tools.delete_report(user_id=user.id, report_id=report_id)
-        assert ok["success"] is True
+        assert ok["deleted_report_id"] == report_id
 
-        again = report_tools.delete_report(user_id=user.id, report_id=report_id)
-        assert again["success"] is False
+        with pytest.raises(ToolError):
+            report_tools.delete_report(user_id=user.id, report_id=report_id)
     finally:
         _cleanup(db, user.id)
         db.close()
@@ -170,7 +175,6 @@ def test_send_test_report_enqueues():
         report_id = created["report"]["id"]
         with patch("app.services.report_service.send_report_run") as mock_task:
             result = report_tools.send_test_report(user_id=user.id, report_id=report_id)
-        assert result["success"] is True
         assert result["run"]["is_test"] is True
         mock_task.delay.assert_called_once()
     finally:

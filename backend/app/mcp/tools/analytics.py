@@ -17,6 +17,7 @@ from fastmcp.exceptions import ToolError
 from sqlalchemy import func, or_, and_, text
 
 from app.mcp.dependencies import get_db, require_date_bound, require_uuid
+from app.mcp.errors import invalid_enum
 from app.mcp.tools._currency import (
     FUNCTIONAL_AMOUNT_SQL,
     functional_amount_expr,
@@ -50,6 +51,20 @@ _LINK_GROUP_NETS_CTE = f"""
 # currency. Reported alongside every aggregate so an incomplete total is
 # visibly incomplete.
 _UNCONVERTED_COUNT_SQL = f"COUNT(*) FILTER (WHERE ({FUNCTIONAL_AMOUNT_SQL}) IS NULL)"
+
+
+VALID_DIRECTIONS = ("expense", "income")
+
+# The periods `group_by` can bucket into, mapped to the date_trunc unit each
+# one needs. A dict rather than a pass-through because this value is
+# interpolated into SQL: only these five strings can ever reach date_trunc.
+_TRUNC_UNITS = {
+    "none": None,
+    "month": "month",
+    "quarter": "quarter",
+    "year": "year",
+}
+VALID_GROUP_BY = tuple(_TRUNC_UNITS)
 
 
 @dataclass
@@ -122,33 +137,49 @@ def _build_filters(
     return filters
 
 
-def get_spending_by_category(
+def get_amounts_by_category(
     user_id: str,
+    direction: str = "expense",
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     account_id: Optional[str] = None,
     include_uncategorized: bool = False,
     person_ids: Optional[list[str]] = None,
+    group_by: str = "none",
 ) -> list[dict]:
     """
-    Get spending breakdown by category.
+    Totals by category, for money out or money in, optionally by period.
 
-    Uses net amounts for linked transactions (primary gets group net).
+    Replaces get_spending_by_category and get_income_by_category, which were
+    the same query twice with the sign and the category type flipped. The
+    third argument is the one that was missing: `group_by` turns this into a
+    category-by-month cross-tab, which previously cost one call per month or
+    a pull of every raw row.
 
     Args:
         user_id: The user's ID
-        from_date: Start date in ISO format (optional)
-        to_date: End date in ISO format (optional)
-        account_id: Filter by account ID (optional)
-        include_uncategorized: If True, include an "Uncategorized" bucket for
-            transactions with no category assigned (default: False)
-        person_ids: Optional list of person UUIDs. When provided, only includes
-            transactions from accounts owned by any of the specified people.
+        direction: "expense" (money out, the default) or "income" (money in)
+        from_date: Start of the range, inclusive (optional)
+        to_date: End of the range, inclusive (optional)
+        account_id: Restrict to one account (optional)
+        include_uncategorized: Add an "Uncategorized" bucket for rows with no
+            category at all. Expenses only -- income has no equivalent, since
+            an uncategorized credit is not identifiable as income.
+        person_ids: Restrict to accounts owned by any of these people (optional)
+        group_by: "none" (default), "month", "quarter" or "year". Anything but
+            "none" adds a `period` field to each row.
 
     Returns:
-        List of categories with total spending amount, transaction count, and
-        merchant_count
+        List of rows with category_id, category_name, category_color, total,
+        currency, count, unconverted_transaction_count, and merchant_count
+        (expenses only). With group_by, each row also carries `period` as a
+        YYYY-MM-DD date naming the start of the bucket.
     """
+    if direction not in VALID_DIRECTIONS:
+        raise invalid_enum("direction", direction, VALID_DIRECTIONS)
+    if group_by not in VALID_GROUP_BY:
+        raise invalid_enum("group_by", group_by, VALID_GROUP_BY)
+
     from_dt = require_date_bound(from_date, "from_date")
     to_dt = require_date_bound(to_date, "to_date", end=True)
     account_uuid = require_uuid(account_id, "account_id")
@@ -159,54 +190,93 @@ def get_spending_by_category(
     currency = _functional_currency(user_id)
     filters = _build_filters(user_id, currency, from_dt, to_dt, account_uuid, allowed_account_ids)
 
-    join_type = "LEFT JOIN" if include_uncategorized else "INNER JOIN"
-    # With INNER JOIN we already exclude null-category rows, so restrict to
-    # expense categories only. With LEFT JOIN we keep all debit rows but still
-    # require categorised rows to be expenses — null-category rows are allowed
-    # via the OR arm so they appear as the "Uncategorized" bucket.
-    uncategorized_filter = (
-        "AND (c.category_type = 'expense' OR c.id IS NULL)"
-        if include_uncategorized
-        else "AND c.category_type = 'expense'"
+    expense = direction == "expense"
+
+    # Expenses are debits summed as magnitudes; income is credits summed as
+    # signed amounts. For a linked group the primary leg carries the group's
+    # net and the other legs carry nothing, so a transfer pair nets to zero
+    # instead of being counted twice.
+    if expense:
+        txn_type = "debit"
+        category_type = "expense"
+        amount_sql = f"""
+                        WHEN tl.link_role = 'primary' THEN
+                            CASE WHEN lgn.net_amount < 0 THEN ABS(lgn.net_amount) ELSE 0 END
+                        WHEN tl.link_role IS NOT NULL THEN 0
+                        ELSE ABS({FUNCTIONAL_AMOUNT_SQL})"""
+    else:
+        txn_type = "credit"
+        category_type = "income"
+        amount_sql = f"""
+                        WHEN tl.link_role = 'primary' THEN
+                            CASE WHEN lgn.net_amount > 0 THEN lgn.net_amount ELSE 0 END
+                        WHEN tl.link_role IS NOT NULL THEN 0
+                        ELSE {FUNCTIONAL_AMOUNT_SQL}"""
+
+    # Uncategorized only makes sense for expenses, and only with a LEFT JOIN:
+    # an INNER JOIN has already dropped the null-category rows. The OR arm is
+    # what lets those rows through while still requiring categorised rows to
+    # be of the right type.
+    uncategorized = expense and include_uncategorized
+    join_type = "LEFT JOIN" if uncategorized else "INNER JOIN"
+    type_filter = (
+        f"AND (c.category_type = '{category_type}' OR c.id IS NULL)"
+        if uncategorized
+        else f"AND c.category_type = '{category_type}'"
     )
+
+    merchant_count_sql = (
+        ",\n                COUNT(DISTINCT t.merchant) FILTER "
+        "(WHERE t.merchant IS NOT NULL AND t.merchant <> '') as merchant_count"
+        if expense
+        else ""
+    )
+
+    # Interpolated, not bound: date_trunc's unit is part of the expression,
+    # not a value. Safe because it can only be one of the five keys in
+    # _TRUNC_UNITS, which the enum check above has already enforced.
+    trunc_unit = _TRUNC_UNITS[group_by]
+    period_select = (
+        f"date_trunc('{trunc_unit}', t.booked_at) as period,\n                "
+        if trunc_unit
+        else ""
+    )
+    period_group = f"date_trunc('{trunc_unit}', t.booked_at), " if trunc_unit else ""
+    period_order = "period ASC, " if trunc_unit else ""
 
     with get_db() as db:
         sql = text(f"""
             {_LINK_GROUP_NETS_CTE}
             SELECT
-                COALESCE(t.category_id, t.category_system_id) as category_id,
+                {period_select}COALESCE(t.category_id, t.category_system_id) as category_id,
                 COALESCE(c.name, 'Uncategorized') as category_name,
                 c.color as category_color,
                 COALESCE(SUM(
-                    CASE
-                        WHEN tl.link_role = 'primary' THEN
-                            CASE WHEN lgn.net_amount < 0 THEN ABS(lgn.net_amount) ELSE 0 END
-                        WHEN tl.link_role IS NOT NULL THEN 0
-                        ELSE ABS({FUNCTIONAL_AMOUNT_SQL})
+                    CASE{amount_sql}
                     END
                 ), 0) as total,
                 COUNT(t.id) as count,
-                {_UNCONVERTED_COUNT_SQL} as unconverted_count,
-                COUNT(DISTINCT t.merchant) FILTER (WHERE t.merchant IS NOT NULL AND t.merchant <> '') as merchant_count
+                {_UNCONVERTED_COUNT_SQL} as unconverted_count{merchant_count_sql}
             FROM transactions t
             {join_type} categories c ON c.id = COALESCE(t.category_id, t.category_system_id)
             LEFT JOIN transaction_links tl ON t.id = tl.transaction_id
             LEFT JOIN link_group_nets lgn ON tl.group_id = lgn.group_id
             WHERE t.user_id = :user_id
-                AND t.transaction_type = 'debit'
+                AND t.transaction_type = '{txn_type}'
                 AND t.include_in_analytics = true
-                {uncategorized_filter}
+                {type_filter}
                 {filters.date}
                 {filters.account}
                 {filters.person}
-            GROUP BY COALESCE(t.category_id, t.category_system_id), c.name, c.color
-            ORDER BY total DESC
+            GROUP BY {period_group}COALESCE(t.category_id, t.category_system_id), c.name, c.color
+            ORDER BY {period_order}total DESC
         """)
 
         results = db.execute(sql, filters.params).fetchall()
 
-        return [
-            {
+        rows = []
+        for r in results:
+            row = {
                 "category_id": str(r.category_id) if r.category_id else None,
                 "category_name": r.category_name or "Uncategorized",
                 "category_color": r.category_color,
@@ -214,10 +284,37 @@ def get_spending_by_category(
                 "currency": currency,
                 "count": r.count,
                 "unconverted_transaction_count": r.unconverted_count,
-                "merchant_count": r.merchant_count,
             }
-            for r in results
-        ]
+            if expense:
+                row["merchant_count"] = r.merchant_count
+            if trunc_unit:
+                row["period"] = r.period.date().isoformat() if r.period else None
+            rows.append(row)
+        return rows
+
+
+def get_spending_by_category(
+    user_id: str,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    account_id: Optional[str] = None,
+    include_uncategorized: bool = False,
+    person_ids: Optional[list[str]] = None,
+) -> list[dict]:
+    """DEPRECATED -- use get_amounts_by_category(direction="expense").
+
+    Kept for one release so existing callers keep working. It has no
+    `group_by`; the replacement does.
+    """
+    return get_amounts_by_category(
+        user_id,
+        direction="expense",
+        from_date=from_date,
+        to_date=to_date,
+        account_id=account_id,
+        include_uncategorized=include_uncategorized,
+        person_ids=person_ids,
+    )
 
 
 def get_income_by_category(
@@ -227,78 +324,19 @@ def get_income_by_category(
     account_id: Optional[str] = None,
     person_ids: Optional[list[str]] = None,
 ) -> list[dict]:
+    """DEPRECATED -- use get_amounts_by_category(direction="income").
+
+    Kept for one release so existing callers keep working. It has no
+    `group_by`; the replacement does.
     """
-    Get income breakdown by category.
-
-    Uses net amounts for linked transactions (primary gets group net).
-
-    Args:
-        user_id: The user's ID
-        from_date: Start date in ISO format (optional)
-        to_date: End date in ISO format (optional)
-        account_id: Filter by account ID (optional)
-        person_ids: Optional list of person UUIDs. When provided, only includes
-            transactions from accounts owned by any of the specified people.
-
-    Returns:
-        List of categories with total income amount and transaction count
-    """
-    from_dt = require_date_bound(from_date, "from_date")
-    to_dt = require_date_bound(to_date, "to_date", end=True)
-    account_uuid = require_uuid(account_id, "account_id")
-
-    allowed_account_ids = _allowed_account_ids_for(person_ids)
-    if allowed_account_ids is not None and not allowed_account_ids:
-        return []
-    currency = _functional_currency(user_id)
-    filters = _build_filters(user_id, currency, from_dt, to_dt, account_uuid, allowed_account_ids)
-
-    with get_db() as db:
-        sql = text(f"""
-            {_LINK_GROUP_NETS_CTE}
-            SELECT
-                COALESCE(t.category_id, t.category_system_id) as category_id,
-                c.name as category_name,
-                c.color as category_color,
-                COALESCE(SUM(
-                    CASE
-                        WHEN tl.link_role = 'primary' THEN
-                            CASE WHEN lgn.net_amount > 0 THEN lgn.net_amount ELSE 0 END
-                        WHEN tl.link_role IS NOT NULL THEN 0
-                        ELSE {FUNCTIONAL_AMOUNT_SQL}
-                    END
-                ), 0) as total,
-                COUNT(t.id) as count,
-                {_UNCONVERTED_COUNT_SQL} as unconverted_count
-            FROM transactions t
-            INNER JOIN categories c ON c.id = COALESCE(t.category_id, t.category_system_id)
-            LEFT JOIN transaction_links tl ON t.id = tl.transaction_id
-            LEFT JOIN link_group_nets lgn ON tl.group_id = lgn.group_id
-            WHERE t.user_id = :user_id
-                AND t.transaction_type = 'credit'
-                AND t.include_in_analytics = true
-                AND c.category_type = 'income'
-                {filters.date}
-                {filters.account}
-                {filters.person}
-            GROUP BY COALESCE(t.category_id, t.category_system_id), c.name, c.color
-            ORDER BY total DESC
-        """)
-
-        results = db.execute(sql, filters.params).fetchall()
-
-        return [
-            {
-                "category_id": str(r.category_id) if r.category_id else None,
-                "category_name": r.category_name or "Uncategorized",
-                "category_color": r.category_color,
-                "total": float(r.total) if r.total else 0,
-                "currency": currency,
-                "count": r.count,
-                "unconverted_transaction_count": r.unconverted_count,
-            }
-            for r in results
-        ]
+    return get_amounts_by_category(
+        user_id,
+        direction="income",
+        from_date=from_date,
+        to_date=to_date,
+        account_id=account_id,
+        person_ids=person_ids,
+    )
 
 
 def get_monthly_cashflow(

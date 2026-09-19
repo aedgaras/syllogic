@@ -1237,3 +1237,39 @@ class VehicleOwner(Base):
     )
     share = Column(Numeric(5, 4), nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+
+class MCPIdempotencyKey(Base):
+    """A remembered MCP write, so a retry does not create a second one.
+
+    An agent that loses the response to `create_budget` has no way to tell a
+    call that failed from one that succeeded and went unheard, and the
+    reasonable thing for it to do -- retry -- is exactly what produces the
+    duplicate. The key lets it retry safely: the same key with the same
+    arguments replays the stored response instead of writing again.
+
+    `request_hash` is what makes that safe rather than merely quiet. The same
+    key arriving with *different* arguments is a client bug, and returning
+    either the old response or a new write would hide it, so it is rejected
+    instead.
+
+    Rows are swept after 24h by
+    tasks.mcp_idempotency_tasks.prune_mcp_idempotency_keys -- long enough to
+    cover any plausible retry, short enough that the table stays small.
+    """
+
+    __tablename__ = "mcp_idempotency_keys"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    tool_name = Column(String(100), nullable=False)
+    idempotency_key = Column(String(255), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    response = Column(JSONB, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False, index=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "tool_name", "idempotency_key", name="mcp_idempotency_unique"
+        ),
+    )

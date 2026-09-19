@@ -20,12 +20,8 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from uuid import UUID
 
-from fastmcp.exceptions import ToolError
-
 from app.database import SessionLocal
-
-
-_UUID_EXAMPLE = "3f2b1c8e-0a4d-4e6f-9b12-7c5d8e1a2b3c"
+from app.mcp.errors import invalid_format, invalid_uuid
 
 
 def validate_uuid(value: str) -> UUID | None:
@@ -79,9 +75,7 @@ def require_uuid(value: str | None, param: str) -> UUID | None:
     try:
         return UUID(value)
     except (ValueError, TypeError):
-        raise ToolError(
-            f"Invalid {param}: {value!r}. Expected a UUID, e.g. '{_UUID_EXAMPLE}'."
-        ) from None
+        raise invalid_uuid(param, value) from None
 
 
 def require_uuid_list(values: list[str] | None, param: str) -> list[UUID] | None:
@@ -111,10 +105,12 @@ def require_date_bound(value: str | None, param: str, *, end: bool = False) -> d
     try:
         parsed = datetime.fromisoformat(text)
     except (ValueError, TypeError):
-        raise ToolError(
-            f"Invalid {param}: {value!r}. Expected an ISO-8601 date "
-            f"(YYYY-MM-DD, e.g. '2026-09-19') or timestamp. "
-            f"Both from_date and to_date are inclusive."
+        raise invalid_format(
+            param,
+            value,
+            "an ISO-8601 date (YYYY-MM-DD) or timestamp",
+            example="2026-09-19",
+            hint="Both from_date and to_date are inclusive.",
         ) from None
 
     # Date-only iff the string carries no time part. Testing for a time

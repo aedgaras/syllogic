@@ -6,6 +6,7 @@ from typing import Optional
 
 from app.mcp.dependencies import get_db, require_date_bound, validate_uuid
 from app.mcp.tools._asset_class import account_type_to_asset_class
+from app.mcp.tools._currency import user_currency
 from app.models import Account, AccountBalance
 from app.security.data_encryption import decrypt_with_fallback
 from app.services.ownership_service import attribute_amount, entity_ids_for_people
@@ -225,15 +226,23 @@ def get_account_balance_history(
 
         balances = query.order_by(AccountBalance.date).all()
 
+        # Both figures were returned as bare numbers whose currency the
+        # caller had to infer from the field name and a separate
+        # get_account call. They are named here instead. None stays None
+        # rather than collapsing to 0: an unconvertible snapshot is not a
+        # zero balance.
+        functional_currency = user_currency(db, user_id)
         return [
             {
                 "date": balance.date.isoformat() if balance.date else None,
                 "balance_in_account_currency": float(balance.balance_in_account_currency)
-                if balance.balance_in_account_currency
-                else 0,
+                if balance.balance_in_account_currency is not None
+                else None,
+                "account_currency": account.currency,
                 "balance_in_functional_currency": float(balance.balance_in_functional_currency)
-                if balance.balance_in_functional_currency
-                else 0,
+                if balance.balance_in_functional_currency is not None
+                else None,
+                "functional_currency": functional_currency,
             }
             for balance in balances
         ]

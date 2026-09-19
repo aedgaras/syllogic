@@ -18,6 +18,20 @@ from sqlalchemy.orm import Session, joinedload
 from app.models import Account, Report, Transaction
 from app.services.report_horizon import horizon_start, period_label
 
+
+def render_subject(report: Report, on: datetime | None = None) -> str:
+    """The subject line a send of this report would carry.
+
+    Here rather than inline in the Celery task so that
+    `send_test_report(dry_run=True)` can show the caller the real subject --
+    a preview that renders its own approximation of the subject is a preview
+    of nothing. Here rather than in report_service because that module
+    imports the task module, and the task needs this.
+    """
+    moment = on or datetime.now(timezone.utc)
+    return f"{report.name} \u2014 {moment.date().isoformat()}"
+
+
 _DIRECTION_LABELS = {
     "ALL": "transactions",
     "EXPENSE": "expenses",

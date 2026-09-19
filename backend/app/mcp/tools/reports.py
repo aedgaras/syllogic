@@ -1,21 +1,32 @@
 """Report (scheduled newsletter) tools for the MCP server.
 
-All mutation tools return {"success": bool, ...} dicts rather than
-raising, following the established pattern in categories.py/investments.py
-— get_db() does not auto-rollback on exception, so every mutation path
-here explicitly rolls back on failure before returning an error dict.
+Failures raise ToolError; a returned value means the write happened.
+get_db() does not auto-rollback on exception, so every mutation path here
+still rolls back explicitly before raising.
+
+report_service raises four exception types and they are not
+interchangeable. Validation and quota messages are the service's own prose
+and go back to the caller as written -- they say what to change. Dispatch
+failures do not: `ReportDispatchError` interpolates the broker exception,
+and a Redis connection error renders as its URL, password included.
 """
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+
 from app.mcp.dependencies import get_db
-from app.mcp.errors import database_error
+from app.mcp.errors import not_found, raise_database_error, raise_dispatch_error
+from app.mcp.tools._writes import preview_session, remember, replay
 from app.services import report_service
+from app.services.report_data_service import render_subject
 from app.services.report_service import (
     ReportDispatchError,
     ReportNotFoundError,
+    ReportQuotaExceededError,
     ReportValidationError,
 )
+from fastmcp.exceptions import ToolError
 
 
 def _serialize_report(report) -> dict:
@@ -54,6 +65,43 @@ def _serialize_run(run) -> dict:
     }
 
 
+def _remember(user_id: str, tool: str, key: str | None, digest: str | None, response: dict):
+    """Store the response against its key, after the write it describes.
+
+    Its own session: on a real call the write's session has already closed,
+    and on a previewed one it was never going to be committed. Deliberately
+    after the write -- if this fails, the write still stands and a retry just
+    writes again, which is what no key at all would have done.
+    """
+    if not key or digest is None:
+        return
+    with get_db() as db:
+        remember(db, user_id, tool, key, digest, response)
+
+
+@contextmanager
+def _session(dry_run: bool):
+    """A normal session, or one whose writes are undone on exit.
+
+    report_service commits internally, so a preview cannot be built by
+    holding back the commit -- the write has already landed by the time
+    control returns. The preview session rolls back the transaction the
+    service committed into instead, which keeps the service path identical
+    between a real call and a previewed one.
+    """
+    if dry_run:
+        with preview_session() as db:
+            yield db
+    else:
+        with get_db() as db:
+            yield db
+
+
+def _report_candidates(db, user_id: str) -> list[tuple[str, str]]:
+    """(name, id) pairs for a not_found message, from the caller's session."""
+    return [(r.name, str(r.id)) for r in report_service.list_reports(db, user_id)]
+
+
 def list_reports(user_id: str) -> list[dict]:
     with get_db() as db:
         return [_serialize_report(r) for r in report_service.list_reports(db, user_id)]
@@ -81,6 +129,8 @@ def create_report(
     send_day_of_month: int | None = None,
     timezone: str = "UTC",
     is_active: bool = True,
+    dry_run: bool = False,
+    idempotency_key: str | None = None,
 ) -> dict:
     payload = {
         "name": name,
@@ -96,16 +146,32 @@ def create_report(
         "timezone": timezone,
         "is_active": is_active,
     }
-    with get_db() as db:
+    with _session(dry_run) as db:
+        # Checked before the write, so a replay never reaches the service.
+        # A dry run takes no key: it is a question, not a call to remember.
+        stored, digest = replay(
+            db, user_id, "create_report", None if dry_run else idempotency_key, payload
+        )
+        if stored is not None:
+            return stored
+
         try:
             report = report_service.create_report(db, user_id, payload)
-            return {"success": True, "report": _serialize_report(report)}
+            response = {
+                "report": _serialize_report(report),
+                "dry_run": dry_run,
+                "committed": not dry_run,
+            }
         except ReportValidationError as e:
             db.rollback()
-            return {"success": False, "error": str(e)}
+            raise ToolError(str(e)) from None
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return database_error("create_report", e)
+            raise_database_error("create_report", e)
+
+    if not dry_run:
+        _remember(user_id, "create_report", idempotency_key, digest, response)
+    return response
 
 
 def update_report(
@@ -123,6 +189,8 @@ def update_report(
     timezone: str | None = None,
     recipient_emails: list[str] | None = None,
     is_active: bool | None = None,
+    dry_run: bool = False,
+    idempotency_key: str | None = None,
 ) -> dict:
     # Only include explicitly-provided (non-None) fields, so omission
     # preserves the existing value (PATCH semantics) rather than nulling
@@ -147,48 +215,121 @@ def update_report(
         }.items()
         if v is not None
     }
-    with get_db() as db:
+    with _session(dry_run) as db:
+        stored, digest = replay(
+            db,
+            user_id,
+            "update_report",
+            None if dry_run else idempotency_key,
+            {"report_id": report_id, **payload},
+        )
+        if stored is not None:
+            return stored
+
         try:
+            before = _serialize_report(report_service.get_report(db, user_id, report_id))
             report = report_service.update_report(db, user_id, report_id, payload)
-            return {"success": True, "report": _serialize_report(report)}
-        except ReportNotFoundError as e:
+            after = _serialize_report(report)
+            response = {
+                "changed": before != after,
+                "before": before,
+                "after": after,
+                "fields_changed": [k for k in after if before.get(k) != after[k]],
+                "report": after,
+                "dry_run": dry_run,
+                "committed": not dry_run,
+            }
+        except ReportNotFoundError:
             db.rollback()
-            return {"success": False, "error": str(e)}
+            raise not_found(
+                "report",
+                report_id,
+                candidates=_report_candidates(db, user_id),
+                tool="list_reports",
+            ) from None
         except ReportValidationError as e:
             db.rollback()
-            return {"success": False, "error": str(e)}
+            raise ToolError(str(e)) from None
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return database_error("update_report", e)
+            raise_database_error("update_report", e)
+
+    if not dry_run:
+        _remember(user_id, "update_report", idempotency_key, digest, response)
+    return response
 
 
-def delete_report(user_id: str, report_id: str) -> dict:
-    with get_db() as db:
+def delete_report(user_id: str, report_id: str, dry_run: bool = False) -> dict:
+    with _session(dry_run) as db:
         try:
+            # Snapshotted before the delete, so a dry run answers the only
+            # question worth asking before destroying something: what is it.
+            deleted = _serialize_report(report_service.get_report(db, user_id, report_id))
+            run_count = len(report_service.list_report_runs(db, user_id, report_id))
             report_service.delete_report(db, user_id, report_id)
-            return {"success": True, "error": None}
-        except ReportNotFoundError as e:
+            return {
+                "deleted_report_id": report_id,
+                "deleted_report": deleted,
+                "deleted_run_count": run_count,
+                "dry_run": dry_run,
+                "committed": not dry_run,
+            }
+        except ReportNotFoundError:
             db.rollback()
-            return {"success": False, "error": str(e)}
+            raise not_found(
+                "report",
+                report_id,
+                candidates=_report_candidates(db, user_id),
+                tool="list_reports",
+            ) from None
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return database_error("delete_report", e)
+            raise_database_error("delete_report", e)
 
 
-def send_test_report(user_id: str, report_id: str) -> dict:
+def send_test_report(user_id: str, report_id: str, dry_run: bool = False) -> dict:
     with get_db() as db:
         try:
+            if dry_run:
+                # Not previewed through a rolled-back session like the other
+                # writes: this one's effect is an email leaving the building,
+                # and a transaction rollback does not un-send it. The dry run
+                # answers what it can without touching the queue -- who it
+                # would reach, what they would see in their inbox, and
+                # whether the quota would even allow it.
+                report = report_service.get_report(db, user_id, report_id)
+                return {
+                    "dry_run": True,
+                    "committed": False,
+                    "would_send_to": list(report.recipient_emails or []),
+                    "subject": render_subject(report),
+                    "quota_remaining": report_service.test_send_quota_remaining(db, user_id),
+                }
+
             run = report_service.send_test_report(db, user_id, report_id)
-            return {"success": True, "run": _serialize_run(run)}
-        except ReportNotFoundError as e:
+            return {"run": _serialize_run(run), "dry_run": False, "committed": True}
+        except ReportNotFoundError:
             db.rollback()
-            return {"success": False, "error": str(e)}
+            raise not_found(
+                "report",
+                report_id,
+                candidates=_report_candidates(db, user_id),
+                tool="list_reports",
+            ) from None
+        except ReportQuotaExceededError as e:
+            # The service's own message names the limit and says to retry.
+            # Previously this fell through to the catch-all and came back as
+            # a database error, which is both wrong and unactionable.
+            db.rollback()
+            raise ToolError(str(e)) from None
         except ReportDispatchError as e:
+            # Not str(e): the broker exception is interpolated into this
+            # message and a Redis URL carries its password.
             db.rollback()
-            return {"success": False, "error": str(e)}
+            raise_dispatch_error("send_test_report", e)
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return database_error("send_test_report", e)
+            raise_database_error("send_test_report", e)
 
 
 def list_report_runs(user_id: str, report_id: str) -> list[dict]:

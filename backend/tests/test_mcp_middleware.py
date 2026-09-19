@@ -16,6 +16,10 @@ def _context(tool_name: str = "list_accounts"):
     return SimpleNamespace(message=SimpleNamespace(name=tool_name))
 
 
+def _resource_context(uri: str = "syllogic://accounts"):
+    return SimpleNamespace(message=SimpleNamespace(uri=uri))
+
+
 async def _ok(_context):
     return "result"
 
@@ -151,3 +155,63 @@ class TestPerUserRateLimit:
         with patch.dict("os.environ", {"MCP_USER_RATE_LIMIT": "not-a-number"}):
             limiter = mw.PerUserRateLimit()
         assert limiter.max_requests == 240
+
+
+class TestResourcesAreNotASideDoor:
+    """Both middlewares originally hooked `on_call_tool` only.
+
+    A resource reads the same tables a tool does, so one left off these hooks
+    is an unthrottled, untraced way to read a user's accounts -- and the
+    cheaper of the two paths, which is the one an agent under a limit would
+    find.
+    """
+
+    @pytest.mark.asyncio
+    async def test_resource_reads_count_against_the_same_budget(self, as_user):
+        limiter = mw.PerUserRateLimit(max_requests=10, window_seconds=60)
+        seen = []
+
+        def record(key, *args):
+            seen.append(key)
+            return False
+
+        with as_user("user_abc"), patch.object(mw, "is_rate_limited", record):
+            await limiter.on_call_tool(_context(), _ok)
+            await limiter.on_read_resource(_resource_context(), _ok)
+
+        # One bucket, not two -- a separate resource allowance would just be
+        # the way around the tool one.
+        assert seen == ["mcp-user:user_abc", "mcp-user:user_abc"]
+
+    @pytest.mark.asyncio
+    async def test_resource_reads_are_refused_over_the_limit(self, as_user):
+        limiter = mw.PerUserRateLimit(max_requests=10, window_seconds=60)
+        with as_user(), patch.object(mw, "is_rate_limited", return_value=True):
+            with pytest.raises(ToolError, match="Rate limit exceeded"):
+                await limiter.on_read_resource(_resource_context(), _ok)
+
+    @pytest.mark.asyncio
+    async def test_resource_reads_are_logged(self, as_user, caplog):
+        with caplog.at_level(logging.INFO, logger="app.mcp.middleware"), as_user("user_abc"):
+            await mw.ToolCallLogger().on_read_resource(_resource_context(), _ok)
+
+        assert "resource=syllogic://accounts" in caplog.text
+        assert "user=user_abc" in caplog.text
+        assert "outcome=ok" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_a_failed_resource_read_logs_the_type_not_the_message(self, as_user, caplog):
+        """Same rule as tools: a message may quote a database row."""
+        with caplog.at_level(logging.WARNING, logger="app.mcp.middleware"), as_user():
+            with pytest.raises(RuntimeError):
+                await mw.ToolCallLogger().on_read_resource(_resource_context(), _boom)
+
+        assert "error=RuntimeError" in caplog.text
+        assert "secret" not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_prompt_reads_are_logged(self, as_user, caplog):
+        with caplog.at_level(logging.INFO, logger="app.mcp.middleware"), as_user():
+            await mw.ToolCallLogger().on_get_prompt(_context("month_end_close"), _ok)
+
+        assert "prompt=month_end_close" in caplog.text

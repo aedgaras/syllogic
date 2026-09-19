@@ -4,9 +4,68 @@ Category tools for the MCP server.
 
 from typing import Optional
 
-from app.mcp.dependencies import get_db, validate_uuid
-from app.mcp.errors import database_error
+from app.mcp.dependencies import get_db, require_uuid, validate_uuid
+from app.mcp.errors import missing_argument, not_found, raise_database_error
+from app.mcp.tools._writes import mutation_result, preview_or_commit, snapshot
 from app.models import Category
+
+
+# The fields update_category can actually change. Snapshotted before and
+# after so a no-op reports itself as one.
+EDITABLE_FIELDS = ("description", "categorization_instructions")
+
+
+def _serialize_category(category) -> dict:
+    """The full category shape, including the two editable fields.
+
+    `list_categories` deliberately omits `categorization_instructions` --
+    they run to paragraphs and there is one per category.
+    """
+    return {
+        "id": str(category.id),
+        "name": category.name,
+        "category_type": category.category_type,
+        "color": category.color,
+        "icon": category.icon,
+        "description": category.description,
+        "categorization_instructions": category.categorization_instructions,
+        "parent_id": str(category.parent_id) if category.parent_id else None,
+        "is_system": category.is_system,
+        "created_at": category.created_at.isoformat() if category.created_at else None,
+    }
+
+
+def categorization_instructions_map(user_id: str) -> dict[str, str | None]:
+    """{category_id: categorization_instructions} for every category.
+
+    One query. `list_categories` and `get_category_tree` leave the field out
+    because it runs to paragraphs and there is one per category, but the
+    categories *resource* wants all of them at once -- those instructions are
+    the rules the user has taught the system, and an agent that has not read
+    them will re-derive them badly.
+    """
+    with get_db() as db:
+        return {
+            str(cid): instructions
+            for cid, instructions in db.query(
+                Category.id, Category.categorization_instructions
+            ).filter(Category.user_id == user_id)
+        }
+
+
+def _category_candidates(db, user_id: str) -> list[tuple[str, str]]:
+    """(name, id) pairs for a not_found message.
+
+    Takes the caller's session: the lookup that just missed already has one
+    open, and a failed read should not cost a second connection.
+    """
+    return [
+        (name, str(cid))
+        for cid, name in db.query(Category.id, Category.name)
+        .filter(Category.user_id == user_id)
+        .order_by(Category.name)
+        .all()
+    ]
 
 
 def list_categories(user_id: str, category_type: Optional[str] = None) -> list[dict]:
@@ -69,18 +128,7 @@ def get_category(user_id: str, category_id: str) -> dict | None:
         if not category:
             return None
 
-        return {
-            "id": str(category.id),
-            "name": category.name,
-            "category_type": category.category_type,
-            "color": category.color,
-            "icon": category.icon,
-            "description": category.description,
-            "categorization_instructions": category.categorization_instructions,
-            "parent_id": str(category.parent_id) if category.parent_id else None,
-            "is_system": category.is_system,
-            "created_at": category.created_at.isoformat() if category.created_at else None,
-        }
+        return _serialize_category(category)
 
 
 def update_category(
@@ -88,6 +136,7 @@ def update_category(
     category_id: str,
     description: Optional[str] = None,
     categorization_instructions: Optional[str] = None,
+    dry_run: bool = False,
 ) -> dict:
     """
     Update a category's description and/or categorization_instructions.
@@ -104,19 +153,21 @@ def update_category(
         category_id: The category's ID
         description: New description text (optional)
         categorization_instructions: New categorization instructions (optional)
+        dry_run: Preview the change without committing it (default False)
 
     Returns:
-        Dict with success status and updated category, or error message
+        Dict with `changed`, `before`, `after`, `fields_changed` and the
+        serialized `category`. `changed` is False when the values were
+        already what was asked for. Raises ToolError on invalid input or an
+        unknown category_id.
     """
     if description is None and categorization_instructions is None:
-        return {
-            "success": False,
-            "error": "At least one of description or categorization_instructions must be provided",
-        }
+        raise missing_argument(
+            "description or categorization_instructions",
+            "at least one must be provided",
+        )
 
-    category_uuid = validate_uuid(category_id)
-    if not category_uuid:
-        return {"success": False, "error": "Invalid category ID format"}
+    category_uuid = require_uuid(category_id, "category_id")
 
     with get_db() as db:
         category = (
@@ -129,33 +180,33 @@ def update_category(
         )
 
         if not category:
-            return {"success": False, "error": "Category not found"}
+            raise not_found(
+                "category",
+                category_id,
+                candidates=_category_candidates(db, user_id),
+                tool="list_categories",
+            )
+
+        before = snapshot(category, EDITABLE_FIELDS)
 
         try:
             if description is not None:
                 category.description = description or None
             if categorization_instructions is not None:
                 category.categorization_instructions = categorization_instructions or None
-            db.commit()
-            db.refresh(category)
+
+            return preview_or_commit(
+                db,
+                dry_run,
+                lambda: mutation_result(
+                    before,
+                    snapshot(category, EDITABLE_FIELDS),
+                    category=_serialize_category(category),
+                ),
+            )
         except Exception as e:
             db.rollback()
-            return database_error("update_category", e)
-
-        return {
-            "success": True,
-            "category": {
-                "id": str(category.id),
-                "name": category.name,
-                "category_type": category.category_type,
-                "color": category.color,
-                "icon": category.icon,
-                "description": category.description,
-                "categorization_instructions": category.categorization_instructions,
-                "parent_id": str(category.parent_id) if category.parent_id else None,
-                "is_system": category.is_system,
-            },
-        }
+            raise_database_error("update_category", e)
 
 
 def get_category_tree(user_id: str) -> list[dict]:

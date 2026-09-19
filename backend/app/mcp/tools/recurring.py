@@ -7,6 +7,7 @@ from typing import Optional
 from sqlalchemy.orm import joinedload
 
 from app.mcp.dependencies import get_db, validate_uuid
+from app.mcp.tools._currency import convert_or_none, user_currency
 from app.models import RecurringTransaction
 
 
@@ -114,9 +115,13 @@ def get_recurring_summary(user_id: str) -> dict:
         user_id: The user's ID
 
     Returns:
-        Summary with totals by frequency and overall statistics
+        Summary with totals by frequency and overall statistics. Every total
+        is stated in `currency` (the user's functional currency);
+        `unconverted_count` is how many subscriptions were left out of the
+        totals because no exchange rate was on record for them.
     """
     with get_db() as db:
+        functional_currency = user_currency(db, user_id)
         recurring = (
             db.query(RecurringTransaction)
             .filter(RecurringTransaction.user_id == user_id, RecurringTransaction.is_active == True)
@@ -133,19 +138,33 @@ def get_recurring_summary(user_id: str) -> dict:
         }
 
         total_monthly = 0
+        unconverted_count = 0
         by_frequency = {}
         by_importance = {1: [], 2: [], 3: [], 4: [], 5: []}
 
         for r in recurring:
             multiplier = frequency_multipliers.get(r.frequency, 1)
-            monthly_amount = float(r.amount) * multiplier
+
+            # RecurringTransaction has no stored functional_amount, so the
+            # conversion happens here. A row with no rate on record is
+            # counted and skipped rather than added raw: a $20/month
+            # subscription folded into a EUR total is a wrong number that
+            # looks exactly like a right one.
+            amount = convert_or_none(
+                db, float(r.amount), r.currency or functional_currency, functional_currency
+            )
+            if amount is None:
+                unconverted_count += 1
+                continue
+
+            monthly_amount = amount * multiplier
             total_monthly += monthly_amount
 
             # Group by frequency
             if r.frequency not in by_frequency:
                 by_frequency[r.frequency] = {"count": 0, "total": 0, "monthly_equivalent": 0}
             by_frequency[r.frequency]["count"] += 1
-            by_frequency[r.frequency]["total"] += float(r.amount)
+            by_frequency[r.frequency]["total"] += amount
             by_frequency[r.frequency]["monthly_equivalent"] += monthly_amount
 
             # Group by importance
@@ -154,15 +173,24 @@ def get_recurring_summary(user_id: str) -> dict:
                 by_importance[importance].append(
                     {
                         "name": r.name,
-                        "amount": float(r.amount),
+                        "amount": round(amount, 2),
+                        "currency": functional_currency,
+                        "native_amount": float(r.amount),
+                        "native_currency": r.currency,
                         "frequency": r.frequency,
                     }
                 )
 
+        for entry in by_frequency.values():
+            entry["total"] = round(entry["total"], 2)
+            entry["monthly_equivalent"] = round(entry["monthly_equivalent"], 2)
+
         return {
             "total_active": len(recurring),
+            "currency": functional_currency,
             "total_monthly_cost": round(total_monthly, 2),
             "total_yearly_cost": round(total_monthly * 12, 2),
+            "unconverted_count": unconverted_count,
             "by_frequency": by_frequency,
             "by_importance": {k: v for k, v in by_importance.items() if v},
         }
