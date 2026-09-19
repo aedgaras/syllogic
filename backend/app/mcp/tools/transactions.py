@@ -13,7 +13,8 @@ from typing import Optional, Literal
 from sqlalchemy import or_, and_, func
 from sqlalchemy.orm import joinedload
 
-from app.mcp.dependencies import get_db, validate_uuid, validate_date
+from app.mcp.dependencies import get_db, require_date_bound, require_uuid, validate_uuid
+from app.mcp.errors import database_error
 from app.models import Transaction, Category
 
 
@@ -137,10 +138,10 @@ def list_transactions(
     """
     page = max(1, page)
     limit = min(max(1, limit), 100)
-    account_uuid = validate_uuid(account_id) if account_id else None
-    category_uuid = validate_uuid(category_id) if category_id else None
-    from_dt = validate_date(from_date)
-    to_dt = validate_date(to_date)
+    account_uuid = require_uuid(account_id, "account_id")
+    category_uuid = require_uuid(category_id, "category_id")
+    from_dt = require_date_bound(from_date, "from_date")
+    to_dt = require_date_bound(to_date, "to_date", end=True)
 
     with get_db() as db:
         query = (
@@ -172,7 +173,9 @@ def list_transactions(
         if from_dt:
             query = query.filter(Transaction.booked_at >= from_dt)
         if to_dt:
-            query = query.filter(Transaction.booked_at <= to_dt)
+            # Exclusive: require_date_bound advanced a bare date to the next
+            # midnight so the named day is included in full.
+            query = query.filter(Transaction.booked_at < to_dt)
         if search:
             search_term = f"%{search[:500]}%"
             query = query.filter(
@@ -379,8 +382,8 @@ def search_transactions(
     query_str = query[:500] if query else ""
 
     # Validate IDs if provided
-    exclude_cat_uuid = validate_uuid(exclude_category_id) if exclude_category_id else None
-    account_uuid = validate_uuid(account_id) if account_id else None
+    exclude_cat_uuid = require_uuid(exclude_category_id, "exclude_category_id")
+    account_uuid = require_uuid(account_id, "account_id")
 
     with get_db() as db:
         # Build base query with user filter
@@ -518,8 +521,8 @@ def search_transactions_multi(
     max_results = min(max(1, max_results), 1000)
 
     # Validate IDs if provided
-    exclude_cat_uuid = validate_uuid(exclude_category_id) if exclude_category_id else None
-    account_uuid = validate_uuid(account_id) if account_id else None
+    exclude_cat_uuid = require_uuid(exclude_category_id, "exclude_category_id")
+    account_uuid = require_uuid(account_id, "account_id")
 
     with get_db() as db:
         # Build combined filter for all queries
@@ -689,7 +692,7 @@ def update_transaction_category(user_id: str, transaction_id: str, category_id: 
             db.refresh(txn)
         except Exception as e:
             db.rollback()
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            return database_error("update_transaction_category", e)
 
         return {
             "success": True,
@@ -826,7 +829,7 @@ def bulk_update_transaction_categories(
                 db.commit()
         except Exception as e:
             db.rollback()
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            return database_error("bulk_update_transaction_categories", e)
 
         base_response["updated_count"] = updated
         return base_response

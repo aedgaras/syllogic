@@ -155,6 +155,19 @@ All list/search tools accept:
   `amount_asc`, `abs_amount_desc`.
 - `account_id` — limit to a single account.
 
+## Amounts, currency and dates
+
+- Amounts are decimal numbers in **major units** (euros, not cents), never
+  minor units.
+- Every amount carries a `currency` next to it. Analytics aggregates are
+  reported in your functional currency, not per-account currency.
+- Aggregates also carry `unconverted_transaction_count`. Non-zero means some
+  transactions had no exchange rate on record and are **excluded** from the
+  total — the figure is an undercount, and worth mentioning rather than
+  reporting as exact.
+- `from_date` and `to_date` are both **inclusive**. `to_date="2026-09-30"`
+  covers all of the 30th.
+
 ## Audit filters
 
 - `list_transactions(uncategorized=True)` — only rows with no category at all.
@@ -234,8 +247,8 @@ def get_account_balance_history(
 
     Args:
         account_id: The account's ID
-        from_date: Start date (ISO format YYYY-MM-DD, optional)
-        to_date: End date (ISO format YYYY-MM-DD, optional)
+        from_date: Start date, ISO YYYY-MM-DD, inclusive (optional)
+        to_date: End date, ISO YYYY-MM-DD, inclusive of the whole day (optional)
         person_ids: Optional list of person UUIDs. When provided, returns an
             empty list if the account is not owned by any of those people.
 
@@ -355,8 +368,8 @@ def list_transactions(
     Args:
         account_id: Filter by account ID (optional)
         category_id: Filter by category ID (optional)
-        from_date: Start date in ISO format YYYY-MM-DD (optional)
-        to_date: End date in ISO format YYYY-MM-DD (optional)
+        from_date: Start date, ISO YYYY-MM-DD, inclusive (optional)
+        to_date: End date, ISO YYYY-MM-DD, inclusive of the whole day (optional)
         search: Search in description/merchant (optional)
         limit: Max results per page (default: 50, max: 100)
         page: Page number (default: 1) - ignored when cursor is provided
@@ -580,8 +593,8 @@ def get_spending_by_category(
     Get spending breakdown by category.
 
     Args:
-        from_date: Start date in ISO format YYYY-MM-DD (optional)
-        to_date: End date in ISO format YYYY-MM-DD (optional)
+        from_date: Start date, ISO YYYY-MM-DD, inclusive (optional)
+        to_date: End date, ISO YYYY-MM-DD, inclusive of the whole day (optional)
         account_id: Filter by account ID (optional)
         include_uncategorized: If True, include an "Uncategorized" bucket for
             transactions with no category assigned (default: False)
@@ -609,8 +622,8 @@ def get_income_by_category(
     Get income breakdown by category.
 
     Args:
-        from_date: Start date in ISO format YYYY-MM-DD (optional)
-        to_date: End date in ISO format YYYY-MM-DD (optional)
+        from_date: Start date, ISO YYYY-MM-DD, inclusive (optional)
+        to_date: End date, ISO YYYY-MM-DD, inclusive of the whole day (optional)
         account_id: Filter by account ID (optional)
         person_ids: Optional list of person UUIDs. When provided, only includes
             transactions from accounts owned by any of those people.
@@ -632,8 +645,8 @@ def get_monthly_cashflow(
     Get monthly income vs expenses breakdown.
 
     Args:
-        from_date: Start date in ISO format YYYY-MM-DD (optional)
-        to_date: End date in ISO format YYYY-MM-DD (optional)
+        from_date: Start date, ISO YYYY-MM-DD, inclusive (optional)
+        to_date: End date, ISO YYYY-MM-DD, inclusive of the whole day (optional)
         person_ids: Optional list of person UUIDs. When provided, only includes
             transactions from accounts owned by any of those people.
 
@@ -654,8 +667,8 @@ def get_financial_summary(
     Get a financial summary with totals and account balances.
 
     Args:
-        from_date: Start date in ISO format YYYY-MM-DD (optional)
-        to_date: End date in ISO format YYYY-MM-DD (optional)
+        from_date: Start date, ISO YYYY-MM-DD, inclusive (optional)
+        to_date: End date, ISO YYYY-MM-DD, inclusive of the whole day (optional)
         person_ids: Optional list of person UUIDs. When provided, only includes
             transactions and balances from accounts owned by any of those people.
             When exactly one person_id is given, account balances are
@@ -680,8 +693,8 @@ def get_top_merchants(
     Get top merchants by total spending.
 
     Args:
-        from_date: Start date in ISO format YYYY-MM-DD (optional)
-        to_date: End date in ISO format YYYY-MM-DD (optional)
+        from_date: Start date, ISO YYYY-MM-DD, inclusive (optional)
+        to_date: End date, ISO YYYY-MM-DD, inclusive of the whole day (optional)
         limit: Max number of merchants (default: 10, max: 50)
         category_id: Filter to transactions in this category (optional).
             Mutually exclusive with uncategorized.
@@ -810,8 +823,8 @@ def get_portfolio_history(
     the user's functional currency.
 
     Args:
-        from_date: Start date (ISO YYYY-MM-DD, optional)
-        to_date: End date (ISO YYYY-MM-DD, optional)
+        from_date: Start date, ISO YYYY-MM-DD, inclusive (optional)
+        to_date: End date, ISO YYYY-MM-DD, inclusive of the whole day (optional)
         person_ids: Optional list of person UUIDs. When provided, only includes
             investment accounts owned by any of those people. When exactly one
             person_id is given, daily values are share-weighted.

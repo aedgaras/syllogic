@@ -5,6 +5,7 @@ Category tools for the MCP server.
 from typing import Optional
 
 from app.mcp.dependencies import get_db, validate_uuid
+from app.mcp.errors import database_error
 from app.models import Category
 
 
@@ -139,7 +140,7 @@ def update_category(
             db.refresh(category)
         except Exception as e:
             db.rollback()
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            return database_error("update_category", e)
 
         return {
             "success": True,

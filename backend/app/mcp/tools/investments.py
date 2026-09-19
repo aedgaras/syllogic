@@ -14,7 +14,7 @@ from typing import Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.mcp.dependencies import get_db, validate_date
+from app.mcp.dependencies import get_db, require_date_bound
 from app.models import (
     Account,
     AccountBalance,
@@ -254,8 +254,8 @@ def get_portfolio_history_impl(
     specified people are included. When exactly one person_id is given, each
     account's balance contribution is share-weighted by that person's ownership.
     """
-    from_dt = validate_date(from_date)
-    to_dt = validate_date(to_date)
+    from_dt = require_date_bound(from_date, "from_date")
+    to_dt = require_date_bound(to_date, "to_date", end=True)
 
     filter_by_person = person_ids is not None and len(person_ids) > 0
     single_person = filter_by_person and len(person_ids) == 1
@@ -291,7 +291,8 @@ def get_portfolio_history_impl(
     if from_dt:
         query = query.filter(AccountBalance.date >= from_dt)
     if to_dt:
-        query = query.filter(AccountBalance.date <= to_dt)
+        # Exclusive; see require_date_bound.
+        query = query.filter(AccountBalance.date < to_dt)
 
     rows = query.order_by(AccountBalance.date).all()
 

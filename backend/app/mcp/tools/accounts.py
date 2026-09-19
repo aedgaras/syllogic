@@ -4,7 +4,7 @@ Account tools for the MCP server.
 
 from typing import Optional
 
-from app.mcp.dependencies import get_db, validate_uuid, validate_date
+from app.mcp.dependencies import get_db, require_date_bound, validate_uuid
 from app.mcp.tools._asset_class import account_type_to_asset_class
 from app.models import Account, AccountBalance
 from app.security.data_encryption import decrypt_with_fallback
@@ -194,8 +194,8 @@ def get_account_balance_history(
     if not account_uuid:
         return []
 
-    from_dt = validate_date(from_date)
-    to_dt = validate_date(to_date)
+    from_dt = require_date_bound(from_date, "from_date")
+    to_dt = require_date_bound(to_date, "to_date", end=True)
 
     with get_db() as db:
         # First verify the account belongs to the user
@@ -218,7 +218,10 @@ def get_account_balance_history(
             query = query.filter(AccountBalance.date >= from_dt)
 
         if to_dt:
-            query = query.filter(AccountBalance.date <= to_dt)
+            # Exclusive: require_date_bound advanced a bare date to the next
+            # midnight. AccountBalance.date is a timestamp, so `<=` dropped
+            # any snapshot taken after midnight on the closing day.
+            query = query.filter(AccountBalance.date < to_dt)
 
         balances = query.order_by(AccountBalance.date).all()
 

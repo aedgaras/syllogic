@@ -32,13 +32,13 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.mcp.dependencies import get_db, validate_uuid
+from app.mcp.errors import database_error
+from app.mcp.tools._currency import convert as _convert, user_currency as _user_currency
 from app.models import (
     Budget,
     BudgetCategory,
     Category,
-    ExchangeRate,
     Transaction,
-    User,
 )
 
 # Thresholds mirror frontend/features/budgets/domain/status.ts
@@ -138,53 +138,6 @@ def _project_pace(
 
 
 # ============================================================================
-# Currency
-# ============================================================================
-
-
-def _user_currency(db: Session, user_id: str) -> str:
-    currency = db.query(User.functional_currency).filter(User.id == user_id).scalar()
-    return currency or "EUR"
-
-
-def _convert(db: Session, amount: float, from_currency: str, to_currency: str) -> float:
-    """Convert using the most recent rate, falling back to the inverse pair.
-
-    With no rate on record the amount is returned unconverted rather than
-    raising -- same fallback the web app uses, so a missing rate degrades a
-    number instead of breaking the whole budget read.
-    """
-    if amount == 0 or from_currency == to_currency:
-        return amount
-
-    rate = (
-        db.query(ExchangeRate.rate)
-        .filter(
-            ExchangeRate.base_currency == from_currency,
-            ExchangeRate.target_currency == to_currency,
-        )
-        .order_by(ExchangeRate.date.desc())
-        .first()
-    )
-    if rate:
-        return amount * float(rate[0])
-
-    inverse = (
-        db.query(ExchangeRate.rate)
-        .filter(
-            ExchangeRate.base_currency == to_currency,
-            ExchangeRate.target_currency == from_currency,
-        )
-        .order_by(ExchangeRate.date.desc())
-        .first()
-    )
-    if inverse and float(inverse[0]) != 0:
-        return amount / float(inverse[0])
-
-    return amount
-
-
-# ============================================================================
 # Spend queries
 # ============================================================================
 
@@ -234,6 +187,43 @@ def _spend_by_category(
         .all()
     )
     return {(row[0], row[1]): float(row[2]) for row in rows}
+
+
+def _unconverted_spend_count(
+    db: Session,
+    user_id: str,
+    budget_id: UUID,
+    start: datetime,
+    end: datetime,
+) -> int:
+    """Spend-eligible rows this budget cannot count, for one period range.
+
+    `_spend_by_category` sums ABS(functional_amount), and SUM skips NULLs --
+    so a transaction that could not be converted into the user's functional
+    currency contributes zero to spend and disappears without trace. That is
+    the mirror image of the bug the analytics module had (there, unconverted
+    rows were added at face value in the wrong currency); both leave the
+    caller unable to tell a complete total from an incomplete one.
+
+    Reported rather than repaired: the fix is a rate for the missing pair,
+    which this module cannot conjure.
+    """
+    return (
+        db.query(func.count(Transaction.id))
+        .join(BudgetCategory, _effective_category_id() == BudgetCategory.category_id)
+        .join(Category, Category.id == BudgetCategory.category_id)
+        .filter(
+            BudgetCategory.budget_id == budget_id,
+            Transaction.user_id == user_id,
+            Transaction.transaction_type == "debit",
+            Transaction.functional_amount.is_(None),
+            _spend_eligibility(),
+            Transaction.booked_at >= start,
+            Transaction.booked_at < end,
+        )
+        .scalar()
+        or 0
+    )
 
 
 def _spend_for_budgets(
@@ -313,6 +303,11 @@ def _serialize_budget(
         ),
         "created_at": budget.created_at.isoformat() if budget.created_at else None,
         "updated_at": budget.updated_at.isoformat() if budget.updated_at else None,
+        # Spend-eligible transactions missing a functional_amount. Non-zero
+        # means `spent` is an undercount, not a total.
+        "unconverted_transaction_count": _unconverted_spend_count(
+            db, budget.user_id, budget.id, start, end
+        ),
     }
 
     if include_categories:
@@ -878,7 +873,7 @@ def create_budget(
             db.commit()
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            return database_error("create_budget", e)
 
         reloaded = _load_budget(db, user_id, budget.id)
         spend = _spend_for_budgets(db, user_id, [reloaded], now)
@@ -967,7 +962,7 @@ def update_budget(
             db.commit()
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            return database_error("update_budget", e)
 
         reloaded = _load_budget(db, user_id, budget_uuid)
         spend = _spend_for_budgets(db, user_id, [reloaded], now)
@@ -1070,7 +1065,7 @@ def set_budget_categories(
             db.commit()
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            return database_error("set_budget_categories", e)
 
         reloaded = _load_budget(db, user_id, budget_uuid)
         spend = _spend_for_budgets(db, user_id, [reloaded], now)
@@ -1115,6 +1110,6 @@ def delete_budget(user_id: str, budget_id: str) -> dict:
             db.commit()
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            return database_error("delete_budget", e)
 
         return {"success": True, "deleted_budget": snapshot}

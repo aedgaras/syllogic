@@ -4,6 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytest
+from fastmcp.exceptions import ToolError
 
 from app.mcp.tools import transactions as tx_tools
 from app.mcp.tools import analytics as an_tools
@@ -103,8 +104,10 @@ def test_top_merchants_uncategorized(audit_data):
 
 
 def test_top_merchants_mutual_exclusion(audit_data):
+    """ToolError, not ValueError: FastMCP masks anything else behind a generic
+    message, so the explanation never reached the caller."""
     user, _, expense_cat, _ = audit_data
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolError):
         an_tools.get_top_merchants(
             user_id=user.id,
             category_id=str(expense_cat.id),

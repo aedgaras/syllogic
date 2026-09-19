@@ -9,6 +9,7 @@ here explicitly rolls back on failure before returning an error dict.
 from __future__ import annotations
 
 from app.mcp.dependencies import get_db
+from app.mcp.errors import database_error
 from app.services import report_service
 from app.services.report_service import (
     ReportDispatchError,
@@ -104,7 +105,7 @@ def create_report(
             return {"success": False, "error": str(e)}
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            return database_error("create_report", e)
 
 
 def update_report(
@@ -158,7 +159,7 @@ def update_report(
             return {"success": False, "error": str(e)}
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            return database_error("update_report", e)
 
 
 def delete_report(user_id: str, report_id: str) -> dict:
@@ -171,7 +172,7 @@ def delete_report(user_id: str, report_id: str) -> dict:
             return {"success": False, "error": str(e)}
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            return database_error("delete_report", e)
 
 
 def send_test_report(user_id: str, report_id: str) -> dict:
@@ -187,7 +188,7 @@ def send_test_report(user_id: str, report_id: str) -> dict:
             return {"success": False, "error": str(e)}
         except Exception as e:  # noqa: BLE001
             db.rollback()
-            return {"success": False, "error": f"Database error: {str(e)}"}
+            return database_error("send_test_report", e)
 
 
 def list_report_runs(user_id: str, report_id: str) -> list[dict]:
